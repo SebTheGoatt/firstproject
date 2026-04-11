@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Tutor – VetPath</title>
+  <meta name="description" content="AI-powered learning tutor for veteran students. Get explanations, writing feedback, and study guides powered by Claude AI." />
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <a href="/" class="navbar-brand">
+        <span class="star">&#9733;</span> VetPath
+      </a>
+      <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="navbar-links" id="nav-links">
+        <li><a href="/">Home</a></li>
+        <li><a href="/benefits.html">GI Bill Benefits</a></li>
+        <li><a href="/ai-tutor.html" class="btn-nav active">AI Tutor</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- PAGE HEADER -->
+  <section style="background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%); color: white; padding: 2.5rem 2rem 2rem; text-align: center;">
+    <div class="container">
+      <span class="section-label" style="color: var(--gold-light);">Powered by Claude AI</span>
+      <h1 style="font-size: clamp(1.6rem, 3.5vw, 2.4rem); font-weight: 800; margin-bottom: 0.75rem;">
+        Your AI Learning Tutor
+      </h1>
+      <p style="color: rgba(255,255,255,0.8); font-size: 0.98rem; max-width: 560px; margin: 0 auto;">
+        Ask questions, get writing feedback, generate study guides —
+        the tutor explains and coaches so <em>you</em> do the learning.
+      </p>
+    </div>
+  </section>
+
+  <!-- TUTOR INTERFACE -->
+  <section class="section" style="padding-top: 2rem;">
+    <div class="tutor-layout">
+
+      <!-- SIDEBAR: MODE SELECTOR -->
+      <aside class="tutor-sidebar">
+        <h3>Tutor Mode</h3>
+
+        <button class="mode-btn active" data-mode="tutor" onclick="setMode('tutor', this)">
+          <span class="mode-icon">&#129504;</span>
+          <div>
+            <div style="font-weight: 600; font-size: 0.9rem;">Study Tutor</div>
+            <div style="font-size: 0.78rem; opacity: 0.75;">Explain concepts</div>
+          </div>
+        </button>
+
+        <button class="mode-btn" data-mode="writing" onclick="setMode('writing', this)">
+          <span class="mode-icon">&#9998;&#65039;</span>
+          <div>
+            <div style="font-weight: 600; font-size: 0.9rem;">Writing Coach</div>
+            <div style="font-size: 0.78rem; opacity: 0.75;">Improve your draft</div>
+          </div>
+        </button>
+
+        <button class="mode-btn" data-mode="studyguide" onclick="setMode('studyguide', this)">
+          <span class="mode-icon">&#128196;</span>
+          <div>
+            <div style="font-weight: 600; font-size: 0.9rem;">Study Guide</div>
+            <div style="font-size: 0.78rem; opacity: 0.75;">From notes/syllabus</div>
+          </div>
+        </button>
+
+        <button class="mode-btn" data-mode="gibill" onclick="setMode('gibill', this)">
+          <span class="mode-icon">&#127919;</span>
+          <div>
+            <div style="font-weight: 600; font-size: 0.9rem;">GI Bill Q&amp;A</div>
+            <div style="font-size: 0.78rem; opacity: 0.75;">Benefit questions</div>
+          </div>
+        </button>
+
+        <div class="mode-info" id="mode-info">
+          Ask any concept you're struggling with and I'll explain it step-by-step,
+          use examples you can relate to, and check your understanding with questions.
+        </div>
+      </aside>
+
+      <!-- CHAT PANEL -->
+      <div class="chat-panel">
+        <div class="chat-header">
+          <div class="chat-avatar">&#129504;</div>
+          <div>
+            <div class="chat-title" id="chat-title">Study Tutor</div>
+            <div class="chat-subtitle">Powered by Claude AI &bull; Here to help you learn</div>
+          </div>
+          <div class="status-dot" title="Online"></div>
+        </div>
+
+        <div class="chat-messages" id="chat-messages">
+          <!-- Welcome message -->
+          <div class="message">
+            <div class="msg-avatar ai">AI</div>
+            <div class="msg-bubble ai-bubble" id="welcome-msg">
+              Hey! I'm your VetPath Study Tutor, powered by Claude AI.
+              I'm here to help you <strong>actually understand</strong> your coursework —
+              not just get answers.<br><br>
+              What are you working on today? You can:
+              <ul>
+                <li>Ask me to explain a concept from any subject</li>
+                <li>Share a draft and get writing feedback</li>
+                <li>Paste your notes and I'll build a study guide</li>
+                <li>Ask questions about your GI Bill benefits</li>
+              </ul>
+              <br>What's on your plate?
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-input-area">
+          <!-- Quick prompt buttons -->
+          <div class="quick-prompts" id="quick-prompts">
+            <button class="quick-btn" onclick="useQuickPrompt(this)">Explain this concept to me</button>
+            <button class="quick-btn" onclick="useQuickPrompt(this)">Help me study for my exam</button>
+            <button class="quick-btn" onclick="useQuickPrompt(this)">Review my essay draft</button>
+            <button class="quick-btn" onclick="useQuickPrompt(this)">GI Bill question</button>
+          </div>
+
+          <div class="chat-input-row">
+            <textarea
+              class="chat-input"
+              id="chat-input"
+              placeholder="Ask a question, paste your notes, or share a draft..."
+              rows="1"
+            ></textarea>
+            <button class="send-btn" id="send-btn" onclick="sendMessage()" title="Send (Enter)">
+              &#10148;
+            </button>
+          </div>
+          <div style="font-size: 0.75rem; color: var(--gray); margin-top: 0.5rem;">
+            Press Enter to send &bull; Shift+Enter for new line &bull; The tutor explains — you do the thinking.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GROUND RULES -->
+    <div class="container" style="max-width: 1100px; margin-top: 1.5rem;">
+      <div style="background: var(--white); border-radius: var(--radius-lg); padding: 1.5rem 2rem; border: 1px solid var(--gray-light); display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.25rem;">
+        <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
+          <span style="font-size: 1.3rem; flex-shrink: 0;">&#127775;</span>
+          <div>
+            <strong style="color: var(--navy); font-size: 0.9rem; display: block;">Explains, doesn't complete</strong>
+            <p style="font-size: 0.82rem; color: var(--gray-dark); margin-top: 0.2rem;">The tutor teaches you to fish, not hands you fish.</p>
+          </div>
+        </div>
+        <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
+          <span style="font-size: 1.3rem; flex-shrink: 0;">&#128202;</span>
+          <div>
+            <strong style="color: var(--navy); font-size: 0.9rem; display: block;">Personalized to you</strong>
+            <p style="font-size: 0.82rem; color: var(--gray-dark); margin-top: 0.2rem;">Uses analogies from your background and service experience.</p>
+          </div>
+        </div>
+        <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
+          <span style="font-size: 1.3rem; flex-shrink: 0;">&#128274;</span>
+          <div>
+            <strong style="color: var(--navy); font-size: 0.9rem; display: block;">Private & secure</strong>
+            <p style="font-size: 0.82rem; color: var(--gray-dark); margin-top: 0.2rem;">Conversations are not stored or shared with anyone.</p>
+          </div>
+        </div>
+        <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
+          <span style="font-size: 1.3rem; flex-shrink: 0;">&#127362;</span>
+          <div>
+            <strong style="color: var(--navy); font-size: 0.9rem; display: block;">Veteran-aware</strong>
+            <p style="font-size: 0.82rem; color: var(--gray-dark); margin-top: 0.2rem;">Understands military background and the transition to student life.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-top">
+        <div>
+          <div class="footer-brand"><span class="star">&#9733;</span> VetPath</div>
+          <p class="footer-desc">
+            A free resource helping veterans navigate education benefits and
+            learn effectively. Not affiliated with the VA or any government agency.
+          </p>
+        </div>
+        <ul class="footer-links">
+          <li><a href="/">Home</a></li>
+          <li><a href="/benefits.html">GI Bill</a></li>
+          <li><a href="/ai-tutor.html">AI Tutor</a></li>
+        </ul>
+      </div>
+      <div class="footer-bottom">
+        <span>&copy; 2025 VetPath. Built with respect for those who served.</span>
+        <span class="disclaimer">
+          AI responses are for learning support only. Always verify benefit information
+          directly with the VA. The tutor is not a substitute for professional academic advising.
+        </span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/js/main.js"></script>
+  <script src="/js/ai-tutor.js"></script>
+</body>
+</html>

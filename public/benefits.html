@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GI Bill Benefits Guide – VetPath</title>
+  <meta name="description" content="Compare GI Bill chapters, understand your eligibility, and learn about BAH, tuition, and school approval." />
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <a href="/" class="navbar-brand">
+        <span class="star">&#9733;</span> VetPath
+      </a>
+      <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="navbar-links" id="nav-links">
+        <li><a href="/">Home</a></li>
+        <li><a href="/benefits.html" class="active">GI Bill Benefits</a></li>
+        <li><a href="/ai-tutor.html" class="btn-nav">AI Tutor</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- PAGE HEADER -->
+  <section style="background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%); color: white; padding: 3.5rem 2rem 3rem; text-align: center;">
+    <div class="container">
+      <span class="section-label" style="color: var(--gold-light);">Your Education Benefits</span>
+      <h1 style="font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; margin-bottom: 1rem; line-height: 1.2;">
+        GI Bill Benefits Guide
+      </h1>
+      <p style="color: rgba(255,255,255,0.8); font-size: 1.05rem; max-width: 580px; margin: 0 auto;">
+        Everything you need to know about your education benefit options — explained
+        clearly, without the government jargon.
+      </p>
+    </div>
+  </section>
+
+  <!-- NOTICE -->
+  <section class="section" style="padding-bottom: 0.5rem;">
+    <div class="container">
+      <div class="notice">
+        <strong>Heads up:</strong> Benefit amounts, eligibility rules, and rates change annually.
+        Always verify current figures directly with the VA at
+        <strong>va.gov/education/</strong> or by calling 1-888-GIBILL-1.
+        This guide is for educational purposes.
+      </div>
+    </div>
+  </section>
+
+  <!-- GI BILL CHAPTERS -->
+  <section class="section" id="chapters">
+    <div class="container">
+      <span class="section-label">GI Bill Chapters</span>
+      <h2 class="section-title">Which GI Bill Is Right for You?</h2>
+      <p style="color: var(--gray-dark); margin-bottom: 2.5rem; font-size: 1rem; max-width: 680px;">
+        There are four main GI Bill programs (called "chapters"). Most veterans qualify for
+        Post-9/11 (Chapter 33), but your situation may make another chapter more advantageous.
+      </p>
+
+      <div class="chapter-grid">
+
+        <!-- CHAPTER 33 -->
+        <div class="chapter-card gold-top">
+          <span class="chapter-tag">Chapter 33</span>
+          <h3>Post-9/11 GI Bill <span style="color: var(--gold); font-size: 0.85rem;">(Most Popular)</span></h3>
+          <p class="desc">
+            For veterans who served at least 90 days of active duty after Sept. 10, 2001.
+            The most comprehensive GI Bill available, covering tuition, housing, and books.
+          </p>
+          <ul class="benefit-list">
+            <li>Up to 100% of in-state public school tuition OR a private school cap (~$26,381/yr)</li>
+            <li>Monthly housing allowance (BAH based on school ZIP code)</li>
+            <li>Up to $1,000/year for books and supplies</li>
+            <li>36 months of benefits total</li>
+            <li>Transferable to spouse or dependents (with service requirements)</li>
+            <li>Yellow Ribbon Program eligibility at participating schools</li>
+          </ul>
+        </div>
+
+        <!-- CHAPTER 30 -->
+        <div class="chapter-card">
+          <span class="chapter-tag">Chapter 30</span>
+          <h3>Montgomery GI Bill – Active Duty (MGIB-AD)</h3>
+          <p class="desc">
+            For veterans who contributed $100/month for 12 months during service.
+            Pays a flat monthly stipend directly to you — useful if you're at a school
+            where Chapter 33 housing allowance is lower.
+          </p>
+          <ul class="benefit-list">
+            <li>Monthly payment ($2,300+/month for full-time, 2024 rates)</li>
+            <li>Paid directly to the veteran — you pay the school</li>
+            <li>36 months of benefits</li>
+            <li>Can be combined with tuition assistance in some cases</li>
+            <li>No housing allowance (the monthly stipend is all-in)</li>
+          </ul>
+        </div>
+
+        <!-- CHAPTER 35 -->
+        <div class="chapter-card red-top">
+          <span class="chapter-tag">Chapter 35</span>
+          <h3>Survivors' &amp; Dependents' Educational Assistance (DEA)</h3>
+          <p class="desc">
+            For spouses and children of veterans who are permanently and totally disabled
+            due to a service-related condition, or who died in service.
+          </p>
+          <ul class="benefit-list">
+            <li>Monthly stipend for education and training</li>
+            <li>Up to 45 months of education benefits</li>
+            <li>Covers college, vocational/technical training, apprenticeships</li>
+            <li>Eligible dependents: spouses and children of qualifying veterans</li>
+            <li>Can be used concurrently with other VA benefits in some cases</li>
+          </ul>
+        </div>
+
+        <!-- CHAPTER 1606 -->
+        <div class="chapter-card">
+          <span class="chapter-tag">Chapter 1606</span>
+          <h3>Montgomery GI Bill – Selected Reserve (MGIB-SR)</h3>
+          <p class="desc">
+            For members of the Selected Reserve (National Guard or Reserves) who have
+            a 6-year service obligation.
+          </p>
+          <ul class="benefit-list">
+            <li>Monthly stipend (lower rate than Chapter 30)</li>
+            <li>36 months of benefits</li>
+            <li>Available while still in the Reserves/Guard</li>
+            <li>Can be suspended if called to active duty</li>
+            <li>Eligibility ends when Reserve obligation ends</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ELIGIBILITY TIERS -->
+  <section class="section" style="background: var(--white); border-top: 1px solid var(--gray-light); border-bottom: 1px solid var(--gray-light);">
+    <div class="container">
+      <span class="section-label">Post-9/11 Eligibility</span>
+      <h2 class="section-title">Chapter 33 Benefit Tiers</h2>
+      <p style="color: var(--gray-dark); margin-bottom: 2.5rem; max-width: 640px;">
+        Your Chapter 33 benefit level depends on how long you served on active duty after Sept. 10, 2001.
+      </p>
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.95rem;">
+          <thead>
+            <tr style="background: var(--navy); color: white; text-align: left;">
+              <th style="padding: 0.9rem 1.1rem;">Service Requirement</th>
+              <th style="padding: 0.9rem 1.1rem;">Benefit Level</th>
+              <th style="padding: 0.9rem 1.1rem;">Tuition Coverage</th>
+              <th style="padding: 0.9rem 1.1rem;">Housing Allowance</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--gray-light);">
+              <td style="padding: 0.85rem 1.1rem;">36+ months active duty</td>
+              <td style="padding: 0.85rem 1.1rem;"><strong style="color: var(--gold);">100%</strong></td>
+              <td style="padding: 0.85rem 1.1rem;">Full (up to cap)</td>
+              <td style="padding: 0.85rem 1.1rem;">Full BAH (E-5 with dependents)</td>
+            </tr>
+            <tr style="background: var(--off-white); border-bottom: 1px solid var(--gray-light);">
+              <td style="padding: 0.85rem 1.1rem;">30 months active duty</td>
+              <td style="padding: 0.85rem 1.1rem;"><strong>90%</strong></td>
+              <td style="padding: 0.85rem 1.1rem;">90% of cap</td>
+              <td style="padding: 0.85rem 1.1rem;">90% of BAH</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--gray-light);">
+              <td style="padding: 0.85rem 1.1rem;">24 months active duty</td>
+              <td style="padding: 0.85rem 1.1rem;"><strong>80%</strong></td>
+              <td style="padding: 0.85rem 1.1rem;">80% of cap</td>
+              <td style="padding: 0.85rem 1.1rem;">80% of BAH</td>
+            </tr>
+            <tr style="background: var(--off-white); border-bottom: 1px solid var(--gray-light);">
+              <td style="padding: 0.85rem 1.1rem;">18 months active duty</td>
+              <td style="padding: 0.85rem 1.1rem;"><strong>70%</strong></td>
+              <td style="padding: 0.85rem 1.1rem;">70% of cap</td>
+              <td style="padding: 0.85rem 1.1rem;">70% of BAH</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--gray-light);">
+              <td style="padding: 0.85rem 1.1rem;">12 months active duty</td>
+              <td style="padding: 0.85rem 1.1rem;"><strong>60%</strong></td>
+              <td style="padding: 0.85rem 1.1rem;">60% of cap</td>
+              <td style="padding: 0.85rem 1.1rem;">60% of BAH</td>
+            </tr>
+            <tr style="background: var(--off-white);">
+              <td style="padding: 0.85rem 1.1rem;">90 days active duty</td>
+              <td style="padding: 0.85rem 1.1rem;"><strong>40%</strong></td>
+              <td style="padding: 0.85rem 1.1rem;">40% of cap</td>
+              <td style="padding: 0.85rem 1.1rem;">40% of BAH</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- CALCULATOR SECTION -->
+  <section class="section" id="calculator">
+    <div class="container">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: start;">
+        <div>
+          <span class="section-label">Understanding Your Pay</span>
+          <h2 class="section-title">What You'll Actually Receive</h2>
+          <p style="color: var(--gray-dark); margin-bottom: 1.5rem;">
+            Chapter 33 benefits come in three parts — tuition, housing (BAH), and the book
+            stipend. Here's how each one works:
+          </p>
+
+          <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+            <div style="background: var(--white); border-radius: var(--radius); padding: 1.25rem; border: 1px solid var(--gray-light); border-left: 4px solid var(--gold);">
+              <strong style="color: var(--navy); display: block; margin-bottom: 0.4rem;">&#127979; Tuition & Fees</strong>
+              <p style="font-size: 0.92rem; color: var(--gray-dark);">
+                Paid directly to your school. Covers up to 100% of in-state public tuition or
+                ~$26,381/year at private schools (2024). <strong>You never see this money</strong> —
+                it goes school-to-school.
+              </p>
+            </div>
+
+            <div style="background: var(--white); border-radius: var(--radius); padding: 1.25rem; border: 1px solid var(--gray-light); border-left: 4px solid var(--navy);">
+              <strong style="color: var(--navy); display: block; margin-bottom: 0.4rem;">&#127968; Monthly Housing Allowance (BAH)</strong>
+              <p style="font-size: 0.92rem; color: var(--gray-dark);">
+                Paid directly to you, monthly. Based on the <strong>E-5 with dependents BAH rate</strong>
+                for your school's ZIP code. Online-only students receive a flat rate (~$1,037/month, 2024).
+                Must be enrolled more than half-time to receive it.
+              </p>
+            </div>
+
+            <div style="background: var(--white); border-radius: var(--radius); padding: 1.25rem; border: 1px solid var(--gray-light); border-left: 4px solid var(--red);">
+              <strong style="color: var(--navy); display: block; margin-bottom: 0.4rem;">&#128218; Books & Supplies Stipend</strong>
+              <p style="font-size: 0.92rem; color: var(--gray-dark);">
+                Up to $1,000/academic year ($500/semester). Paid directly to you at the start
+                of each term. Pro-rated based on your enrollment (credit hours).
+              </p>
+            </div>
+          </div>
+
+          <div class="notice" style="margin-top: 1.5rem;">
+            <strong>Pro tip:</strong> Use the official VA GI Bill Comparison Tool at
+            <strong>va.gov/gi-bill-comparison-tool</strong> to get exact BAH rates for any school.
+          </div>
+        </div>
+
+        <div>
+          <span class="section-label">Yellow Ribbon Program</span>
+          <h2 class="section-title" style="font-size: 1.6rem;">Covering the Gap at Private Schools</h2>
+          <p style="color: var(--gray-dark); margin-bottom: 1.5rem;">
+            If you're attending a private school that costs more than the Chapter 33 cap,
+            the Yellow Ribbon Program can cover the difference — at no cost to you.
+          </p>
+          <ul class="benefit-list" style="margin-bottom: 1.5rem;">
+            <li>The school contributes a set amount above the Chapter 33 cap</li>
+            <li>The VA matches the school's contribution dollar-for-dollar</li>
+            <li>Together they can cover 100% of tuition at participating schools</li>
+            <li>Only available to 100% benefit-tier veterans</li>
+            <li>Each school sets how many students can participate per year</li>
+          </ul>
+          <div style="background: var(--off-white); border-radius: var(--radius-lg); padding: 1.5rem; border: 1px solid var(--gray-light);">
+            <strong style="color: var(--navy); font-size: 1rem; display: block; margin-bottom: 0.75rem;">Example:</strong>
+            <p style="font-size: 0.9rem; color: var(--gray-dark); line-height: 1.6;">
+              Private school tuition: <strong>$40,000/year</strong><br/>
+              Chapter 33 cap: <strong>$26,381</strong><br/>
+              Gap: <strong>$13,619</strong><br/>
+              School Yellow Ribbon contribution: <strong>$6,809</strong><br/>
+              VA match: <strong>$6,810</strong><br/>
+              <strong style="color: var(--gold);">Your out-of-pocket: $0</strong>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCHOOL FINDER -->
+  <section class="section" id="schools" style="background: var(--white); border-top: 1px solid var(--gray-light);">
+    <div class="container">
+      <span class="section-label">Choosing a School</span>
+      <h2 class="section-title">What to Look for in a VA-Approved School</h2>
+      <div class="card-grid" style="margin-top: 1.5rem;">
+        <div class="card">
+          <div class="card-icon navy">&#9989;</div>
+          <h3>VA Approval</h3>
+          <p>
+            Every school that accepts GI Bill benefits must be VA-approved.
+            Check the VA WEAM (Web Enabled Approval Management System) or
+            use the GI Bill Comparison Tool to verify.
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-icon gold">&#127881;</div>
+          <h3>Yellow Ribbon Participation</h3>
+          <p>
+            If you're considering a private school, check if they participate
+            in the Yellow Ribbon Program and how many slots they offer — slots
+            can run out each academic year.
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-icon red">&#9888;&#65039;</div>
+          <h3>Watch Out for Predatory Schools</h3>
+          <p>
+            Some for-profit schools specifically target veterans' benefits.
+            Check graduation rates, loan default rates, and employer acceptance
+            before enrolling. Ask: will employers recognize this degree?
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-icon navy">&#127891;</div>
+          <h3>Student Veterans of America Chapters</h3>
+          <p>
+            Schools with SVA chapters tend to have better support systems
+            for veteran students — peer mentorship, priority registration,
+            dedicated advising, and community.
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-icon gold">&#128197;</div>
+          <h3>Enrollment Certification Timeline</h3>
+          <p>
+            Your school's certifying official must submit your enrollment to the VA.
+            Find out their timeline early — late certification means delayed BAH payments.
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-icon red">&#128176;</div>
+          <h3>In-State Tuition Rights</h3>
+          <p>
+            Under the Veterans Choice Act, veterans using Chapter 33 or 30
+            are entitled to in-state tuition rates at public schools regardless
+            of how long they've lived in the state.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW TO APPLY -->
+  <section class="section section-center" style="background: var(--navy); color: var(--white);">
+    <div class="container">
+      <span class="section-label" style="color: var(--gold-light);">Getting Started</span>
+      <h2 class="section-title" style="color: var(--white);">How to Apply for GI Bill Benefits</h2>
+      <p style="color: rgba(255,255,255,0.75); max-width: 580px; margin: 0 auto 3rem; font-size: 1rem;">
+        The application process is straightforward — it just takes a few steps.
+      </p>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; text-align: left; max-width: 900px; margin: 0 auto;">
+        <div style="background: rgba(255,255,255,0.07); border-radius: var(--radius-lg); padding: 1.5rem;">
+          <div style="color: var(--gold); font-size: 1.5rem; font-weight: 800; margin-bottom: 0.75rem;">01</div>
+          <strong style="color: var(--white); display: block; margin-bottom: 0.5rem;">Apply Online</strong>
+          <p style="color: rgba(255,255,255,0.65); font-size: 0.9rem;">Submit VA Form 22-1990 at va.gov/education/apply-for-education-benefits/</p>
+        </div>
+        <div style="background: rgba(255,255,255,0.07); border-radius: var(--radius-lg); padding: 1.5rem;">
+          <div style="color: var(--gold); font-size: 1.5rem; font-weight: 800; margin-bottom: 0.75rem;">02</div>
+          <strong style="color: var(--white); display: block; margin-bottom: 0.5rem;">Get Your COE</strong>
+          <p style="color: rgba(255,255,255,0.65); font-size: 0.9rem;">Receive your Certificate of Eligibility (COE) — typically takes 30 days.</p>
+        </div>
+        <div style="background: rgba(255,255,255,0.07); border-radius: var(--radius-lg); padding: 1.5rem;">
+          <div style="color: var(--gold); font-size: 1.5rem; font-weight: 800; margin-bottom: 0.75rem;">03</div>
+          <strong style="color: var(--white); display: block; margin-bottom: 0.5rem;">Enroll in School</strong>
+          <p style="color: rgba(255,255,255,0.65); font-size: 0.9rem;">Provide your COE to your school's VA certifying official when you enroll.</p>
+        </div>
+        <div style="background: rgba(255,255,255,0.07); border-radius: var(--radius-lg); padding: 1.5rem;">
+          <div style="color: var(--gold); font-size: 1.5rem; font-weight: 800; margin-bottom: 0.75rem;">04</div>
+          <strong style="color: var(--white); display: block; margin-bottom: 0.5rem;">Benefits Activate</strong>
+          <p style="color: rgba(255,255,255,0.65); font-size: 0.9rem;">Once your school certifies your enrollment, tuition is paid and BAH begins.</p>
+        </div>
+      </div>
+      <div style="margin-top: 2.5rem;">
+        <a href="/ai-tutor.html" class="btn btn-primary">Ask the AI Tutor a Question &rarr;</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-top">
+        <div>
+          <div class="footer-brand"><span class="star">&#9733;</span> VetPath</div>
+          <p class="footer-desc">
+            A free resource helping veterans navigate education benefits and
+            learn effectively. Not affiliated with the VA or any government agency.
+          </p>
+        </div>
+        <ul class="footer-links">
+          <li><a href="/">Home</a></li>
+          <li><a href="/benefits.html">GI Bill</a></li>
+          <li><a href="/ai-tutor.html">AI Tutor</a></li>
+        </ul>
+      </div>
+      <div class="footer-bottom">
+        <span>&copy; 2025 VetPath. Built with respect for those who served.</span>
+        <span class="disclaimer">
+          VetPath is an independent educational tool. Always verify benefit information
+          directly with the VA at va.gov. AI responses are for learning support only.
+        </span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/js/main.js"></script>
+</body>
+</html>
