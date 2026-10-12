@@ -47,6 +47,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html { scroll-behavior: smooth; }
 body {
   margin: 0;
@@ -244,11 +245,34 @@ section.block { padding-block: var(--s8) 0; }
 .faq summary { cursor: pointer; font-weight: 600; font-size: 1.05rem; list-style: none; display: flex; justify-content: space-between; gap: var(--s4); }
 .faq summary::-webkit-details-marker { display: none; }
 .faq summary::after { content: "+"; font: 500 1.2rem/1 var(--f-mono); color: var(--blue); }
-.faq details[open] summary::after { content: "–"; }
+.faq details[open] summary::after { content: "\2212"; }
 .faq details p { color: var(--muted); margin-top: var(--s2); max-width: 65ch; }
 
-footer { margin-top: var(--s8); padding-block: var(--s6) var(--s7); border-top: 2px solid var(--blue); display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s4); color: var(--muted); font-size: .9rem; }
+/* Single available flavor: one wide card instead of a sparse row */
+.flavors.solo { grid-template-columns: minmax(0, 360px); }
+
+/* Hero media slot: a real product video replaces the drawn stick when configured */
+.stage video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: var(--sheet); }
+
+/* "See it squish" gallery */
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: var(--s4); }
+.gallery figure { margin: 0; border-radius: 18px; overflow: hidden; background: var(--sheet); border: 1px solid var(--line); aspect-ratio: 4 / 5; max-width: 100%; }
+.gallery img, .gallery video { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Store policies */
+.policy-body { display: grid; gap: var(--s3); margin-top: var(--s3); max-width: 65ch; color: var(--muted); }
+.policy-body h4 { margin: 0; color: var(--ink); font-size: 1rem; }
+.policy-body ul { margin: 0; padding-left: 1.2rem; display: grid; gap: var(--s1); }
+.policy-body .updated { font: 400 .8rem/1.4 var(--f-mono); }
+.ph { font-family: var(--f-mono); font-size: .9em; color: var(--stamp); overflow-wrap: anywhere; }
+
+footer { margin-top: var(--s8); padding-block: var(--s6) var(--s7); border-top: 2px solid var(--blue); display: grid; grid-template-columns: 1.3fr 1fr; gap: var(--s5); color: var(--muted); font-size: .9rem; }
+footer > * { min-width: 0; display: grid; gap: var(--s2); align-content: start; }
 footer b { font: 400 1.2rem/1 var(--f-display); color: var(--blue); }
+footer a { color: var(--muted); }
+footer a:hover { color: var(--blue); }
+.foot-links { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); list-style: none; margin: 0; padding: 0; }
+@media (max-width: 640px) { footer { grid-template-columns: 1fr; } }
 
 /* ---------- Cart drawer ---------- */
 .scrim { position: fixed; inset: 0; background: var(--overlay); z-index: 40; }
@@ -313,12 +337,12 @@ footer b { font: 400 1.2rem/1 var(--f-display); color: var(--blue); }
 <main class="wrap" id="top">
   <section class="hero">
     <div>
-      <p class="eyebrow">Slow-rise squeeze toy · 1 stick</p>
+      <p class="eyebrow">Slow-rise sensory fidget toy · 1 stick</p>
       <h1>Always <em>softened.</em></h1>
-      <p class="lede">A full-size stick of butter you can squeeze flat and watch rise back. No fridge needed. No toast either.</p>
+      <p class="lede">A full-size stick of butter you can squeeze flat and watch rise back. A desk toy that never needs the fridge. No toast either.</p>
 
       <div class="picker">
-        <div>
+        <div id="flavorField">
           <div class="field-label eyebrow"><span>Flavor</span><span id="flavorName">Salted Classic</span></div>
           <div class="swatches" role="radiogroup" aria-label="Flavor" id="swatches"></div>
         </div>
@@ -330,13 +354,13 @@ footer b { font: 400 1.2rem/1 var(--f-display); color: var(--blue); }
           <div class="price" id="price" aria-live="polite">$9.99</div>
           <button class="btn-add" id="addBtn">Add to cart</button>
         </div>
-        <p class="ship-note">Free shipping on orders over $35 · Ships in 1–2 business days</p>
+        <p class="ship-note" id="shipNote">Free shipping on orders over $35 · Ships in 1 to 2 business days</p>
       </div>
     </div>
 
     <div class="stage-col">
       <div class="stage" id="stage">
-        <div class="stamp" aria-hidden="true">Grade A<br>squish<br>★</div>
+        <div class="stamp" id="stamp" aria-hidden="true">Grade A<br>squish<br>★</div>
         <svg class="butter-svg" id="butter" viewBox="0 0 420 260" role="img" aria-label="Squishy butter stick. Press and hold to squeeze it.">
           <ellipse cx="210" cy="232" rx="170" ry="14" fill="#14284b" opacity=".12"/>
           <g id="stick">
@@ -371,7 +395,7 @@ footer b { font: 400 1.2rem/1 var(--f-display); color: var(--blue); }
             <text x="226" y="216" font-family="DM Mono, monospace" font-size="8.5" fill="#c93a29" letter-spacing="1">SLOW-RISE · NOT FOOD</text>
           </g>
         </svg>
-        <div class="stage-readout" aria-live="polite">
+        <div class="stage-readout" id="readout" aria-live="polite">
           <span id="hint">Press and hold the butter</span>
           <span>Squishes: <b id="squishes">0</b></span>
         </div>
@@ -382,18 +406,26 @@ footer b { font: 400 1.2rem/1 var(--f-display); color: var(--blue); }
 
 <div class="ruler" aria-label="Why it feels good">
   <ol>
-    <li><span class="tick">1 tbsp</span><h3>Slow rise</h3><p>Squeeze it flat. It takes about 5 seconds to puff back to a full stick.</p></li>
-    <li><span class="tick">2 tbsp</span><h3>Real stick size</h3><p>4¾ × 1¼ × 1¼ in, the same as the butter in your fridge.</p></li>
+    <li><span class="tick">1 tbsp</span><h3>Slow rise</h3><p>Squeeze it flat. It takes about <span id="rulerRise">5 seconds</span> to puff back to a full stick.</p></li>
+    <li><span class="tick">2 tbsp</span><h3>Real stick size</h3><p><span id="rulerSize">4.75 x 1.25 x 1.25 in</span>, the same as the butter in your fridge.</p></li>
     <li><span class="tick">4 tbsp · 1/4 cup</span><h3>Quiet fidget</h3><p>No clicks or crinkles. Good for desks, classrooms and long car rides.</p></li>
     <li><span class="tick">8 tbsp · 1/2 cup</span><h3>Easy gift</h3><p>Fits in a stocking, a lunchbox or a party favor bag.</p></li>
   </ol>
 </div>
 
 <div class="wrap">
+  <section class="block" id="gallery" hidden>
+    <div class="section-head">
+      <h2>See it squish</h2>
+      <p>Real sticks, real squeezes, no edits to the rise time.</p>
+    </div>
+    <div class="gallery" id="galleryGrid"></div>
+  </section>
+
   <section class="block" id="flavors">
     <div class="section-head">
-      <h2>Pick your butter</h2>
-      <p>Five colorways, all the same slow squish. Tap one to see it on the stick above.</p>
+      <h2 id="flavorsTitle">Pick your butter</h2>
+      <p id="flavorsCopy">Five colorways, all the same slow squish. Tap one to see it on the stick above.</p>
     </div>
     <div class="flavors" id="flavorCards"></div>
   </section>
@@ -406,18 +438,19 @@ footer b { font: 400 1.2rem/1 var(--f-display); color: var(--blue); }
     <div class="facts-grid">
       <div class="facts" aria-label="Product specifications">
         <h3>Squish Facts</h3>
-        <div class="serv">Serving size <b>1 stick (½ cup)</b></div>
+        <div class="serv">Serving size <b>1 stick (1/2 cup)</b></div>
         <div class="cal"><b>Calories</b><b>0</b></div>
         <div class="dv">% Daily Value*</div>
         <dl>
           <div class="row"><dt><b>Squish</b></dt><dd>100%</dd></div>
-          <div class="row ind"><dt>Rise time</dt><dd>3–6 sec</dd></div>
-          <div class="row"><dt><b>Calm</b></dt><dd>110%</dd></div>
-          <div class="row"><dt><b>Material</b></dt><dd>PU slow-rise foam</dd></div>
-          <div class="row ind"><dt>Length</dt><dd>4.75 in</dd></div>
-          <div class="row ind"><dt>Width × height</dt><dd>1.25 × 1.25 in</dd></div>
-          <div class="row"><dt><b>Weight</b></dt><dd>about 0.7 oz</dd></div>
-          <div class="row thick"><dt><b>Recommended age</b></dt><dd>5+</dd></div>
+          <div class="row ind"><dt>Rise time</dt><dd id="specRise">3 to 6 sec</dd></div>
+          <div class="row"><dt><b>Satisfaction</b></dt><dd>100%</dd></div>
+          <div class="row"><dt><b>Material</b></dt><dd id="specMaterial">PU slow-rise foam</dd></div>
+          <div class="row ind"><dt>Length</dt><dd id="specLength">4.75 in</dd></div>
+          <div class="row ind"><dt>Width x height</dt><dd id="specWH">1.25 x 1.25 in</dd></div>
+          <div class="row"><dt><b>Weight</b></dt><dd id="specWeight">about 0.7 oz</dd></div>
+          <div class="row"><dt><b>Scent</b></dt><dd id="specScent">Unscented</dd></div>
+          <div class="row thick"><dt><b>Recommended age</b></dt><dd id="specAge">5+</dd></div>
         </dl>
         <p class="foot">*Percent Daily Values are based on a 2,000-squeeze diet. Your squeeze needs may be higher on Mondays.</p>
       </div>
@@ -425,7 +458,9 @@ footer b { font: 400 1.2rem/1 var(--f-display); color: var(--blue); }
         <div class="item"><span class="num">01</span><div><h3>Squeeze slowly</h3><p>Press from the middle and let go. A slow press gives the deepest dent and the longest rise.</p></div></div>
         <div class="item"><span class="num">02</span><div><h3>Wipe, don't soak</h3><p>Clean it with a damp cloth and a drop of mild soap. Let it air dry. Water inside the foam slows the rise.</p></div></div>
         <div class="item"><span class="num">03</span><div><h3>Keep it out of the sun</h3><p>Heat and UV can yellow and stiffen the foam over time. A drawer is perfect.</p></div></div>
-        <p class="warn"><b>Not food.</b> Do not eat, bite or chew. Contains small parts if torn. Adult supervision for young kids.</p>
+        <!-- TODO(compliance): Confirm the exact cautionary labeling below against the supplier's
+             CPSIA test report and Children's Product Certificate (CPC) before launch. -->
+        <p class="warn"><b>Not food.</b> Do not eat, bite or chew. Contains small parts if torn. Adult supervision for young kids.<br>Keep away from children under 3.</p>
       </div>
     </div>
   </section>
@@ -433,17 +468,105 @@ footer b { font: 400 1.2rem/1 var(--f-display); color: var(--blue); }
   <section class="block" id="faq">
     <div class="section-head"><h2>Questions</h2></div>
     <div class="faq">
-      <details><summary>Does it smell like butter?</summary><p>No. The stick is unscented, so it is fine for people who are sensitive to smells.</p></details>
-      <details><summary>Can I mix flavors in a pack?</summary><p>Each pack is one flavor. To mix, add single sticks or packs in different flavors to your cart.</p></details>
-      <details><summary>How long does shipping take?</summary><p>Orders ship in 1–2 business days. Most US orders arrive 3–5 business days after that. Orders over $35 ship free.</p></details>
-      <details><summary>What if it tears?</summary><p>Contact us within 30 days of delivery with a photo and we'll send a replacement stick.</p></details>
+      <details><summary>Does it smell like butter?</summary><p id="faqScent">No. The stick is unscented, so it is fine for people who are sensitive to smells.</p></details>
+      <details id="faqMix"><summary>Can I mix flavors in a pack?</summary><p>Each pack is one flavor. To mix, add single sticks or packs in different flavors to your cart.</p></details>
+      <details><summary>How long does shipping take?</summary><p id="faqShip">Orders ship in 1 to 2 business days. Most US orders arrive 3 to 5 business days after that. Orders over $35 ship free.</p></details>
+      <details><summary>What if it tears?</summary><p>Contact us within <span class="returnDays">30</span> days of delivery with a photo and we'll send a replacement stick. See <a href="#returns" data-policy>returns and replacements</a>.</p></details>
       <details><summary>Is it good for classrooms?</summary><p>Yes. It makes no noise, and the Party Box of 12 works well as a class set.</p></details>
     </div>
   </section>
 
+  <section class="block" id="policies">
+    <div class="section-head">
+      <h2>Store policies</h2>
+      <p>The fine print, written plainly.</p>
+    </div>
+    <div class="faq">
+      <details id="shipping-policy">
+        <summary>Shipping policy</summary>
+        <div class="policy-body">
+          <p>Orders ship within <span class="handlingText">1 to 2 business days</span>. Most orders arrive <span class="transitText">3 to 5 business days</span> after they ship.</p>
+          <ul>
+            <li>Orders of <span class="freeShipAt">$35.00</span> or more ship free.</li>
+            <li>Orders under <span class="freeShipAt">$35.00</span> pay a flat <span class="shipRate">$4.95</span> shipping fee.</li>
+            <li>We ship to US addresses only.</li>
+            <li>You'll get a tracking number by email when your order ships.</li>
+          </ul>
+          <p>If your tracking hasn't updated in 7 days, <a href="#contact" data-policy>contact us</a> and we'll look into it.</p>
+        </div>
+      </details>
+      <details id="returns">
+        <summary>Returns and replacements</summary>
+        <div class="policy-body">
+          <h4>Damaged or torn sticks</h4>
+          <p>If a stick arrives damaged or tears within <span class="returnDays">30</span> days of delivery, email us your order number and a photo of the stick. We'll send a free replacement, or a refund if that color is out of stock.</p>
+          <!-- TODO(policy): Decide your change-of-mind return terms. The text below is a starting point. -->
+          <h4>Changed your mind</h4>
+          <p>Unused sticks in their original packaging can be returned within <span class="returnDays">30</span> days of delivery. Email us first for the return address. Return shipping is paid by the buyer, and refunds go back to the original payment method within 5 business days of receiving the return.</p>
+          <p>A photo is required for every replacement or refund request.</p>
+        </div>
+      </details>
+      <details id="privacy">
+        <summary>Privacy policy</summary>
+        <!-- TODO(policy): This is a basic template, not legal advice. Have it reviewed and update it
+             if you add analytics, email marketing or ads. -->
+        <div class="policy-body">
+          <p class="updated">Last updated: <span class="ph policyUpdated">YOUR_DATE_HERE</span></p>
+          <p><span class="businessName">YOUR_BUSINESS_NAME_HERE</span> ("we") runs Room Temp Butter Co. This policy explains what we collect and why.</p>
+          <ul>
+            <li><b>Your cart</b> is saved only in your own browser so it's still there when you come back. We can't see it.</li>
+            <li><b>Checkout</b> is handled by our payment provider. They collect your name, address, email and payment details to process and ship your order, under their own privacy policy.</li>
+            <li><b>Order emails.</b> We use your email to send order confirmations, shipping updates and replies to your messages.</li>
+            <li>We don't sell or rent your personal information.</li>
+          </ul>
+          <p>To see, correct or delete the information we hold about you, email <a class="contactEmailLink" href="mailto:YOUR_EMAIL_HERE"><span class="contactEmail">YOUR_EMAIL_HERE</span></a>.</p>
+        </div>
+      </details>
+      <details id="terms">
+        <summary>Terms of service</summary>
+        <!-- TODO(policy): This is a basic template, not legal advice. Add your governing state and have it reviewed. -->
+        <div class="policy-body">
+          <p class="updated">Last updated: <span class="ph policyUpdated">YOUR_DATE_HERE</span></p>
+          <ul>
+            <li>By placing an order you agree to these terms and to our shipping and returns policies.</li>
+            <li>Prices are in US dollars and may change at any time. The price you see at checkout is the price you pay.</li>
+            <li>Colors may vary slightly from what you see on your screen.</li>
+            <li>Room Temp butter sticks are toys and are not food. Use them as described on this page.</li>
+            <li>We may cancel and refund an order if a product is out of stock or a price was listed in error.</li>
+            <li>Our liability is limited to the amount you paid for the order.</li>
+          </ul>
+          <p>Questions about these terms? Email <a class="contactEmailLink" href="mailto:YOUR_EMAIL_HERE"><span class="contactEmail">YOUR_EMAIL_HERE</span></a>.</p>
+        </div>
+      </details>
+      <details id="contact">
+        <summary>Contact</summary>
+        <div class="policy-body">
+          <p>Email <a class="contactEmailLink" href="mailto:YOUR_EMAIL_HERE"><span class="contactEmail">YOUR_EMAIL_HERE</span></a>. We reply within 1 business day.</p>
+          <p>Include your order number if you have one. For damaged sticks, attach a photo.</p>
+          <p>Room Temp Butter Co. is operated by <span class="businessName">YOUR_BUSINESS_NAME_HERE</span>.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
   <footer>
-    <div><b>Room Temp Butter Co.</b><br>Squeeze toys shaped like the good stuff.</div>
-    <div>Shipping &amp; returns · Contact · © <span id="yr"></span></div>
+    <div>
+      <b>Room Temp Butter Co.</b>
+      <span>Squeeze toys shaped like the good stuff.</span>
+      <span>Operated by <span class="businessName">YOUR_BUSINESS_NAME_HERE</span> · <a class="contactEmailLink" href="mailto:YOUR_EMAIL_HERE"><span class="contactEmail">YOUR_EMAIL_HERE</span></a></span>
+    </div>
+    <div>
+      <ul class="foot-links">
+        <li><a href="#shipping-policy" data-policy>Shipping</a></li>
+        <li><a href="#returns" data-policy>Returns</a></li>
+        <li><a href="#privacy" data-policy>Privacy</a></li>
+        <li><a href="#terms" data-policy>Terms</a></li>
+        <li><a href="#contact" data-policy>Contact</a></li>
+      </ul>
+      <!-- TODO(compliance): Shown only once ASTM_REPORT_REF is set in the script. -->
+      <span id="safetyLine" hidden>Safety and compliance: Tested to ASTM F963 (<span id="astmRef"></span>)</span>
+      <span>© <span id="yr"></span> <span class="businessName">YOUR_BUSINESS_NAME_HERE</span></span>
+    </div>
   </footer>
 </div>
 
@@ -457,7 +580,7 @@ footer b { font: 400 1.2rem/1 var(--f-display); color: var(--blue); }
   <div class="totals" id="totals">
     <div class="meter" id="meter"></div>
     <div class="row"><span>Subtotal</span><span id="subtotal">$0.00</span></div>
-    <div class="row"><span>Shipping</span><span id="shipping">—</span></div>
+    <div class="row"><span>Shipping</span><span id="shipping">$0.00</span></div>
     <div class="row grand"><span>Total</span><span id="total">$0.00</span></div>
     <button class="checkout" id="checkoutBtn" disabled>Check out</button>
     <p class="notice" id="checkoutNotice" hidden></p>
@@ -467,40 +590,147 @@ footer b { font: 400 1.2rem/1 var(--f-display); color: var(--blue); }
 
 <script>
 (() => {
-  // ---- Store config. Paste a Stripe Payment Link (or Shopify checkout URL) here to take real payments. ----
-  const CHECKOUT_URL = '';
-  const FREE_SHIP_AT = 35;
-  const SHIPPING = 4.95;
+  // VERIFY ALL SPECS AGAINST A PHYSICAL SAMPLE BEFORE LAUNCH.
 
+  // ================= STORE CONFIG: edit these before launch =================
+
+  // ---- Business details (shown in the footer and policies) ----
+  const BUSINESS_NAME = 'YOUR_BUSINESS_NAME_HERE'; // TODO: your legal business name
+  const CONTACT_EMAIL = 'YOUR_EMAIL_HERE';         // TODO: your support email address
+  const POLICY_UPDATED = 'YOUR_DATE_HERE';         // TODO: date your policies were last updated, e.g. "March 1, 2027"
+
+  // ---- Shipping ----
+  // Only accurate with a US warehouse supplier. If using overseas shipping,
+  // change TRANSIT_DAYS_TEXT to 10 to 21 business days before launch.
+  const HANDLING_DAYS_TEXT = '1 to 2 business days';
+  const TRANSIT_DAYS_TEXT = '3 to 5 business days';
+  const FREE_SHIP_AT = 35;    // order subtotal (USD) that ships free
+  const SHIPPING = 4.95;      // flat rate (USD) below the free-shipping threshold
+  const RETURN_WINDOW_DAYS = 30;
+
+  // ---- Product specs (drive the Squish Facts panel and the ruler copy) ----
+  const SPECS = {
+    lengthIn: 4.75,
+    widthIn: 1.25,
+    heightIn: 1.25,
+    weight: 'about 0.7 oz',
+    riseTime: '3 to 6 sec',      // range shown on the Squish Facts panel
+    riseTypical: '5 seconds',    // typical value used in the ruler copy
+    material: 'PU slow-rise foam',
+    scent: 'Unscented',          // use 'Unscented' or name the scent, e.g. 'Vanilla'
+    age: '5+',                   // TODO: match the age grade on the supplier's test report
+  };
+
+  // ---- Safety ----
+  // TODO(compliance): Set this to the test report number or lab reference (for example
+  // "Report No. ABC-12345, XYZ Labs") only after you hold a passing ASTM F963 report.
+  // While empty, the footer safety line stays hidden.
+  const ASTM_REPORT_REF = '';
+
+  // ---- Checkout ----
+  // Shopify cart permalink: https://YOUR_STORE.myshopify.com/cart/VARIANT_ID:QTY,VARIANT_ID:QTY
+  const SHOPIFY_DOMAIN = '';   // TODO: e.g. 'your-store.myshopify.com'
+  // TODO: Replace every placeholder with the numeric Shopify variant ID for that flavor and pack size.
+  const VARIANT_IDS = {
+    salted:   { single: 'VARIANT_ID_SALTED_SINGLE',   pound: 'VARIANT_ID_SALTED_POUND',   party: 'VARIANT_ID_SALTED_PARTY' },
+    unsalted: { single: 'VARIANT_ID_UNSALTED_SINGLE', pound: 'VARIANT_ID_UNSALTED_POUND', party: 'VARIANT_ID_UNSALTED_PARTY' },
+    european: { single: 'VARIANT_ID_EUROPEAN_SINGLE', pound: 'VARIANT_ID_EUROPEAN_POUND', party: 'VARIANT_ID_EUROPEAN_PARTY' },
+    honey:    { single: 'VARIANT_ID_HONEY_SINGLE',    pound: 'VARIANT_ID_HONEY_POUND',    party: 'VARIANT_ID_HONEY_PARTY' },
+    herb:     { single: 'VARIANT_ID_HERB_SINGLE',     pound: 'VARIANT_ID_HERB_POUND',     party: 'VARIANT_ID_HERB_PARTY' },
+  };
+  // Fallback for non-Shopify checkouts (for example a Stripe Payment Link). Used only when SHOPIFY_DOMAIN is empty.
+  const CHECKOUT_URL = '';
+
+  // ---- Media ----
+  // TODO: Hero video. When set, it replaces the drawn squish demo. Use your own footage, not supplier or marketplace media.
+  const HERO_VIDEO_URL = '';
+  const HERO_POSTER_URL = ''; // TODO: still image shown before the video loads
+  // TODO: "See it squish" gallery. The section stays hidden while this is empty.
+  // Example: { type: 'video', src: 'media/squish-1.mp4', poster: 'media/squish-1.jpg', alt: 'Hand squeezing a stick flat' }
+  //          { type: 'image', src: 'media/pound-box.jpg', alt: 'Four sticks in the Pound box' }
+  const MEDIA = [];
+
+  // ---- Catalog ----
+  // Flip to true only for colors the supplier actually stocks.
   const FLAVORS = [
-    { id: 'salted',   name: 'Salted Classic',   note: 'The everyday yellow stick.',          top: '#fbe58e', front: '#f7d35c', side: '#e3b93b' },
-    { id: 'unsalted', name: 'Unsalted',         note: 'Paler, softer, a little more chill.', top: '#fff6cf', front: '#fbecaa', side: '#ead68a' },
-    { id: 'european', name: 'European Gold',    note: 'Deep yellow, extra cultured vibes.',  top: '#fcd662', front: '#f2bd2c', side: '#d79f12' },
-    { id: 'honey',    name: 'Honey Butter',     note: 'Warm amber with a sweet glow.',       top: '#f7c978', front: '#eaa94a', side: '#c98a2e' },
-    { id: 'herb',     name: 'Garlic Herb',      note: 'Speckled with green herb flecks.',    top: '#fbeaa6', front: '#f4dc7c', side: '#ddc15b', flecks: true },
+    { id: 'salted',   name: 'Salted Classic', available: true,  note: 'The everyday yellow stick.',          top: '#fbe58e', front: '#f7d35c', side: '#e3b93b' },
+    { id: 'unsalted', name: 'Unsalted',       available: false, note: 'Paler, softer, a little more chill.', top: '#fff6cf', front: '#fbecaa', side: '#ead68a' },
+    { id: 'european', name: 'European Gold',  available: false, note: 'Deep yellow, extra cultured vibes.',  top: '#fcd662', front: '#f2bd2c', side: '#d79f12' },
+    { id: 'honey',    name: 'Honey Butter',   available: false, note: 'Warm amber with a sweet glow.',       top: '#f7c978', front: '#eaa94a', side: '#c98a2e' },
+    { id: 'herb',     name: 'Garlic Herb',    available: false, note: 'Speckled with green herb flecks.',    top: '#fbeaa6', front: '#f4dc7c', side: '#ddc15b', flecks: true },
   ];
   const BUNDLES = [
-    { id: 'single', name: 'Single stick', short: '1 stick',  qty: 1,  price: 9.99 },
-    { id: 'pound',  name: 'The Pound',    short: '4 sticks', qty: 4,  price: 29.99, was: 39.96 },
+    { id: 'single', name: 'Single stick', short: '1 stick',   qty: 1,  price: 9.99 },
+    { id: 'pound',  name: 'The Pound',    short: '4 sticks',  qty: 4,  price: 29.99, was: 39.96 },
     { id: 'party',  name: 'Party Box',    short: '12 sticks', qty: 12, price: 69.00, was: 119.88 },
   ];
 
+  // ======================= END OF STORE CONFIG =======================
+
   const $ = (id) => document.getElementById(id);
+  const $$ = (sel) => document.querySelectorAll(sel);
   const money = (n) => '$' + n.toFixed(2);
-  let flavor = FLAVORS[0];
+  const setAll = (sel, text) => $$(sel).forEach((el) => { el.textContent = text; });
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Only flavors marked available are sold. If none are, fall back to the first so the page still renders.
+  const ACTIVE = FLAVORS.filter((f) => f.available);
+  if (!ACTIVE.length) ACTIVE.push(FLAVORS[0]);
+  const isActive = (id) => ACTIVE.some((f) => f.id === id);
+
+  let flavor = ACTIVE[0];
   let bundle = BUNDLES[0];
+
+  // ---- Config-driven copy ----
+  function applyConfigCopy() {
+    const free = money(FREE_SHIP_AT);
+    $('shipNote').textContent = `Free shipping on orders over ${money(FREE_SHIP_AT).replace('.00', '')} · Ships in ${HANDLING_DAYS_TEXT}`;
+    $('faqShip').textContent = `Orders ship in ${HANDLING_DAYS_TEXT}. Most US orders arrive ${TRANSIT_DAYS_TEXT} after that. Orders of ${free} or more ship free, and smaller orders ship for a flat ${money(SHIPPING)}.`;
+    setAll('.handlingText', HANDLING_DAYS_TEXT);
+    setAll('.transitText', TRANSIT_DAYS_TEXT);
+    setAll('.freeShipAt', free);
+    setAll('.shipRate', money(SHIPPING));
+    setAll('.returnDays', String(RETURN_WINDOW_DAYS));
+
+    $('specRise').textContent = SPECS.riseTime;
+    $('specMaterial').textContent = SPECS.material;
+    $('specLength').textContent = `${SPECS.lengthIn} in`;
+    $('specWH').textContent = `${SPECS.widthIn} x ${SPECS.heightIn} in`;
+    $('specWeight').textContent = SPECS.weight;
+    $('specScent').textContent = SPECS.scent;
+    $('specAge').textContent = SPECS.age;
+    $('rulerRise').textContent = SPECS.riseTypical;
+    $('rulerSize').textContent = `${SPECS.lengthIn} x ${SPECS.widthIn} x ${SPECS.heightIn} in`;
+    $('faqScent').textContent = /^unscented$/i.test(SPECS.scent)
+      ? 'No. The stick is unscented, so it is fine for people who are sensitive to smells.'
+      : `It has a light ${SPECS.scent.toLowerCase()} scent.`;
+
+    setAll('.businessName', BUSINESS_NAME);
+    setAll('.contactEmail', CONTACT_EMAIL);
+    setAll('.policyUpdated', POLICY_UPDATED);
+    $$('.contactEmailLink').forEach((a) => { a.href = 'mailto:' + CONTACT_EMAIL; });
+
+    if (ASTM_REPORT_REF) {
+      $('astmRef').textContent = ASTM_REPORT_REF;
+      $('safetyLine').hidden = false;
+    }
+    $('yr').textContent = new Date().getFullYear();
+  }
 
   // ---- Cart persistence (per browser; safe if storage is blocked) ----
   let cart = [];
   try { cart = JSON.parse(localStorage.getItem('roomtemp-cart') || '[]'); } catch { cart = []; }
   if (!Array.isArray(cart)) cart = [];
+  // Drop anything that is no longer sold (unavailable flavor, removed bundle, bad data).
+  cart = cart.filter((l) => l && isActive(l.flavor) && BUNDLES.some((b) => b.id === l.bundle) && l.qty > 0);
   const persist = () => { try { localStorage.setItem('roomtemp-cart', JSON.stringify(cart)); } catch {} };
 
   // ---- Product picker ----
   function swatchStyle(f) { return `--c:${f.front};--fleck:${f.flecks ? 1 : 0}`; }
 
   function renderPicker() {
-    $('swatches').innerHTML = FLAVORS.map((f) =>
+    $('flavorField').hidden = ACTIVE.length < 2;
+    $('swatches').innerHTML = ACTIVE.map((f) =>
       `<button class="swatch" role="radio" aria-checked="${f === flavor}" aria-label="${f.name}" data-f="${f.id}" style="${swatchStyle(f)}"><span class="fleck"></span></button>`
     ).join('');
     $('bundles').innerHTML = BUNDLES.map((b) =>
@@ -519,30 +749,86 @@ footer b { font: 400 1.2rem/1 var(--f-display); color: var(--blue); }
 
   $('swatches').addEventListener('click', (e) => {
     const b = e.target.closest('[data-f]'); if (!b) return;
-    flavor = FLAVORS.find((f) => f.id === b.dataset.f); renderPicker();
+    flavor = ACTIVE.find((f) => f.id === b.dataset.f) || flavor; renderPicker();
   });
   $('bundles').addEventListener('click', (e) => {
     const b = e.target.closest('[data-b]'); if (!b) return;
-    bundle = BUNDLES.find((x) => x.id === b.dataset.b); renderPicker();
+    bundle = BUNDLES.find((x) => x.id === b.dataset.b) || bundle; renderPicker();
   });
 
-  $('flavorCards').innerHTML = FLAVORS.map((f) =>
-    `<button class="flavor" data-f="${f.id}"><div class="chip" style="${swatchStyle(f)}"><span class="fleck"></span></div><b>${f.name}</b><span>${f.note}</span></button>`
-  ).join('');
+  function renderFlavorSection() {
+    const solo = ACTIVE.length === 1;
+    const words = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight'];
+    $('flavorsTitle').textContent = solo ? 'Meet the stick' : 'Pick your butter';
+    $('flavorsCopy').textContent = solo
+      ? `${ACTIVE[0].name} is in stock now. More colors are on the way.`
+      : `${words[ACTIVE.length] || ACTIVE.length} colorways, all the same slow squish. Tap one to see it on the stick above.`;
+    $('flavorCards').classList.toggle('solo', solo);
+    $('flavorCards').innerHTML = ACTIVE.map((f) =>
+      `<button class="flavor" data-f="${f.id}"><div class="chip" style="${swatchStyle(f)}"><span class="fleck"></span></div><b>${f.name}</b><span>${f.note}</span></button>`
+    ).join('');
+    $('faqMix').hidden = solo;
+  }
   $('flavorCards').addEventListener('click', (e) => {
     const b = e.target.closest('[data-f]'); if (!b) return;
-    flavor = FLAVORS.find((f) => f.id === b.dataset.f); renderPicker();
-    $('top').scrollIntoView({ behavior: 'smooth' });
+    flavor = ACTIVE.find((f) => f.id === b.dataset.f) || flavor; renderPicker();
+    $('top').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
   });
+
+  // ---- Media ----
+  // Accept http(s) URLs and relative paths; reject other schemes such as javascript: or data:.
+  const safeUrl = (u) => typeof u === 'string' && u.trim() !== '' && (/^https?:\/\//i.test(u.trim()) || !/^[a-z][a-z0-9+.-]*:/i.test(u.trim()));
+
+  function makeVideo(src, poster) {
+    const v = document.createElement('video');
+    v.muted = true; v.loop = true; v.playsInline = true;
+    v.setAttribute('muted', ''); v.setAttribute('playsinline', ''); v.setAttribute('loop', '');
+    v.preload = 'metadata';
+    if (poster && safeUrl(poster)) v.poster = poster;
+    if (reduceMotion) { v.controls = true; } else { v.autoplay = true; v.setAttribute('autoplay', ''); }
+    v.src = src;
+    return v;
+  }
+
+  function renderHeroMedia() {
+    if (!HERO_VIDEO_URL || !safeUrl(HERO_VIDEO_URL)) return; // keep the SVG squish stage
+    const v = makeVideo(HERO_VIDEO_URL, HERO_POSTER_URL);
+    v.setAttribute('aria-label', 'A Room Temp butter stick being squeezed and rising back');
+    const stage = $('stage');
+    const hideSvg = (hide) => { $('butter').hidden = hide; $('readout').hidden = hide; };
+    v.addEventListener('error', () => { v.remove(); hideSvg(false); }); // fall back if the file fails to load
+    hideSvg(true);
+    stage.prepend(v);
+  }
+
+  function renderGallery() {
+    const items = MEDIA.filter((m) => m && safeUrl(m.src));
+    if (!items.length) return; // section stays hidden
+    const grid = $('galleryGrid');
+    items.forEach((m) => {
+      const fig = document.createElement('figure');
+      let el;
+      if (m.type === 'video') {
+        el = makeVideo(m.src, m.poster);
+        if (m.alt) el.setAttribute('aria-label', m.alt);
+      } else {
+        el = document.createElement('img');
+        el.src = m.src; el.alt = m.alt || ''; el.loading = 'lazy';
+      }
+      el.addEventListener('error', () => { fig.remove(); if (!grid.children.length) $('gallery').hidden = true; });
+      fig.appendChild(el);
+      grid.appendChild(fig);
+    });
+    $('gallery').hidden = false;
+  }
 
   // ---- Squish interaction: press flattens, release slowly rises ----
   const stage = $('stage');
-  let squishes = 0, pressedAt = 0, riseTimer = null;
+  let squishes = 0, riseTimer = null;
   function press(e) {
     if (e.button !== undefined && e.button !== 0) return;
     e.preventDefault();
     stage.classList.add('pressed');
-    pressedAt = performance.now();
     clearInterval(riseTimer);
     $('hint').textContent = 'Squished! Now let go';
   }
@@ -551,6 +837,7 @@ footer b { font: 400 1.2rem/1 var(--f-display); color: var(--blue); }
     stage.classList.remove('pressed');
     squishes++;
     $('squishes').textContent = squishes;
+    if (reduceMotion) { $('hint').textContent = 'Fully risen. Again?'; return; }
     const start = performance.now();
     riseTimer = setInterval(() => {
       const s = (performance.now() - start) / 1000;
@@ -576,7 +863,7 @@ footer b { font: 400 1.2rem/1 var(--f-display); color: var(--blue); }
   $('addBtn').addEventListener('click', addToCart);
 
   function lineInfo(l) {
-    const f = FLAVORS.find((x) => x.id === l.flavor) || FLAVORS[0];
+    const f = FLAVORS.find((x) => x.id === l.flavor) || ACTIVE[0];
     const b = BUNDLES.find((x) => x.id === l.bundle) || BUNDLES[0];
     return { f, b, amount: b.price * l.qty };
   }
@@ -600,31 +887,72 @@ footer b { font: 400 1.2rem/1 var(--f-display); color: var(--blue); }
 
     const left = Math.max(0, FREE_SHIP_AT - subtotal);
     $('meter').innerHTML = subtotal === 0 ? '' :
-      (left > 0 ? `Add ${money(left)} more for free shipping` : 'You get free shipping') +
+      (left > 0 ? `Add ${money(left)} more for free shipping.` : 'You get free shipping.') +
+      ` Ships in ${HANDLING_DAYS_TEXT}.` +
       `<div class="bar"><i style="width:${Math.min(100, (subtotal / FREE_SHIP_AT) * 100)}%"></i></div>`;
     $('subtotal').textContent = money(subtotal);
-    $('shipping').textContent = subtotal === 0 ? '—' : ship === 0 ? 'Free' : money(ship);
+    $('shipping').textContent = subtotal === 0 ? money(0) : ship === 0 ? 'Free' : money(ship);
     $('total').textContent = money(subtotal + ship);
     $('checkoutBtn').disabled = cart.length === 0;
     $('checkoutNotice').hidden = true;
   }
 
   $('lines').addEventListener('click', (e) => {
-    const inc = e.target.closest('[data-inc]'); const dec = e.target.closest('[data-dec]');
-    if (!inc && !dec) return;
-    const key = (inc || dec).dataset.inc || (inc || dec).dataset.dec;
+    const btn = e.target.closest('[data-inc],[data-dec]');
+    if (!btn) return;
+    const inc = btn.hasAttribute('data-inc');
+    const key = inc ? btn.dataset.inc : btn.dataset.dec;
     const line = cart.find((l) => l.key === key); if (!line) return;
     line.qty += inc ? 1 : -1;
     if (line.qty <= 0) cart = cart.filter((l) => l !== line);
     persist(); renderCart();
   });
 
+  // Builds https://DOMAIN/cart/VARIANT_ID:QTY,VARIANT_ID:QTY or reports what is missing.
+  function shopifyCartUrl() {
+    const domain = SHOPIFY_DOMAIN.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+    const parts = [];
+    const missing = [];
+    for (const l of cart) {
+      const id = String((VARIANT_IDS[l.flavor] || {})[l.bundle] || '');
+      if (!/^\d+$/.test(id)) { const { f, b } = lineInfo(l); missing.push(`${f.name} ${b.name}`); continue; }
+      parts.push(`${id}:${l.qty}`);
+    }
+    if (missing.length) return { error: `Checkout is missing a Shopify variant ID for: ${missing.join(', ')}.` };
+    return { url: `https://${domain}/cart/${parts.join(',')}` };
+  }
+
   $('checkoutBtn').addEventListener('click', () => {
-    if (CHECKOUT_URL) { window.location.href = CHECKOUT_URL; return; }
     const n = $('checkoutNotice');
+    if (SHOPIFY_DOMAIN.trim()) {
+      const r = shopifyCartUrl();
+      if (r.error) { n.textContent = r.error; n.hidden = false; return; }
+      window.location.assign(r.url);
+      return;
+    }
+    if (CHECKOUT_URL) { window.location.assign(CHECKOUT_URL); return; }
     n.textContent = 'Checkout is not connected yet. This is a preview store, so no payment was taken.';
     n.hidden = false;
   });
+
+  // ---- Policy links: open the matching section and scroll to it ----
+  function openPolicy(id) {
+    const d = document.getElementById(id);
+    if (!d || d.tagName !== 'DETAILS') return false;
+    d.open = true;
+    d.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+    return true;
+  }
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('a[data-policy]');
+    if (!a) return;
+    const id = a.getAttribute('href').slice(1);
+    if (openPolicy(id)) {
+      e.preventDefault();
+      try { history.replaceState(null, '', '#' + id); } catch {}
+    }
+  });
+  if (location.hash) openPolicy(location.hash.slice(1));
 
   // ---- Drawer ----
   const drawer = $('drawer'), scrim = $('scrim');
@@ -641,9 +969,13 @@ footer b { font: 400 1.2rem/1 var(--f-display); color: var(--blue); }
     clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
   }
 
-  $('yr').textContent = new Date().getFullYear();
+  applyConfigCopy();
+  renderHeroMedia();
+  renderGallery();
+  renderFlavorSection();
   renderPicker();
   renderCart();
+  persist();
 })();
 </script>
 <!-- ARTIFACT-BODY-END -->
