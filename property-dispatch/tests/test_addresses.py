@@ -116,3 +116,80 @@ def test_crew_sees_and_navigates_to_the_typed_address(client, repo, settings):
 @pytest.mark.parametrize("lat, lng", [(30.2244, -95.2369), (30.2304, -95.2335), (30.2270, -95.2359)])
 def test_the_canopies_is_in_the_i69_zone(lat, lng):
     assert find_zone(lat, lng).key == "I69_HIGH_DENSITY_SPINE"
+
+
+# ---------- Instant area check + Google dropdown coordinates ----------
+from fastapi.testclient import TestClient
+
+from app.main import create_app
+from app.models import GeoPoint
+
+
+class StreetOnlyGeocoder:
+    """Finds the street but not the house (what the free lookups do in new subdivisions)."""
+    def __init__(self, point=(30.2270, -95.2359), precision="street", fail=None):
+        self.point, self.precision, self.fail = point, precision, fail
+
+    def geocode(self, address):
+        if self.fail:
+            raise self.fail
+        return GeoPoint(lat=self.point[0], lng=self.point[1], formatted_address="Rustic Elm Dr", precision=self.precision)
+
+
+def app_with(settings, repo, geocoder):
+    return TestClient(create_app(settings, repo=repo, geocoder=geocoder, sms=None))
+
+
+def test_check_address_answers_without_saving(client, repo):
+    r = client.post("/api/check-address", json={"address": "100 A Example Rd"}).json()
+    assert r["in_area"] is True and r["mow_rate"] == 55.0 and "$55.00" in r["message"]
+    r = client.post("/api/check-address", json={"address": "100 Old Town Rd"}).json()
+    assert r["in_area"] is False and "outside our current service areas" in r["message"]
+    assert repo.jobs == {} and repo.customers == {}
+
+
+def test_check_address_is_rate_limited(client):
+    codes = [client.post("/api/check-address", json={"address": "100 A Example Rd"}).status_code for _ in range(31)]
+    assert codes[:30] == [200] * 30 and codes[30] == 429
+
+
+def test_google_point_upgrades_a_nearby_street_match(settings, repo):
+    c = app_with(settings, repo, StreetOnlyGeocoder())
+    house = (30.2275, -95.2350)   # ~100 m from the street point
+    with patch("app.main.local_now", return_value=NOW):
+        r = c.post("/api/jobs", json={"name": "Pat", "phone": "2815550100", "address": "21480 Rustic Elm Dr, New Caney, TX 77372",
+                                      "service": "mowing", "scheduled_date": TOMORROW.isoformat(),
+                                      "lat": house[0], "lng": house[1]})
+    assert r.status_code == 201 and (r.json()["lat"], r.json()["lng"]) == house
+
+
+def test_far_away_google_point_is_ignored(settings, repo):
+    c = app_with(settings, repo, StreetOnlyGeocoder())
+    with patch("app.main.local_now", return_value=NOW):
+        r = c.post("/api/jobs", json={"name": "Pat", "phone": "2815550100", "address": "21480 Rustic Elm Dr, New Caney, TX 77372",
+                                      "service": "mowing", "scheduled_date": TOMORROW.isoformat(),
+                                      "lat": 30.12, "lng": -95.35})   # ~13 km away, e.g. tampered to get Spring pricing
+    assert r.status_code == 201 and (r.json()["lat"], r.json()["lng"]) == (30.2270, -95.2359)
+
+
+def test_house_level_match_beats_google_point(settings, repo):
+    c = app_with(settings, repo, StreetOnlyGeocoder(precision="address"))
+    r = c.post("/api/check-address", json={"address": "21480 Rustic Elm Dr", "lat": 30.2275, "lng": -95.2350}).json()
+    assert r["in_area"] is True and r["matched_address"] == "Rustic Elm Dr"
+
+
+def test_google_point_covers_addresses_free_lookups_cannot_find(settings, repo):
+    c = app_with(settings, repo, StreetOnlyGeocoder(fail=GeocodingError("not found")))
+    r = c.post("/api/check-address", json={"address": "10340 Woodhill Spa Ln, Cleveland, TX 77327",
+                                           "lat": 30.3378, "lng": -95.0604}).json()
+    assert r["in_area"] is True and "Cleveland" in r["zone_name"]
+    assert c.post("/api/check-address", json={"address": "10340 Woodhill Spa Ln"}).status_code == 422
+    # Coordinates outside Texas are never trusted.
+    assert c.post("/api/check-address", json={"address": "10340 Woodhill Spa Ln", "lat": 40.7, "lng": -74.0}).status_code == 422
+
+
+def test_booking_info_exposes_maps_key_only_when_set(client, settings, repo):
+    assert client.get("/api/booking-info").json()["google_maps_key"] is None
+    settings.google_maps_browser_key = "AIza-test"
+    c = TestClient(create_app(settings, repo=repo, sms=None))
+    assert c.get("/api/booking-info").json()["google_maps_key"] == "AIza-test"

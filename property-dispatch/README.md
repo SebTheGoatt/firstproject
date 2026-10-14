@@ -60,6 +60,29 @@ need to reinstall.
 
 The business name on every page comes from `BUSINESS_NAME`.
 
+## Address entry: instant area check + optional Google dropdown
+
+As soon as a customer enters an address, the booking form checks it (`POST /api/check-address`,
+which saves nothing) and shows "Good news: you're in our Klein area. Mowing is $55.00 per
+visit", or the out-of-area message. The check is by **map coordinates against the service
+zones**, never by city name: Google and the Postal Service call most Klein addresses
+"Spring", and "Spring" also covers Old Town Spring, which isn't served.
+
+**Optional Google address dropdown.** Set `GOOGLE_MAPS_BROWSER_KEY` and the address box
+becomes Google's autocomplete (`PlaceAutocompleteElement`, Places API (New)). The older
+`google.maps.places.Autocomplete` isn't available to Google accounts created after
+March 1, 2025.
+1. Google Cloud Console: create a project, add billing, enable **Maps JavaScript API** and
+   **Places API (New)**.
+2. Credentials → Create API key → restrict it to **Websites** with your address
+   (`https://property-dispatch.onrender.com/*`) and to those two APIs.
+3. Put it in `GOOGLE_MAPS_BROWSER_KEY` on Render.
+
+If the key is missing, wrong or blocked, the form quietly falls back to the plain address
+box. Google's coordinates are only a hint: the server uses them when its own lookups find
+just the street (and Google's point is within 1.5 km of it) or nothing at all (brand-new
+subdivisions), and never outside Texas.
+
 ## Pay your way (cash or card) and donations
 
 At booking, customers choose **Cash to the crew** or **Card in the app**.

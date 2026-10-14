@@ -29,6 +29,9 @@ services:
         sync: false
       - key: GEOCODER_USER_AGENT
         sync: false
+      # Optional: Google address dropdown on the booking form (browser key).
+      - key: GOOGLE_MAPS_BROWSER_KEY
+        sync: false
       - key: TWILIO_ACCOUNT_SID
         sync: false
       - key: TWILIO_AUTH_TOKEN

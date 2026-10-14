@@ -49,9 +49,9 @@ body {
 
 .wrap { max-width: 560px; margin: 0 auto; padding: 24px 16px 48px; }
 
-header.brand { margin-bottom: 20px; }
-header.brand h1 { font-size: 1.5rem; margin: 0 0 4px; letter-spacing: -0.01em; }
-header.brand p { margin: 0; color: var(--muted); }
+.page-intro { margin-bottom: 20px; }
+.page-intro h1 { font-size: 1.5rem; margin: 0 0 4px; letter-spacing: -0.01em; }
+.page-intro p { margin: 0; color: var(--muted); }
 
 .card {
   background: var(--surface);
@@ -486,3 +486,10 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
 .reset-row { display: flex; gap: 8px; }
 .reset-row input { flex: 1; min-width: 0; }
 #add-member h3 { margin-top: 0; }
+
+/* Instant service-area check under the address field */
+.area-check { margin-top: 8px; padding: 10px 12px; border-radius: 10px; font-size: 0.92rem; background: var(--bg); color: var(--muted); }
+.area-check.ok { background: var(--brand-soft); color: var(--text); font-weight: 600; }
+.area-check.bad { background: var(--danger-soft); color: var(--danger); }
+.area-check.warn { background: var(--warn-soft); color: var(--warn); }
+#address-picker gmp-place-autocomplete, #address-autocomplete { width: 100%; display: block; color-scheme: light dark; }

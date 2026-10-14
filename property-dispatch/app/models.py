@@ -45,6 +45,9 @@ class JobRequest(BaseModel):
     service: Service
     scheduled_date: date
     payment_method: Literal["cash", "card"] = "cash"
+    # Coordinates from the Google address dropdown, when the customer used it.
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lng: float | None = Field(default=None, ge=-180, le=180)
 
     @field_validator("name", "address")
     @classmethod
@@ -176,3 +179,9 @@ class CrewProfileUpdate(BaseModel):
 class CompleteStopRequest(BaseModel):
     amount_due: float | None = Field(default=None, gt=0, le=5000)       # final price for quoted services
     cash_collected: float | None = Field(default=None, ge=0, le=10000)  # total cash handed to the crew
+
+
+class AddressCheck(BaseModel):
+    address: str = Field(min_length=5, max_length=300)
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lng: float | None = Field(default=None, ge=-180, le=180)
