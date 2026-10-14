@@ -25,8 +25,9 @@ SERVICE_ZONES: tuple[ServiceZone, ...] = (
     ServiceZone(
         key="SPRING_LUXURY_LOOP",
         name="Spring / Woodson's Reserve Corridor",
-        # Woodson's Reserve and surrounding SH-99 / Rayford Rd developments
-        bbox=(-95.4200, 30.1100, -95.2800, 30.1800),
+        # Woodson's Reserve and surrounding SH-99 / Rayford Rd developments.
+        # South edge at 30.10 so all of Woodson's Reserve (center ~30.116) fits.
+        bbox=(-95.4200, 30.1000, -95.2800, 30.1800),
         mow_rate=55.00,  # premium pricing for larger luxury lots
     ),
     ServiceZone(
@@ -39,8 +40,10 @@ SERVICE_ZONES: tuple[ServiceZone, ...] = (
     ServiceZone(
         key="CLEVELAND_HUB",
         name="Cleveland / Grand Oaks Reserve Hub",
-        # Grand Oaks Reserve and new construction off FM 1010 / SH-105
-        bbox=(-95.0500, 30.3000, -94.9100, 30.3800),
+        # Grand Oaks Reserve and new construction off FM 1010 / SH-105.
+        # West edge at -95.15 to include Grand Oaks Reserve (~-95.05 to -95.06)
+        # and downtown Cleveland (~-95.09).
+        bbox=(-95.1500, 30.3000, -94.9100, 30.3800),
         mow_rate=45.00,
     ),
 )

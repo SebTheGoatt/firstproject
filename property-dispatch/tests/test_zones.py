@@ -71,3 +71,13 @@ def test_out_of_zone_address_is_turned_away(client, repo):
 def test_booking_info_lists_zones(client):
     zones = client.get("/api/booking-info").json()["zones"]
     assert [z["mow_rate"] for z in zones] == [55.0, 40.0, 45.0]
+
+
+@pytest.mark.parametrize("lat, lng, key", [
+    (30.1160, -95.3636, "SPRING_LUXURY_LOOP"),   # Woodson's Reserve
+    (30.3391, -95.0579, "CLEVELAND_HUB"),        # Kingston Heath Dr, Grand Oaks Reserve
+    (30.3367, -95.0506, "CLEVELAND_HUB"),        # Spyglass Hill Dr, Grand Oaks clubhouse
+    (30.3415, -95.0900, "CLEVELAND_HUB"),        # downtown Cleveland
+])
+def test_zones_cover_the_places_they_are_named_for(lat, lng, key):
+    assert find_zone(lat, lng).key == key
