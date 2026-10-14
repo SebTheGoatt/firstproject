@@ -36,8 +36,9 @@ from .db import Repository, make_repository
 from .geocode import GeocoderUnavailable, GeocodingError, NominatimGeocoder
 from .crew_auth import CrewIdentity
 from .crew_routes import register_crew_routes
-from .models import (SERVICE_LABELS, SERVICE_MINUTES, CompleteStopRequest, JobCreated, JobRequest, RouteView,
-                     Service, StopView)
+from .models import (SERVICE_LABELS, SERVICE_MINUTES, AddressCheck, CompleteStopRequest, GeoPoint, JobCreated,
+                     JobRequest, RouteView, Service, StopView)
+from .routing.matrix import haversine_m
 from .nightly import run_nightly
 from .notify import TwilioClient, notify_next_customer, send_pay_link
 from .pay_routes import register_pay_routes
@@ -55,6 +56,38 @@ def static_version(directory: Path = STATIC_DIR) -> str:
         h.update(f.relative_to(directory).as_posix().encode())
         h.update(f.read_bytes())
     return h.hexdigest()[:12]
+
+
+# Coordinates a customer's browser sends (from the Google dropdown) are only a hint:
+# they're used when our own lookups find just the street, or nothing, and only if
+# they're in Texas and, when we have a street point, within this distance of it.
+HINT_MAX_DISTANCE_M = 1500
+TEXAS_BOUNDS = (25.8, -106.7, 36.6, -93.5)  # south, west, north, east
+
+
+def _in_texas(lat: float, lng: float) -> bool:
+    s, w, n, e = TEXAS_BOUNDS
+    return s <= lat <= n and w <= lng <= e
+
+
+class RateLimiter:
+    """Small per-IP limiter for public endpoints that call the free geocoders."""
+
+    def __init__(self, limit: int, window_s: int):
+        self.limit, self.window_s = limit, window_s
+        self._hits: dict[str, list[float]] = {}
+
+    def allow(self, key: str) -> bool:
+        import time
+
+        now = time.time()
+        hits = [t for t in self._hits.get(key, []) if now - t < self.window_s]
+        if len(hits) >= self.limit:
+            self._hits[key] = hits
+            return False
+        hits.append(now)
+        self._hits[key] = hits
+        return True
 
 
 def _check_secret(provided: str | None, expected: str) -> None:
@@ -200,6 +233,50 @@ def create_app(
                       for z in SERVICE_ZONES],
             "business_name": settings.business_name,
             "card_payments": app.state.stripe is not None,
+            "google_maps_key": settings.google_maps_browser_key or None,
+        }
+
+    def locate(address: str, lat: float | None, lng: float | None) -> GeoPoint:
+        """Our geocoders decide; the browser's Google coordinates only fill gaps (see HINT_MAX_DISTANCE_M)."""
+        hint = (lat, lng) if lat is not None and lng is not None and _in_texas(lat, lng) else None
+
+        def from_hint() -> GeoPoint:
+            return GeoPoint(lat=hint[0], lng=hint[1], formatted_address=address, precision="address")
+
+        try:
+            geo = app.state.geocoder.geocode(address)
+        except GeocoderUnavailable as exc:
+            if hint:
+                return from_hint()
+            raise HTTPException(status_code=503, detail=str(exc))
+        except GeocodingError as exc:
+            if hint:  # e.g. a brand-new subdivision Google knows and the free lookups don't yet
+                return from_hint()
+            raise HTTPException(status_code=422, detail=str(exc))
+        if hint and geo.precision != "address" and haversine_m((geo.lat, geo.lng), hint) <= HINT_MAX_DISTANCE_M:
+            return from_hint()
+        return geo
+
+    def outside_message() -> str:
+        return ("Sorry, that address is outside our current service areas: "
+                + "; ".join(z.name for z in SERVICE_ZONES) + ".")
+
+    check_limiter = RateLimiter(limit=30, window_s=600)
+
+    @app.post("/api/check-address")
+    def check_address(body: AddressCheck, request: Request):
+        """Instant 'are you in our area?' answer while the customer fills out the form. Saves nothing."""
+        if not check_limiter.allow(request.client.host if request.client else "unknown"):
+            raise HTTPException(status_code=429, detail="Too many checks. Please wait a few minutes.")
+        geo = locate(body.address.strip(), body.lat, body.lng)
+        zone = find_zone(geo.lat, geo.lng)
+        return {
+            "in_area": zone is not None,
+            "zone_name": zone.name if zone else None,
+            "mow_rate": zone.mow_rate if zone else None,
+            "matched_address": geo.formatted_address if geo.precision == "address" else body.address.strip(),
+            "message": (f"Good news: you're in our {zone.name} area. Mowing is ${zone.mow_rate:,.2f} per visit."
+                        if zone else outside_message()),
         }
 
     @app.post("/api/jobs", response_model=JobCreated, status_code=201)
@@ -210,18 +287,10 @@ def create_app(
         except BookingRejected as exc:
             raise HTTPException(status_code=409, detail=str(exc))
 
-        try:
-            geo = app.state.geocoder.geocode(body.address)
-        except GeocoderUnavailable as exc:
-            raise HTTPException(status_code=503, detail=str(exc))
-        except GeocodingError as exc:
-            raise HTTPException(status_code=422, detail=str(exc))
-
+        geo = locate(body.address, body.lat, body.lng)
         zone = find_zone(geo.lat, geo.lng)
         if zone is None:
-            raise HTTPException(status_code=422, detail=(
-                "Sorry, that address is outside our current service areas: "
-                + "; ".join(z.name for z in SERVICE_ZONES) + "."))
+            raise HTTPException(status_code=422, detail=outside_message())
         price = zone.mow_rate if body.service is Service.MOWING else None
         if body.payment_method == "card" and app.state.stripe is None:
             raise HTTPException(status_code=422, detail="Card payments aren't available yet. Please choose cash.")

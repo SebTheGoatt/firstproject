@@ -51,9 +51,12 @@
 
       <div class="field">
         <label for="address">Service address</label>
+        <div id="address-picker" hidden></div>
         <input id="address" name="address" type="text" autocomplete="street-address" required
                placeholder="1234 Oak Forest Ln, Spring, TX 77386">
-        <div class="hint">House number, street, city and ZIP.</div>
+        <input type="hidden" id="lat"><input type="hidden" id="lng">
+        <div class="hint" id="address-hint">House number, street, city and ZIP.</div>
+        <div class="area-check" id="area-check" role="status" aria-live="polite" hidden></div>
       </div>
 
       <fieldset>
@@ -102,6 +105,86 @@
     const fmtDay = (iso) =>
       new Date(iso + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
 
+    // ---------- Address: instant "are you in our area?" check ----------
+    const addressInput = document.getElementById("address");
+    const latInput = document.getElementById("lat"), lngInput = document.getElementById("lng");
+    const areaBox = document.getElementById("area-check");
+    let checkSeq = 0;
+
+    async function checkArea() {
+      const address = addressInput.value.trim();
+      if (!/^\s*\d+\s+\S+/.test(address) || address.length < 8) { areaBox.hidden = true; return; }
+      const seq = ++checkSeq;
+      areaBox.className = "area-check"; areaBox.textContent = "Checking your address…"; areaBox.hidden = false;
+      const payload = { address };
+      if (addressInput.dataset.picked === address && latInput.value) { payload.lat = Number(latInput.value); payload.lng = Number(lngInput.value); }
+      try {
+        const res = await fetch("/api/check-address", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        const body = await res.json().catch(() => ({}));
+        if (seq !== checkSeq) return;  // a newer check started
+        if (!res.ok) {
+          areaBox.className = "area-check warn";
+          areaBox.textContent = typeof body.detail === "string" ? body.detail : "Please check the address and include your ZIP.";
+        } else {
+          areaBox.className = "area-check " + (body.in_area ? "ok" : "bad");
+          areaBox.textContent = (body.in_area ? "✓ " : "") + body.message;
+        }
+      } catch {
+        if (seq === checkSeq) areaBox.hidden = true;  // offline: the booking itself will report it
+      }
+    }
+    addressInput.addEventListener("change", () => {
+      if (addressInput.dataset.picked !== addressInput.value) { latInput.value = lngInput.value = ""; }
+      checkArea();
+    });
+
+    // ---------- Optional Google address dropdown (Places API (New)) ----------
+    // Only loads when the owner sets GOOGLE_MAPS_BROWSER_KEY; otherwise customers type normally.
+    function usePlainAddressBox() {
+      const slot = document.getElementById("address-picker");
+      slot.replaceChildren(); slot.hidden = true;
+      addressInput.hidden = false; addressInput.required = true;
+      document.getElementById("address-hint").textContent = "House number, street, city and ZIP.";
+    }
+    // Google calls this if the key is invalid, expired or not allowed on this site.
+    window.gm_authFailure = usePlainAddressBox;
+
+    function setUpGoogleAutocomplete(key) {
+      window.__initPlaces = async () => {
+        try {
+          const { PlaceAutocompleteElement } = await google.maps.importLibrary("places");
+          const picker = new PlaceAutocompleteElement({ includedPrimaryTypes: ["street_address", "premise", "subpremise"] });
+          picker.includedRegionCodes = ["us"];
+          picker.locationBias = { center: { lat: 30.17, lng: -95.27 }, radius: 50000 };  // north Houston service areas
+          picker.placeholder = "Start typing your address…";
+          picker.id = "address-autocomplete";
+          picker.setAttribute("aria-label", "Service address");
+          picker.addEventListener("gmp-select", async ({ placePrediction }) => {
+            const place = placePrediction.toPlace();
+            await place.fetchFields({ fields: ["formattedAddress", "location"] });
+            const text = (place.formattedAddress || "").replace(/, USA$/, "");
+            addressInput.value = text;
+            addressInput.dataset.picked = text;
+            latInput.value = place.location.lat();
+            lngInput.value = place.location.lng();
+            checkArea();
+          });
+          const slot = document.getElementById("address-picker");
+          slot.append(picker);
+          slot.hidden = false;
+          // Keep the plain box as the form's value (and a fallback); hide it once Google is ready.
+          addressInput.hidden = true;
+          addressInput.required = false;
+          document.getElementById("address-hint").textContent = "Pick your address from the list.";
+        } catch { /* Google didn't load: the plain address box keeps working */ }
+      };
+      const s = document.createElement("script");
+      s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&loading=async&libraries=places&callback=__initPlaces`;
+      s.async = true;
+      s.onerror = usePlainAddressBox;
+      document.head.append(s);
+    }
+
     fetch("/api/booking-info").then(r => r.json()).then(info => {
       dateInput.min = info.earliest_date;
       dateInput.max = info.latest_date;
@@ -115,6 +198,7 @@
         list.append(li);
       }
       document.getElementById("areas").hidden = !info.zones.length;
+      if (info.google_maps_key) setUpGoogleAutocomplete(info.google_maps_key);
       if (info.card_payments) {
         document.getElementById("pay-card").disabled = false;
         document.getElementById("pay-card-note").textContent = "Pay securely online before or after the visit.";
@@ -131,8 +215,13 @@
       e.preventDefault();
       err.hidden = true;
       if (!form.checkValidity()) { form.reportValidity(); return; }
+      if (!addressInput.value.trim()) { showError("Please choose your address from the list."); return; }
 
       const data = Object.fromEntries(new FormData(form));
+      if (addressInput.dataset.picked === addressInput.value && latInput.value) {
+        data.lat = Number(latInput.value);
+        data.lng = Number(lngInput.value);
+      }
       submit.disabled = true;
       submit.textContent = "Checking address…";
       try {

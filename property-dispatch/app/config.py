@@ -36,6 +36,9 @@ class Settings(BaseSettings):
 
     # --- Geocoding (Nominatim) ----------------------------------------
     census_geocoder_url: str = "https://geocoding.geo.census.gov/geocoder"
+    # Optional Google Maps browser key for the address dropdown on the booking
+    # form (Places API (New)). Restrict it to your site's address in Google Cloud.
+    google_maps_browser_key: str = ""
     nominatim_url: str = "https://nominatim.openstreetmap.org"
     # Nominatim's usage policy requires an identifying User-Agent with a real
     # contact; placeholder domains like example.com are rejected with 403.
