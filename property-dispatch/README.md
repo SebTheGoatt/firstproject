@@ -113,8 +113,10 @@ Without Twilio credentials the "next customer" text is logged instead of sent.
 1. Create a project at [supabase.com](https://supabase.com).
 2. **SQL Editor → New query**, run each file in `supabase/migrations/` in name order.
    (Or with the CLI: `supabase link --project-ref <ref> && supabase db push`.)
-3. **Project Settings → API**: copy the **Project URL** and the **service_role** key.
-   The service-role key bypasses RLS, so keep it on the server and never put it in the browser.
+3. **Settings → API Keys**: copy the **secret** key (`sb_secret_…`), and copy the **Project URL**
+   from the **Connect** button. The secret key bypasses RLS, so keep it on the server and
+   never put it in the browser. It goes in `SUPABASE_SERVICE_ROLE_KEY`. If the app logs
+   "Invalid API key", use the legacy `service_role` key from the same page instead.
 
 ### 2. Twilio (SMS)
 1. Buy a local (281/832/346) number in the Twilio console.
@@ -123,14 +125,15 @@ Without Twilio credentials the "next customer" text is logged instead of sent.
    takes a few days, so start this first.
 3. Copy the Account SID, Auth Token, and the number in E.164 form (`+12815550000`).
 
-### 3. Render (web app + 8 PM cron), using the included `render.yaml`
+### 3. Render (web app + 8 PM cron), using `render.yaml` at the repo root
 1. Push this repo to GitHub.
 2. Render → **New → Blueprint** → select the repo. It creates:
    - `property-dispatch`: the web service (Docker)
    - `property-dispatch-nightly`: the cron job running `python -m app.nightly`
-3. Fill in the `sync: false` values: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
-   `GEOCODER_USER_AGENT` (must include a real contact email, because Nominatim returns
-   403 for placeholders), and the three `TWILIO_*` values.
+3. Fill in the values Render asks for: `BUSINESS_NAME`, `SUPABASE_URL` and
+   `SUPABASE_SERVICE_ROLE_KEY` (asked once per service), `GEOCODER_USER_AGENT` (must
+   include a real contact email, because Nominatim returns 403 for placeholders), and
+   the three `TWILIO_*` values (leave blank to launch without texting).
    `CREW_ACCESS_TOKEN`, `WEBHOOK_SECRET`, and `CRON_SECRET` are generated for you;
    copy `CREW_ACCESS_TOKEN` out of the dashboard for the crew.
 4. On the crew's phones, open `https://<your-app>.onrender.com/crew` → enter the code →

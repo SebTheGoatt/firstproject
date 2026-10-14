@@ -1,0 +1,66 @@
+# Render Blueprint for property-dispatch (the website, booking, and crew app)
+# plus the nightly 8 PM route-building job.
+#
+# Render → New → Blueprint → pick this repo and branch. Render will ask for
+# every value marked `sync: false`. Values with `generateValue` are created
+# for you as random secrets.
+
+services:
+  - type: web
+    name: property-dispatch
+    runtime: docker
+    rootDir: property-dispatch
+    plan: 0.5c-512mb          # always on; the free plan sleeps and makes the crew wait
+    healthCheckPath: /healthz
+    envVars:
+      - key: DATA_BACKEND
+        value: supabase
+      - key: BUSINESS_TIMEZONE
+        value: America/Chicago
+      - key: BASE_LAT
+        value: "30.0799"
+      - key: BASE_LNG
+        value: "-95.4172"
+      - key: BUSINESS_NAME
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: GEOCODER_USER_AGENT
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_FROM_NUMBER
+        sync: false
+      - key: CREW_ACCESS_TOKEN
+        generateValue: true
+      - key: WEBHOOK_SECRET
+        generateValue: true
+      - key: CRON_SECRET
+        generateValue: true
+
+  - type: cron
+    name: property-dispatch-nightly
+    runtime: docker
+    rootDir: property-dispatch
+    plan: 0.5c-512mb
+    # Cron is UTC. 8 PM Central = 01:00 UTC (CDT) or 02:00 UTC (CST).
+    # Runs at both; the script exits unless it is 20:00 in America/Chicago.
+    schedule: "0 1,2 * * *"
+    dockerCommand: python -m app.nightly
+    envVars:
+      - key: DATA_BACKEND
+        value: supabase
+      - key: BUSINESS_TIMEZONE
+        value: America/Chicago
+      - key: BASE_LAT
+        value: "30.0799"
+      - key: BASE_LNG
+        value: "-95.4172"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
