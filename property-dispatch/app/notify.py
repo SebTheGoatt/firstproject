@@ -65,8 +65,8 @@ def pay_link_message(stop: dict, settings: Settings, pay_url: str) -> str:
     service = SERVICE_LABELS[Service(stop["service"])].lower()
     return (
         f"Hi {first}, your {service} is done. Thanks for choosing {settings.business_name}! "
-        f"You can pay securely here: {pay_url} . No tip necessary; donations are welcome as "
-        f"we're a veteran-owned business. Reply STOP to opt out."
+        f"You can pay securely here: {pay_url} . No tip necessary. Donations are welcome and go to "
+        f"the VFW, NICU families and at-risk youth. Reply STOP to opt out."
     )
 
 

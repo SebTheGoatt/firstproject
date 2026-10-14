@@ -88,6 +88,7 @@
         <div class="week" id="week" role="tablist" aria-label="Next 7 days"></div>
         <div id="dash-err" class="alert alert-error" role="alert" hidden></div>
         <div class="kpis" id="kpis"></div>
+        <div class="donation-ledger" id="donation-ledger" hidden></div>
         <div class="card route-card" id="route-card"></div>
         <h3 class="list-title" id="jobs-title">Bookings</h3>
         <ul class="job-list" id="job-list"></ul>
@@ -458,6 +459,9 @@
       const cashIn = isCash ? el("input", { type: "text", inputmode: "decimal", value: s.amount_due ?? "", id: `fc-${s.stop_id}` }) : null;
       const totalLine = el("p", { class: "finish-total" });
       const cents = (x) => Math.round(x * 100) / 100;
+      // The customer's pay-what-you-can rate (bookings from before rates existed: the middle rate).
+      const perSqft = [0.009, 0.01, 0.011].includes(s.sqft_rate) ? s.sqft_rate : 0.01;
+      const donationLine = el("p", { class: "hint donation-line", hidden: true });
       let cashEdited = false;
       cashIn?.addEventListener("input", () => { cashEdited = true; });
       // Live total with Texas sales tax, matching the server's math.
@@ -465,7 +469,7 @@
         let sub = null;
         if (isMow && s.flat_fee != null) {
           const sq = parseInt(sqftIn?.value, 10);
-          sub = sq >= 200 ? Math.max(s.flat_fee, cents(0.015 * sq)) : (s.subtotal ?? s.flat_fee);
+          sub = sq >= 200 ? Math.max(s.flat_fee, cents(perSqft * sq)) : (s.subtotal ?? s.flat_fee);
         } else if (priceIn) {
           const p = parseFloat((priceIn.value || "").replace(/[^0-9.]/g, ""));
           sub = isFinite(p) && p > 0 ? cents(p) : null;
@@ -475,7 +479,17 @@
         totalLine.textContent = `${money(sub)} + ${money(tax)} tax (${(rate * 100).toFixed(2).replace(/\.?0+$/, "")}%) = ${money(sub + tax)}`;
         return cents(sub + tax);
       }
-      const refresh = () => { const t = currentTotal(); if (cashIn && !cashEdited && t != null) cashIn.value = t.toFixed(2); };
+      function showDonation(due) {
+        const cash = parseFloat((cashIn?.value || "").replace(/[^0-9.]/g, ""));
+        const extra = due != null && isFinite(cash) ? cents(cash - due) : 0;
+        donationLine.hidden = !(extra > 0);
+        if (extra > 0) {
+          const sp = splitDonation(extra);
+          donationLine.textContent = `${money(extra)} donation: ` + charities.map((c) => `${money(sp[c.key] || 0)} ${c.short}`).join(" · ");
+        }
+      }
+      const refresh = () => { const t = currentTotal(); if (cashIn && !cashEdited && t != null) cashIn.value = t.toFixed(2); showDonation(t); };
+      cashIn?.addEventListener("input", () => showDonation(currentTotal()));
       sqftIn?.addEventListener("input", refresh);
       priceIn?.addEventListener("input", refresh);
       const photoIn = el("input", { type: "file", accept: "image/*", capture: "environment", id: `fph-${s.stop_id}` });
@@ -485,11 +499,12 @@
       const cancelBtn = el("button", { class: "btn", type: "button" }, "Cancel");
       const panel = el("form", { class: "finish" },
         el("strong", {}, `Finishing stop ${s.sequence}: ${s.customer_name}`),
-        sqftIn ? el("div", { class: "field" }, el("label", { for: sqftIn.id }, "Lawn size (sq ft): confirm or correct"), sqftIn) : null,
+        sqftIn ? el("div", { class: "field" }, el("label", { for: sqftIn.id }, `Lawn size (sq ft): confirm or correct · their rate ${(perSqft * 100).toFixed(1)}¢/sq ft`), sqftIn) : null,
         needsPrice ? el("div", { class: "field" }, el("label", { for: priceIn.id }, "Price before tax ($)"), priceIn) : null,
         totalLine,
         isCash ? el("div", { class: "field" }, el("label", { for: cashIn.id }, "Cash collected ($)"), cashIn,
-          el("p", { class: "hint" }, "Leave blank if they haven't paid yet. Anything over the price is saved as a donation.")) : null,
+          el("p", { class: "hint" }, "Leave blank if they haven't paid yet. Anything over the price is a donation, split 33% VFW, 33% NICU, 34% at-risk youth."),
+          donationLine) : null,
         s.payment_method === "card" && s.payment_status !== "paid"
           ? el("p", { class: "hint" }, "Card customer: we'll text them a secure payment link.") : null,
         el("div", { class: "field" }, el("label", { for: photoIn.id }, "After photo (the customer sees it on their visit page)"), photoIn,
@@ -716,6 +731,12 @@
           ...[["Bookings", `${t.jobs}/${d.quota}`], ["Expected", money(t.expected)], ["Collected", money(t.collected)],
               ["Donations", money(t.donations)], ["Still owed", money(t.unpaid)], ["Sales tax collected", money(t.sales_tax ?? 0)]]
             .map(([k, v]) => el("div", { class: "kpi" }, el("b", {}, v), el("span", {}, k))));
+        // Donations to pass on, per cause (each payment's split is saved when it's paid).
+        const led = $("donation-ledger");
+        const owed = (t.donations_by_charity || []).filter((c) => c.amount > 0);
+        led.hidden = !owed.length;
+        led.replaceChildren(el("strong", {}, "Donations to pass on"),
+          ...owed.map((c) => el("div", { class: "ledger-row" }, el("span", {}, `${c.name} (${c.percent}%)`), el("b", {}, money(c.amount)))));
         const rc = $("route-card"); rc.replaceChildren();
         const r = d.route;
         const buildBtn = el("button", { class: "btn btn-primary btn-sm", type: "button" }, r.built ? "Rebuild route" : "Build route now");

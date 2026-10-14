@@ -23,6 +23,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
 from .booking import local_now
+from .charity import describe as describe_charities, ledger
 from .config import Settings
 from .crew_auth import CrewIdentity
 from .crew_routes import photo_url
@@ -110,7 +111,8 @@ def register_visit_routes(app: FastAPI, settings: Settings, crew_auth):
                 "method": v["payment_method"], "status": v["payment_status"],
                 "amount_due": v["amount_due"], "amount_paid": v["amount_paid"], "donation": v["donation"],
                 "subtotal": v.get("subtotal"), "tax": v.get("tax_amount"), "tax_rate": v.get("tax_rate"),
-                "lawn_sqft": v.get("lawn_sqft"),
+                "lawn_sqft": v.get("lawn_sqft"), "sqft_rate": v.get("sqft_rate"),
+                "donation_ledger": ledger(settings, v.get("donation_split")) if v.get("donation_split") else [],
                 "pay_url": f"/pay/{v['pay_token']}" if v["pay_token"] and v["payment_status"] == "unpaid" else None,
             },
             "crew_member": {
@@ -162,6 +164,10 @@ def register_visit_routes(app: FastAPI, settings: Settings, crew_auth):
             "quoted_on_site": sum(1 for j in jobs if j["amount_due"] is None),
             # Sales tax actually collected (paid jobs), for the owner's Texas sales-tax filing.
             "sales_tax": round(sum(j.get("tax_amount") or 0 for j in paid), 2),
+            # Donations to pass on, per cause (from each payment's saved split).
+            "donations_by_charity": [
+                {**c, "amount": round(sum(float((j.get("donation_split") or {}).get(c["key"], 0)) for j in paid), 2)}
+                for c in describe_charities(settings)],
         }
 
     @app.get("/api/owner/day/{day}", dependencies=[Depends(owner)])

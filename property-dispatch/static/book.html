@@ -86,6 +86,11 @@
 
       <section class="step">
         <h2 class="step-title"><span>4</span>Your price</h2>
+        <fieldset id="rate-fieldset">
+          <legend>Pick your rate <span class="optional">(pay what you can)</span></legend>
+          <div class="rates" id="rates" role="radiogroup"></div>
+          <p class="hint">Same great service at every rate. Every mow is at least $50.</p>
+        </fieldset>
         <div class="price-box" id="price-box" aria-live="polite">
           <p class="muted" id="price-empty">Enter your address to see your price.</p>
           <dl class="price-lines" id="price-lines" hidden></dl>
@@ -104,7 +109,9 @@
             <label for="pay-card" id="pay-card-label"><strong>Card, Apple Pay or Google Pay</strong><span id="pay-card-note">Coming soon.</span></label>
           </div>
           <p class="veteran-note"><span class="flag" aria-hidden="true">★</span>
-            No tip necessary. Donations are always welcome. We're a veteran-owned business.</p>
+            <span>No tip necessary. Donations are always welcome, never taxed, and go to
+            <span id="charity-list">the VFW (33%), NICU families (33%) and at-risk youth programs (34%)</span>.
+            We're a veteran-owned business.</span></p>
         </fieldset>
       </section>
 
@@ -147,7 +154,8 @@
     const priceLines = document.getElementById("price-lines"), priceEmpty = document.getElementById("price-empty");
     const priceNote = document.getElementById("price-note");
     const sqftInput = document.getElementById("lawn-sqft");
-    let lawnSize = "medium", lastQuote = null;
+    let lawnSize = "medium", lastQuote = null, sqftRate = 0.01, rateChoices = [0.009, 0.01, 0.011], flatFee = 50;
+    const cent = (r) => `${(r * 100).toFixed(1)}¢`;
     const pct = (r) => `${(r * 100).toFixed(2).replace(/\.?0+$/, "")}%`;
     const service = () => form.querySelector('input[name="service"]:checked')?.value || "mowing";
 
@@ -170,14 +178,31 @@
         priceNote.textContent = "Your crew takes a quick look and sets the price before starting. You'll see the total before you pay.";
         return;
       }
+      flatFee = q.flat_fee ?? flatFee;
+      renderRates(q.lawn_sqft);
       const what = q.lawn_sqft ? `Mowing · about ${q.lawn_sqft.toLocaleString()} sq ft` : q.service_label;
       priceLines.replaceChildren(
         row(what, money(q.subtotal)),
         row(`Texas sales tax (${pct(q.tax_rate)})`, money(q.tax)),
         row("Total", money(q.total), "total"));
       priceNote.textContent = q.basis === "flat"
-        ? `Includes our ${money(q.flat_fee)} minimum visit for your area. Your crew confirms the lawn size on site.`
-        : `1.5¢ per sq ft (minimum ${money(q.flat_fee)}). Your crew confirms the lawn size on site; the price only changes if it's different.`;
+        ? `Our ${money(q.flat_fee)} minimum visit. Your crew confirms the lawn size on site.`
+        : `${cent(q.sqft_rate)} per sq ft, your pick (minimum ${money(q.flat_fee)}). Your crew confirms the lawn size on site; the price only changes if it's different.`;
+    }
+
+    // Pay-what-you-can rate: each option shows what this lawn costs at that rate.
+    function renderRates(sqft) {
+      const box = document.getElementById("rates");
+      box.replaceChildren(...rateChoices.flatMap((r) => {
+        const input = Object.assign(document.createElement("input"), { type: "radio", name: "sqft_rate_pick", id: `rate-${r}`, value: r, checked: r === sqftRate });
+        const label = document.createElement("label"); label.htmlFor = input.id;
+        const b = document.createElement("strong"); b.textContent = `${cent(r)} / sq ft`;
+        const p = document.createElement("span");
+        p.textContent = sqft ? money(Math.max(flatFee, Math.round(r * sqft * 100) / 100)) + " + tax" : `min ${money(flatFee)}`;
+        label.append(b, p);
+        input.addEventListener("change", () => { sqftRate = r; updateQuote(); });
+        return [input, label];
+      }));
     }
 
     async function updateQuote() {
@@ -186,7 +211,9 @@
       const seq = ++checkSeq;
       areaBox.className = "area-check"; areaBox.textContent = "Checking your address…"; areaBox.hidden = false;
       const payload = { address, service: service() };
+      document.getElementById("rate-fieldset").hidden = service() !== "mowing";
       if (service() === "mowing") {
+        payload.sqft_rate = sqftRate;
         const exact = parseInt(sqftInput.value, 10);
         if (exact >= 200) payload.lawn_sqft = exact; else payload.lawn_size = lawnSize;
       }
@@ -298,6 +325,9 @@
       document.getElementById("areas").hidden = !info.zones.length;
       if (info.google_maps_key) setUpGoogleAutocomplete(info.google_maps_key);
       if (info.lawn_sizes) renderSizes(info.lawn_sizes);
+      if (info.sqft_rates) { rateChoices = info.sqft_rates; sqftRate = info.default_sqft_rate ?? sqftRate; renderRates(null); }
+      if (info.charities) document.getElementById("charity-list").textContent =
+        info.charities.map((c) => `${c.name} (${c.percent}%)`).join(", ").replace(/, ([^,]*)$/, " and $1");
       if (info.card_payments) {
         document.getElementById("pay-card").disabled = false;
         document.getElementById("pay-card-note").textContent = "Pay securely now, or after the visit.";
@@ -317,8 +347,9 @@
       if (!addressInput.value.trim()) { showError("Please choose your address from the list."); return; }
 
       const data = Object.fromEntries(new FormData(form));
-      delete data.lawn_size_pick;
+      delete data.lawn_size_pick; delete data.sqft_rate_pick;
       if (data.service === "mowing") {
+        data.sqft_rate = sqftRate;
         const exact = parseInt(sqftInput.value, 10);
         if (exact >= 200) data.lawn_sqft = exact; else data.lawn_size = lawnSize;
       }

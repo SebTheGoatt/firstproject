@@ -156,14 +156,17 @@
       pay.replaceChildren(el("h2", { class: "card-title" }, "Payment"));
       if (p.status === "paid") {
         pay.append(el("p", {}, el("strong", {}, `Paid ${money(p.amount_paid)}`), p.method === "cash" ? " in cash" : " by card",
-          p.donation > 0 ? `, including a ${money(p.donation)} donation. Thank you for supporting a veteran-owned business!` : ". Thank you!"));
+          p.donation > 0 ? `, including a ${money(p.donation)} donation. Thank you!` : ". Thank you!"));
+        const led = (p.donation_ledger || []).filter((c) => c.amount > 0);
+        if (led.length) pay.append(el("div", { class: "donation-split" }, el("strong", {}, "Where your donation goes"),
+          ...led.map((c) => el("div", { class: "ledger-row" }, el("span", {}, `${c.name} (${c.percent}%)`), el("b", {}, money(c.amount))))));
       } else {
         if (p.amount_due == null) {
           pay.append(el("p", {}, "Your price is set on site when the job is done. Texas sales tax is added."));
         } else if (p.subtotal != null && p.tax != null) {
           const rate = p.tax_rate ? ` (${(p.tax_rate * 100).toFixed(2).replace(/\.?0+$/, "")}%)` : "";
           pay.append(el("dl", { class: "price-lines" },
-            el("div", {}, el("dt", {}, p.lawn_sqft ? `${v.service_label} · ${p.lawn_sqft.toLocaleString()} sq ft` : v.service_label), el("dd", {}, money(p.subtotal))),
+            el("div", {}, el("dt", {}, p.lawn_sqft ? `${v.service_label} · ${p.lawn_sqft.toLocaleString()} sq ft${p.sqft_rate ? ` at ${(p.sqft_rate * 100).toFixed(1)}¢` : ""}` : v.service_label), el("dd", {}, money(p.subtotal))),
             p.tax > 0 ? el("div", {}, el("dt", {}, `Texas sales tax${rate}`), el("dd", {}, money(p.tax))) : null,
             el("div", { class: "total" }, el("dt", {}, "Total"), el("dd", {}, money(p.amount_due)))));
         } else {
@@ -172,7 +175,7 @@
         if (p.method === "card" && p.pay_url) pay.append(el("a", { class: "btn btn-primary", href: p.pay_url }, p.amount_due != null ? "Pay now" : "Open payment page"));
         else pay.append(el("p", { class: "muted" }, "You chose cash: pay the crew when they arrive."));
         pay.append(el("p", { class: "veteran-note" }, el("span", { class: "flag", "aria-hidden": "true" }, "★"),
-          "No tip necessary. Donations are always welcome. We're a veteran-owned business."));
+          "No tip necessary. Donations are always welcome and go to the VFW (33%), NICU families (33%) and at-risk youth programs (34%)."));
       }
 
       // Before & after

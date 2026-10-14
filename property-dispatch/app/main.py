@@ -38,7 +38,8 @@ from .crew_auth import CrewIdentity
 from .crew_routes import register_crew_routes
 from .models import (SERVICE_LABELS, SERVICE_MINUTES, AddressCheck, CompleteStopRequest, GeoPoint, JobCreated,
                      JobRequest, QuoteRequest, RouteView, Service, StopView)
-from .pricing import LAWN_SIZES, PER_SQFT, quote, resolve_sqft
+from .charity import describe as describe_charities, split_donation
+from .pricing import DEFAULT_RATE, LAWN_SIZES, RATE_CHOICES, quote, resolve_sqft
 from .routing.matrix import haversine_m
 from .nightly import run_nightly
 from .notify import TwilioClient, booking_message, notify_next_customer, send_pay_link, send_text
@@ -97,6 +98,9 @@ def _check_secret(provided: str | None, expected: str) -> None:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 
+RATE_FLOATS = {float(r) for r in RATE_CHOICES}
+
+
 def build_route_view(route: dict, settings: Settings) -> RouteView:
     start = (route["start_lat"], route["start_lng"])
     end = (route["end_lat"], route["end_lng"])
@@ -115,7 +119,7 @@ def build_route_view(route: dict, settings: Settings) -> RouteView:
             payment_method=s.get("payment_method") or "cash", payment_status=s.get("payment_status") or "unpaid",
             amount_due=s.get("amount_due"), amount_paid=s.get("amount_paid"), donation=s.get("donation") or 0.0,
             subtotal=s.get("subtotal"), tax_rate=s.get("tax_rate"), tax_amount=s.get("tax_amount"),
-            lawn_sqft=s.get("lawn_sqft"),
+            lawn_sqft=s.get("lawn_sqft"), sqft_rate=s.get("sqft_rate"),
             flat_fee=(z.mow_rate if (z := zone_by_key(s.get("zone_key"))) and s["service"] == "mowing" else None),
             # Origin omitted → navigation starts from the phone's live location.
             google_maps_url=deeplinks.google_directions(dest),
@@ -247,7 +251,10 @@ def create_app(
                        "bbox": list(z.bbox), "boxes": [list(b) for b in z.boxes]}
                       for z in SERVICE_ZONES],
             "lawn_sizes": [{"key": k, **v} for k, v in LAWN_SIZES.items()],
-            "per_sqft": float(PER_SQFT),
+            # Pay-what-you-can mowing rates; the price is the flat fee or rate × sq ft, whichever is higher.
+            "sqft_rates": [float(r) for r in RATE_CHOICES],
+            "default_sqft_rate": float(DEFAULT_RATE),
+            "charities": describe_charities(settings),
             "business_name": settings.business_name,
             "card_payments": app.state.stripe is not None,
             "google_maps_key": settings.google_maps_browser_key or None,
@@ -292,7 +299,7 @@ def create_app(
             "zone_name": zone.name if zone else None,
             "mow_rate": zone.mow_rate if zone else None,
             "matched_address": geo.formatted_address if geo.precision == "address" else body.address.strip(),
-            "message": (f"Good news: you're in our {zone.name} area. Mowing is ${zone.mow_rate:,.2f} per visit."
+            "message": (f"Good news: you're in our {zone.name} area. Mowing starts at ${zone.mow_rate:,.2f} per visit."
                         if zone else outside_message()),
         }
 
@@ -305,7 +312,7 @@ def create_app(
         zone = find_zone(geo.lat, geo.lng)
         if zone is None:
             return {"in_area": False, "message": outside_message()}
-        q = quote(zone, body.service, resolve_sqft(body.lawn_size, body.lawn_sqft))
+        q = quote(zone, body.service, resolve_sqft(body.lawn_size, body.lawn_sqft), sqft_rate=body.sqft_rate)
         return {"in_area": True, "zone_name": zone.name, "flat_fee": zone.mow_rate,
                 "service_label": SERVICE_LABELS[body.service], **q.as_dict()}
 
@@ -323,8 +330,9 @@ def create_app(
             raise HTTPException(status_code=422, detail=outside_message())
         # No size given → priced at the flat fee (the minimum); the crew sets the real size on site.
         sqft = resolve_sqft(body.lawn_size, body.lawn_sqft) if body.service is Service.MOWING else None
-        q = quote(zone, body.service, sqft)
+        q = quote(zone, body.service, sqft, sqft_rate=body.sqft_rate)
         price = float(q.subtotal) if q.subtotal is not None else None
+        rate = float(q.sqft_rate) if q.sqft_rate is not None else None
         if body.payment_method == "card" and app.state.stripe is None:
             raise HTTPException(status_code=422, detail="Card payments aren't available yet. Please choose cash.")
         pay_token = secrets.token_urlsafe(18)
@@ -338,6 +346,7 @@ def create_app(
             payment_method=body.payment_method, pay_token=pay_token, access_code=access_code,
             amount_due=float(q.total) if q.total is not None else None, lawn_sqft=sqft,
             subtotal=price, tax_rate=float(q.tax_rate), tax_amount=float(q.tax) if q.tax is not None else None,
+            sqft_rate=rate,
         )
         base = str(request.base_url).rstrip("/")
         visit_url = f"{base}/visit/{access_code}"
@@ -352,7 +361,7 @@ def create_app(
                           zone_name=zone.name, quoted_price=price, payment_method=body.payment_method,
                           pay_url=f"/pay/{pay_token}" if body.payment_method == "card" else None,
                           access_code=format_code(access_code), visit_url=f"/visit/{access_code}",
-                          lawn_sqft=sqft, subtotal=price, tax_rate=float(q.tax_rate),
+                          lawn_sqft=sqft, sqft_rate=rate, subtotal=price, tax_rate=float(q.tax_rate),
                           tax=float(q.tax) if q.tax is not None else None,
                           total=float(q.total) if q.total is not None else None)
 
@@ -380,7 +389,9 @@ def create_app(
         on_site = body.price if body.price is not None else body.amount_due
         if unpaid and zone is not None:
             if before["service"] == Service.MOWING.value and body.lawn_sqft and body.lawn_sqft != before.get("lawn_sqft"):
-                new_price = quote(zone, Service.MOWING, body.lawn_sqft)
+                # Same rate the customer chose at booking (bookings made before rates existed: the middle rate).
+                new_price = quote(zone, Service.MOWING, body.lawn_sqft,
+                                  sqft_rate=before.get("sqft_rate") if before.get("sqft_rate") in RATE_FLOATS else None)
             elif before["service"] != Service.MOWING.value and on_site is not None:
                 new_price = quote(zone, Service(before["service"]), on_site_price=on_site)
         if new_price is not None:
@@ -402,9 +413,11 @@ def create_app(
 
         payment = {"status": stop["payment_status"], "total": due}
         if cash is not None and stop["payment_status"] == "unpaid":
-            repo.mark_paid(stop["job_id"], method="cash", amount_paid=cash, donation=round(cash - due, 2))
-            payment = {"status": "paid", "method": "cash", "amount_paid": cash, "donation": round(cash - due, 2),
-                       "total": due}
+            donation = round(cash - due, 2)
+            split = split_donation(donation)
+            repo.mark_paid(stop["job_id"], method="cash", amount_paid=cash, donation=donation, donation_split=split)
+            payment = {"status": "paid", "method": "cash", "amount_paid": cash, "donation": donation,
+                       "donation_split": split, "total": due}
         elif (newly and stop["payment_method"] == "card" and stop["payment_status"] == "unpaid"
               and stop["pay_token"] and stop["amount_due"] is not None and base_url):
             # Card customers who haven't paid yet get their private pay link when the job is done.

@@ -14,6 +14,7 @@ import logging
 from fastapi import FastAPI, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from .charity import describe as describe_charities, ledger, split_donation
 from .config import Settings
 from .models import SERVICE_LABELS, Service
 from .payments import PaymentError, StripeClient, clean_donation, verify_webhook
@@ -50,6 +51,8 @@ def register_pay_routes(app: FastAPI, settings: Settings, stripe: StripeClient |
             "payment_method": p["payment_method"],
             "amount_paid": p["amount_paid"],
             "donation": p["donation"],
+            "donation_ledger": ledger(settings, p.get("donation_split")) if p.get("donation_split") else [],
+            "charities": describe_charities(settings),
             "card_enabled": stripe is not None,
         }
 
@@ -71,6 +74,7 @@ def register_pay_routes(app: FastAPI, settings: Settings, stripe: StripeClient |
                 service_date=str(p["scheduled_date"]), amount_due=p["amount_due"], donation=donation,
                 success_url=f"{base}/pay/{token}?done=1", cancel_url=f"{base}/pay/{token}",
                 subtotal=p.get("subtotal"), tax=p.get("tax_amount"), tax_rate=p.get("tax_rate"),
+                charities=describe_charities(settings),
             )
         except PaymentError as exc:
             raise HTTPException(status_code=503 if "unavailable" in str(exc) else 422, detail=str(exc))
@@ -90,11 +94,12 @@ def register_pay_routes(app: FastAPI, settings: Settings, stripe: StripeClient |
             meta = obj.get("metadata") or {}
             job_id = meta.get("job_id") or obj.get("client_reference_id")
             if obj.get("payment_status") == "paid" and job_id:
+                donation = round(int(meta.get("donation_cents") or 0) / 100, 2)
                 try:
                     newly = request.app.state.repo.mark_paid(
                         job_id, method="card",
                         amount_paid=round(int(obj.get("amount_total") or 0) / 100, 2),
-                        donation=round(int(meta.get("donation_cents") or 0) / 100, 2),
+                        donation=donation, donation_split=split_donation(donation),
                     )
                     log.info("Stripe payment for job %s recorded (new=%s)", job_id, newly)
                 except KeyError:

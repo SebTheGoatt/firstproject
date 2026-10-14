@@ -12,6 +12,7 @@ import time
 
 import httpx
 
+from .charity import split_donation
 from .config import Settings
 
 MAX_DONATION = 500.00
@@ -46,9 +47,10 @@ class StripeClient:
     def create_checkout(
         self, *, job_id: str, service_label: str, service_date: str, amount_due: float, donation: float,
         success_url: str, cancel_url: str, subtotal: float | None = None, tax: float | None = None,
-        tax_rate: float | None = None,
+        tax_rate: float | None = None, charities: list[dict] | None = None,
     ) -> dict:
-        """One Stripe line for the service, one for Texas sales tax, one for an optional donation.
+        """One Stripe line for the service, one for Texas sales tax, and one per cause an optional
+        donation goes to (so the receipt shows exactly where it went).
         Checkout offers whichever methods are on in the Stripe Dashboard (cards, Apple Pay, Google Pay…)."""
         data: dict[str, str] = {
             "mode": "payment",
@@ -68,7 +70,13 @@ class StripeClient:
         else:
             lines.append((f"{service_label} ({service_date})", amount_due))
         if donation > 0:
-            lines.append(("Donation to a veteran-owned business (not taxed). Thank you!", donation))
+            split = split_donation(donation)
+            if charities:
+                for c in charities:
+                    if split.get(c["key"], 0) > 0:
+                        lines.append((f"Donation, {c['percent']}% to {c['name']} (not taxed)", split[c["key"]]))
+            else:
+                lines.append(("Donation (not taxed). Thank you!", donation))
         for i, (name, amount) in enumerate(lines):
             data.update({
                 f"line_items[{i}][quantity]": "1",

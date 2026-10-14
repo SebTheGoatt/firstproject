@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 
 Box = tuple[float, float, float, float]  # min_lng, min_lat, max_lng, max_lat
 DEFAULT_TAX_RATE = 0.0825
+FLAT_FEE = 50.00  # mowing minimum per visit, the same in every area
 
 
 @dataclass(frozen=True)
@@ -41,7 +42,7 @@ SERVICE_ZONES: tuple[ServiceZone, ...] = (
         # Woodson's Reserve and surrounding SH-99 / Rayford Rd developments.
         # South edge at 30.10 so all of Woodson's Reserve (center ~30.116) fits.
         bbox=(-95.4200, 30.1000, -95.2800, 30.1800),
-        mow_rate=55.00,  # premium pricing for larger luxury lots
+        mow_rate=FLAT_FEE,
     ),
     ServiceZone(
         key="KLEIN_CORE",
@@ -50,7 +51,7 @@ SERVICE_ZONES: tuple[ServiceZone, ...] = (
         # west of Champion Forest Dr to just west of I-45. Stops at -95.425 so
         # it never touches the Spring corridor or takes in Old Town Spring.
         bbox=(-95.5850, 29.9950, -95.4250, 30.0900),
-        mow_rate=55.00,
+        mow_rate=FLAT_FEE,
     ),
     ServiceZone(
         key="I69_HIGH_DENSITY_SPINE",
@@ -59,7 +60,7 @@ SERVICE_ZONES: tuple[ServiceZone, ...] = (
         # West edge at -95.26 so The Canopies (~-95.234 to -95.237) is inside.
         # East edge at -95.115 so Plum Grove (~-95.109 to -95.087) belongs to Cleveland.
         bbox=(-95.2600, 30.1850, -95.1150, 30.2950),
-        mow_rate=40.00,  # clustered pricing optimized for foot-traffic speed
+        mow_rate=FLAT_FEE,
     ),
     ServiceZone(
         key="CLEVELAND_HUB",
@@ -71,7 +72,7 @@ SERVICE_ZONES: tuple[ServiceZone, ...] = (
         # Plum Grove (Liberty County, ~30.171-30.227, -95.109 to -95.087), served
         # with the Cleveland sector.
         extra_boxes=((-95.1120, 30.1650, -95.0800, 30.2350),),
-        mow_rate=45.00,
+        mow_rate=FLAT_FEE,
     ),
 )
 

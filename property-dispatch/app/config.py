@@ -55,6 +55,12 @@ class Settings(BaseSettings):
     # Used in texts sent outside a web request (e.g. the completion webhook).
     public_base_url: str = ""
 
+    # --- Donations: split 33% / 33% / 34% (see app/charity.py) ----------
+    # Rename to the specific VFW post, hospital NICU and youth program you give to.
+    charity_vfw_name: str = "Veterans of Foreign Wars (VFW)"
+    charity_nicu_name: str = "Neonatal intensive care (NICU) families"
+    charity_youth_name: str = "At-risk youth programs"
+
     # --- Stripe card payments (leave blank to take cash only) ---------
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""

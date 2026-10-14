@@ -26,8 +26,9 @@ ACTIVE_STATUSES = ("pending", "scheduled")
 CREW_PUBLIC_FIELDS = ("id", "slug", "display_name", "role_title", "bio", "years_experience", "specialties",
                       "service_branch", "accent_color", "photo_updated_at", "active", "created_at")
 PORTFOLIO_FIELDS = ("id", "member_id", "job_id", "service", "caption", "created_at")
-PAYMENT_FIELDS = ("payment_method", "payment_status", "amount_due", "donation", "amount_paid", "pay_token")
-PRICE_FIELDS = ("subtotal", "tax_rate", "tax_amount", "lawn_sqft", "zone_key")
+PAYMENT_FIELDS = ("payment_method", "payment_status", "amount_due", "donation", "amount_paid", "pay_token",
+                  "donation_split")
+PRICE_FIELDS = ("subtotal", "tax_rate", "tax_amount", "lawn_sqft", "zone_key", "sqft_rate")
 
 
 def _now_iso() -> str:
@@ -40,9 +41,11 @@ def _money(v: Any) -> float | None:
 
 def _price(j: dict) -> dict:
     """Price breakdown of a booking: amount_due (the total) = subtotal + tax_amount."""
-    rate = j.get("tax_rate")
+    rate, per_sqft = j.get("tax_rate"), j.get("sqft_rate")
     return {"subtotal": _money(j.get("subtotal")), "tax_rate": float(rate) if rate is not None else None,
-            "tax_amount": _money(j.get("tax_amount")), "lawn_sqft": j.get("lawn_sqft"), "zone_key": j.get("zone_key")}
+            "tax_amount": _money(j.get("tax_amount")), "lawn_sqft": j.get("lawn_sqft"), "zone_key": j.get("zone_key"),
+            "sqft_rate": float(per_sqft) if per_sqft is not None else None,
+            "donation_split": j.get("donation_split") or None}
 
 
 def _owner_job(j: dict, cust: dict, stop: dict | None, crew_name: str | None) -> dict:
@@ -83,7 +86,8 @@ class Repository(Protocol):
                    payment_method: str = "cash", pay_token: str | None = None,
                    access_code: str | None = None, amount_due: float | None = None,
                    lawn_sqft: int | None = None, subtotal: float | None = None,
-                   tax_rate: float | None = None, tax_amount: float | None = None) -> dict: ...
+                   tax_rate: float | None = None, tax_amount: float | None = None,
+                   sqft_rate: float | None = None) -> dict: ...
     def list_routable_jobs(self, day: date) -> list[Job]: ...
     def save_route(self, *, day: date, start: tuple[float, float], end: tuple[float, float],
                    total_distance_m: int, total_duration_s: int, matrix_source: str,
@@ -100,7 +104,8 @@ class Repository(Protocol):
     def set_price(self, job_id: str, *, subtotal: float, tax_amount: float, total: float,
                   lawn_sqft: int | None = None) -> None: ...
     def record_checkout(self, job_id: str, session_id: str) -> None: ...
-    def mark_paid(self, job_id: str, *, method: str, amount_paid: float, donation: float) -> bool: ...
+    def mark_paid(self, job_id: str, *, method: str, amount_paid: float, donation: float,
+                  donation_split: dict | None = None) -> bool: ...
     # Crew
     def list_crew(self, include_inactive: bool = False) -> list[dict]: ...
     def get_crew(self, member_id: str, *, with_secret: bool = False) -> dict | None: ...
@@ -182,7 +187,8 @@ class SupabaseRepository:
 
     def create_job(self, *, name, phone, address, geo, service, scheduled_date, service_minutes,
                    zone_key, quoted_price, payment_method="cash", pay_token=None, access_code=None,
-                   amount_due=None, lawn_sqft=None, subtotal=None, tax_rate=None, tax_amount=None) -> dict:
+                   amount_due=None, lawn_sqft=None, subtotal=None, tax_rate=None, tax_amount=None,
+                   sqft_rate=None) -> dict:
         cust = (
             self.sb.table("customers")
             .upsert({"name": name, "phone": phone}, on_conflict="phone").execute()
@@ -200,6 +206,7 @@ class SupabaseRepository:
             "quoted_price": quoted_price,
             "amount_due": amount_due if amount_due is not None else quoted_price,
             "lawn_sqft": lawn_sqft, "subtotal": subtotal, "tax_rate": tax_rate, "tax_amount": tax_amount,
+            "sqft_rate": sqft_rate,
             "payment_method": payment_method,
             "pay_token": pay_token,
             "access_code": access_code,
@@ -315,11 +322,12 @@ class SupabaseRepository:
     def record_checkout(self, job_id: str, session_id: str) -> None:
         self.sb.table("jobs").update({"stripe_session_id": session_id}).eq("id", job_id).execute()
 
-    def mark_paid(self, job_id: str, *, method: str, amount_paid: float, donation: float) -> bool:
+    def mark_paid(self, job_id: str, *, method: str, amount_paid: float, donation: float,
+                  donation_split: dict | None = None) -> bool:
         rows = (
             self.sb.table("jobs").update({
                 "payment_status": "paid", "payment_method": method, "amount_paid": amount_paid,
-                "donation": donation, "paid_at": _now_iso(),
+                "donation": donation, "donation_split": donation_split or None, "paid_at": _now_iso(),
             }).eq("id", job_id).eq("payment_status", "unpaid").execute()
         ).data
         return bool(rows)
@@ -385,7 +393,8 @@ class SupabaseRepository:
 
     # ---------- Owner dashboard + customer visit ----------
     JOB_COLS = ("id, address, service, status, zone_key, scheduled_date, created_at, payment_method, payment_status,"
-                " amount_due, amount_paid, donation, access_code, pay_token, subtotal, tax_rate, tax_amount, lawn_sqft")
+                " amount_due, amount_paid, donation, access_code, pay_token, subtotal, tax_rate, tax_amount, lawn_sqft,"
+                " sqft_rate, donation_split")
 
     @staticmethod
     def _one(v):
@@ -460,7 +469,8 @@ class MemoryRepository:
 
     def create_job(self, *, name, phone, address, geo, service, scheduled_date, service_minutes,
                    zone_key, quoted_price, payment_method="cash", pay_token=None, access_code=None,
-                   amount_due=None, lawn_sqft=None, subtotal=None, tax_rate=None, tax_amount=None) -> dict:
+                   amount_due=None, lawn_sqft=None, subtotal=None, tax_rate=None, tax_amount=None,
+                   sqft_rate=None) -> dict:
         with self._lock:
             cust = next((c for c in self.customers.values() if c["phone"] == phone), None)
             if cust is None:
@@ -476,6 +486,7 @@ class MemoryRepository:
                 "payment_method": payment_method, "payment_status": "unpaid",
                 "amount_due": amount_due if amount_due is not None else quoted_price,
                 "lawn_sqft": lawn_sqft, "subtotal": subtotal, "tax_rate": tax_rate, "tax_amount": tax_amount,
+                "sqft_rate": sqft_rate, "donation_split": None,
                 "donation": 0.0, "amount_paid": None, "paid_at": None, "pay_token": pay_token,
                 "access_code": access_code,
                 "stripe_session_id": None,
@@ -586,7 +597,7 @@ class MemoryRepository:
             "job_id": j["id"], "service": j["service"], "scheduled_date": j["scheduled_date"],
             "address": j["address"], "status": j["status"], "customer_name": self.customers[j["customer_id"]]["name"],
             "paid_at": j["paid_at"], "stripe_session_id": j["stripe_session_id"],
-            **{k: j[k] for k in PAYMENT_FIELDS if k != "pay_token"},
+            **{k: j.get(k) for k in PAYMENT_FIELDS if k != "pay_token"},
             **_price(j),
         }
 
@@ -600,13 +611,14 @@ class MemoryRepository:
     def record_checkout(self, job_id: str, session_id: str) -> None:
         self.jobs[job_id]["stripe_session_id"] = session_id
 
-    def mark_paid(self, job_id: str, *, method: str, amount_paid: float, donation: float) -> bool:
+    def mark_paid(self, job_id: str, *, method: str, amount_paid: float, donation: float,
+                  donation_split: dict | None = None) -> bool:
         with self._lock:
             j = self.jobs[job_id]
             if j["payment_status"] != "unpaid":
                 return False
             j.update(payment_status="paid", payment_method=method, amount_paid=amount_paid,
-                     donation=donation, paid_at=_now_iso())
+                     donation=donation, donation_split=donation_split or None, paid_at=_now_iso())
             return True
 
     # ---------- Crew ----------

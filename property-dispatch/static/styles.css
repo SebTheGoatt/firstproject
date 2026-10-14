@@ -563,6 +563,25 @@ label.check input { width: 18px; height: 18px; }
 .sizes label small { color: var(--muted); font-size: 0.78rem; }
 .sizes input:checked + label { border-color: var(--brand); background: var(--brand-soft); }
 .sizes input:focus-visible + label { outline: 3px solid color-mix(in srgb, var(--brand) 45%, transparent); }
+
+/* Pay-what-you-can rate picker */
+#rate-fieldset { margin-bottom: 12px; }
+.rates { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.rates input { position: absolute; opacity: 0; pointer-events: none; }
+.rates label { margin: 0; display: grid; gap: 2px; text-align: center; padding: 10px 6px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); cursor: pointer; font-weight: 500; }
+.rates label span { font-size: 0.85rem; color: var(--muted); }
+.rates input:checked + label { border-color: var(--brand); background: var(--brand-soft); }
+.rates input:checked + label span { color: var(--text); }
+.rates input:focus-visible + label { outline: 3px solid color-mix(in srgb, var(--brand) 45%, transparent); }
+
+/* Where donations go */
+.donation-split { margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--brand-soft); font-size: 0.9rem; }
+.donation-split strong { display: block; margin-bottom: 4px; }
+.ledger-row { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; }
+.ledger-row span { color: var(--muted); }
+.donation-ledger { margin: 12px 0; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.donation-ledger strong { display: block; margin-bottom: 6px; }
+.donation-line { margin-top: 6px; color: var(--brand); }
 .exact-row { margin: 12px 0 4px; }
 .sqft-input { display: flex; align-items: center; gap: 8px; }
 .sqft-input input { max-width: 160px; }

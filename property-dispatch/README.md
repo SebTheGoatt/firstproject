@@ -106,15 +106,19 @@ on my public profile" to add the after photo to their public portfolio.
 
 ## Pricing and Texas sales tax
 
-**Mowing price** = the area's flat fee **or** $0.015 per square foot of lawn, whichever is
-higher. The flat fee is the minimum visit charge.
+**Mowing price** = **$50** (the minimum visit, the same in every area) **or** the customer's
+chosen rate × square feet of lawn, whichever is higher. Rates are **pay-what-you-can**: the
+customer picks **0.9¢, 1.0¢ or 1.1¢ per sq ft** (same service at every rate; 1.0¢ is preselected).
 
-| Area | Flat fee (minimum) | Example: 8,000 sq ft lawn |
-|---|---|---|
-| Spring / Woodson's Reserve | $55 | $120.00 |
-| Klein | $55 | $120.00 |
-| New Caney & Splendora | $40 | $120.00 |
-| Cleveland, Plum Grove & Grand Oaks Reserve | $45 | $120.00 |
+| Lawn | 0.9¢ | 1.0¢ | 1.1¢ |
+|---|---|---|---|
+| 4,500 sq ft (Medium) | $50.00 | $50.00 | $50.00 |
+| 8,000 sq ft (Large) | $72.00 | $80.00 | $88.00 |
+| 12,500 sq ft (X-Large) | $112.50 | $125.00 | $137.50 |
+
+The rate is saved on the booking, so if the crew corrects the lawn size on site the price is
+redone at the rate the customer chose. Rates live in `app/models.py` (`SQFT_RATE_CHOICES`);
+the $50 minimum is `FLAT_FEE` in `app/zones.py`.
 
 - **Lawn size at booking.** Customers pick Small (~2,500 sq ft), Medium (~4,500), Large
   (~8,000) or X-Large (~12,500), or type an exact size. They see the price, tax and total
@@ -140,6 +144,22 @@ higher. The flat fee is the minimum visit charge.
 
 ## Pay your way (cash or card) and donations
 
+**Where donations go.** Every donation is split **33% Veterans of Foreign Wars, 33% NICU
+(neonatal intensive care) families, 34% at-risk youth programs** (`app/charity.py`). The split
+is worked out to the cent when the donation is paid (leftover cents go to the largest
+remainders, so the shares always add up exactly) and saved on the job, so the ledger never
+changes later. Customers see the split on the booking page, live on the pay page ("Where your
+$10.00 goes"), as separate lines on their Stripe receipt, and on their visit page. The crew's
+finish screen previews the split when cash is over the total, and the owner dashboard shows
+**Donations to pass on** per cause for each day.
+
+- Rename the causes to the specific organizations you give to (no code change):
+  `CHARITY_VFW_NAME`, `CHARITY_NICU_NAME`, `CHARITY_YOUTH_NAME` in Render's environment.
+- Donations are collected by the business and passed on, so they aren't tax-deductible for
+  the customer (the pay page says so). Keep records of each payout to match the ledger, and
+  ask the VFW post / hospital before using their name publicly.
+- Donations recorded before this feature have no split (they went to the business).
+
 At booking, customers choose **Cash to the crew** or **Card in the app**.
 
 - **Cash:** when finishing a job the crew enters the cash they were handed.
@@ -151,8 +171,6 @@ At booking, customers choose **Cash to the crew** or **Card in the app**.
   Stripe's signed webhook marks the job paid.
 - **Quoted services** (bin cleaning, gutters): the crew enters the final price when
   finishing; card customers are then texted their pay link.
-- Donations are recorded per job. They go to the business and **aren't tax-deductible**,
-  and the pay page says so.
 
 **Turning on card payments** (until then the card option stays hidden):
 1. Create a Stripe account and finish its business verification.
@@ -243,7 +261,8 @@ Without Twilio credentials the "next customer" text is logged instead of sent.
 4. **Already set up?** Run only the migrations you haven't run yet, once each and in order:
    open each new file in `supabase/migrations/` (for example
    `20261019000000_access_codes_and_job_photos.sql`, then
-   `20261020000000_pricing_and_sales_tax.sql`), paste it into the SQL Editor, and click **Run**.
+   `20261020000000_pricing_and_sales_tax.sql`, then
+   `20261021000000_rate_choice_and_donation_split.sql`), paste it into the SQL Editor, and click **Run**.
 
 ### 2. Twilio (SMS)
 1. Buy a local (281/832/346) number in the Twilio console.
@@ -318,7 +337,7 @@ Updates that aren't completions are ignored.
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | GET | `/api/booking-info` | none | earliest/latest bookable dates, services |
-| POST | `/api/quote` | none | price, tax and total for an address, service and lawn size |
+| POST | `/api/quote` | none | price, tax and total for an address, service, lawn size and chosen rate |
 | POST | `/api/jobs` | none | `409` frozen/full · `422` bad input/unknown address · `503` geocoder down |
 | GET | `/api/routes/{YYYY-MM-DD}` | `X-Crew-Token` | stops in order with ETAs and map URLs |
 | POST | `/api/stops/{id}/complete` | `X-Crew-Token` | idempotent; returns notification result |

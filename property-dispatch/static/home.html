@@ -305,7 +305,7 @@
       drawAreaMap(info.zones);
       if (info.zones.length) {
         const low = Math.min(...info.zones.map((z) => z.mow_rate));
-        document.getElementById("mow-from").textContent = `From ${money(low)} per mow (1.5¢/sq ft for larger lawns) + tax`;
+        document.getElementById("mow-from").textContent = `From ${money(low)} per mow + tax. Larger lawns: you pick 0.9¢, 1.0¢ or 1.1¢ per sq ft`;
       }
     }).catch(() => {
       document.getElementById("next-day").textContent = "See the booking page";
