@@ -140,9 +140,12 @@ Without Twilio credentials the "next customer" text is logged instead of sent.
 4. On the crew's phones, open `https://<your-app>.onrender.com/crew` → enter the code →
    Share → **Add to Home Screen**.
 
-**Why the cron runs twice:** cron schedules are in UTC, and 8 PM Central is 01:00 UTC
-during daylight time but 02:00 UTC in winter. The job is scheduled at both hours,
-and `app/nightly.py` exits unless it's actually 20:00 in `BUSINESS_TIMEZONE`.
+**Why the cron runs hourly 01:00-04:00 UTC:** cron schedules are in UTC, and 8 PM
+Central is 01:00 UTC during daylight time but 02:00 UTC in winter. Each run exits
+before 8 PM local, builds tomorrow's route at or after it, and does nothing if the
+route already exists. The first run after 8 PM does the work; the later ones catch
+up if that run was missed (host outage or maintenance). The last run is 11 PM
+Central at the latest, so it never crosses midnight.
 
 The app refuses to start in `supabase` mode if any of the three secrets is
 empty or still `change-me`.
