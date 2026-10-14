@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     solver_time_limit_s: int = 10
 
     # --- Geocoding (Nominatim) ----------------------------------------
+    census_geocoder_url: str = "https://geocoding.geo.census.gov/geocoder"
     nominatim_url: str = "https://nominatim.openstreetmap.org"
     # Nominatim's usage policy requires an identifying User-Agent with a real
     # contact; placeholder domains like example.com are rejected with 403.

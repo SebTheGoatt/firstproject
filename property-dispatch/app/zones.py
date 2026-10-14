@@ -33,8 +33,9 @@ SERVICE_ZONES: tuple[ServiceZone, ...] = (
     ServiceZone(
         key="I69_HIGH_DENSITY_SPINE",
         name="New Caney & Splendora High-Density Spine",
-        # The Canopies, Gemini, and Porters Mill developments
-        bbox=(-95.2300, 30.1850, -95.0900, 30.2950),
+        # The Canopies, Gemini, and Porters Mill developments.
+        # West edge at -95.26 so The Canopies (~-95.234 to -95.237) is inside.
+        bbox=(-95.2600, 30.1850, -95.0900, 30.2950),
         mow_rate=40.00,  # clustered pricing optimized for foot-traffic speed
     ),
     ServiceZone(

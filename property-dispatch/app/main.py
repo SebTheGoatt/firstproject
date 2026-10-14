@@ -58,7 +58,9 @@ def build_route_view(route: dict, settings: Settings) -> RouteView:
     end = (route["end_lat"], route["end_lng"])
     stops = []
     for s in route["stops"]:
-        dest = (s["lat"], s["lng"])
+        # Navigate by the customer's full address so Maps goes to the house,
+        # not to the geocoder's point (which may only be the street).
+        dest = s["address"] or (s["lat"], s["lng"])
         stops.append(StopView(
             stop_id=s["stop_id"], job_id=s["job_id"], sequence=s["sequence"],
             customer_name=s["customer_name"], phone=s["phone"], address=s["address"],
@@ -70,7 +72,7 @@ def build_route_view(route: dict, settings: Settings) -> RouteView:
             google_maps_url=deeplinks.google_directions(dest),
             apple_maps_url=deeplinks.apple_directions(dest),
         ))
-    remaining = [(s.lat, s.lng) for s in stops if s.completed_at is None]
+    remaining = [s.address or (s.lat, s.lng) for s in stops if s.completed_at is None]
     # Before the first stop is done the crew is at the base; afterwards use live location.
     origin = start if all(s.completed_at is None for s in stops) else None
     return RouteView(
@@ -200,8 +202,11 @@ def create_app(
             service_minutes=SERVICE_MINUTES[body.service],
             zone_key=zone.key, quoted_price=price,
         )
+        # Show the customer the house-level match when we have one; otherwise echo
+        # their own address back (a street-level match would drop their house number).
+        shown = geo.formatted_address if geo.precision == "address" else body.address
         return JobCreated(id=job["id"], scheduled_date=body.scheduled_date, service=body.service,
-                          formatted_address=geo.formatted_address, lat=geo.lat, lng=geo.lng,
+                          formatted_address=shown, lat=geo.lat, lng=geo.lng,
                           zone_name=zone.name, quoted_price=price)
 
     # ---------- Crew dispatch -----------------------------------------

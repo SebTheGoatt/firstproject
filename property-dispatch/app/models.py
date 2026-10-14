@@ -52,6 +52,13 @@ class JobRequest(BaseModel):
             raise ValueError("Required")
         return v
 
+    @field_validator("address")
+    @classmethod
+    def needs_house_number(cls, v: str) -> str:
+        if not re.match(r"^\s*\d+", v):
+            raise ValueError("Please include your house number, e.g. 4726 Whispering Rock Ln, Spring, TX 77388")
+        return v
+
     @field_validator("phone")
     @classmethod
     def phone_e164(cls, v: str) -> str:
@@ -73,6 +80,7 @@ class GeoPoint(BaseModel):
     lat: float
     lng: float
     formatted_address: str
+    precision: str = "address"  # "address" = the house itself; "street" = somewhere on the street
 
 
 class Job(BaseModel):

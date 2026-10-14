@@ -14,15 +14,18 @@ Apple Maps:
 from urllib.parse import urlencode
 
 LatLng = tuple[float, float]
+Place = LatLng | str  # coordinates, or a street address the Maps app looks up itself
 
 GOOGLE_MAX_WAYPOINTS = 9
 
 
-def _fmt(p: LatLng) -> str:
+def _fmt(p: Place) -> str:
+    if isinstance(p, str):
+        return " ".join(p.replace("|", " ").split())  # "|" separates Google waypoints
     return f"{p[0]:.6f},{p[1]:.6f}"
 
 
-def google_directions(destination: LatLng, origin: LatLng | None = None, waypoints: list[LatLng] | None = None) -> str:
+def google_directions(destination: Place, origin: Place | None = None, waypoints: list[Place] | None = None) -> str:
     params = {"api": "1", "destination": _fmt(destination), "travelmode": "driving"}
     if origin:
         params["origin"] = _fmt(origin)  # omitted → device's current location
@@ -31,14 +34,14 @@ def google_directions(destination: LatLng, origin: LatLng | None = None, waypoin
     return "https://www.google.com/maps/dir/?" + urlencode(params, safe=",|")
 
 
-def apple_directions(destination: LatLng, origin: LatLng | None = None) -> str:
+def apple_directions(destination: Place, origin: Place | None = None) -> str:
     params = {"daddr": _fmt(destination), "dirflg": "d"}
     if origin:
         params["saddr"] = _fmt(origin)
     return "https://maps.apple.com/?" + urlencode(params, safe=",")
 
 
-def google_full_route(origin: LatLng | None, stops: list[LatLng], end: LatLng) -> list[str]:
+def google_full_route(origin: Place | None, stops: list[Place], end: Place) -> list[str]:
     """Split the day into Google Maps links of ≤9 waypoints each.
 
     `origin=None` starts the first segment from the device's live location.

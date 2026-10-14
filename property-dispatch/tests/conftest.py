@@ -21,7 +21,7 @@ ADDRESSES = {
 
 class FakeGeocoder:
     def geocode(self, address: str) -> GeoPoint:
-        key = address.split()[0]
+        key = address.split()[1]  # "100 A Example Rd" → "A"
         lat, lng = ADDRESSES[key]
         return GeoPoint(lat=lat, lng=lng, formatted_address=f"{address}, Spring, TX")
 

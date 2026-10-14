@@ -73,7 +73,7 @@ class SupabaseRepository:
             "notified_at": row["notified_at"],
             "customer_name": cust["name"],
             "phone": cust["phone"],
-            "address": job["formatted_address"] or job["address"],
+            "address": job["address"],
             "lat": job["lat"],
             "lng": job["lng"],
             "service": job["service"],
@@ -255,7 +255,7 @@ class MemoryRepository:
             "stop_id": s["id"], "route_id": s["route_id"], "job_id": s["job_id"], "sequence": s["sequence"],
             "leg_distance_m": s["leg_distance_m"], "leg_duration_s": s["leg_duration_s"], "eta": s["eta"],
             "completed_at": s["completed_at"], "notified_at": s["notified_at"],
-            "customer_name": c["name"], "phone": c["phone"], "address": j["formatted_address"] or j["address"],
+            "customer_name": c["name"], "phone": c["phone"], "address": j["address"],
             "lat": j["lat"], "lng": j["lng"], "service": j["service"],
         }
 
