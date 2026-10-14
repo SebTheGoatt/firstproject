@@ -104,8 +104,8 @@
         $("tax").textContent = money(info.tax);
       }
       if (info.charity_amount > 0) {
-        $("giving").textContent = `★ Your ${info.package_label || ""} package gives ${money(info.charity_amount)} of this price ` +
-          `(${Math.round((info.charity_rate || 0) * 100)}%) to the VFW, NICU families and at-risk youth. It's included in your price, not added on.`;
+        $("giving").textContent = `★ Your order generates ${money(info.charity_amount)} for local VFW, NICU & at-risk youth programs ` +
+          `(${info.package_label ? info.package_label + ", " : ""}${Math.round((info.charity_rate || 0) * 100)}% of your price). It's included in your total, not added on.`;
         show("giving");
       }
       ["paid", "pending-price", "no-card", "pay-form", "confirming"].forEach((id) => show(id, false));

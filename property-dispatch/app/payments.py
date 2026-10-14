@@ -67,8 +67,8 @@ class StripeClient:
         service_name = f"{service_label} ({service_date})"
         if package_label and charity_amount:
             # The package's giving is part of the price, so it's named on the line rather than charged again.
-            service_name = (f"{service_label}, {package_label} package ({service_date}): includes "
-                            f"${charity_amount:,.2f} ({charity_rate * 100:g}%) to charity")
+            service_name = (f"{service_label}, {package_label} ({service_date}): generates "
+                            f"${charity_amount:,.2f} ({charity_rate * 100:g}%) for VFW, NICU & youth programs")
         if subtotal is not None and tax is not None and abs(subtotal + tax - amount_due) < 0.005:
             lines.append((service_name, subtotal))
             if tax > 0:

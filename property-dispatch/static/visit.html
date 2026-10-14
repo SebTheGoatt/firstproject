@@ -181,7 +181,7 @@
       if (p.charity_amount > 0) {
         const led = (p.giving_ledger || []).filter((c) => c.amount > 0);
         pay.append(el("div", { class: "donation-split" },
-          el("strong", {}, `${money(p.charity_amount)} of your price goes to charity${p.package_label ? ` (${p.package_label} package)` : ""}`),
+          el("strong", {}, `Your order generates ${money(p.charity_amount)}${p.package_label ? ` (${p.package_label})` : ""}`),
           ...led.map((c) => el("div", { class: "ledger-row" }, el("span", {}, `${c.name} (${c.percent}%)`), el("b", {}, money(c.amount))))));
       }
 

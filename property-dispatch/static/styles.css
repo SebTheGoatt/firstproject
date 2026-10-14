@@ -591,6 +591,15 @@ label.check input { width: 18px; height: 18px; }
 .sqft-input { display: flex; align-items: center; gap: 8px; }
 .sqft-input input { max-width: 160px; }
 .price-box { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+/* Order summary + "Your order generates" charity box */
+.order-summary { border-top: 6px solid var(--brand); background: var(--brand-soft); padding: 16px 16px 14px; }
+.order-title { margin: 0 0 6px; font-size: 1.05rem; color: var(--brand); }
+.order-summary .price-lines div { border-bottom-color: color-mix(in srgb, var(--brand) 25%, transparent); }
+.impact-box { margin-top: 14px; padding: 14px; text-align: center; border-radius: 10px; background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--brand) 35%, transparent); display: grid; gap: 2px; }
+.impact-kicker { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--brand); }
+.impact-amount { font-size: 1.7rem; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+.impact-for { font-size: 0.82rem; color: var(--muted); }
 .price-box > p { margin: 0; }
 .price-lines { margin: 0; display: grid; }
 .price-lines div { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px dashed var(--border); }

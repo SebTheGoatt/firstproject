@@ -85,16 +85,22 @@
       </section>
 
       <section class="step">
-        <h2 class="step-title"><span>4</span>Your price</h2>
+        <h2 class="step-title"><span>4</span>Your impact &amp; price</h2>
         <fieldset id="rate-fieldset">
-          <legend>Choose your package</legend>
+          <legend>Select your impact level</legend>
           <div class="rates packages" id="rates" role="radiogroup"></div>
-          <p class="hint">Same great service in every package: $50 per visit plus a per-sq-ft rate.
-            Higher packages cost a little more and give a bigger share of your price to the VFW, NICU families and at-risk youth.</p>
+          <p class="hint">Same great service at every level: $50 per visit plus a per-sq-ft rate.
+            Higher impact levels cost a little more and give a bigger share of your price to the VFW, NICU families and at-risk youth.</p>
         </fieldset>
-        <div class="price-box" id="price-box" aria-live="polite">
+        <div class="price-box order-summary" id="price-box" aria-live="polite">
+          <h3 class="order-title">Order summary</h3>
           <p class="muted" id="price-empty">Enter your address to see your price.</p>
           <dl class="price-lines" id="price-lines" hidden></dl>
+          <div class="impact-box" id="impact-box" hidden>
+            <span class="impact-kicker">Your order generates</span>
+            <strong class="impact-amount" id="impact-amount"></strong>
+            <span class="impact-for">for local VFW, NICU &amp; at-risk youth programs</span>
+          </div>
           <p class="hint" id="price-note" hidden></p>
         </div>
       </section>
@@ -157,9 +163,9 @@
     const sqftInput = document.getElementById("lawn-sqft");
     let lawnSize = "medium", lastQuote = null, flatFee = 50, pkgKey = "standard", lastSqft = null;
     let packages = [
-      { key: "standard", label: "Standard", sqft_rate: 0.009, charity_rate: 0.02 },
-      { key: "supporter", label: "Supporter", sqft_rate: 0.01, charity_rate: 0.07 },
-      { key: "hero", label: "Hero", sqft_rate: 0.011, charity_rate: 0.12 },
+      { key: "standard", label: "Standard Tier", sqft_rate: 0.009, charity_rate: 0.02 },
+      { key: "supporter", label: "Community Supporter", sqft_rate: 0.01, charity_rate: 0.07 },
+      { key: "hero", label: "Impact Champion", sqft_rate: 0.011, charity_rate: 0.12 },
     ];
     const cent = (r) => `${(r * 100).toFixed(1)}¢`;
     const pct = (r) => `${(r * 100).toFixed(2).replace(/\.?0+$/, "")}%`;
@@ -173,6 +179,7 @@
         return;
       }
       priceEmpty.hidden = true; priceLines.hidden = false; priceNote.hidden = false;
+      document.getElementById("impact-box").hidden = !(q.charity_amount > 0);
       const row = (label, value, cls = "") => {
         const d = document.createElement("div"); if (cls) d.className = cls;
         const dt = document.createElement("dt"); dt.textContent = label;
@@ -194,13 +201,13 @@
       }
       const turf = Math.round((q.subtotal - q.base_fee) * 100) / 100;
       priceLines.replaceChildren(
-        row(`Mowing, ${q.package_label} package`, ""),
-        row("Base trip fee", money(q.base_fee), "sub"),
-        row(`${q.lawn_sqft.toLocaleString()} sq ft × ${cent(q.sqft_rate)}`, money(turf), "sub"),
+        row("Base setup / trip fee", money(q.base_fee)),
+        row(`Mowing care · ${q.lawn_sqft.toLocaleString()} sq ft × ${cent(q.sqft_rate)}`, money(turf)),
         row(`Texas sales tax (${pct(q.tax_rate)})`, money(q.tax)),
-        row("Total", money(q.total), "total"));
-      priceNote.textContent = `★ ${money(q.charity_amount)} of your price (${Math.round(q.charity_rate * 100)}%) goes to the VFW, ` +
-        "NICU families and at-risk youth. It's included in your price, not added on. Your crew confirms the lawn size on site; the price only changes if it's different.";
+        row("Total amount due", money(q.total), "total"));
+      document.getElementById("impact-amount").textContent = money(q.charity_amount);
+      priceNote.textContent = `${q.package_label}: ${Math.round(q.charity_rate * 100)}% of your price goes to charity. ` +
+        "It's included in your total, not added on. Your crew confirms the lawn size on site; the price only changes if it's different.";
     }
 
     // Packages: each card shows this lawn's price and how much of it goes to charity.
@@ -399,7 +406,7 @@
         const z = document.createElement("div");
         z.textContent = body.total != null
           ? `${money(body.subtotal)} + ${money(body.tax)} Texas sales tax = ${money(body.total)} total.` +
-            (body.charity_amount ? ` Your ${body.package[0].toUpperCase() + body.package.slice(1)} package gives ${money(body.charity_amount)} to charity. Thank you!` : "")
+            (body.charity_amount ? ` Your order generates ${money(body.charity_amount)} for local VFW, NICU & at-risk youth programs. Thank you!` : "")
           : `${body.zone_name}. Your crew sets the price on site; Texas sales tax is added.`;
         ok.append(h, p, z);
         if (body.access_code) {

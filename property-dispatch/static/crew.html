@@ -462,7 +462,7 @@
       // The customer's package: $base + rate × sq ft, and a share of the price to charity.
       const PKG = { standard: [0.009, 0.02], supporter: [0.01, 0.07], hero: [0.011, 0.12] };
       const [perSqft, giving] = PKG[s.package] || (s.sqft_rate ? [s.sqft_rate, s.charity_rate || 0] : PKG.standard);
-      const pkgName = s.package ? s.package[0].toUpperCase() + s.package.slice(1) : "Standard";
+      const pkgName = { standard: "Standard Tier", supporter: "Community Supporter", hero: "Impact Champion" }[s.package] || "Standard Tier";
       const donationLine = el("p", { class: "hint donation-line", hidden: true });
       let cashEdited = false;
       cashIn?.addEventListener("input", () => { cashEdited = true; });
@@ -502,7 +502,7 @@
       const cancelBtn = el("button", { class: "btn", type: "button" }, "Cancel");
       const panel = el("form", { class: "finish" },
         el("strong", {}, `Finishing stop ${s.sequence}: ${s.customer_name}`),
-        sqftIn ? el("div", { class: "field" }, el("label", { for: sqftIn.id }, `Lawn size (sq ft): confirm or correct · ${pkgName} package, ${(perSqft * 100).toFixed(1)}¢/sq ft`), sqftIn) : null,
+        sqftIn ? el("div", { class: "field" }, el("label", { for: sqftIn.id }, `Lawn size (sq ft): confirm or correct · ${pkgName}, ${(perSqft * 100).toFixed(1)}¢/sq ft`), sqftIn) : null,
         needsPrice ? el("div", { class: "field" }, el("label", { for: priceIn.id }, "Price before tax ($)"), priceIn) : null,
         totalLine,
         isCash ? el("div", { class: "field" }, el("label", { for: cashIn.id }, "Cash collected ($)"), cashIn,

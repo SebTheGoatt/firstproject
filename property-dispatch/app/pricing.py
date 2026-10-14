@@ -23,9 +23,9 @@ from .zones import ServiceZone
 
 # key → per-square-foot rate and the share of the price given to charity.
 PACKAGES: dict[str, dict] = {
-    "standard":  {"label": "Standard",  "rate": Decimal("0.009"), "giving": Decimal("0.02")},
-    "supporter": {"label": "Supporter", "rate": Decimal("0.010"), "giving": Decimal("0.07")},
-    "hero":      {"label": "Hero",      "rate": Decimal("0.011"), "giving": Decimal("0.12")},
+    "standard":  {"label": "Standard Tier",       "rate": Decimal("0.009"), "giving": Decimal("0.02")},
+    "supporter": {"label": "Community Supporter", "rate": Decimal("0.010"), "giving": Decimal("0.07")},
+    "hero":      {"label": "Impact Champion",     "rate": Decimal("0.011"), "giving": Decimal("0.12")},
 }
 DEFAULT_PACKAGE = "standard"
 MIN_SQFT, MAX_SQFT = 200, 87_120  # up to 2 acres; bigger jobs are quoted in person

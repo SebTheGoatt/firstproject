@@ -112,9 +112,9 @@ comes out of what the business keeps; the customer pays nothing extra for it.
 
 | Package | Rate | Given to charity | 3,500 sq ft | 8,000 sq ft |
 |---|---|---|---|---|
-| Standard (default) | 0.9¢ / sq ft | 2% of the price | $81.50 ($1.63 to charity) | $122.00 ($2.44) |
-| Supporter | 1.0¢ / sq ft | 7% | $85.00 ($5.95) | $130.00 ($9.10) |
-| Hero | 1.1¢ / sq ft | 12% | $88.50 ($10.62) | $138.00 ($16.56) |
+| Standard Tier (default) | 0.9¢ / sq ft | 2% of the price | $81.50 ($1.63 to charity) | $122.00 ($2.44) |
+| Community Supporter | 1.0¢ / sq ft | 7% | $85.00 ($5.95) | $130.00 ($9.10) |
+| Impact Champion | 1.1¢ / sq ft | 12% | $88.50 ($10.62) | $138.00 ($16.56) |
 
 Example: 3,500 sq ft on Supporter = $50 + $35 = **$85.00** + $7.01 tax = **$92.01**. $5.95 goes to
 charity and the business keeps $79.05. Sales tax is on the whole $85 (the charity share is part

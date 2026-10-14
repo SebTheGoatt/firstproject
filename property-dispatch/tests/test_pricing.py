@@ -95,7 +95,7 @@ def test_live_quote_endpoint(client):
                                         "package": "supporter"}).json()
     assert (r["in_area"], r["subtotal"], r["tax"], r["total"], r["charity_amount"], r["business_net"]) == \
         (True, 85.0, 7.01, 92.01, 5.95, 79.05)
-    assert (r["package_label"], r["sqft_rate"], r["charity_rate"], r["base_fee"]) == ("Supporter", 0.01, 0.07, 50.0)
+    assert (r["package_label"], r["sqft_rate"], r["charity_rate"], r["base_fee"]) == ("Community Supporter", 0.01, 0.07, 50.0)
     bad = client.post("/api/quote", json={"address": "100 A Example Rd", "service": "mowing", "package": "gold"})
     assert bad.status_code == 422
     r = client.post("/api/quote", json={"address": "100 A Example Rd", "service": "gutters"}).json()
@@ -145,11 +145,11 @@ def test_stripe_checkout_lines_split_price_tax_and_untaxed_donations_per_charity
     StripeClient(settings, httpx.Client(transport=httpx.MockTransport(handler))).create_checkout(
         job_id="j1", service_label="Mowing", service_date="2026-10-15", amount_due=73.07, donation=10.0,
         success_url="https://x/ok", cancel_url="https://x/no", subtotal=67.5, tax=5.57, tax_rate=0.0825,
-        charities=describe(settings), package_label="Supporter", charity_rate=0.07, charity_amount=4.73)
+        charities=describe(settings), package_label="Community Supporter", charity_rate=0.07, charity_amount=4.73)
     lines = sorted((k, v) for k, v in sent.items() if k.endswith("[unit_amount]") or k.endswith("[name]"))
     assert sent["line_items[0][price_data][unit_amount]"] == "6750"
-    assert "Supporter package" in sent["line_items[0][price_data][product_data][name]"]
-    assert "$4.73 (7%) to charity" in sent["line_items[0][price_data][product_data][name]"]
+    assert "Community Supporter" in sent["line_items[0][price_data][product_data][name]"]
+    assert "generates $4.73 (7%) for VFW, NICU & youth programs" in sent["line_items[0][price_data][product_data][name]"]
     assert sent["line_items[1][price_data][unit_amount]"] == "557"
     assert "8.25%" in sent["line_items[1][price_data][product_data][name]"]
     # $10 donation: 33% / 33% / 34%, one untaxed line per cause
