@@ -55,11 +55,11 @@ def test_intake_stores_zone_and_mow_price(client, repo, letter, zone_key, price)
     assert job["zone_key"] == zone_key and job["quoted_price"] == price
 
 
-def test_non_mowing_services_get_no_quoted_price(client, repo):
+def test_bins_and_gutters_are_add_ons_not_stand_alone_bookings(client, repo):
     with patch("app.main.local_now", return_value=NOW):
         r = book(client, "A", "0100", service="gutters")
-    assert r.status_code == 201 and r.json()["quoted_price"] is None
-    assert repo.jobs[r.json()["id"]]["zone_key"] == "SPRING_LUXURY_LOOP"
+    assert r.status_code == 422 and "add-ons to a mowing visit" in r.json()["detail"]
+    assert not repo.jobs
 
 
 def test_out_of_zone_address_is_turned_away(client, repo):

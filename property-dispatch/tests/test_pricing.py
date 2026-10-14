@@ -159,3 +159,58 @@ def test_stripe_checkout_lines_split_price_tax_and_untaxed_donations_per_charity
     assert all("not taxed" in n for n in names) and "line_items[5][quantity]" not in sent
     assert "payment_method_types[0]" not in sent    # Stripe shows cards, Apple Pay, Google Pay… as enabled
     assert lines
+
+
+# ---------- Add-ons: bin cleaning $15, gutters $20, holiday lights $30 (with a mow) ----------
+def test_add_ons_are_part_of_the_order_taxed_and_counted_for_charity():
+    q = quote(SPRING, Service.MOWING, 3_500, package="supporter", add_ons=["gutters", "bin_cleaning"])
+    assert (q.mow_price, q.add_on_total, q.subtotal) == (Decimal("85.00"), Decimal("35.00"), Decimal("120.00"))
+    assert (q.tax, q.total, q.charity_amount) == (Decimal("9.90"), Decimal("129.90"), Decimal("8.40"))   # 7% of the whole order
+    assert [a["key"] for a in q.add_ons] == ["bin_cleaning", "gutters"]                                 # catalog order
+    with pytest.raises(ValueError):
+        quote(SPRING, Service.MOWING, 3_500, add_ons=["pressure_washing"])
+
+
+def test_holiday_lights_are_seasonal():
+    from datetime import date
+    from app.pricing import in_season
+    assert [in_season("holiday_lights", date(*d)) for d in ((2026, 10, 14), (2026, 10, 15), (2026, 12, 24),
+                                                             (2027, 1, 15), (2027, 1, 16), (2027, 7, 4))] == \
+        [False, True, True, True, False, False]
+    assert in_season("gutters", date(2027, 7, 4))
+
+
+def test_booking_with_add_ons(client, repo):
+    r = post_job(client, lawn_sqft=3_500, package="supporter", add_ons=["holiday_lights", "gutters"])
+    assert r.status_code == 201, r.text
+    b = r.json()
+    assert (b["subtotal"], b["add_on_total"], b["tax"], b["total"], b["charity_amount"]) == (135.0, 50.0, 11.14, 146.14, 9.45)
+    assert [a["label"] for a in b["add_ons"]] == ["Gutter cleaning", "Holiday lighting hang-up"]
+    job = repo.jobs[b["id"]]
+    assert job["service_minutes"] == 45 + 30 + 45            # mow + gutters + lights, for the route's ETAs
+    assert job["add_on_total"] == 50.0 and len(job["add_ons"]) == 2
+
+
+def test_add_ons_out_of_season_or_without_a_mow_are_refused(client):
+    from datetime import date, datetime
+    from zoneinfo import ZoneInfo
+    summer = datetime(2027, 7, 1, 10, tzinfo=ZoneInfo("America/Chicago"))
+    with patch("app.main.local_now", return_value=summer):
+        r = client.post("/api/jobs", json={"name": "Pat Doe", "phone": "2815550100", "address": "100 A Example Rd",
+                                           "scheduled_date": date(2027, 7, 2).isoformat(), "add_ons": ["holiday_lights"]})
+    assert r.status_code == 422 and "Oct 15 – Jan 15" in r.json()["detail"]
+    q = client.post("/api/quote", json={"address": "100 A Example Rd", "lawn_sqft": 3_500, "add_ons": ["holiday_lights"],
+                                        "scheduled_date": "2027-07-02"}).json()
+    assert q["add_ons"] == [] and q["subtotal"] == 81.5            # quote drops out-of-season add-ons
+
+
+def test_crew_sees_add_ons_and_size_corrections_keep_them(client, repo, settings):
+    post_job(client, lawn_sqft=3_500, package="supporter", add_ons=["bin_cleaning"])   # $85 + $15 = $100
+    run_nightly(repo, settings, TOMORROW)
+    stop = client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]
+    assert stop["service_label"] == "Mowing + Bin cleaning" and stop["add_on_total"] == 15.0
+    ok = client.post(f"/api/stops/{stop['stop_id']}/complete", headers=CREW,
+                     json={"lawn_sqft": 5_000, "cash_collected": 125}).json()
+    assert ok["payment"]["total"] == 124.49                        # ($100 mow + $15 bins) + 8.25% tax
+    stop = client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]
+    assert (stop["subtotal"], stop["charity_amount"]) == (115.0, 8.05)

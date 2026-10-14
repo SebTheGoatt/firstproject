@@ -95,9 +95,20 @@
       $("svc").textContent = info.service_label;
       $("when").textContent = fmtDay(info.scheduled_date);
       const hasBreakdown = info.subtotal != null && info.tax != null && info.amount_due != null;
+      const extras = info.add_ons || [], extraTotal = info.add_on_total || 0;
       $("price-label").textContent = info.lawn_sqft
-        ? `Price (${info.package_label ? info.package_label + ", " : ""}${info.lawn_sqft.toLocaleString()} sq ft)` : "Price";
-      $("price").textContent = info.amount_due == null ? "Set on site" : money(hasBreakdown ? info.subtotal : info.amount_due);
+        ? `Mowing (${info.package_label ? info.package_label + ", " : ""}${info.lawn_sqft.toLocaleString()} sq ft)` : "Price";
+      $("price").textContent = info.amount_due == null ? "Set on site"
+        : money(hasBreakdown ? Math.round((info.subtotal - extraTotal) * 100) / 100 : info.amount_due);
+      document.querySelectorAll(".addon-row").forEach((r) => r.remove());
+      if (hasBreakdown) {
+        $("tax-row").before(...extras.map((a) => {
+          const d = document.createElement("div"); d.className = "addon-row";
+          d.append(Object.assign(document.createElement("dt"), { textContent: `Add-on: ${a.label}` }),
+                   Object.assign(document.createElement("dd"), { textContent: money(a.price) }));
+          return d;
+        }));
+      }
       $("tax-row").hidden = !hasBreakdown || !(info.tax > 0);
       if (hasBreakdown) {
         $("tax-label").textContent = `Texas sales tax (${(info.tax_rate * 100).toFixed(2).replace(/\.?0+$/, "")}%)`;

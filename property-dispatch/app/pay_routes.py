@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 
 from .charity import describe as describe_charities, ledger, split_donation
 from .config import Settings
-from .models import SERVICE_LABELS, Service
+from .models import SERVICE_LABELS, Service, order_label
 from .pricing import PACKAGES
 from .payments import PaymentError, StripeClient, clean_donation, verify_webhook
 
@@ -40,7 +40,8 @@ def register_pay_routes(app: FastAPI, settings: Settings, stripe: StripeClient |
         return {
             "business_name": settings.business_name,
             "first_name": p["customer_name"].split()[0],
-            "service_label": SERVICE_LABELS[Service(p["service"])],
+            "service_label": order_label(p["service"], p.get("add_ons")),
+            "add_ons": p.get("add_ons") or [], "add_on_total": p.get("add_on_total") or 0.0,
             "scheduled_date": p["scheduled_date"],
             "job_done": p["status"] == "completed",
             "amount_due": p["amount_due"],
@@ -73,7 +74,7 @@ def register_pay_routes(app: FastAPI, settings: Settings, stripe: StripeClient |
             donation = clean_donation(body.donation)
             base = str(request.base_url).rstrip("/")
             session = stripe.create_checkout(
-                job_id=p["job_id"], service_label=SERVICE_LABELS[Service(p["service"])],
+                job_id=p["job_id"], service_label=SERVICE_LABELS[Service(p["service"])], add_ons=p.get("add_ons"),
                 service_date=str(p["scheduled_date"]), amount_due=p["amount_due"], donation=donation,
                 success_url=f"{base}/pay/{token}?done=1", cancel_url=f"{base}/pay/{token}",
                 subtotal=p.get("subtotal"), tax=p.get("tax_amount"), tax_rate=p.get("tax_rate"),

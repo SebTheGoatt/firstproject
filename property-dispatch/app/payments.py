@@ -49,6 +49,7 @@ class StripeClient:
         success_url: str, cancel_url: str, subtotal: float | None = None, tax: float | None = None,
         tax_rate: float | None = None, charities: list[dict] | None = None,
         package_label: str | None = None, charity_rate: float | None = None, charity_amount: float | None = None,
+        add_ons: list | None = None,
     ) -> dict:
         """One Stripe line for the service, one for Texas sales tax, and one per cause an optional
         donation goes to (so the receipt shows exactly where it went).
@@ -70,7 +71,9 @@ class StripeClient:
             service_name = (f"{service_label}, {package_label} ({service_date}): generates "
                             f"${charity_amount:,.2f} ({charity_rate * 100:g}%) for VFW, NICU & youth programs")
         if subtotal is not None and tax is not None and abs(subtotal + tax - amount_due) < 0.005:
-            lines.append((service_name, subtotal))
+            extras = [(f"Add-on: {a['label']}", float(a["price"])) for a in (add_ons or [])]
+            lines.append((service_name, round(subtotal - sum(p for _, p in extras), 2)))
+            lines.extend(extras)
             if tax > 0:
                 lines.append((f"Texas sales tax ({tax_rate * 100:.2f}%)" if tax_rate else "Texas sales tax", tax))
         else:

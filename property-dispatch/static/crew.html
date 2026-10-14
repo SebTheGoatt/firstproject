@@ -471,7 +471,8 @@
         let sub = null;
         if (isMow && s.flat_fee != null) {
           const sq = parseInt(sqftIn?.value, 10);
-          sub = sq >= 200 ? cents(s.flat_fee + perSqft * sq) : (s.subtotal ?? cents(s.flat_fee + perSqft * 4500));
+          const extras = s.add_on_total || 0;   // fixed-price add-ons ride along with the mow
+          sub = sq >= 200 ? cents(cents(s.flat_fee + perSqft * sq) + extras) : (s.subtotal ?? cents(cents(s.flat_fee + perSqft * 4500) + extras));
         } else if (priceIn) {
           const p = parseFloat((priceIn.value || "").replace(/[^0-9.]/g, ""));
           sub = isFinite(p) && p > 0 ? cents(p) : null;

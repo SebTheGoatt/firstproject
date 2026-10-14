@@ -29,7 +29,7 @@ from .config import Settings
 from .crew_auth import CrewIdentity
 from .crew_routes import photo_url
 from .media import MediaError, normalize_photo, parse_photo
-from .models import SERVICE_LABELS, Service
+from .models import SERVICE_LABELS, Service, order_label
 from .nightly import run_nightly
 
 CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"  # no 0/O, 1/I/L look-alikes
@@ -101,7 +101,7 @@ def register_visit_routes(app: FastAPI, settings: Settings, crew_auth):
             "access_code": format_code(code),
             "first_name": v["first_name"],
             "address": v["address"],
-            "service_label": SERVICE_LABELS[Service(v["service"])],
+            "service_label": order_label(v["service"], v.get("add_ons")),
             "scheduled_date": v["scheduled_date"],
             "status": v["status"],                    # pending | scheduled | completed | cancelled
             "eta": v["eta"],
@@ -115,6 +115,7 @@ def register_visit_routes(app: FastAPI, settings: Settings, crew_auth):
                 "lawn_sqft": v.get("lawn_sqft"), "sqft_rate": v.get("sqft_rate"),
                 "package": v.get("package"), "package_label": PACKAGES[v["package"]]["label"] if v.get("package") in PACKAGES else None,
                 "charity_rate": v.get("charity_rate"), "charity_amount": v.get("charity_amount"),
+                "add_ons": v.get("add_ons") or [], "add_on_total": v.get("add_on_total") or 0.0,
                 "giving_ledger": ledger(settings, v.get("giving_split")) if v.get("giving_split") else [],
                 "donation_ledger": ledger(settings, v.get("donation_split")) if v.get("donation_split") else [],
                 "pay_url": f"/pay/{v['pay_token']}" if v["pay_token"] and v["payment_status"] == "unpaid" else None,
@@ -182,7 +183,7 @@ def register_visit_routes(app: FastAPI, settings: Settings, crew_auth):
         jobs = r.list_jobs(day)
         for j in jobs:
             j["access_code"] = format_code(j["access_code"])
-            j["service_label"] = SERVICE_LABELS[Service(j["service"])]
+            j["service_label"] = order_label(j["service"], j.get("add_ons"))
         route = r.get_route(day)
         now = local_now(settings)
         build_at = now.replace(hour=settings.freeze_hour, minute=0, second=0, microsecond=0)

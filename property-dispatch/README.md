@@ -123,6 +123,20 @@ of the sale). Packages live in `app/pricing.py` (`PACKAGES`); the $50 base is `F
 the price and the charity share are redone with the same package. No size given → priced as a
 typical 4,500 sq ft lot until the crew confirms.
 
+**Add-ons (with a mow only).** Every booking is a mowing visit; customers can add:
+
+| Add-on | Price | Extra time on site | When |
+|---|---|---|---|
+| Bin cleaning | $15 | 15 min | all year |
+| Gutter cleaning | $20 | 30 min | all year |
+| Holiday lighting hang-up | $30 | 45 min | service dates Oct 15 – Jan 15 |
+
+Add-ons are part of the order: they're taxed and the impact level's charity share applies to
+the whole order. They're itemized on the order summary, pay page, visit page and Stripe receipt,
+the crew's stop card reads e.g. "Mowing + Gutter cleaning", and the route allows the extra time.
+Prices, times and the season live in `ADD_ONS` in `app/pricing.py`. Bin- or gutter-only bookings
+are refused; any made before add-ons existed are still priced on site by the crew.
+
 - **Lawn size at booking.** Customers pick Small (~2,500 sq ft), Medium (~4,500), Large
   (~8,000) or X-Large (~12,500), or type an exact size. They see the price, tax and total
   before they book. Skipping the size books at the flat fee.
@@ -263,7 +277,7 @@ Without Twilio credentials the "next customer" text is logged instead of sent.
    "Invalid API key", use the legacy `service_role` key from the same page instead.
 4. **Already set up (through 20261018)?** Open `supabase/upgrade_2026-10_packages.sql`, copy **all of its
    text** (not the file name), paste it into a new SQL Editor query and click **Run**. It adds
-   migrations 20261019 to 20261022 at once, is safe to run twice, and ends with a check that lists 12 rows.
+   migrations 20261019 to 20261023 at once, is safe to run twice, and ends with a check that lists 14 rows.
 5. Otherwise, run only the migrations you haven't run yet, once each and in order:
    open each new file in `supabase/migrations/` (for example
    `20261019000000_access_codes_and_job_photos.sql`, then

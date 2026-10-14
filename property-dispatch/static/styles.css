@@ -223,7 +223,7 @@ html { scroll-behavior: smooth; }
 .section h2 { font-size: clamp(1.5rem, 3vw, 2rem); letter-spacing: -0.015em; margin: 0 0 20px; }
 .section-lede { color: var(--muted); max-width: 62ch; margin: -8px 0 24px; }
 
-.service-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.service-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; }
 .service h3 { margin: 0 0 6px; font-size: 1.15rem; }
 .service p { margin: 0 0 8px; }
 .service .price { font-weight: 700; color: var(--brand); margin-top: 14px; }
@@ -563,6 +563,23 @@ label.check input { width: 18px; height: 18px; }
 .sizes label small { color: var(--muted); font-size: 0.78rem; }
 .sizes input:checked + label { border-color: var(--brand); background: var(--brand-soft); }
 .sizes input:focus-visible + label { outline: 3px solid color-mix(in srgb, var(--brand) 45%, transparent); }
+
+/* Mowing (always included) + add-ons */
+.mow-included { display: grid; gap: 2px; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--brand);
+  background: var(--brand-soft); margin-bottom: 14px; }
+.mow-included span { font-size: 0.88rem; color: var(--muted); }
+#addon-fieldset { margin-top: 14px; }
+.add-ons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.add-ons input { position: absolute; opacity: 0; pointer-events: none; }
+.add-ons label { margin: 0; display: grid; gap: 2px; align-content: start; text-align: center; padding: 10px 6px;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--bg); cursor: pointer; font-weight: 500; }
+.add-ons label strong { font-size: 0.9rem; }
+.add-ons label span { font-weight: 700; color: var(--brand); }
+.add-ons label small { font-size: 0.72rem; color: var(--muted); }
+.add-ons input:checked + label { border-color: var(--brand); background: var(--brand-soft); box-shadow: inset 0 0 0 1px var(--brand); }
+.add-ons input:checked + label strong::before { content: "✓ "; color: var(--brand); }
+.add-ons input:disabled + label { opacity: 0.55; cursor: not-allowed; }
+.add-ons input:focus-visible + label { outline: 3px solid color-mix(in srgb, var(--brand) 45%, transparent); }
 
 /* Pay-what-you-can rate picker */
 #rate-fieldset { margin-bottom: 12px; }

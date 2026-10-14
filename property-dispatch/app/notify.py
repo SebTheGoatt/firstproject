@@ -7,7 +7,7 @@ import httpx
 
 from .config import Settings
 from .db import Repository
-from .models import SERVICE_LABELS, Service
+from .models import SERVICE_LABELS, Service, order_label
 
 log = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class TwilioClient:
 
 def next_customer_message(stop: dict, settings: Settings, crew_name: str | None = None) -> str:
     first = stop["customer_name"].split()[0]
-    service = SERVICE_LABELS[Service(stop["service"])].lower()
+    service = order_label(stop["service"], stop.get("add_ons")).lower()
     minutes = max(5, round(stop["leg_duration_s"] / 60))
     who = f"{crew_name.split()[0]} from {settings.business_name}" if crew_name else settings.business_name
     return (
@@ -62,7 +62,7 @@ def send_text(sms: TwilioClient | None, to: str, body: str) -> dict:
 
 def pay_link_message(stop: dict, settings: Settings, pay_url: str) -> str:
     first = stop["customer_name"].split()[0]
-    service = SERVICE_LABELS[Service(stop["service"])].lower()
+    service = order_label(stop["service"], stop.get("add_ons")).lower()
     return (
         f"Hi {first}, your {service} is done. Thanks for choosing {settings.business_name}! "
         f"You can pay securely here: {pay_url} . No tip necessary. Donations are welcome and go to "
