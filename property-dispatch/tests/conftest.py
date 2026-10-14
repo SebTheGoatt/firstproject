@@ -61,3 +61,15 @@ def sms() -> FakeSMS:
 @pytest.fixture
 def client(settings, repo, sms) -> TestClient:
     return TestClient(create_app(settings, repo=repo, geocoder=FakeGeocoder(), sms=sms))
+
+
+def legacy_quoted_job(repo, letter="B", phone="+12815550101", service="gutters", method="cash", day=None):
+    """A bin- or gutter-only booking made before add-ons existed: priced on site by the crew."""
+    from .test_api_flow import TOMORROW
+    lat, lng = ADDRESSES[letter]
+    return repo.create_job(
+        name=f"Customer {letter}", phone=phone, address=f"100 {letter} Example Rd",
+        geo=GeoPoint(lat=lat, lng=lng, formatted_address=f"100 {letter} Example Rd, Spring, TX"),
+        service=service, scheduled_date=day or TOMORROW, service_minutes=60, zone_key="SPRING_LUXURY_LOOP",
+        quoted_price=None, payment_method=method, pay_token=f"legacy-pay-token-{letter}-0123456789",
+        access_code="LGCY" + "ABCDEFGH"[ord(letter[0]) % 8] * 4, tax_rate=0.0825)

@@ -9,6 +9,7 @@ from app.nightly import run_nightly
 from app.visit_routes import normalize_code
 
 from .test_api_flow import CREW, NOW, TOMORROW, book
+from .conftest import legacy_quoted_job
 
 JPEG = "data:image/jpeg;base64," + base64.b64encode(b"\xff\xd8\xff\xe0" + b"\x02" * 200).decode()
 
@@ -96,9 +97,9 @@ def test_visit_pages_are_private(client):
 
 
 # ---------- Owner dashboard ----------
-def test_bookings_show_on_the_dashboard_before_any_route_exists(client):
+def test_bookings_show_on_the_dashboard_before_any_route_exists(client, repo):
     booked(client, "A", "0100")
-    booked(client, "B", "0101", service="gutters")
+    legacy_quoted_job(repo, "B")                     # gutter-only booking from before add-ons
     d = owner_get(client, f"/api/owner/day/{TOMORROW}").json()
     assert [j["customer_name"] for j in d["jobs"]] == ["Customer A", "Customer B"]
     assert all(j["status"] == "pending" and j["sequence"] is None for j in d["jobs"])

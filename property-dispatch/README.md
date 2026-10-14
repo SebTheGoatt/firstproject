@@ -112,9 +112,9 @@ comes out of what the business keeps; the customer pays nothing extra for it.
 
 | Package | Rate | Given to charity | 3,500 sq ft | 8,000 sq ft |
 |---|---|---|---|---|
-| Standard (default) | 0.9¢ / sq ft | 2% of the price | $81.50 ($1.63 to charity) | $122.00 ($2.44) |
-| Supporter | 1.0¢ / sq ft | 7% | $85.00 ($5.95) | $130.00 ($9.10) |
-| Hero | 1.1¢ / sq ft | 12% | $88.50 ($10.62) | $138.00 ($16.56) |
+| Standard Tier (default) | 0.9¢ / sq ft | 2% of the price | $81.50 ($1.63 to charity) | $122.00 ($2.44) |
+| Community Supporter | 1.0¢ / sq ft | 7% | $85.00 ($5.95) | $130.00 ($9.10) |
+| Impact Champion | 1.1¢ / sq ft | 12% | $88.50 ($10.62) | $138.00 ($16.56) |
 
 Example: 3,500 sq ft on Supporter = $50 + $35 = **$85.00** + $7.01 tax = **$92.01**. $5.95 goes to
 charity and the business keeps $79.05. Sales tax is on the whole $85 (the charity share is part
@@ -122,6 +122,20 @@ of the sale). Packages live in `app/pricing.py` (`PACKAGES`); the $50 base is `F
 `app/zones.py`. The package is saved on the booking, so if the crew corrects the lawn size on site,
 the price and the charity share are redone with the same package. No size given → priced as a
 typical 4,500 sq ft lot until the crew confirms.
+
+**Add-ons (with a mow only).** Every booking is a mowing visit; customers can add:
+
+| Add-on | Price | Extra time on site | When |
+|---|---|---|---|
+| Bin cleaning | $15 | 15 min | all year |
+| Gutter cleaning | $20 | 30 min | all year |
+| Holiday lighting hang-up | $30 | 45 min | service dates Oct 15 – Jan 15 |
+
+Add-ons are part of the order: they're taxed and the impact level's charity share applies to
+the whole order. They're itemized on the order summary, pay page, visit page and Stripe receipt,
+the crew's stop card reads e.g. "Mowing + Gutter cleaning", and the route allows the extra time.
+Prices, times and the season live in `ADD_ONS` in `app/pricing.py`. Bin- or gutter-only bookings
+are refused; any made before add-ons existed are still priced on site by the crew.
 
 - **Lawn size at booking.** Customers pick Small (~2,500 sq ft), Medium (~4,500), Large
   (~8,000) or X-Large (~12,500), or type an exact size. They see the price, tax and total
@@ -263,7 +277,7 @@ Without Twilio credentials the "next customer" text is logged instead of sent.
    "Invalid API key", use the legacy `service_role` key from the same page instead.
 4. **Already set up (through 20261018)?** Open `supabase/upgrade_2026-10_packages.sql`, copy **all of its
    text** (not the file name), paste it into a new SQL Editor query and click **Run**. It adds
-   migrations 20261019 to 20261022 at once, is safe to run twice, and ends with a check that lists 12 rows.
+   migrations 20261019 to 20261023 at once, is safe to run twice, and ends with a check that lists 14 rows.
 5. Otherwise, run only the migrations you haven't run yet, once each and in order:
    open each new file in `supabase/migrations/` (for example
    `20261019000000_access_codes_and_job_photos.sql`, then

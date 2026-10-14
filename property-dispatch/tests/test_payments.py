@@ -13,7 +13,7 @@ from app.main import create_app
 from app.nightly import run_nightly
 from app.payments import PaymentError, verify_webhook
 
-from .conftest import FakeGeocoder
+from .conftest import FakeGeocoder, legacy_quoted_job
 from .test_api_flow import CREW, NOW, TOMORROW, book
 
 WHSEC = "whsec_test"
@@ -132,9 +132,8 @@ def test_webhook_rejects_bad_or_stale_signatures(card_client):
 
 
 def test_quoted_service_gets_price_on_site_then_pay_link(card_client, repo, settings, sms):
-    r = book_with(card_client, "A", "0100", service="gutters", method="card").json()
-    token = r["pay_url"].rsplit("/", 1)[1]
-    assert r["quoted_price"] is None
+    job = legacy_quoted_job(repo, "A", method="card")      # gutter-only booking from before add-ons
+    token = job["pay_token"]
     blocked = card_client.post(f"/api/pay/{token}/checkout", json={})
     assert blocked.status_code == 409 and "crew finishes" in blocked.json()["detail"]
 

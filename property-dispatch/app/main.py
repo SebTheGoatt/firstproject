@@ -36,10 +36,11 @@ from .db import Repository, make_repository
 from .geocode import GeocoderUnavailable, GeocodingError, NominatimGeocoder
 from .crew_auth import CrewIdentity
 from .crew_routes import register_crew_routes
-from .models import (SERVICE_LABELS, SERVICE_MINUTES, AddressCheck, CompleteStopRequest, GeoPoint, JobCreated,
+from .models import (SERVICE_LABELS, SERVICE_MINUTES, order_label, AddressCheck, CompleteStopRequest, GeoPoint, JobCreated,
                      JobRequest, QuoteRequest, RouteView, Service, StopView)
 from .charity import describe as describe_charities, split_donation
-from .pricing import DEFAULT_PACKAGE, DEFAULT_SIZE, LAWN_SIZES, PACKAGES, package_for_rate, quote, resolve_sqft
+from .pricing import (ADD_ONS, DEFAULT_PACKAGE, DEFAULT_SIZE, LAWN_SIZES, PACKAGES, in_season, package_for_rate, quote,
+                      resolve_sqft, season_text)
 from .routing.matrix import haversine_m
 from .nightly import run_nightly
 from .notify import TwilioClient, booking_message, notify_next_customer, send_pay_link, send_text
@@ -110,7 +111,8 @@ def build_route_view(route: dict, settings: Settings) -> RouteView:
             stop_id=s["stop_id"], job_id=s["job_id"], sequence=s["sequence"],
             customer_name=s["customer_name"], phone=s["phone"], address=s["address"],
             lat=s["lat"], lng=s["lng"], service=s["service"],
-            service_label=SERVICE_LABELS[Service(s["service"])],
+            service_label=order_label(s["service"], s.get("add_ons")),
+            add_ons=s.get("add_ons") or [], add_on_total=s.get("add_on_total") or 0.0,
             eta=s["eta"], leg_distance_m=s["leg_distance_m"], leg_duration_s=s["leg_duration_s"],
             completed_at=s["completed_at"], completed_by_name=s.get("completed_by_name"),
             payment_method=s.get("payment_method") or "cash", payment_status=s.get("payment_status") or "unpaid",
@@ -253,6 +255,9 @@ def create_app(
             "packages": [{"key": k, "label": p["label"], "sqft_rate": float(p["rate"]),
                           "charity_rate": float(p["giving"])} for k, p in PACKAGES.items()],
             "default_package": DEFAULT_PACKAGE,
+            # Add-ons to a mow (fixed prices). Seasonal ones list the service dates they're offered.
+            "add_ons": [{"key": k, "label": a["label"], "price": float(a["price"]), "season": season_text(k),
+                         "season_range": a.get("season")} for k, a in ADD_ONS.items()],
             "default_size": DEFAULT_SIZE,
             "charities": describe_charities(settings),
             "business_name": settings.business_name,
@@ -312,9 +317,10 @@ def create_app(
         zone = find_zone(geo.lat, geo.lng)
         if zone is None:
             return {"in_area": False, "message": outside_message()}
-        q = quote(zone, body.service, resolve_sqft(body.lawn_size, body.lawn_sqft), package=body.package)
+        add_ons = [k for k in body.add_ons if body.scheduled_date is None or in_season(k, body.scheduled_date)]
+        q = quote(zone, body.service, resolve_sqft(body.lawn_size, body.lawn_sqft), package=body.package, add_ons=add_ons)
         return {"in_area": True, "zone_name": zone.name, "flat_fee": zone.mow_rate,
-                "service_label": SERVICE_LABELS[body.service], **q.as_dict()}
+                "service_label": order_label(body.service.value, list(q.add_ons)), **q.as_dict()}
 
     @app.post("/api/jobs", response_model=JobCreated, status_code=201)
     def create_job(body: JobRequest, request: Request, repo: Repository = Depends(get_repo)):
@@ -324,12 +330,21 @@ def create_app(
         except BookingRejected as exc:
             raise HTTPException(status_code=409, detail=str(exc))
 
+        if body.service is not Service.MOWING:
+            raise HTTPException(status_code=422, detail=(
+                "Bin cleaning and gutters are add-ons to a mowing visit. Book mowing and add them on."))
+        for k in body.add_ons:
+            if not in_season(k, body.scheduled_date):
+                raise HTTPException(status_code=422, detail=(
+                    f"{ADD_ONS[k]['label']} is offered for service dates {season_text(k)}."))
         geo = locate(body.address, body.lat, body.lng)
         zone = find_zone(geo.lat, geo.lng)
         if zone is None:
             raise HTTPException(status_code=422, detail=outside_message())
         # No size given → priced as a typical lot; the crew confirms the real size on site.
-        q = quote(zone, body.service, resolve_sqft(body.lawn_size, body.lawn_sqft), package=body.package)
+        q = quote(zone, body.service, resolve_sqft(body.lawn_size, body.lawn_sqft), package=body.package,
+                  add_ons=body.add_ons)
+        add_ons = [{**a, "price": float(a["price"])} for a in q.add_ons]
         sqft = q.lawn_sqft
         price = float(q.subtotal) if q.subtotal is not None else None
         rate = float(q.sqft_rate) if q.sqft_rate is not None else None
@@ -342,7 +357,7 @@ def create_app(
         job = repo.create_job(
             name=body.name, phone=body.phone, address=body.address, geo=geo,
             service=body.service, scheduled_date=body.scheduled_date,
-            service_minutes=SERVICE_MINUTES[body.service],
+            service_minutes=SERVICE_MINUTES[body.service] + sum(ADD_ONS[a["key"]]["minutes"] for a in add_ons),
             zone_key=zone.key, quoted_price=price,
             payment_method=body.payment_method, pay_token=pay_token, access_code=access_code,
             amount_due=float(q.total) if q.total is not None else None, lawn_sqft=sqft,
@@ -350,11 +365,12 @@ def create_app(
             sqft_rate=rate, package=q.package,
             charity_rate=float(q.charity_rate) if q.charity_rate is not None else None,
             charity_amount=giving, giving_split=split_donation(giving) if giving else None,
+            add_ons=add_ons, add_on_total=float(q.add_on_total),
         )
         base = str(request.base_url).rstrip("/")
         visit_url = f"{base}/visit/{access_code}"
         send_text(app.state.sms, body.phone, booking_message(
-            body.name.split()[0], settings, SERVICE_LABELS[body.service],
+            body.name.split()[0], settings, order_label(body.service.value, add_ons),
             body.scheduled_date.strftime("%A, %b %-d"), format_code(access_code), visit_url))
         # Show the customer the house-level match when we have one; otherwise echo
         # their own address back (a street-level match would drop their house number).
@@ -366,7 +382,8 @@ def create_app(
                           access_code=format_code(access_code), visit_url=f"/visit/{access_code}",
                           lawn_sqft=sqft, sqft_rate=rate, package=q.package,
                           charity_rate=float(q.charity_rate) if q.charity_rate is not None else None,
-                          charity_amount=giving, subtotal=price, tax_rate=float(q.tax_rate),
+                          charity_amount=giving, add_ons=add_ons, add_on_total=float(q.add_on_total),
+                          subtotal=price, tax_rate=float(q.tax_rate),
                           tax=float(q.tax) if q.tax is not None else None,
                           total=float(q.total) if q.total is not None else None)
 
@@ -396,7 +413,8 @@ def create_app(
             if before["service"] == Service.MOWING.value and body.lawn_sqft and body.lawn_sqft != before.get("lawn_sqft"):
                 # Same package the customer chose at booking.
                 new_price = quote(zone, Service.MOWING, body.lawn_sqft,
-                                  package=before.get("package") or package_for_rate(before.get("sqft_rate")))
+                                  package=before.get("package") or package_for_rate(before.get("sqft_rate")),
+                                  add_ons=[a["key"] for a in before.get("add_ons") or []])
             elif before["service"] != Service.MOWING.value and on_site is not None:
                 new_price = quote(zone, Service(before["service"]), on_site_price=on_site)
         if new_price is not None:

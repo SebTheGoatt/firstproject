@@ -26,7 +26,7 @@
   <main class="wrap">
     <header class="page-intro">
       <h1>Book a service</h1>
-      <p>Mowing, bin cleaning and gutters in the Spring, TX area.</p>
+      <p>Mowing in the Spring, TX area, with bin cleaning, gutters and holiday lighting as add-ons.</p>
       <details id="areas" class="hint" hidden>
         <summary>Where we service</summary>
         <ul id="area-list"></ul>
@@ -53,17 +53,10 @@
 
       <section class="step">
         <h2 class="step-title"><span>2</span>What</h2>
-        <fieldset>
-          <legend class="visually-hidden">Service</legend>
-          <div class="services" id="services">
-            <input type="radio" name="service" id="svc-mowing" value="mowing" required checked>
-            <label for="svc-mowing">Mowing</label>
-            <input type="radio" name="service" id="svc-bin_cleaning" value="bin_cleaning">
-            <label for="svc-bin_cleaning">Bin Cleaning</label>
-            <input type="radio" name="service" id="svc-gutters" value="gutters">
-            <label for="svc-gutters">Gutters</label>
-          </div>
-        </fieldset>
+        <div class="mow-included">
+          <strong>✓ Lawn mowing</strong>
+          <span>Every booking includes a mow. Add any extras below.</span>
+        </div>
         <fieldset id="lawn-fieldset">
           <legend>Lawn size</legend>
           <div class="sizes" id="sizes"></div>
@@ -72,6 +65,10 @@
             <div class="sqft-input"><input id="lawn-sqft" type="number" inputmode="numeric" min="200" max="87120" step="100" placeholder="e.g. 5200"><span>sq ft</span></div>
           </div>
           <p class="hint">Not sure? Pick the closest size. Your crew confirms it on site, and the price only changes if it's different.</p>
+        </fieldset>
+        <fieldset id="addon-fieldset">
+          <legend>Add-ons <span class="optional">(optional, with your mow)</span></legend>
+          <div class="add-ons" id="add-ons"></div>
         </fieldset>
       </section>
 
@@ -85,16 +82,22 @@
       </section>
 
       <section class="step">
-        <h2 class="step-title"><span>4</span>Your price</h2>
+        <h2 class="step-title"><span>4</span>Your impact &amp; price</h2>
         <fieldset id="rate-fieldset">
-          <legend>Choose your package</legend>
+          <legend>Select your impact level</legend>
           <div class="rates packages" id="rates" role="radiogroup"></div>
-          <p class="hint">Same great service in every package: $50 per visit plus a per-sq-ft rate.
-            Higher packages cost a little more and give a bigger share of your price to the VFW, NICU families and at-risk youth.</p>
+          <p class="hint">Same great service at every level: $50 per visit plus a per-sq-ft rate.
+            Higher impact levels cost a little more and give a bigger share of your price to the VFW, NICU families and at-risk youth.</p>
         </fieldset>
-        <div class="price-box" id="price-box" aria-live="polite">
+        <div class="price-box order-summary" id="price-box" aria-live="polite">
+          <h3 class="order-title">Order summary</h3>
           <p class="muted" id="price-empty">Enter your address to see your price.</p>
           <dl class="price-lines" id="price-lines" hidden></dl>
+          <div class="impact-box" id="impact-box" hidden>
+            <span class="impact-kicker">Your order generates</span>
+            <strong class="impact-amount" id="impact-amount"></strong>
+            <span class="impact-for">for local VFW, NICU &amp; at-risk youth programs</span>
+          </div>
           <p class="hint" id="price-note" hidden></p>
         </div>
       </section>
@@ -157,13 +160,46 @@
     const sqftInput = document.getElementById("lawn-sqft");
     let lawnSize = "medium", lastQuote = null, flatFee = 50, pkgKey = "standard", lastSqft = null;
     let packages = [
-      { key: "standard", label: "Standard", sqft_rate: 0.009, charity_rate: 0.02 },
-      { key: "supporter", label: "Supporter", sqft_rate: 0.01, charity_rate: 0.07 },
-      { key: "hero", label: "Hero", sqft_rate: 0.011, charity_rate: 0.12 },
+      { key: "standard", label: "Standard Tier", sqft_rate: 0.009, charity_rate: 0.02 },
+      { key: "supporter", label: "Community Supporter", sqft_rate: 0.01, charity_rate: 0.07 },
+      { key: "hero", label: "Impact Champion", sqft_rate: 0.011, charity_rate: 0.12 },
     ];
     const cent = (r) => `${(r * 100).toFixed(1)}¢`;
     const pct = (r) => `${(r * 100).toFixed(2).replace(/\.?0+$/, "")}%`;
-    const service = () => form.querySelector('input[name="service"]:checked')?.value || "mowing";
+    const service = () => "mowing";   // every booking is a mow; bins, gutters and lights are add-ons
+    let addOnCatalog = [
+      { key: "bin_cleaning", label: "Bin cleaning", price: 15, season: null, season_range: null },
+      { key: "gutters", label: "Gutter cleaning", price: 20, season: null, season_range: null },
+      { key: "holiday_lights", label: "Holiday lighting hang-up", price: 30, season: "Oct 15 – Jan 15", season_range: [[10, 15], [1, 15]] },
+    ];
+    const chosenAddOns = new Set();
+    function addOnInSeason(a, iso) {
+      if (!a.season_range) return true;
+      if (!iso) return false;
+      const [, m, d] = iso.split("-").map(Number);
+      const md = m * 100 + d, s = a.season_range[0][0] * 100 + a.season_range[0][1], e = a.season_range[1][0] * 100 + a.season_range[1][1];
+      return s > e ? md >= s || md <= e : md >= s && md <= e;
+    }
+    const pickedAddOns = () => addOnCatalog.filter((a) => chosenAddOns.has(a.key) && addOnInSeason(a, dateInput.value)).map((a) => a.key);
+    function renderAddOns() {
+      const box = document.getElementById("add-ons");
+      box.replaceChildren(...addOnCatalog.flatMap((a) => {
+        const open = addOnInSeason(a, dateInput.value);
+        const input = Object.assign(document.createElement("input"), { type: "checkbox", id: `addon-${a.key}`, value: a.key,
+          checked: open && chosenAddOns.has(a.key), disabled: !open });
+        const label = document.createElement("label"); label.htmlFor = input.id;
+        const name = document.createElement("strong"); name.textContent = a.label;
+        const price = document.createElement("span"); price.textContent = `+${money(a.price)}`;
+        label.append(name, price);
+        if (a.season) {
+          const note = document.createElement("small");
+          note.textContent = open ? `Seasonal: ${a.season}` : `Available for ${a.season} visits`;
+          label.append(note);
+        }
+        input.addEventListener("change", () => { input.checked ? chosenAddOns.add(a.key) : chosenAddOns.delete(a.key); updateQuote(); });
+        return [input, label];
+      }));
+    }
 
     function renderPrice(q) {
       lastQuote = q;
@@ -173,6 +209,7 @@
         return;
       }
       priceEmpty.hidden = true; priceLines.hidden = false; priceNote.hidden = false;
+      document.getElementById("impact-box").hidden = !(q.charity_amount > 0);
       const row = (label, value, cls = "") => {
         const d = document.createElement("div"); if (cls) d.className = cls;
         const dt = document.createElement("dt"); dt.textContent = label;
@@ -192,15 +229,16 @@
         priceNote.hidden = true;
         return;
       }
-      const turf = Math.round((q.subtotal - q.base_fee) * 100) / 100;
+      const turf = Math.round((q.mow_price - q.base_fee) * 100) / 100;
       priceLines.replaceChildren(
-        row(`Mowing, ${q.package_label} package`, ""),
-        row("Base trip fee", money(q.base_fee), "sub"),
-        row(`${q.lawn_sqft.toLocaleString()} sq ft × ${cent(q.sqft_rate)}`, money(turf), "sub"),
+        row("Base setup / trip fee", money(q.base_fee)),
+        row(`Mowing care · ${q.lawn_sqft.toLocaleString()} sq ft × ${cent(q.sqft_rate)}`, money(turf)),
+        ...(q.add_ons || []).map((a) => row(`Add-on: ${a.label}`, money(a.price))),
         row(`Texas sales tax (${pct(q.tax_rate)})`, money(q.tax)),
-        row("Total", money(q.total), "total"));
-      priceNote.textContent = `★ ${money(q.charity_amount)} of your price (${Math.round(q.charity_rate * 100)}%) goes to the VFW, ` +
-        "NICU families and at-risk youth. It's included in your price, not added on. Your crew confirms the lawn size on site; the price only changes if it's different.";
+        row("Total amount due", money(q.total), "total"));
+      document.getElementById("impact-amount").textContent = money(q.charity_amount);
+      priceNote.textContent = `${q.package_label}: ${Math.round(q.charity_rate * 100)}% of your price goes to charity. ` +
+        "It's included in your total, not added on. Your crew confirms the lawn size on site; the price only changes if it's different.";
     }
 
     // Packages: each card shows this lawn's price and how much of it goes to charity.
@@ -228,8 +266,8 @@
       if (!/^\s*\d+\s+\S+/.test(address) || address.length < 8) { areaBox.hidden = true; renderPrice(null); return; }
       const seq = ++checkSeq;
       areaBox.className = "area-check"; areaBox.textContent = "Checking your address…"; areaBox.hidden = false;
-      const payload = { address, service: service() };
-      document.getElementById("rate-fieldset").hidden = service() !== "mowing";
+      const payload = { address, service: service(), add_ons: pickedAddOns() };
+      if (dateInput.value) payload.scheduled_date = dateInput.value;
       if (service() === "mowing") {
         payload.package = pkgKey;
         const exact = parseInt(sqftInput.value, 10);
@@ -271,10 +309,7 @@
     }
     let sqftTimer;
     sqftInput.addEventListener("input", () => { clearTimeout(sqftTimer); sqftTimer = setTimeout(updateQuote, 500); });
-    form.querySelectorAll('input[name="service"]').forEach((r) => r.addEventListener("change", () => {
-      document.getElementById("lawn-fieldset").hidden = service() !== "mowing";
-      updateQuote();
-    }));
+    dateInput.addEventListener("change", () => { renderAddOns(); updateQuote(); });
 
     addressInput.addEventListener("change", () => {
       if (addressInput.dataset.picked !== addressInput.value) { latInput.value = lngInput.value = ""; }
@@ -343,6 +378,8 @@
       document.getElementById("areas").hidden = !info.zones.length;
       if (info.google_maps_key) setUpGoogleAutocomplete(info.google_maps_key);
       if (info.lawn_sizes) renderSizes(info.lawn_sizes);
+      if (info.add_ons) addOnCatalog = info.add_ons;
+      renderAddOns();
       if (info.packages) { packages = info.packages; pkgKey = info.default_package || pkgKey; renderRates(null); }
       if (info.charities) document.getElementById("charity-list").textContent =
         info.charities.map((c) => `${c.name} (${c.percent}%)`).join(", ").replace(/, ([^,]*)$/, " and $1");
@@ -366,6 +403,8 @@
 
       const data = Object.fromEntries(new FormData(form));
       delete data.lawn_size_pick; delete data.package_pick;
+      data.service = "mowing";
+      data.add_ons = pickedAddOns();
       if (data.service === "mowing") {
         data.package = pkgKey;
         const exact = parseInt(sqftInput.value, 10);
@@ -399,7 +438,7 @@
         const z = document.createElement("div");
         z.textContent = body.total != null
           ? `${money(body.subtotal)} + ${money(body.tax)} Texas sales tax = ${money(body.total)} total.` +
-            (body.charity_amount ? ` Your ${body.package[0].toUpperCase() + body.package.slice(1)} package gives ${money(body.charity_amount)} to charity. Thank you!` : "")
+            (body.charity_amount ? ` Your order generates ${money(body.charity_amount)} for local VFW, NICU & at-risk youth programs. Thank you!` : "")
           : `${body.zone_name}. Your crew sets the price on site; Texas sales tax is added.`;
         ok.append(h, p, z);
         if (body.access_code) {

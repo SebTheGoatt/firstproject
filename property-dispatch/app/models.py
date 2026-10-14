@@ -27,6 +27,15 @@ SERVICE_LABELS: dict[Service, str] = {
     Service.GUTTERS: "Gutters",
 }
 
+# Add-ons to a mowing visit (prices and minutes in app/pricing.py).
+AddOn = Literal["bin_cleaning", "gutters", "holiday_lights"]
+
+
+def order_label(service: str, add_ons: list | None = None) -> str:
+    """'Mowing + Gutter cleaning + Holiday lighting hang-up' for a booking with add-ons."""
+    parts = [SERVICE_LABELS[Service(service)]] + [a["label"] for a in (add_ons or [])]
+    return " + ".join(parts)
+
 
 def normalize_us_phone(raw: str) -> str:
     """Return an E.164 US number (+1XXXXXXXXXX) or raise ValueError."""
@@ -46,7 +55,7 @@ class JobRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     phone: str
     address: str = Field(min_length=5, max_length=300)
-    service: Service
+    service: Service = Service.MOWING   # every booking is a mow; bins, gutters, lights are add_ons
     scheduled_date: date
     payment_method: Literal["cash", "card"] = "cash"
     # Coordinates from the Google address dropdown, when the customer used it.
@@ -56,6 +65,7 @@ class JobRequest(BaseModel):
     lawn_size: Literal["small", "medium", "large", "xl"] | None = None
     lawn_sqft: int | None = Field(default=None, ge=100, le=200_000)
     package: Package | None = None   # mowing package; none → Standard
+    add_ons: list[AddOn] = Field(default_factory=list, max_length=3)
 
     @field_validator("name", "address")
     @classmethod
@@ -94,6 +104,8 @@ class JobCreated(BaseModel):
     # Price breakdown (None = priced on site). total = subtotal + tax.
     lawn_sqft: int | None = None
     package: str | None = None
+    add_ons: list[dict] = Field(default_factory=list)
+    add_on_total: float = 0.0
     sqft_rate: float | None = None
     charity_rate: float | None = None     # share of the price the business gives to charity
     charity_amount: float | None = None
@@ -154,6 +166,8 @@ class StopView(BaseModel):
     tax_amount: float | None = None
     lawn_sqft: int | None = None
     package: str | None = None       # mowing: the customer's package
+    add_ons: list[dict] = Field(default_factory=list)   # [{"key", "label", "price"}]: bring the gear
+    add_on_total: float = 0.0
     sqft_rate: float | None = None
     charity_rate: float | None = None
     charity_amount: float | None = None
@@ -220,9 +234,11 @@ class AddressCheck(BaseModel):
 
 class QuoteRequest(BaseModel):
     address: str = Field(min_length=5, max_length=300)
-    service: Service
+    service: Service = Service.MOWING
     lat: float | None = Field(default=None, ge=-90, le=90)
     lng: float | None = Field(default=None, ge=-180, le=180)
     lawn_size: Literal["small", "medium", "large", "xl"] | None = None
     lawn_sqft: int | None = Field(default=None, ge=100, le=200_000)
     package: Package | None = None
+    add_ons: list[AddOn] = Field(default_factory=list, max_length=3)
+    scheduled_date: date | None = None   # seasonal add-ons depend on the day

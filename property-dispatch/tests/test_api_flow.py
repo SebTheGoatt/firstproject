@@ -28,7 +28,7 @@ def book(client, letter, phone_suffix, service="mowing", day=TOMORROW):
 def test_full_day_flow(client, repo, settings, sms):
     with patch("app.main.local_now", return_value=NOW):
         for i, letter in enumerate("ABCDE"):
-            r = book(client, letter, f"01{i:02d}", service=["mowing", "gutters", "bin_cleaning"][i % 3])
+            r = book(client, letter, f"01{i:02d}")
             assert r.status_code == 201, r.text
             assert r.json()["lat"] and r.json()["lng"]
 

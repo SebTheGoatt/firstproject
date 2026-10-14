@@ -8,7 +8,10 @@ Mowing:   price = $50 base trip fee + (the package's rate × square feet of lawn
           The giving comes out of what the business keeps; the customer pays the
           price + tax, nothing extra. It's split between the three causes in
           app/charity.py, like voluntary donations.
-Bins/gutters: priced on site by the crew; tax is added the same way (no package).
+Add-ons:  bin cleaning $15, gutter cleaning $20, holiday lighting hang-up $30
+          (Oct 15 – Jan 15 service dates), only together with a mow. They're part
+          of the order: taxed, and the package's charity share applies to them too.
+Old bin/gutter-only bookings: priced on site by the crew; tax is added the same way.
 Tax:      the area's combined Texas rate (state 6.25% + local) on the whole service
           price, rounded to the cent. Voluntary donations are separate and untaxed.
 
@@ -23,9 +26,9 @@ from .zones import ServiceZone
 
 # key → per-square-foot rate and the share of the price given to charity.
 PACKAGES: dict[str, dict] = {
-    "standard":  {"label": "Standard",  "rate": Decimal("0.009"), "giving": Decimal("0.02")},
-    "supporter": {"label": "Supporter", "rate": Decimal("0.010"), "giving": Decimal("0.07")},
-    "hero":      {"label": "Hero",      "rate": Decimal("0.011"), "giving": Decimal("0.12")},
+    "standard":  {"label": "Standard Tier",       "rate": Decimal("0.009"), "giving": Decimal("0.02")},
+    "supporter": {"label": "Community Supporter", "rate": Decimal("0.010"), "giving": Decimal("0.07")},
+    "hero":      {"label": "Impact Champion",     "rate": Decimal("0.011"), "giving": Decimal("0.12")},
 }
 DEFAULT_PACKAGE = "standard"
 MIN_SQFT, MAX_SQFT = 200, 87_120  # up to 2 acres; bigger jobs are quoted in person
@@ -39,6 +42,33 @@ LAWN_SIZES: dict[str, dict] = {
     "xl":     {"label": "X-Large", "range": "10,000–15,000 sq ft", "sqft": 12_500, "example": "Quarter-acre or more"},
 }
 DEFAULT_SIZE = "medium"  # no size given → priced as a typical lot; the crew confirms on site
+
+# Add-ons to a mowing visit: fixed price (before tax) and extra minutes on site.
+# `season` = (start (month, day), end (month, day)) of service dates it's offered, wrapping the new year.
+ADD_ONS: dict[str, dict] = {
+    "bin_cleaning":   {"label": "Bin cleaning",              "price": Decimal("15.00"), "minutes": 15},
+    "gutters":        {"label": "Gutter cleaning",           "price": Decimal("20.00"), "minutes": 30},
+    "holiday_lights": {"label": "Holiday lighting hang-up",  "price": Decimal("30.00"), "minutes": 45,
+                       "season": ((10, 15), (1, 15))},
+}
+
+
+def in_season(key: str, day) -> bool:
+    season = ADD_ONS[key].get("season")
+    if not season or day is None:
+        return season is None
+    (sm, sd), (em, ed) = season
+    md = (day.month, day.day)
+    return md >= (sm, sd) or md <= (em, ed) if (sm, sd) > (em, ed) else (sm, sd) <= md <= (em, ed)
+
+
+def season_text(key: str) -> str | None:
+    season = ADD_ONS[key].get("season")
+    if not season:
+        return None
+    (sm, sd), (em, ed) = season
+    months = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split()
+    return f"{months[sm - 1]} {sd} – {months[em - 1]} {ed}"
 
 CENT = Decimal("0.01")
 
@@ -60,6 +90,12 @@ class Quote:
     base_fee: Decimal | None = None
     charity_rate: Decimal | None = None
     charity_amount: Decimal | None = None   # part of the subtotal the business gives away
+    add_ons: tuple = ()                     # ({"key", "label", "price"}, ...)
+    add_on_total: Decimal = Decimal(0)
+
+    @property
+    def mow_price(self) -> Decimal | None:
+        return None if self.subtotal is None else self.subtotal - self.add_on_total
 
     @property
     def business_net(self) -> Decimal | None:
@@ -75,7 +111,9 @@ class Quote:
                 "package": self.package, "package_label": PACKAGES[self.package]["label"] if self.package else None,
                 "sqft_rate": f(self.sqft_rate), "base_fee": f(self.base_fee),
                 "charity_rate": f(self.charity_rate), "charity_amount": f(self.charity_amount),
-                "business_net": f(self.business_net)}
+                "business_net": f(self.business_net), "mow_price": f(self.mow_price),
+                "add_ons": [{**a, "price": float(a["price"])} for a in self.add_ons],
+                "add_on_total": float(self.add_on_total)}
 
 
 def resolve_package(package: str | None) -> str:
@@ -104,20 +142,31 @@ def with_tax(subtotal: Decimal, rate: Decimal) -> tuple[Decimal, Decimal]:
     return tax, subtotal + tax
 
 
+def priced_add_ons(keys) -> tuple:
+    """The chosen add-ons in catalog order, each once, with label and price."""
+    chosen = set(keys or ())
+    unknown = chosen - ADD_ONS.keys()
+    if unknown:
+        raise ValueError(f"Unknown add-on: {', '.join(sorted(unknown))}")
+    return tuple({"key": k, "label": a["label"], "price": a["price"]} for k, a in ADD_ONS.items() if k in chosen)
+
+
 def quote(zone: ServiceZone, service: Service, lawn_sqft: int | None = None,
-          on_site_price: float | None = None, package: str | None = None) -> Quote:
+          on_site_price: float | None = None, package: str | None = None, add_ons=()) -> Quote:
     """Price a visit. `on_site_price` is the crew's pre-tax price for quoted services;
-    `package` is the customer's mowing package (see PACKAGES)."""
+    `package` is the customer's mowing package (see PACKAGES); `add_ons` are ADD_ONS keys."""
     rate = Decimal(str(zone.tax_rate))
     if service is Service.MOWING:
         key = resolve_package(package)
         pkg = PACKAGES[key]
         sqft = lawn_sqft or LAWN_SIZES[DEFAULT_SIZE]["sqft"]
         base = money(zone.mow_rate)
-        subtotal = money(base + pkg["rate"] * sqft)
+        extras = priced_add_ons(add_ons)
+        extra_total = sum((a["price"] for a in extras), Decimal(0))
+        subtotal = money(base + pkg["rate"] * sqft) + extra_total
         tax, total = with_tax(subtotal, rate)
         return Quote(subtotal, rate, tax, total, sqft, "base_plus_sqft", key, pkg["rate"], base,
-                     pkg["giving"], money(subtotal * pkg["giving"]))
+                     pkg["giving"], money(subtotal * pkg["giving"]), extras, extra_total)
     if on_site_price is not None:
         subtotal = money(on_site_price)
         tax, total = with_tax(subtotal, rate)

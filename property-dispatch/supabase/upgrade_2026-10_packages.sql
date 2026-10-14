@@ -1,12 +1,12 @@
 -- =====================================================================
 --  M&A Lawn Care — database upgrade (Oct 2026)
 --  Access codes + before/after photos, pricing + Texas sales tax,
---  donation split, and mowing packages with charity giving.
+--  donation split, mowing packages with charity giving, and add-ons.
 --
 --  HOW TO RUN: Supabase → SQL Editor → New query → paste ALL of this → Run.
 --  Safe to run more than once: anything already added is skipped.
 --  All-or-nothing: if any step fails, nothing is changed.
---  (Same as migrations 20261019, 20261020, 20261021 and 20261022.)
+--  (Same as migrations 20261019 through 20261023.)
 -- =====================================================================
 begin;
 
@@ -56,14 +56,20 @@ alter table jobs
     add column if not exists charity_amount numeric(8, 2) check (charity_amount >= 0),
     add column if not exists giving_split   jsonb check (giving_split is null or jsonb_typeof(giving_split) = 'object');
 
+-- ---------- 5. Add-ons to a mow: bins, gutters, holiday lights ----------
+alter table jobs
+    add column if not exists add_ons      jsonb not null default '[]' check (jsonb_typeof(add_ons) = 'array'),
+    add column if not exists add_on_total numeric(8, 2) not null default 0 check (add_on_total >= 0);
+
 commit;
 
 -- Tell the API about the new columns right away.
 notify pgrst, 'reload schema';
 
--- Quick check: should show 12 rows (11 new columns + the job_photos table).
+-- Quick check: should show 14 rows (13 new columns + the job_photos table).
 select column_name from information_schema.columns
  where table_name = 'jobs' and column_name in ('access_code', 'lawn_sqft', 'subtotal', 'tax_rate', 'tax_amount',
-       'sqft_rate', 'donation_split', 'package', 'charity_rate', 'charity_amount', 'giving_split')
+       'sqft_rate', 'donation_split', 'package', 'charity_rate', 'charity_amount', 'giving_split',
+       'add_ons', 'add_on_total')
 union all
 select 'job_photos table' from information_schema.tables where table_name = 'job_photos';
