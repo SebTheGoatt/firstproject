@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Book a Service | {{BUSINESS_NAME}}</title>
+  <meta name="description" content="Book mowing, bin cleaning or gutter service online. We confirm your address and text you when the crew is on the way.">
+  <meta name="theme-color" content="#2f7d4f">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Book Service">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/static/styles.css?v={{V}}">
+</head>
+<body class="site">
+  <header class="site-header">
+    <div class="site-wrap header-row">
+      <a class="brand" href="/">
+        <img src="/static/icons/icon-192.png" alt="" width="32" height="32">
+        <span>{{BUSINESS_NAME}}</span>
+      </a>
+      <a class="btn btn-sm" href="/">Home</a>
+    </div>
+  </header>
+  <main class="wrap">
+    <header class="brand">
+      <h1>Book a service</h1>
+      <p>Mowing, bin cleaning and gutters in the Spring, TX area.</p>
+      <details id="areas" class="hint" hidden>
+        <summary>Where we service</summary>
+        <ul id="area-list"></ul>
+      </details>
+    </header>
+
+    <div id="ok" class="alert alert-ok" role="status" hidden></div>
+
+    <form id="intake" class="card" novalidate>
+      <div id="err" class="alert alert-error" role="alert" hidden></div>
+
+      <div class="field">
+        <label for="name">Full name</label>
+        <input id="name" name="name" type="text" autocomplete="name" required maxlength="120">
+      </div>
+
+      <div class="field">
+        <label for="phone">Mobile phone</label>
+        <input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required placeholder="(281) 555-0123">
+        <div class="hint">We'll text you when the crew is on the way.</div>
+      </div>
+
+      <div class="field">
+        <label for="address">Service address</label>
+        <input id="address" name="address" type="text" autocomplete="street-address" required
+               placeholder="123 Main St, Spring, TX 77373">
+      </div>
+
+      <fieldset>
+        <legend>Service</legend>
+        <div class="services" id="services">
+          <input type="radio" name="service" id="svc-mowing" value="mowing" required checked>
+          <label for="svc-mowing">Mowing</label>
+          <input type="radio" name="service" id="svc-bin_cleaning" value="bin_cleaning">
+          <label for="svc-bin_cleaning">Bin Cleaning</label>
+          <input type="radio" name="service" id="svc-gutters" value="gutters">
+          <label for="svc-gutters">Gutters</label>
+        </div>
+      </fieldset>
+
+      <div class="field">
+        <label for="date">Service day</label>
+        <input id="date" name="scheduled_date" type="date" required>
+        <div class="hint" id="date-hint">Next-day bookings close at 8 PM.</div>
+      </div>
+
+      <button class="btn btn-primary btn-block" type="submit" id="submit">Book service</button>
+    </form>
+  </main>
+
+  <script src="/static/site.js?v={{V}}"></script>
+  <script>
+    const form = document.getElementById("intake");
+    const err = document.getElementById("err");
+    const ok = document.getElementById("ok");
+    const submit = document.getElementById("submit");
+    const dateInput = document.getElementById("date");
+
+    const money = (n) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+    const fmtDay = (iso) =>
+      new Date(iso + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
+
+    fetch("/api/booking-info").then(r => r.json()).then(info => {
+      dateInput.min = info.earliest_date;
+      dateInput.max = info.latest_date;
+      dateInput.value = info.earliest_date;
+      document.getElementById("date-hint").textContent =
+        `Earliest available: ${fmtDay(info.earliest_date)}. Next-day bookings close at 8 PM.`;
+      const list = document.getElementById("area-list");
+      for (const z of info.zones) {
+        const li = document.createElement("li");
+        li.textContent = `${z.name}: mowing ${money(z.mow_rate)}`;
+        list.append(li);
+      }
+      document.getElementById("areas").hidden = !info.zones.length;
+    }).catch(() => {});
+
+    function showError(msg) {
+      err.textContent = msg;
+      err.hidden = false;
+      err.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      err.hidden = true;
+      if (!form.checkValidity()) { form.reportValidity(); return; }
+
+      const data = Object.fromEntries(new FormData(form));
+      submit.disabled = true;
+      submit.textContent = "Checking address…";
+      try {
+        const res = await fetch("/api/jobs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const detail = Array.isArray(body.detail)
+            ? body.detail.map(d => d.msg.replace(/^Value error, /, "")).join(". ")
+            : body.detail;
+          throw new Error(detail || "Something went wrong. Please try again.");
+        }
+        form.hidden = true;
+        ok.innerHTML = "";
+        const h = document.createElement("strong");
+        h.textContent = `You're booked for ${fmtDay(body.scheduled_date)}.`;
+        const p = document.createElement("div");
+        p.textContent = `We'll text ${data.phone} when the crew is headed to ${body.formatted_address}.`;
+        const z = document.createElement("div");
+        z.textContent = body.quoted_price != null
+          ? `${body.zone_name}: ${money(body.quoted_price)} per mow.`
+          : `${body.zone_name}. We'll confirm pricing on site.`;
+        ok.append(h, p, z);
+        ok.hidden = false;
+      } catch (ex) {
+        showError(navigator.onLine === false || ex instanceof TypeError
+          ? "You're offline. Check your connection and try again."
+          : ex.message);
+      } finally {
+        submit.disabled = false;
+        submit.textContent = "Book service";
+      }
+    });
+  </script>
+</body>
+</html>

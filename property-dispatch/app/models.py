@@ -1,0 +1,121 @@
+"""Request/response models and domain types."""
+
+import re
+from datetime import date, datetime
+from enum import Enum
+
+from pydantic import BaseModel, Field, field_validator
+
+
+class Service(str, Enum):
+    MOWING = "mowing"
+    BIN_CLEANING = "bin_cleaning"
+    GUTTERS = "gutters"
+
+
+# On-site minutes per service; feeds the ETA calculation.
+SERVICE_MINUTES: dict[Service, int] = {
+    Service.MOWING: 45,
+    Service.BIN_CLEANING: 15,
+    Service.GUTTERS: 60,
+}
+
+SERVICE_LABELS: dict[Service, str] = {
+    Service.MOWING: "Mowing",
+    Service.BIN_CLEANING: "Bin Cleaning",
+    Service.GUTTERS: "Gutters",
+}
+
+
+def normalize_us_phone(raw: str) -> str:
+    """Return an E.164 US number (+1XXXXXXXXXX) or raise ValueError."""
+    digits = re.sub(r"\D", "", raw)
+    if len(digits) == 11 and digits.startswith("1"):
+        digits = digits[1:]
+    if len(digits) != 10 or digits[0] in "01":
+        raise ValueError("Enter a valid 10-digit US phone number")
+    return f"+1{digits}"
+
+
+class JobRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    phone: str
+    address: str = Field(min_length=5, max_length=300)
+    service: Service
+    scheduled_date: date
+
+    @field_validator("name", "address")
+    @classmethod
+    def strip(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Required")
+        return v
+
+    @field_validator("phone")
+    @classmethod
+    def phone_e164(cls, v: str) -> str:
+        return normalize_us_phone(v)
+
+
+class JobCreated(BaseModel):
+    id: str
+    scheduled_date: date
+    service: Service
+    formatted_address: str
+    lat: float
+    lng: float
+    zone_name: str
+    quoted_price: float | None  # mowing only; other services are quoted on site
+
+
+class GeoPoint(BaseModel):
+    lat: float
+    lng: float
+    formatted_address: str
+
+
+class Job(BaseModel):
+    """A job as the routing engine sees it."""
+
+    id: str
+    customer_name: str
+    phone: str
+    address: str
+    lat: float
+    lng: float
+    service: Service
+    service_minutes: int
+    status: str
+
+
+class StopView(BaseModel):
+    """One stop on the crew dashboard."""
+
+    stop_id: str
+    job_id: str
+    sequence: int
+    customer_name: str
+    phone: str
+    address: str
+    lat: float
+    lng: float
+    service: Service
+    service_label: str
+    eta: datetime | None
+    leg_distance_m: int
+    leg_duration_s: int
+    completed_at: datetime | None
+    google_maps_url: str
+    apple_maps_url: str
+
+
+class RouteView(BaseModel):
+    route_date: date
+    timezone: str
+    total_distance_m: int
+    total_duration_s: int
+    matrix_source: str
+    optimized_at: datetime | None
+    stops: list[StopView]
+    full_route_google_urls: list[str]

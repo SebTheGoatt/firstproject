@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{{BUSINESS_NAME}} | Mowing, Bin Cleaning &amp; Gutters in Spring, TX</title>
+  <meta name="description" content="Book lawn mowing, trash bin cleaning and gutter service online in Spring, New Caney, Splendora and Cleveland, TX. We text you when the crew is on the way.">
+  <meta property="og:title" content="{{BUSINESS_NAME}}">
+  <meta property="og:description" content="Mowing, bin cleaning and gutters around Spring, TX. Book online in about a minute.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="/static/icons/icon-512.png">
+  <meta name="theme-color" content="#2f7d4f">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Book Service">
+  <link rel="stylesheet" href="/static/styles.css?v={{V}}">
+</head>
+<body class="site">
+  <header class="site-header">
+    <div class="site-wrap header-row">
+      <a class="brand" href="/">
+        <img src="/static/icons/icon-192.png" alt="" width="32" height="32">
+        <span>{{BUSINESS_NAME}}</span>
+      </a>
+      <nav class="site-nav" aria-label="Main">
+        <a href="#services">Services</a>
+        <a href="#areas">Service areas</a>
+        <a href="#how">How it works</a>
+      </nav>
+      <a class="btn btn-primary btn-sm" href="/book">Book now</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="site-wrap hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">Spring · New Caney · Splendora · Cleveland</p>
+          <h1>Yard and home care that shows up when we say it will.</h1>
+          <p class="lede">Book mowing, trash bin cleaning or gutter cleaning in about a minute.
+            We plan the crew's route the night before and text you when we're heading your way.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary btn-lg" href="/book">Book a service</a>
+            <a class="btn btn-lg" href="#areas">Check your area</a>
+          </div>
+          <div class="install-row">
+            <button class="btn btn-ghost" id="install-btn" type="button" hidden>Install the app</button>
+            <p class="hint" id="install-ios" hidden>On iPhone: tap <strong>Share</strong>, then <strong>Add to Home Screen</strong> to keep us one tap away.</p>
+          </div>
+        </div>
+
+        <aside class="card next-open" aria-live="polite">
+          <p class="eyebrow">Next open day</p>
+          <p class="next-day" id="next-day">Checking…</p>
+          <p class="hint" id="cutoff">Next-day booking closes at 8 PM.</p>
+          <ul class="checks">
+            <li>Text when the crew is on the way</li>
+            <li>No account or app download needed</li>
+            <li>Mowing priced by area, shown before you book</li>
+          </ul>
+        </aside>
+      </div>
+    </section>
+
+    <section id="services" class="section">
+      <div class="site-wrap">
+        <h2>Services</h2>
+        <div class="service-grid">
+          <article class="card service">
+            <h3>Lawn Mowing</h3>
+            <p>Mow, edge and blow-off of walks and drives.</p>
+            <p class="price" id="mow-from">Priced by service area</p>
+            <p class="hint">About 45 minutes on site</p>
+          </article>
+          <article class="card service">
+            <h3>Bin Cleaning</h3>
+            <p>Wash, deodorize and sanitize trash and recycling bins.</p>
+            <p class="price">Quoted on site</p>
+            <p class="hint">About 15 minutes on site</p>
+          </article>
+          <article class="card service">
+            <h3>Gutter Cleaning</h3>
+            <p>Clear gutters and check that downspouts drain freely.</p>
+            <p class="price">Quoted on site</p>
+            <p class="hint">About 1 hour on site</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="areas" class="section section-alt">
+      <div class="site-wrap">
+        <h2>Service areas</h2>
+        <p class="section-lede">We keep our routes tight so the crew spends time on lawns, not on the road.
+          These are the neighborhoods we serve today, with the mowing price for each.</p>
+        <ul class="area-list" id="area-list">
+          <li class="card area skeleton">Loading service areas…</li>
+        </ul>
+        <p class="hint">Not sure if you're inside an area? Enter your address on the booking page and we'll check it right away.</p>
+      </div>
+    </section>
+
+    <section id="how" class="section">
+      <div class="site-wrap">
+        <h2>How it works</h2>
+        <ol class="steps">
+          <li><h3>Book online</h3><p>Pick a service and a day. We confirm your address is in a service area on the spot.</p></li>
+          <li><h3>We plan the route</h3><p>At 8 PM the night before, the day's stops are locked and put in the fastest driving order.</p></li>
+          <li><h3>We text you</h3><p>When the crew finishes the stop before yours, you get a text that we're heading your way.</p></li>
+          <li><h3>Done</h3><p>The job is marked complete from the crew's phone the moment we wrap up.</p></li>
+        </ol>
+        <div class="cta-band card">
+          <p><strong>Ready when you are.</strong> Booking takes about a minute.</p>
+          <a class="btn btn-primary btn-lg" href="/book">Book a service</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="site-wrap footer-row">
+      <span>© <span id="year"></span> {{BUSINESS_NAME}} · Spring, TX</span>
+      <a href="/crew">Crew sign-in</a>
+    </div>
+  </footer>
+
+  <script src="/static/site.js?v={{V}}"></script>
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+    const money = (n) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+    const fmtDay = (iso) =>
+      new Date(iso + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+    const hour12 = (h) => `${((h + 11) % 12) + 1} ${h < 12 ? "AM" : "PM"}`;
+
+    fetch("/api/booking-info").then((r) => r.json()).then((info) => {
+      document.getElementById("next-day").textContent = fmtDay(info.earliest_date);
+      document.getElementById("cutoff").textContent = `Next-day booking closes at ${hour12(info.freeze_hour)} Central.`;
+
+      const list = document.getElementById("area-list");
+      list.replaceChildren();
+      for (const z of info.zones) {
+        const li = document.createElement("li");
+        li.className = "card area";
+        const name = document.createElement("span");
+        name.className = "area-name";
+        name.textContent = z.name;
+        const price = document.createElement("span");
+        price.className = "area-price";
+        price.textContent = `${money(z.mow_rate)} / mow`;
+        li.append(name, price);
+        list.append(li);
+      }
+      if (info.zones.length) {
+        const low = Math.min(...info.zones.map((z) => z.mow_rate));
+        document.getElementById("mow-from").textContent = `From ${money(low)} per mow`;
+      }
+    }).catch(() => {
+      document.getElementById("next-day").textContent = "See the booking page";
+      document.getElementById("area-list").replaceChildren();
+    });
+  </script>
+</body>
+</html>

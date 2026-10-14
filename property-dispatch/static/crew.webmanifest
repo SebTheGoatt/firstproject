@@ -1,0 +1,17 @@
+{
+  "id": "/crew",
+  "name": "{{BUSINESS_NAME}} Crew",
+  "short_name": "Crew Route",
+  "description": "Today's optimized route, navigation and job completion for the field crew.",
+  "start_url": "/crew?source=app",
+  "scope": "/crew",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f6f3",
+  "theme_color": "#2f7d4f",
+  "icons": [
+    { "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/static/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
