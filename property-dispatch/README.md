@@ -111,7 +111,8 @@ Without Twilio credentials the "next customer" text is logged instead of sent.
 
 ### 1. Supabase (database)
 1. Create a project at [supabase.com](https://supabase.com).
-2. **SQL Editor → New query**, run each file in `supabase/migrations/` in name order.
+2. **SQL Editor → New query**: paste the whole contents of `supabase/setup_all.sql`
+   (all migrations combined, in order) and click **Run** once.
    (Or with the CLI: `supabase link --project-ref <ref> && supabase db push`.)
 3. **Settings → API Keys**: copy the **secret** key (`sb_secret_…`), and copy the **Project URL**
    from the **Connect** button. The secret key bypasses RLS, so keep it on the server and
