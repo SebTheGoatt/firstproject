@@ -79,10 +79,25 @@
     </header>
 
     <main class="wrap crew-main">
+      <!-- -------- Owner dashboard -------- -->
+      <section id="tab-dash" class="tab" hidden>
+        <div class="topbar">
+          <h2 class="tab-title">Dashboard</h2>
+          <button class="btn btn-sm" type="button" id="dash-refresh">Refresh</button>
+        </div>
+        <div class="week" id="week" role="tablist" aria-label="Next 7 days"></div>
+        <div id="dash-err" class="alert alert-error" role="alert" hidden></div>
+        <div class="kpis" id="kpis"></div>
+        <div class="donation-ledger" id="donation-ledger" hidden></div>
+        <div class="card route-card" id="route-card"></div>
+        <h3 class="list-title" id="jobs-title">Bookings</h3>
+        <ul class="job-list" id="job-list"></ul>
+      </section>
+
       <!-- -------- Today -------- -->
       <section id="tab-today" class="tab">
         <div class="topbar">
-          <h2 class="tab-title">Today's route</h2>
+          <h2 class="tab-title">Route</h2>
           <input type="date" id="day" aria-label="Route date">
         </div>
         <div id="offline" class="alert alert-warn" role="status" hidden></div>
@@ -183,7 +198,8 @@
     </main>
 
     <nav class="tabbar" id="tabbar" aria-label="Crew app">
-      <button type="button" data-tab="today" class="is-on"><span class="ti" aria-hidden="true">◎</span>Today</button>
+      <button type="button" data-tab="dash" data-owner><span class="ti" aria-hidden="true">▤</span>Dashboard</button>
+      <button type="button" data-tab="today" class="is-on"><span class="ti" aria-hidden="true">◎</span>Route</button>
       <button type="button" data-tab="profile" data-member><span class="ti" aria-hidden="true">☺</span>My profile</button>
       <button type="button" data-tab="work" data-member><span class="ti" aria-hidden="true">▦</span>My work</button>
       <button type="button" data-tab="crew" data-owner><span class="ti" aria-hidden="true">☰</span>Crew</button>
@@ -206,6 +222,7 @@
     const fmtDur = (s) => s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.round((s % 3600) / 60)}m` : `${Math.round(s / 60)}m`;
     const miles = (m) => (m / 1609.344).toFixed(1);
     const money = (n) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+    const fmtPhone = (p) => { const d = (p || "").replace(/\D/g, "").slice(-10); return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : p; };
 
     function el(tag, attrs = {}, ...kids) {
       const n = document.createElement(tag);
@@ -348,6 +365,7 @@
       if (name === "profile") fillProfile();
       if (name === "work") loadWork();
       if (name === "crew") loadMembers();
+      if (name === "dash") loadDash();
       window.scrollTo({ top: 0 });
     }
     $("tabbar").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) showTab(b.dataset.tab); });
@@ -363,7 +381,7 @@
       me = me || { is_owner: false, member: null, stats: null };
       renderHeader();
       try { await refreshMe(); } catch { return; }
-      showTab("today");
+      showTab(me?.is_owner ? "dash" : "today");
       loadRoute();
     }
 
@@ -408,9 +426,20 @@
         if (!done) {
           const completeBtn = el("button", { class: "btn btn-primary", type: "button" }, "Finish job");
           completeBtn.addEventListener("click", () => openFinish(item, s));
+          const beforeIn = el("input", { type: "file", accept: "image/*", capture: "environment", class: "visually-hidden", id: `bf-${s.stop_id}` });
+          beforeIn.addEventListener("change", async () => {
+            const f = beforeIn.files[0]; if (!f) return;
+            try {
+              const photo = await resizeImage(f);
+              await api(`/api/stops/${s.stop_id}/photos`, { method: "POST", json: { kind: "before", photo } });
+              toast("Before photo saved. The customer can see it on their visit page.");
+            } catch (err) { toast(err instanceof TypeError ? "No signal. Try the photo again in coverage." : err.message); }
+            beforeIn.value = "";
+          });
           item.append(el("div", { class: "actions" },
             el("a", { class: "btn", href: s.apple_maps_url, target: "_blank", rel: "noopener" }, "Apple Maps"),
             el("a", { class: "btn", href: s.google_maps_url, target: "_blank", rel: "noopener" }, "Google Maps"),
+            el("label", { class: "btn btn-before", for: beforeIn.id }, "Before photo"), beforeIn,
             completeBtn));
         }
         list.append(item);
@@ -420,42 +449,94 @@
     // In-card "Finish job" panel: price, cash, and an optional portfolio photo.
     function openFinish(item, s) {
       item.querySelector(".finish")?.remove();
-      const needsPrice = s.amount_due == null && s.payment_status !== "paid";
-      const isCash = s.payment_method === "cash" && s.payment_status !== "paid";
+      const unpaid = s.payment_status !== "paid";
+      const isMow = s.service === "mowing";
+      const rate = s.tax_rate ?? 0.0825;
+      const needsPrice = unpaid && !isMow && s.amount_due == null;
+      const isCash = s.payment_method === "cash" && unpaid;
+      const sqftIn = unpaid && isMow ? el("input", { type: "number", inputmode: "numeric", min: 200, max: 87120, value: s.lawn_sqft ?? "", placeholder: "e.g. 5200", id: `fs-${s.stop_id}` }) : null;
       const priceIn = needsPrice ? el("input", { type: "text", inputmode: "decimal", placeholder: "e.g. 120", id: `fp-${s.stop_id}` }) : null;
       const cashIn = isCash ? el("input", { type: "text", inputmode: "decimal", value: s.amount_due ?? "", id: `fc-${s.stop_id}` }) : null;
-      const photoIn = me?.member ? el("input", { type: "file", accept: "image/*", id: `fph-${s.stop_id}` }) : null;
-      const capIn = me?.member ? el("input", { type: "text", maxlength: 280, placeholder: "Caption (optional)", id: `fcap-${s.stop_id}` }) : null;
+      const totalLine = el("p", { class: "finish-total" });
+      const cents = (x) => Math.round(x * 100) / 100;
+      // The customer's package: $base + rate × sq ft, and a share of the price to charity.
+      const PKG = { standard: [0.009, 0.02], supporter: [0.01, 0.07], hero: [0.011, 0.12] };
+      const [perSqft, giving] = PKG[s.package] || (s.sqft_rate ? [s.sqft_rate, s.charity_rate || 0] : PKG.standard);
+      const pkgName = s.package ? s.package[0].toUpperCase() + s.package.slice(1) : "Standard";
+      const donationLine = el("p", { class: "hint donation-line", hidden: true });
+      let cashEdited = false;
+      cashIn?.addEventListener("input", () => { cashEdited = true; });
+      // Live total with Texas sales tax, matching the server's math.
+      function currentTotal() {
+        let sub = null;
+        if (isMow && s.flat_fee != null) {
+          const sq = parseInt(sqftIn?.value, 10);
+          sub = sq >= 200 ? cents(s.flat_fee + perSqft * sq) : (s.subtotal ?? cents(s.flat_fee + perSqft * 4500));
+        } else if (priceIn) {
+          const p = parseFloat((priceIn.value || "").replace(/[^0-9.]/g, ""));
+          sub = isFinite(p) && p > 0 ? cents(p) : null;
+        } else if (s.subtotal != null) sub = s.subtotal;
+        if (sub == null) return s.amount_due;
+        const tax = cents(sub * rate);
+        totalLine.textContent = `${money(sub)} + ${money(tax)} tax (${(rate * 100).toFixed(2).replace(/\.?0+$/, "")}%) = ${money(sub + tax)}` +
+          (isMow && giving ? ` · ${money(cents(sub * giving))} of it to charity` : "");
+        return cents(sub + tax);
+      }
+      function showDonation(due) {
+        const cash = parseFloat((cashIn?.value || "").replace(/[^0-9.]/g, ""));
+        const extra = due != null && isFinite(cash) ? cents(cash - due) : 0;
+        donationLine.hidden = !(extra > 0);
+        if (extra > 0) {
+          const sp = splitDonation(extra);
+          donationLine.textContent = `${money(extra)} donation: ` + charities.map((c) => `${money(sp[c.key] || 0)} ${c.short}`).join(" · ");
+        }
+      }
+      const refresh = () => { const t = currentTotal(); if (cashIn && !cashEdited && t != null) cashIn.value = t.toFixed(2); showDonation(t); };
+      cashIn?.addEventListener("input", () => showDonation(currentTotal()));
+      sqftIn?.addEventListener("input", refresh);
+      priceIn?.addEventListener("input", refresh);
+      const photoIn = el("input", { type: "file", accept: "image/*", capture: "environment", id: `fph-${s.stop_id}` });
+      const shareIn = me?.member ? el("input", { type: "checkbox", id: `fsh-${s.stop_id}` }) : null;
+      const capIn = me?.member ? el("input", { type: "text", maxlength: 280, placeholder: "Caption for My work (optional)", id: `fcap-${s.stop_id}` }) : null;
       const confirmBtn = el("button", { class: "btn btn-primary", type: "submit" }, "Confirm: job done");
       const cancelBtn = el("button", { class: "btn", type: "button" }, "Cancel");
       const panel = el("form", { class: "finish" },
         el("strong", {}, `Finishing stop ${s.sequence}: ${s.customer_name}`),
-        needsPrice ? el("div", { class: "field" }, el("label", { for: priceIn.id }, "Final price ($)"), priceIn) : null,
+        sqftIn ? el("div", { class: "field" }, el("label", { for: sqftIn.id }, `Lawn size (sq ft): confirm or correct · ${pkgName} package, ${(perSqft * 100).toFixed(1)}¢/sq ft`), sqftIn) : null,
+        needsPrice ? el("div", { class: "field" }, el("label", { for: priceIn.id }, "Price before tax ($)"), priceIn) : null,
+        totalLine,
         isCash ? el("div", { class: "field" }, el("label", { for: cashIn.id }, "Cash collected ($)"), cashIn,
-          el("p", { class: "hint" }, "Leave blank if they haven't paid yet. Anything over the price is saved as a donation.")) : null,
+          el("p", { class: "hint" }, "Leave blank if they haven't paid yet. Anything over the price is a donation, split 33% VFW, 33% NICU, 34% at-risk youth."),
+          donationLine) : null,
         s.payment_method === "card" && s.payment_status !== "paid"
           ? el("p", { class: "hint" }, "Card customer: we'll text them a secure payment link.") : null,
-        photoIn ? el("div", { class: "field" }, el("label", { for: photoIn.id }, "Add an after photo to My work (optional)"), photoIn, capIn) : null,
+        el("div", { class: "field" }, el("label", { for: photoIn.id }, "After photo (the customer sees it on their visit page)"), photoIn,
+          shareIn ? el("label", { class: "check", for: shareIn.id }, shareIn, " Also show it on my public profile") : null,
+          capIn),
         el("div", { class: "row-2" }, cancelBtn, confirmBtn));
       cancelBtn.addEventListener("click", () => panel.remove());
       panel.addEventListener("submit", async (e) => {
         e.preventDefault();
         const num = (input) => { const v = parseFloat((input?.value || "").replace(/[^0-9.]/g, "")); return isFinite(v) ? Math.round(v * 100) / 100 : null; };
         const body = {};
-        if (priceIn) { const p = num(priceIn); if (p) body.amount_due = p; }
+        if (priceIn) { const p = num(priceIn); if (p) body.price = p; }
+        if (sqftIn) { const sq = parseInt(sqftIn.value, 10); if (sq >= 200 && sq !== s.lawn_sqft) body.lawn_sqft = sq; }
         if (cashIn && cashIn.value.trim()) {
           body.cash_collected = num(cashIn);
-          const due = body.amount_due ?? s.amount_due;
-          if (due == null) { toast("Enter the final price first."); return; }
-          if (body.cash_collected < due) { toast(`Cash is less than the ${money(due)} price.`); return; }
+          const due = currentTotal();
+          if (due == null) { toast("Enter the price first."); return; }
+          if (body.cash_collected < due) { toast(`Cash is less than the ${money(due)} total.`); return; }
         }
         confirmBtn.disabled = true; confirmBtn.textContent = "Saving…";
         try {
           const res = await api(`/api/stops/${s.stop_id}/complete`, { method: "POST", json: body });
-          if (photoIn?.files?.[0]) {
+          if (photoIn.files?.[0]) {
             try {
               const photo = await resizeImage(photoIn.files[0]);
-              await api("/api/crew/me/portfolio", { method: "POST", json: { photo, caption: capIn.value || null, service: s.service, job_id: s.job_id } });
+              await api(`/api/stops/${s.stop_id}/photos`, { method: "POST", json: { kind: "after", photo } });
+              if (shareIn?.checked) {
+                await api("/api/crew/me/portfolio", { method: "POST", json: { photo, caption: capIn.value || null, service: s.service, job_id: s.job_id } });
+              }
             } catch (err) { toast(`Job saved, but the photo didn't upload: ${err.message}`); }
           }
           const n = res.notification || {};
@@ -470,6 +551,7 @@
         }
       });
       item.append(panel);
+      refresh();
       (priceIn || cashIn || confirmBtn).focus();
     }
 
@@ -488,7 +570,8 @@
       } catch (e) {
         $("route").hidden = true;
         if (!token) return;
-        $("err").textContent = e.status === 404 ? "No route has been built for this day yet."
+        $("err").textContent = e.status === 404
+          ? `No route for this day yet. Routes build automatically at 5 PM the day before${me?.is_owner ? "; see bookings and build it now from the Dashboard." : "."}`
           : e instanceof TypeError ? "No signal, and this day's route isn't saved on this phone yet." : e.message;
         $("err").hidden = false;
       }
@@ -619,6 +702,93 @@
         loadMembers();
       } catch (err) { toast(err.message); }
     });
+
+    // ---------- Owner dashboard ----------
+    let dashDay = null;
+    const dayLabel = (iso, opts) => new Date(iso + "T12:00:00").toLocaleDateString(undefined, opts);
+    const statusChip = (j) => {
+      if (j.status === "completed") return el("span", { class: "chip-s done" }, "Done");
+      if (j.sequence) return el("span", { class: "chip-s routed" }, `Stop ${j.sequence}`);
+      return el("span", { class: "chip-s waiting" }, "Waiting for route");
+    };
+    async function loadDash() {
+      $("dash-err").hidden = true;
+      try {
+        const week = await api("/api/owner/outlook?days=7");
+        if (!dashDay) dashDay = (week.find((d) => d.jobs > 0 && d.date > week[0].date) || week[1] || week[0]).date;
+        $("week").replaceChildren(...week.map((d) => {
+          const pct = Math.min(100, Math.round((100 * d.jobs) / d.quota));
+          const b = el("button", { type: "button", role: "tab", class: "day-card" + (d.date === dashDay ? " is-on" : ""), "aria-selected": String(d.date === dashDay) },
+            el("span", { class: "dc-day" }, d.date === week[0].date ? "Today" : dayLabel(d.date, { weekday: "short" })),
+            el("span", { class: "dc-date" }, dayLabel(d.date, { month: "numeric", day: "numeric" })),
+            el("b", {}, String(d.jobs)),
+            el("span", { class: "dc-bar", "aria-hidden": "true" }, el("span", { style: `width:${pct}%` })),
+            el("span", { class: "dc-money" }, money(d.expected)));
+          b.addEventListener("click", () => { dashDay = d.date; loadDash(); });
+          return b;
+        }));
+        const d = await api(`/api/owner/day/${dashDay}`);
+        tz = d.timezone;
+        const t = d.totals;
+        $("kpis").replaceChildren(
+          ...[["Bookings", `${t.jobs}/${d.quota}`], ["Expected", money(t.expected)], ["Collected", money(t.collected)],
+              ["Donations", money(t.donations)], ["Package giving", money(t.charity_giving ?? 0)], ["Still owed", money(t.unpaid)],
+              ["Sales tax collected", money(t.sales_tax ?? 0)]]
+            .map(([k, v]) => el("div", { class: "kpi" }, el("b", {}, v), el("span", {}, k))));
+        // Donations to pass on, per cause (each payment's split is saved when it's paid).
+        const led = $("donation-ledger");
+        const owed = (t.donations_by_charity || []).filter((c) => c.amount > 0);
+        led.hidden = !owed.length;
+        led.replaceChildren(el("strong", {}, "To pass on (package giving + donations)"),
+          ...owed.map((c) => el("div", { class: "ledger-row" }, el("span", {}, `${c.name} (${c.percent}%)`), el("b", {}, money(c.amount)))));
+        const rc = $("route-card"); rc.replaceChildren();
+        const r = d.route;
+        const buildBtn = el("button", { class: "btn btn-primary btn-sm", type: "button" }, r.built ? "Rebuild route" : "Build route now");
+        buildBtn.addEventListener("click", async () => {
+          if (!buildBtn.dataset.sure) { buildBtn.dataset.sure = "1"; buildBtn.textContent = "Tap again to confirm"; return; }
+          buildBtn.disabled = true; buildBtn.textContent = "Optimizing…";
+          try {
+            const res = await api(`/api/owner/routes/${dashDay}/build`, { method: "POST" });
+            toast(`Route built: ${res.stops} stops, ${res.total_miles} mi, about ${res.drive_minutes} min of driving.`);
+            loadDash();
+          } catch (err) { toast(err.message); buildBtn.disabled = false; buildBtn.textContent = r.built ? "Rebuild route" : "Build route now"; delete buildBtn.dataset.sure; }
+        });
+        const canBuild = t.jobs > 0 && r.completed === 0 && dashDay >= todayLocal();
+        rc.append(
+          el("div", { class: "rc-text" },
+            el("strong", {}, r.built ? `Route ready: ${r.stops} stops · ${miles(r.total_distance_m)} mi · ${fmtDur(r.total_duration_s)} driving` : "Route not built yet"),
+            el("span", { class: "muted small" }, r.built
+              ? (r.missing ? `${r.missing} booking(s) added after it was built. Rebuild to include them.` : `${r.completed}/${r.stops} done.`)
+              : `Builds automatically at ${((d.auto_build.hour + 11) % 12) + 1} PM the day before.`)),
+          canBuild ? buildBtn : null);
+        $("jobs-title").textContent = `Bookings for ${dayLabel(dashDay, { weekday: "long", month: "long", day: "numeric" })}`;
+        const ul = $("job-list"); ul.replaceChildren();
+        if (!d.jobs.length) ul.append(el("li", { class: "empty" }, "No bookings for this day yet."));
+        for (const j of d.jobs) {
+          const copy = el("button", { type: "button", class: "code-chip", title: "Copy access code" }, j.access_code || "—");
+          copy.addEventListener("click", async () => {
+            try { await navigator.clipboard.writeText(j.access_code); toast("Access code copied."); } catch { toast(j.access_code); }
+          });
+          ul.append(el("li", { class: "card job-row" },
+            el("div", { class: "job-main" },
+              el("strong", {}, j.customer_name),
+              el("span", { class: "muted small" }, j.address),
+              el("div", { class: "meta" },
+                statusChip(j),
+                el("span", { class: "tag" }, j.service_label),
+                j.eta && j.status !== "completed" ? el("span", {}, `ETA ${fmtTime(j.eta)}`) : null,
+                j.completed_by_name ? el("span", {}, `by ${j.completed_by_name.split(" ")[0]}`) : null,
+                payChip(j))),
+            el("div", { class: "job-side" },
+              el("a", { href: `tel:${j.phone}`, class: "muted small" }, fmtPhone(j.phone)),
+              copy)));
+        }
+      } catch (err) {
+        $("dash-err").textContent = err instanceof TypeError ? "No signal. Pull to refresh when you're connected." : err.message;
+        $("dash-err").hidden = false;
+      }
+    }
+    $("dash-refresh").addEventListener("click", loadDash);
 
     if (token) start(); else showSignin();
   </script>

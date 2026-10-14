@@ -22,10 +22,12 @@ class Settings(BaseSettings):
     # End point defaults to the base; override for a different yard/dump site.
     end_lat: float | None = None
     end_lng: float | None = None
-    crew_start_time: str = "08:00"  # local time the crew leaves the base
+    # First stop around 7 AM. Texas has no statewide lawn-hours law; cities and
+    # HOAs set noise rules, and 7 AM is a common earliest start. Change if needed.
+    crew_start_time: str = "07:00"  # local time the crew leaves the base
 
     # --- Runway quota & freeze ----------------------------------------
-    freeze_hour: int = 20           # 8 PM local: next day is locked
+    freeze_hour: int = 17           # 5 PM local (close of business): next day locks and its route is built
     daily_job_quota: int = 25       # max active jobs per service day
     booking_horizon_days: int = 60
 
@@ -52,6 +54,12 @@ class Settings(BaseSettings):
     business_name: str = "Spring Property Services"
     # Used in texts sent outside a web request (e.g. the completion webhook).
     public_base_url: str = ""
+
+    # --- Donations: split 33% / 33% / 34% (see app/charity.py) ----------
+    # Rename to the specific VFW post, hospital NICU and youth program you give to.
+    charity_vfw_name: str = "Veterans of Foreign Wars (VFW)"
+    charity_nicu_name: str = "Neonatal intensive care (NICU) families"
+    charity_youth_name: str = "At-risk youth programs"
 
     # --- Stripe card payments (leave blank to take cash only) ---------
     stripe_secret_key: str = ""

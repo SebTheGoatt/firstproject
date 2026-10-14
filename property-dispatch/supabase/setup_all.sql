@@ -240,3 +240,71 @@ alter table portfolio_items enable row level security;
 
 grant select, insert, update, delete on crew_members, portfolio_items to service_role;
 
+-- ===== migrations/20261019000000_access_codes_and_job_photos.sql =====
+-- Customer access codes (view your visit) and private before/after photos per job.
+
+-- Codes look like K7MX3QPA (shown to customers as K7MX-3QPA): 8 characters,
+-- no look-alikes (0/O, 1/I/L). Existing bookings get one too.
+alter table jobs add column access_code text unique
+    check (access_code ~ '^[A-HJKMNP-Z2-9]{8}$');
+
+update jobs
+   set access_code = (
+       select string_agg(substr('ABCDEFGHJKMNPQRSTUVWXYZ23456789', (floor(random() * 31) + 1)::int, 1), '')
+       from generate_series(1, 8 + (id is null)::int * 0)
+   )
+ where access_code is null;
+
+-- Before/after photos of a customer's property. Private: shown only on that
+-- customer's visit page (their access code), never on the public website.
+create table job_photos (
+    id          uuid primary key default gen_random_uuid(),
+    job_id      uuid not null references jobs(id) on delete cascade,
+    member_id   uuid references crew_members(id) on delete set null,
+    kind        text not null check (kind in ('before', 'after')),
+    photo       text not null,                 -- data: URL (resized JPEG), served via /media/visit/{id}
+    created_at  timestamptz not null default now()
+);
+
+create index job_photos_job_idx on job_photos (job_id, created_at);
+
+alter table job_photos enable row level security;
+grant select, insert, update, delete on job_photos to service_role;
+
+-- ===== migrations/20261020000000_pricing_and_sales_tax.sql =====
+-- Square-footage pricing and Texas sales tax on each booking.
+-- amount_due stays the total the customer owes (price + tax), so payments
+-- work as before; these columns record how it was calculated.
+alter table jobs
+    add column lawn_sqft  integer check (lawn_sqft between 100 and 200000),  -- mowing: lawn size priced on
+    add column subtotal   numeric(8, 2) check (subtotal >= 0),                -- price before tax
+    add column tax_rate   numeric(6, 5) check (tax_rate >= 0 and tax_rate < 0.2),
+    add column tax_amount numeric(8, 2) check (tax_amount >= 0);
+
+-- Existing bookings keep the price they were quoted (no tax added after the fact).
+update jobs set subtotal = amount_due, tax_rate = 0, tax_amount = 0
+ where subtotal is null and amount_due is not null;
+
+-- ===== migrations/20261021000000_rate_choice_and_donation_split.sql =====
+-- Pay-what-you-can mowing rate and where each donation goes.
+alter table jobs
+    -- The per-square-foot rate the customer chose at booking (0.009, 0.010 or 0.011).
+    -- The crew's on-site lawn-size correction re-prices at this same rate.
+    add column sqft_rate      numeric(5, 4) check (sqft_rate > 0 and sqft_rate < 0.1),
+    -- Each paid donation's split, saved to the cent when it's paid, e.g.
+    -- {"vfw": 1.65, "nicu": 1.65, "at_risk_youth": 1.70}. The owner passes these on.
+    -- Donations recorded before this migration have no split (they went to the business).
+    add column donation_split jsonb check (donation_split is null or jsonb_typeof(donation_split) = 'object');
+
+-- ===== migrations/20261022000000_packages_and_charity_giving.sql =====
+-- Mowing packages: price = $50 base + rate × sq ft, and part of each price goes to charity
+--   standard  0.9¢/sq ft,  2%   ·   supporter  1.0¢/sq ft,  7%   ·   hero  1.1¢/sq ft, 12%
+alter table jobs
+    add column package        text check (package in ('standard', 'supporter', 'hero')),
+    add column charity_rate   numeric(5, 4) check (charity_rate >= 0 and charity_rate < 1),
+    -- The business's gift from this job's price (not extra to the customer). Kept in step
+    -- with the price while the job is unpaid; owed to charity once it's paid.
+    add column charity_amount numeric(8, 2) check (charity_amount >= 0),
+    -- charity_amount split between the causes to the cent, e.g. {"vfw": 1.96, "nicu": 1.96, "at_risk_youth": 2.03}
+    add column giving_split   jsonb check (giving_split is null or jsonb_typeof(giving_split) = 'object');
+

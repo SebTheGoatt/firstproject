@@ -1,6 +1,6 @@
 """Runway quota & time-window freeze rules, shared by intake and the nightly run.
 
-* A day is frozen once the nightly cutoff (default 8 PM local) passes on the
+* A day is frozen once the daily cutoff (default 5 PM local) passes on the
   day before it. Today and any past day are always frozen.
 * Each day accepts at most DAILY_JOB_QUOTA active (pending/scheduled) jobs.
 """

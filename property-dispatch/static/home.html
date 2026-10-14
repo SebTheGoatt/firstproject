@@ -39,7 +39,7 @@
     <section class="hero">
       <div class="site-wrap hero-grid">
         <div class="hero-copy">
-          <p class="eyebrow">Spring · Klein · New Caney · Splendora · Cleveland</p>
+          <p class="eyebrow">Spring · Klein · New Caney · Splendora · Cleveland · Plum Grove</p>
           <h1>Yard and home care that shows up when we say it will.</h1>
           <p class="lede">Book mowing, trash bin cleaning or gutter cleaning in about a minute.
             We plan the crew's route the night before and text you when we're heading your way.</p>
@@ -56,12 +56,12 @@
         <aside class="card next-open" aria-live="polite">
           <p class="eyebrow">Next open day</p>
           <p class="next-day" id="next-day">Checking…</p>
-          <p class="hint" id="cutoff">Next-day booking closes at 8 PM.</p>
+          <p class="hint" id="cutoff">Next-day booking closes at 5 PM.</p>
           <ul class="checks">
             <li>Veteran-owned and operated</li>
             <li>Pay your way: cash to the crew or card in the app</li>
             <li>Text when the crew is on the way</li>
-            <li>Mowing priced by area, shown before you book</li>
+            <li>See your full price with tax before you book</li>
           </ul>
         </aside>
       </div>
@@ -125,7 +125,7 @@
         <h2>How it works</h2>
         <ol class="steps">
           <li><h3>Book online</h3><p>Pick a service and a day. We confirm your address is in a service area on the spot.</p></li>
-          <li><h3>We plan the route</h3><p>At 8 PM the night before, the day's stops are locked and put in the fastest driving order.</p></li>
+          <li><h3>We plan the route</h3><p>At 5 PM the day before, the day's stops are locked and put in the fastest driving order.</p></li>
           <li><h3>We text you</h3><p>When the crew finishes the stop before yours, you get a text that we're heading your way.</p></li>
           <li><h3>Done</h3><p>The job is marked complete from the crew's phone the moment we wrap up.</p></li>
         </ol>
@@ -162,10 +162,12 @@
         return {
           type: "Feature", id: i,
           properties: { key: z.key, name: z.name, price: money(z.mow_rate), color: ZONE_COLORS[i % ZONE_COLORS.length] },
-          geometry: { type: "Polygon", coordinates: [[[w, s], [e, s], [e, n], [w, n], [w, s]]] },
+          // A zone can cover several boxes (e.g. Cleveland + Plum Grove).
+          geometry: { type: "MultiPolygon", coordinates: (z.boxes || [z.bbox]).map(([bw, bs, be, bn]) =>
+            [[[bw, bs], [be, bs], [be, bn], [bw, bn], [bw, bs]]]) },
         };
       });
-      const all = zones.map((z) => z.bbox);
+      const all = zones.flatMap((z) => z.boxes || [z.bbox]);
       const bounds = [[Math.min(...all.map((b) => b[0])), Math.min(...all.map((b) => b[1]))],
                       [Math.max(...all.map((b) => b[2])), Math.max(...all.map((b) => b[3]))]];
 
@@ -296,14 +298,14 @@
         name.textContent = z.name;
         const price = document.createElement("span");
         price.className = "area-price";
-        price.textContent = `${money(z.mow_rate)} / mow`;
+        price.textContent = `${money(z.mow_rate)} per visit + sq ft rate`;
         li.append(name, price);
         list.append(li);
       });
       drawAreaMap(info.zones);
       if (info.zones.length) {
         const low = Math.min(...info.zones.map((z) => z.mow_rate));
-        document.getElementById("mow-from").textContent = `From ${money(low)} per mow`;
+        document.getElementById("mow-from").textContent = `${money(low)} per visit + 0.9¢ to 1.1¢ per sq ft + tax. Every package gives to the VFW, NICU families and at-risk youth`;
       }
     }).catch(() => {
       document.getElementById("next-day").textContent = "See the booking page";

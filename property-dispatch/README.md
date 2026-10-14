@@ -6,7 +6,7 @@ On-demand scheduling and route optimization for a property-service crew
 ```
  Customer ──► Intake form ──► FastAPI ──► Nominatim (geocode) ──► Supabase Postgres
                                                                       │
- 8 PM nightly ──► freeze tomorrow ──► OSRM matrix ──► OR-Tools TSP ───┘ routes + route_stops
+ 5 PM daily  ──► freeze tomorrow ──► OSRM matrix ──► OR-Tools TSP ───┘ routes + route_stops
                                                                       │
  Crew phone ◄── /crew dashboard ◄── optimized stops + Apple/Google Maps deep links
      │
@@ -20,11 +20,11 @@ On-demand scheduling and route optimization for a property-service crew
 | `supabase/migrations/…_init.sql` | Schema: `customers`, `jobs`, `routes`, `route_stops`, `save_route()` transaction, RLS |
 | `app/main.py` | FastAPI app: pages, intake API, crew API, webhooks |
 | `app/zones.py` | Geo-fenced service zones + mowing rates |
-| `app/booking.py` | Runway quota + 8 PM time-window freeze rules |
+| `app/booking.py` | Runway quota + 5 PM time-window freeze rules |
 | `app/geocode.py` | Nominatim geocoder (rate-limited to 1 req/s per its policy) |
 | `app/routing/matrix.py` | OSRM driving distance/time matrix, haversine fallback |
 | `app/routing/solver.py` | OR-Tools TSP with fixed start (base) and end point |
-| `app/nightly.py` | The 8 PM job: load tomorrow → optimize → save route + freeze jobs |
+| `app/nightly.py` | The 5 PM job: load tomorrow → optimize → save route + freeze jobs |
 | `app/deeplinks.py` | Google Maps / Apple Maps navigation URLs |
 | `app/notify.py` | Twilio "crew is heading your way" text, never sent twice |
 | `app/db.py` | Supabase repository + in-memory repository (demo/tests) |
@@ -83,7 +83,85 @@ box. Google's coordinates are only a hint: the server uses them when its own loo
 just the street (and Google's point is within 1.5 km of it) or nothing at all (brand-new
 subdivisions), and never outside Texas.
 
+## Owner dashboard, customer access codes, before/after photos
+
+**Owner dashboard** (`/crew` → Owner sign-in → **Dashboard**, the owner's first tab):
+- a 7-day strip with bookings per day against `DAILY_JOB_QUOTA` and expected revenue;
+- the selected day's totals: bookings, expected, collected, donations, still owed;
+- route status, with **Build route now** / **Rebuild route** (refused once any stop on
+  that day is finished, so the crew's route never changes under them);
+- every booking as soon as it's made (before the route exists), with status, payment,
+  phone, and the customer's access code to copy.
+
+**Customer access codes.** Every booking gets an 8-character code such as `K7MX-3QPA`
+(no look-alike characters). It's shown on the booking confirmation and texted with a link
+to `/visit/{code}`, where the customer sees their status (booked → route planned → on the
+way → done), arrival window, the crew member who did the job, payment (with a pay link for
+card customers), and their **before and after photos**. Lookups are rate-limited per IP.
+
+**Before/after photos.** On each stop the crew taps **Before photo** on arrival; when
+finishing, the **after photo** goes to the customer's visit page. These photos are private
+to that customer's code (`/media/visit/{id}?code=…`). A crew member can tick "Also show it
+on my public profile" to add the after photo to their public portfolio.
+
+## Pricing and Texas sales tax
+
+**Mowing price** = **$50 base trip fee** (the same in every area) **+ the package's rate × square
+feet of lawn**. The customer picks a package, and part of each price goes to charity. The giving
+comes out of what the business keeps; the customer pays nothing extra for it.
+
+| Package | Rate | Given to charity | 3,500 sq ft | 8,000 sq ft |
+|---|---|---|---|---|
+| Standard (default) | 0.9¢ / sq ft | 2% of the price | $81.50 ($1.63 to charity) | $122.00 ($2.44) |
+| Supporter | 1.0¢ / sq ft | 7% | $85.00 ($5.95) | $130.00 ($9.10) |
+| Hero | 1.1¢ / sq ft | 12% | $88.50 ($10.62) | $138.00 ($16.56) |
+
+Example: 3,500 sq ft on Supporter = $50 + $35 = **$85.00** + $7.01 tax = **$92.01**. $5.95 goes to
+charity and the business keeps $79.05. Sales tax is on the whole $85 (the charity share is part
+of the sale). Packages live in `app/pricing.py` (`PACKAGES`); the $50 base is `FLAT_FEE` in
+`app/zones.py`. The package is saved on the booking, so if the crew corrects the lawn size on site,
+the price and the charity share are redone with the same package. No size given → priced as a
+typical 4,500 sq ft lot until the crew confirms.
+
+- **Lawn size at booking.** Customers pick Small (~2,500 sq ft), Medium (~4,500), Large
+  (~8,000) or X-Large (~12,500), or type an exact size. They see the price, tax and total
+  before they book. Skipping the size books at the flat fee.
+- **Crew confirms on site.** The finish panel shows the booked size; if the lawn is
+  bigger or smaller, the crew types the real size and the price, tax, total and the
+  cash amount update live. The price can only change while the job is unpaid.
+- **Bin cleaning and gutters** are priced on site: the crew enters the price before tax
+  when finishing, and tax is added the same way.
+- **Texas sales tax** is added to all three services at 8.25% (6.25% state + up to 2%
+  local), set per zone in `app/zones.py` (`tax_rate`). Donations are never taxed.
+  Customers see "price + Texas sales tax = total" on the booking page, confirmation,
+  visit page, pay page and Stripe receipt. The owner dashboard shows **Sales tax
+  collected** for each day so it's easy to set aside for your Comptroller filing.
+  - Lawn mowing is a taxable service in Texas
+    ([Comptroller Pub. 94-112](https://www.comptroller.texas.gov/taxes/publications/94-112.php)).
+    Gutter and bin cleaning are most likely taxable as building/real-property services;
+    confirm both with a tax professional.
+  - Local rates vary by address. Check each area's exact rate with the Comptroller's
+    [sales tax rate locator](https://gis.cpa.texas.gov/search/) and update `tax_rate`
+    if it's lower than 8.25%.
+  - Bookings made before this change keep their original price with no tax added.
+
 ## Pay your way (cash or card) and donations
+
+**Where donations go.** Package giving (above) and every voluntary donation are each split **33% Veterans of Foreign Wars, 33% NICU
+(neonatal intensive care) families, 34% at-risk youth programs** (`app/charity.py`). The split
+is worked out to the cent when the donation is paid (leftover cents go to the largest
+remainders, so the shares always add up exactly) and saved on the job, so the ledger never
+changes later. Customers see the split on the booking page, live on the pay page ("Where your
+$10.00 goes"), as separate lines on their Stripe receipt, and on their visit page. The crew's
+finish screen previews the split when cash is over the total, and the owner dashboard shows
+**Package giving** and **To pass on** per cause for each day (package giving + donations, paid jobs only).
+
+- Rename the causes to the specific organizations you give to (no code change):
+  `CHARITY_VFW_NAME`, `CHARITY_NICU_NAME`, `CHARITY_YOUTH_NAME` in Render's environment.
+- Donations are collected by the business and passed on, so they aren't tax-deductible for
+  the customer (the pay page says so). Keep records of each payout to match the ledger, and
+  ask the VFW post / hospital before using their name publicly.
+- Donations recorded before this feature have no split (they went to the business).
 
 At booking, customers choose **Cash to the crew** or **Card in the app**.
 
@@ -96,8 +174,6 @@ At booking, customers choose **Cash to the crew** or **Card in the app**.
   Stripe's signed webhook marks the job paid.
 - **Quoted services** (bin cleaning, gutters): the crew enters the final price when
   finishing; card customers are then texted their pay link.
-- Donations are recorded per job. They go to the business and **aren't tax-deductible**,
-  and the pay page says so.
 
 **Turning on card payments** (until then the card option stays hidden):
 1. Create a Stripe account and finish its business verification.
@@ -125,15 +201,16 @@ At booking, customers choose **Cash to the crew** or **Card in the app**.
 
 ## How the rules work
 
-**Freeze.** A service day locks at `FREEZE_HOUR` (default 20:00, America/Chicago)
-on the day before. After 8 PM tonight, tomorrow can't be booked; the form's
+**Freeze.** A service day locks at `FREEZE_HOUR` (default 17:00, close of business,
+America/Chicago) on the day before. After 5 PM today, tomorrow can't be booked; the form's
 date picker automatically starts at the earliest open day.
 
 **Quota.** Each day accepts at most `DAILY_JOB_QUOTA` active jobs; the next
 booking gets "That day is fully booked."
 
 **Service zones.** `app/zones.py` defines geo-fenced bounding boxes, each with a
-mowing rate. After geocoding, an address outside every zone is turned away; inside
+flat mowing fee and a sales tax rate. A zone can have extra boxes: Plum Grove is
+served from the Cleveland hub this way. After geocoding, an address outside every zone is turned away; inside
 one, the job stores its `zone_key` and (for mowing) the `quoted_price`. Boxes are
 `(min_lng, min_lat, max_lng, max_lat)`, and the app refuses to start if a box is
 inverted, out of range, or overlaps another. To change a zone, edit that file and redeploy.
@@ -184,6 +261,15 @@ Without Twilio credentials the "next customer" text is logged instead of sent.
    from the **Connect** button. The secret key bypasses RLS, so keep it on the server and
    never put it in the browser. It goes in `SUPABASE_SERVICE_ROLE_KEY`. If the app logs
    "Invalid API key", use the legacy `service_role` key from the same page instead.
+4. **Already set up (through 20261018)?** Open `supabase/upgrade_2026-10_packages.sql`, copy **all of its
+   text** (not the file name), paste it into a new SQL Editor query and click **Run**. It adds
+   migrations 20261019 to 20261022 at once, is safe to run twice, and ends with a check that lists 12 rows.
+5. Otherwise, run only the migrations you haven't run yet, once each and in order:
+   open each new file in `supabase/migrations/` (for example
+   `20261019000000_access_codes_and_job_photos.sql`, then
+   `20261020000000_pricing_and_sales_tax.sql`, then
+   `20261021000000_rate_choice_and_donation_split.sql`, then
+   `20261022000000_packages_and_charity_giving.sql`), paste it into the SQL Editor, and click **Run**.
 
 ### 2. Twilio (SMS)
 1. Buy a local (281/832/346) number in the Twilio console.
@@ -192,7 +278,7 @@ Without Twilio credentials the "next customer" text is logged instead of sent.
    takes a few days, so start this first.
 3. Copy the Account SID, Auth Token, and the number in E.164 form (`+12815550000`).
 
-### 3. Render (web app + 8 PM cron), using `render.yaml` at the repo root
+### 3. Render (web app + 5 PM cron), using `render.yaml` at the repo root
 1. Push this repo to GitHub.
 2. Render → **New → Blueprint** → select the repo. It creates:
    - `property-dispatch`: the web service (Docker)
@@ -206,12 +292,18 @@ Without Twilio credentials the "next customer" text is logged instead of sent.
 4. On the crew's phones, open `https://<your-app>.onrender.com/crew` → enter the code →
    Share → **Add to Home Screen**.
 
-**Why the cron runs hourly 01:00-04:00 UTC:** cron schedules are in UTC, and 8 PM
-Central is 01:00 UTC during daylight time but 02:00 UTC in winter. Each run exits
-before 8 PM local, builds tomorrow's route at or after it, and does nothing if the
-route already exists. The first run after 8 PM does the work; the later ones catch
-up if that run was missed (host outage or maintenance). The last run is 11 PM
-Central at the latest, so it never crosses midnight.
+**Why the cron runs hourly 22:00-02:00 UTC:** cron schedules are in UTC, and 5 PM
+Central is 22:00 UTC during daylight time but 23:00 UTC in winter. Each run exits
+before 5 PM local, builds tomorrow's route at or after it, and does nothing if the
+route already exists. The first run after 5 PM does the work; the later ones catch
+up if that run was missed (host outage or maintenance). The last run is 9 PM
+Central at the latest, so it never crosses midnight. The first stop is planned for
+`CREW_START_TIME` (default 07:00). Texas has no statewide lawn-hours law; cities and
+HOAs set noise rules, so adjust it if a neighborhood requires a later start.
+
+**After changing the schedule in `render.yaml`:** a Blueprint only re-reads the file
+when it syncs. In Render open the Blueprint and click **Manual sync** (or turn on
+auto-sync), then check the cron job's schedule shows `0 22,23,0,1,2 * * *`.
 
 The app refuses to start in `supabase` mode if any of the three secrets is
 empty or still `change-me`.
@@ -221,16 +313,16 @@ If you'd rather not run a cron service, enable the `pg_cron` and `pg_net`
 extensions and have Postgres call the HTTP trigger:
 
 ```sql
-select cron.schedule('nightly-route-cdt', '0 1 * * *', $$
+select cron.schedule('route-build-cdt', '0 22 * * *', $$
   select net.http_post(
     url     := 'https://<your-app>/internal/nightly',
     headers := '{"X-Cron-Secret": "<CRON_SECRET>"}'::jsonb)
 $$);
--- plus an identical '0 2 * * *' job named 'nightly-route-cst'
+-- plus an identical '0 23 * * *' job named 'route-build-cst'
 ```
 
-The HTTP endpoint doesn't do the 8 PM check (it always builds tomorrow), so
-during daylight time disable the 02:00 job, and in winter disable the 01:00 job.
+The HTTP endpoint doesn't do the 5 PM check (it always builds tomorrow), so
+during daylight time disable the 23:00 job, and in winter disable the 22:00 job.
 Or simply use the Render cron above, which handles daylight time on its own.
 
 ### Optional: completion webhook from other systems
@@ -252,6 +344,7 @@ Updates that aren't completions are ignored.
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | GET | `/api/booking-info` | none | earliest/latest bookable dates, services |
+| POST | `/api/quote` | none | price, tax and total for an address, service, lawn size and package |
 | POST | `/api/jobs` | none | `409` frozen/full · `422` bad input/unknown address · `503` geocoder down |
 | GET | `/api/routes/{YYYY-MM-DD}` | `X-Crew-Token` | stops in order with ETAs and map URLs |
 | POST | `/api/stops/{id}/complete` | `X-Crew-Token` | idempotent; returns notification result |

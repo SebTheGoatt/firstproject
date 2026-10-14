@@ -493,3 +493,112 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
 .area-check.bad { background: var(--danger-soft); color: var(--danger); }
 .area-check.warn { background: var(--warn-soft); color: var(--warn); }
 #address-picker gmp-place-autocomplete, #address-autocomplete { width: 100%; display: block; color-scheme: light dark; }
+
+/* ---------- Customer visit page ---------- */
+.visit-title { margin: 0 0 6px; font-size: 1.6rem; letter-spacing: -0.01em; }
+.card-title { margin: 0 0 10px; font-size: 1.15rem; }
+#visit { display: grid; gap: 12px; }
+.code-input { font-size: 1.4rem !important; letter-spacing: 0.12em; text-align: center; font-variant-numeric: tabular-nums; text-transform: uppercase; }
+.timeline { list-style: none; margin: 16px 0 6px; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; counter-reset: t; }
+.timeline li { position: relative; padding-top: 22px; font-size: 0.8rem; color: var(--muted); text-align: center; counter-increment: t; }
+.timeline li::before { content: ""; position: absolute; top: 4px; left: 0; right: 0; height: 6px; border-radius: 99px; background: var(--border); }
+.timeline li.on { color: var(--text); font-weight: 600; }
+.timeline li.on::before { background: var(--brand); }
+.timeline li.current::after { content: ""; position: absolute; top: 0; left: 50%; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: var(--brand); box-shadow: 0 0 0 4px var(--brand-soft); }
+.visit-eta { margin: 10px 0 0; font-weight: 600; }
+.visit-crew { display: flex; align-items: center; gap: 16px; }
+.visit-crew p { margin: 0; }
+.ba-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ba-col { display: grid; gap: 8px; align-content: start; }
+.ba-col h3 { margin: 0; font-size: 0.95rem; }
+@media (max-width: 380px) { .ba-grid { grid-template-columns: 1fr; } }
+.code-box { display: grid; gap: 4px; justify-items: start; margin-top: 12px; padding: 12px 14px; border-radius: 10px; background: var(--surface); border: 1px dashed var(--brand); }
+.code-box span { color: var(--muted); font-size: 0.85rem; }
+.code-box strong { font-size: 1.6rem; letter-spacing: 0.1em; font-variant-numeric: tabular-nums; }
+.code-box .btn { margin-top: 6px; }
+
+/* ---------- Owner dashboard ---------- */
+.week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin-bottom: 12px; }
+.day-card { display: grid; justify-items: center; gap: 2px; padding: 8px 2px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; cursor: pointer; min-width: 0; }
+.day-card.is-on { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
+.dc-day { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.dc-date { font-size: 0.72rem; color: var(--muted); }
+.day-card b { font-size: 1.2rem; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.dc-bar { width: 80%; height: 4px; border-radius: 99px; background: var(--border); overflow: hidden; }
+.dc-bar span { display: block; height: 100%; background: var(--accent); }
+.dc-money { font-size: 0.68rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; display: grid; }
+.kpi b { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.kpi span { color: var(--muted); font-size: 0.78rem; }
+.route-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 14px 16px; margin-bottom: 14px; }
+.rc-text { display: grid; gap: 2px; min-width: 0; }
+.list-title { margin: 6px 0 8px; font-size: 1rem; }
+.job-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.job-row { display: flex; justify-content: space-between; gap: 12px; padding: 12px 14px; }
+.job-main { display: grid; gap: 2px; min-width: 0; }
+.job-main .small { overflow-wrap: anywhere; }
+.job-side { display: grid; justify-items: end; align-content: space-between; gap: 6px; flex: none; }
+.code-chip { font: 700 0.85rem/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: 0.06em; padding: 6px 8px; border-radius: 8px; border: 1px dashed var(--border); background: var(--bg); color: var(--text); cursor: pointer; }
+.chip-s { border-radius: 999px; padding: 2px 9px; font-weight: 650; font-size: 0.78rem; }
+.chip-s.done { background: var(--brand-soft); color: var(--text); }
+.chip-s.routed { background: color-mix(in srgb, #1f4e8c 14%, var(--surface)); color: var(--text); }
+.chip-s.waiting { background: var(--warn-soft); color: var(--warn); }
+.btn-before { margin: 0; }
+.actions { grid-template-columns: 1fr 1fr; }
+.actions .btn-before { grid-column: 1 / -1; }
+label.check { display: flex; align-items: center; gap: 8px; font-weight: 500; margin: 6px 0; }
+label.check input { width: 18px; height: 18px; }
+@media (max-width: 400px) { .week { gap: 4px; } .day-card { padding: 6px 0; } .dc-money { display: none; } }
+
+/* ---------- Booking steps, lawn sizes, live price ---------- */
+.step { padding-block: 6px 14px; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+.step:last-of-type { border-bottom: 0; }
+.step-title { display: flex; align-items: center; gap: 10px; margin: 4px 0 12px; font-size: 1.05rem; }
+.step-title span { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--brand); color: var(--brand-ink); font-size: 0.85rem; flex: none; }
+.sizes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sizes input { position: absolute; opacity: 0; pointer-events: none; }
+.sizes label { margin: 0; display: grid; gap: 1px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); cursor: pointer; font-weight: 500; }
+.sizes label span { font-size: 0.85rem; color: var(--text); }
+.sizes label small { color: var(--muted); font-size: 0.78rem; }
+.sizes input:checked + label { border-color: var(--brand); background: var(--brand-soft); }
+.sizes input:focus-visible + label { outline: 3px solid color-mix(in srgb, var(--brand) 45%, transparent); }
+
+/* Pay-what-you-can rate picker */
+#rate-fieldset { margin-bottom: 12px; }
+.rates { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.rates input { position: absolute; opacity: 0; pointer-events: none; }
+.rates label { margin: 0; display: grid; gap: 2px; text-align: center; padding: 10px 6px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); cursor: pointer; font-weight: 500; }
+.rates label span { font-size: 0.85rem; color: var(--muted); }
+.rates input:checked + label { border-color: var(--brand); background: var(--brand-soft); }
+.rates input:checked + label span { color: var(--text); }
+.rates input:focus-visible + label { outline: 3px solid color-mix(in srgb, var(--brand) 45%, transparent); }
+.packages label small { color: var(--muted); font-size: 0.75rem; }
+.packages label span { color: var(--text); font-weight: 600; }
+.packages label em { font-style: normal; font-size: 0.75rem; color: var(--brand); }
+.price-lines .sub dt, .price-lines .sub dd { font-size: 0.88rem; color: var(--muted); }
+.price-lines .sub dt { padding-left: 12px; }
+
+/* Where donations go */
+.donation-split { margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--brand-soft); font-size: 0.9rem; }
+.donation-split strong { display: block; margin-bottom: 4px; }
+.ledger-row { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; }
+.ledger-row span { color: var(--muted); }
+.donation-ledger { margin: 12px 0; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.donation-ledger strong { display: block; margin-bottom: 6px; }
+.donation-line { margin-top: 6px; color: var(--brand); }
+.exact-row { margin: 12px 0 4px; }
+.sqft-input { display: flex; align-items: center; gap: 8px; }
+.sqft-input input { max-width: 160px; }
+.price-box { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+.price-box > p { margin: 0; }
+.price-lines { margin: 0; display: grid; }
+.price-lines div { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px dashed var(--border); }
+.price-lines dt { color: var(--muted); }
+.price-lines dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
+.price-lines .total { border-bottom: 0; padding-top: 10px; font-size: 1.15rem; }
+.price-lines .total dt { color: var(--text); font-weight: 700; }
+.price-lines .total dd { font-weight: 800; }
+#price-note { margin-top: 8px; }
+.finish-total { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.finish-total:empty { display: none; }

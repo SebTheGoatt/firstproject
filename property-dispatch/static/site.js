@@ -35,3 +35,20 @@ if ("serviceWorker" in navigator) {
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   if (isIOS && iosHint) iosHint.hidden = false;
 })();
+
+// Donations are split 33% VFW / 33% NICU / 34% at-risk youth. Same math as the
+// server (app/charity.py): whole cents, leftover cents to the largest remainders.
+const charities = [
+  { key: "vfw", percent: 33, short: "VFW" },
+  { key: "nicu", percent: 33, short: "NICU" },
+  { key: "at_risk_youth", percent: 34, short: "at-risk youth" },
+];
+function splitDonation(amount) {
+  const total = Math.round((amount || 0) * 100);
+  if (total <= 0) return {};
+  const raw = charities.map((c) => ({ key: c.key, exact: (total * c.percent) / 100 }));
+  raw.forEach((r) => { r.cents = Math.floor(r.exact + 1e-9); });
+  let left = total - raw.reduce((n, r) => n + r.cents, 0);
+  [...raw].sort((a, b) => (b.exact - b.cents) - (a.exact - a.cents)).forEach((r) => { if (left > 0) { r.cents += 1; left -= 1; } });
+  return Object.fromEntries(raw.map((r) => [r.key, r.cents / 100]));
+}

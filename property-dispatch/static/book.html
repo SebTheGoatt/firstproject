@@ -38,58 +38,98 @@
     <form id="intake" class="card" novalidate>
       <div id="err" class="alert alert-error" role="alert" hidden></div>
 
-      <div class="field">
-        <label for="name">Full name</label>
-        <input id="name" name="name" type="text" autocomplete="name" required maxlength="120">
-      </div>
-
-      <div class="field">
-        <label for="phone">Mobile phone</label>
-        <input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required placeholder="(281) 555-0123">
-        <div class="hint">We'll text you when the crew is on the way.</div>
-      </div>
-
-      <div class="field">
-        <label for="address">Service address</label>
-        <div id="address-picker" hidden></div>
-        <input id="address" name="address" type="text" autocomplete="street-address" required
-               placeholder="1234 Oak Forest Ln, Spring, TX 77386">
-        <input type="hidden" id="lat"><input type="hidden" id="lng">
-        <div class="hint" id="address-hint">House number, street, city and ZIP.</div>
-        <div class="area-check" id="area-check" role="status" aria-live="polite" hidden></div>
-      </div>
-
-      <fieldset>
-        <legend>Service</legend>
-        <div class="services" id="services">
-          <input type="radio" name="service" id="svc-mowing" value="mowing" required checked>
-          <label for="svc-mowing">Mowing</label>
-          <input type="radio" name="service" id="svc-bin_cleaning" value="bin_cleaning">
-          <label for="svc-bin_cleaning">Bin Cleaning</label>
-          <input type="radio" name="service" id="svc-gutters" value="gutters">
-          <label for="svc-gutters">Gutters</label>
+      <section class="step">
+        <h2 class="step-title"><span>1</span>Where</h2>
+        <div class="field">
+          <label for="address">Service address</label>
+          <div id="address-picker" hidden></div>
+          <input id="address" name="address" type="text" autocomplete="street-address" required
+                 placeholder="1234 Oak Forest Ln, Spring, TX 77386">
+          <input type="hidden" id="lat"><input type="hidden" id="lng">
+          <div class="hint" id="address-hint">House number, street, city and ZIP.</div>
+          <div class="area-check" id="area-check" role="status" aria-live="polite" hidden></div>
         </div>
-      </fieldset>
+      </section>
 
-      <div class="field">
-        <label for="date">Service day</label>
-        <input id="date" name="scheduled_date" type="date" required>
-        <div class="hint" id="date-hint">Next-day bookings close at 8 PM.</div>
-      </div>
+      <section class="step">
+        <h2 class="step-title"><span>2</span>What</h2>
+        <fieldset>
+          <legend class="visually-hidden">Service</legend>
+          <div class="services" id="services">
+            <input type="radio" name="service" id="svc-mowing" value="mowing" required checked>
+            <label for="svc-mowing">Mowing</label>
+            <input type="radio" name="service" id="svc-bin_cleaning" value="bin_cleaning">
+            <label for="svc-bin_cleaning">Bin Cleaning</label>
+            <input type="radio" name="service" id="svc-gutters" value="gutters">
+            <label for="svc-gutters">Gutters</label>
+          </div>
+        </fieldset>
+        <fieldset id="lawn-fieldset">
+          <legend>Lawn size</legend>
+          <div class="sizes" id="sizes"></div>
+          <div class="field exact-row">
+            <label for="lawn-sqft">Know your exact lawn size?</label>
+            <div class="sqft-input"><input id="lawn-sqft" type="number" inputmode="numeric" min="200" max="87120" step="100" placeholder="e.g. 5200"><span>sq ft</span></div>
+          </div>
+          <p class="hint">Not sure? Pick the closest size. Your crew confirms it on site, and the price only changes if it's different.</p>
+        </fieldset>
+      </section>
 
-      <fieldset>
-        <legend>Pay your way</legend>
-        <div class="pay-options">
-          <input type="radio" name="payment_method" id="pay-cash" value="cash" checked>
-          <label for="pay-cash"><strong>Cash to the crew</strong><span>Pay when we arrive or when we finish.</span></label>
-          <input type="radio" name="payment_method" id="pay-card" value="card" disabled>
-          <label for="pay-card" id="pay-card-label"><strong>Card in the app</strong><span id="pay-card-note">Coming soon.</span></label>
+      <section class="step">
+        <h2 class="step-title"><span>3</span>When</h2>
+        <div class="field">
+          <label for="date">Service day</label>
+          <input id="date" name="scheduled_date" type="date" required>
+          <div class="hint" id="date-hint">Next-day bookings close at 5 PM.</div>
         </div>
-        <p class="veteran-note"><span class="flag" aria-hidden="true">★</span>
-          No tip necessary. Donations are always welcome. We're a veteran-owned business.</p>
-      </fieldset>
+      </section>
 
-      <button class="btn btn-primary btn-block" type="submit" id="submit">Book service</button>
+      <section class="step">
+        <h2 class="step-title"><span>4</span>Your price</h2>
+        <fieldset id="rate-fieldset">
+          <legend>Choose your package</legend>
+          <div class="rates packages" id="rates" role="radiogroup"></div>
+          <p class="hint">Same great service in every package: $50 per visit plus a per-sq-ft rate.
+            Higher packages cost a little more and give a bigger share of your price to the VFW, NICU families and at-risk youth.</p>
+        </fieldset>
+        <div class="price-box" id="price-box" aria-live="polite">
+          <p class="muted" id="price-empty">Enter your address to see your price.</p>
+          <dl class="price-lines" id="price-lines" hidden></dl>
+          <p class="hint" id="price-note" hidden></p>
+        </div>
+      </section>
+
+      <section class="step">
+        <h2 class="step-title"><span>5</span>Pay your way</h2>
+        <fieldset>
+          <legend class="visually-hidden">Payment method</legend>
+          <div class="pay-options">
+            <input type="radio" name="payment_method" id="pay-cash" value="cash" checked>
+            <label for="pay-cash"><strong>Cash to the crew</strong><span>Pay when we arrive or when we finish.</span></label>
+            <input type="radio" name="payment_method" id="pay-card" value="card" disabled>
+            <label for="pay-card" id="pay-card-label"><strong>Card, Apple Pay or Google Pay</strong><span id="pay-card-note">Coming soon.</span></label>
+          </div>
+          <p class="veteran-note"><span class="flag" aria-hidden="true">★</span>
+            <span>No tip necessary. Donations are always welcome, never taxed, and go to
+            <span id="charity-list">the VFW (33%), NICU families (33%) and at-risk youth programs (34%)</span>.
+            We're a veteran-owned business.</span></p>
+        </fieldset>
+      </section>
+
+      <section class="step">
+        <h2 class="step-title"><span>6</span>Your details</h2>
+        <div class="field">
+          <label for="name">Full name</label>
+          <input id="name" name="name" type="text" autocomplete="name" required maxlength="120">
+        </div>
+        <div class="field">
+          <label for="phone">Mobile phone</label>
+          <input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required placeholder="(281) 555-0123">
+          <div class="hint">We text your access code, and again when the crew is on the way.</div>
+        </div>
+      </section>
+
+      <button class="btn btn-primary btn-block btn-lg" type="submit" id="submit">Book service</button>
     </form>
   </main>
 
@@ -111,28 +151,131 @@
     const areaBox = document.getElementById("area-check");
     let checkSeq = 0;
 
-    async function checkArea() {
+    // ---------- Live price: area check + price breakdown in one call ----------
+    const priceLines = document.getElementById("price-lines"), priceEmpty = document.getElementById("price-empty");
+    const priceNote = document.getElementById("price-note");
+    const sqftInput = document.getElementById("lawn-sqft");
+    let lawnSize = "medium", lastQuote = null, flatFee = 50, pkgKey = "standard", lastSqft = null;
+    let packages = [
+      { key: "standard", label: "Standard", sqft_rate: 0.009, charity_rate: 0.02 },
+      { key: "supporter", label: "Supporter", sqft_rate: 0.01, charity_rate: 0.07 },
+      { key: "hero", label: "Hero", sqft_rate: 0.011, charity_rate: 0.12 },
+    ];
+    const cent = (r) => `${(r * 100).toFixed(1)}¢`;
+    const pct = (r) => `${(r * 100).toFixed(2).replace(/\.?0+$/, "")}%`;
+    const service = () => form.querySelector('input[name="service"]:checked')?.value || "mowing";
+
+    function renderPrice(q) {
+      lastQuote = q;
+      if (!q || !q.in_area) {
+        priceLines.hidden = true; priceNote.hidden = true; priceEmpty.hidden = false;
+        priceEmpty.textContent = q ? "We don't serve that address yet." : "Enter your address to see your price.";
+        return;
+      }
+      priceEmpty.hidden = true; priceLines.hidden = false; priceNote.hidden = false;
+      const row = (label, value, cls = "") => {
+        const d = document.createElement("div"); if (cls) d.className = cls;
+        const dt = document.createElement("dt"); dt.textContent = label;
+        const dd = document.createElement("dd"); dd.textContent = value;
+        d.append(dt, dd); return d;
+      };
+      if (q.total == null) {
+        priceLines.replaceChildren(row(q.service_label, "Priced on site"), row(`Texas sales tax (${pct(q.tax_rate)})`, "Added to the on-site price"));
+        priceNote.textContent = "Your crew takes a quick look and sets the price before starting. You'll see the total before you pay.";
+        return;
+      }
+      flatFee = q.base_fee ?? q.flat_fee ?? flatFee;
+      renderRates(q.lawn_sqft);
+      if (!q.package) {
+        priceLines.replaceChildren(row(q.service_label, money(q.subtotal)),
+          row(`Texas sales tax (${pct(q.tax_rate)})`, money(q.tax)), row("Total", money(q.total), "total"));
+        priceNote.hidden = true;
+        return;
+      }
+      const turf = Math.round((q.subtotal - q.base_fee) * 100) / 100;
+      priceLines.replaceChildren(
+        row(`Mowing, ${q.package_label} package`, ""),
+        row("Base trip fee", money(q.base_fee), "sub"),
+        row(`${q.lawn_sqft.toLocaleString()} sq ft × ${cent(q.sqft_rate)}`, money(turf), "sub"),
+        row(`Texas sales tax (${pct(q.tax_rate)})`, money(q.tax)),
+        row("Total", money(q.total), "total"));
+      priceNote.textContent = `★ ${money(q.charity_amount)} of your price (${Math.round(q.charity_rate * 100)}%) goes to the VFW, ` +
+        "NICU families and at-risk youth. It's included in your price, not added on. Your crew confirms the lawn size on site; the price only changes if it's different.";
+    }
+
+    // Packages: each card shows this lawn's price and how much of it goes to charity.
+    function renderRates(sqft) {
+      if (sqft) lastSqft = sqft;
+      sqft = sqft || lastSqft;
+      const box = document.getElementById("rates");
+      box.replaceChildren(...packages.flatMap((pk) => {
+        const input = Object.assign(document.createElement("input"), { type: "radio", name: "package_pick", id: `pkg-${pk.key}`, value: pk.key, checked: pk.key === pkgKey });
+        const label = document.createElement("label"); label.htmlFor = input.id;
+        const b = document.createElement("strong"); b.textContent = pk.label;
+        const r = document.createElement("small"); r.textContent = `${cent(pk.sqft_rate)} per sq ft`;
+        const price = sqft ? Math.round((flatFee + pk.sqft_rate * sqft) * 100) / 100 : null;
+        const p = document.createElement("span"); p.textContent = price != null ? `${money(price)} + tax` : "";
+        const g = document.createElement("em");
+        g.textContent = `${Math.round(pk.charity_rate * 100)}% to charity` + (price != null ? ` (${money(Math.round(price * pk.charity_rate * 100) / 100)})` : "");
+        label.append(b, r, p, g);
+        input.addEventListener("change", () => { pkgKey = pk.key; updateQuote(); });
+        return [input, label];
+      }));
+    }
+
+    async function updateQuote() {
       const address = addressInput.value.trim();
-      if (!/^\s*\d+\s+\S+/.test(address) || address.length < 8) { areaBox.hidden = true; return; }
+      if (!/^\s*\d+\s+\S+/.test(address) || address.length < 8) { areaBox.hidden = true; renderPrice(null); return; }
       const seq = ++checkSeq;
       areaBox.className = "area-check"; areaBox.textContent = "Checking your address…"; areaBox.hidden = false;
-      const payload = { address };
+      const payload = { address, service: service() };
+      document.getElementById("rate-fieldset").hidden = service() !== "mowing";
+      if (service() === "mowing") {
+        payload.package = pkgKey;
+        const exact = parseInt(sqftInput.value, 10);
+        if (exact >= 200) payload.lawn_sqft = exact; else payload.lawn_size = lawnSize;
+      }
       if (addressInput.dataset.picked === address && latInput.value) { payload.lat = Number(latInput.value); payload.lng = Number(lngInput.value); }
       try {
-        const res = await fetch("/api/check-address", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        const res = await fetch("/api/quote", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
         const body = await res.json().catch(() => ({}));
         if (seq !== checkSeq) return;  // a newer check started
         if (!res.ok) {
           areaBox.className = "area-check warn";
           areaBox.textContent = typeof body.detail === "string" ? body.detail : "Please check the address and include your ZIP.";
-        } else {
-          areaBox.className = "area-check " + (body.in_area ? "ok" : "bad");
-          areaBox.textContent = (body.in_area ? "✓ " : "") + body.message;
+          renderPrice(null);
+          return;
         }
+        areaBox.className = "area-check " + (body.in_area ? "ok" : "bad");
+        areaBox.textContent = body.in_area ? `✓ Good news: you're in our ${body.zone_name} area.` : body.message;
+        renderPrice(body);
       } catch {
         if (seq === checkSeq) areaBox.hidden = true;  // offline: the booking itself will report it
       }
     }
+    const checkArea = updateQuote;
+
+    // Lawn size picker (mowing only)
+    function renderSizes(sizes) {
+      const box = document.getElementById("sizes");
+      box.replaceChildren(...sizes.flatMap((z) => {
+        const input = Object.assign(document.createElement("input"), { type: "radio", name: "lawn_size_pick", id: `size-${z.key}`, value: z.key, checked: z.key === lawnSize });
+        const label = document.createElement("label"); label.htmlFor = input.id;
+        const b = document.createElement("strong"); b.textContent = z.label;
+        const r = document.createElement("span"); r.textContent = z.range;
+        const ex = document.createElement("small"); ex.textContent = z.example;
+        label.append(b, r, ex);
+        input.addEventListener("change", () => { lawnSize = z.key; sqftInput.value = ""; updateQuote(); });
+        return [input, label];
+      }));
+    }
+    let sqftTimer;
+    sqftInput.addEventListener("input", () => { clearTimeout(sqftTimer); sqftTimer = setTimeout(updateQuote, 500); });
+    form.querySelectorAll('input[name="service"]').forEach((r) => r.addEventListener("change", () => {
+      document.getElementById("lawn-fieldset").hidden = service() !== "mowing";
+      updateQuote();
+    }));
+
     addressInput.addEventListener("change", () => {
       if (addressInput.dataset.picked !== addressInput.value) { latInput.value = lngInput.value = ""; }
       checkArea();
@@ -190,18 +333,22 @@
       dateInput.max = info.latest_date;
       dateInput.value = info.earliest_date;
       document.getElementById("date-hint").textContent =
-        `Earliest available: ${fmtDay(info.earliest_date)}. Next-day bookings close at 8 PM.`;
+        `Earliest available: ${fmtDay(info.earliest_date)}. Next-day bookings close at ${((info.freeze_hour + 11) % 12) + 1} ${info.freeze_hour < 12 ? "AM" : "PM"}.`;
       const list = document.getElementById("area-list");
       for (const z of info.zones) {
         const li = document.createElement("li");
-        li.textContent = `${z.name}: mowing ${money(z.mow_rate)}`;
+        li.textContent = `${z.name}: mowing ${money(z.mow_rate)} per visit + sq ft rate + tax`;
         list.append(li);
       }
       document.getElementById("areas").hidden = !info.zones.length;
       if (info.google_maps_key) setUpGoogleAutocomplete(info.google_maps_key);
+      if (info.lawn_sizes) renderSizes(info.lawn_sizes);
+      if (info.packages) { packages = info.packages; pkgKey = info.default_package || pkgKey; renderRates(null); }
+      if (info.charities) document.getElementById("charity-list").textContent =
+        info.charities.map((c) => `${c.name} (${c.percent}%)`).join(", ").replace(/, ([^,]*)$/, " and $1");
       if (info.card_payments) {
         document.getElementById("pay-card").disabled = false;
-        document.getElementById("pay-card-note").textContent = "Pay securely online before or after the visit.";
+        document.getElementById("pay-card-note").textContent = "Pay securely now, or after the visit.";
       }
     }).catch(() => {});
 
@@ -218,6 +365,12 @@
       if (!addressInput.value.trim()) { showError("Please choose your address from the list."); return; }
 
       const data = Object.fromEntries(new FormData(form));
+      delete data.lawn_size_pick; delete data.package_pick;
+      if (data.service === "mowing") {
+        data.package = pkgKey;
+        const exact = parseInt(sqftInput.value, 10);
+        if (exact >= 200) data.lawn_sqft = exact; else data.lawn_size = lawnSize;
+      }
       if (addressInput.dataset.picked === addressInput.value && latInput.value) {
         data.lat = Number(latInput.value);
         data.lng = Number(lngInput.value);
@@ -244,18 +397,30 @@
         const p = document.createElement("div");
         p.textContent = `We'll text ${data.phone} when the crew is headed to ${body.formatted_address}.`;
         const z = document.createElement("div");
-        z.textContent = body.quoted_price != null
-          ? `${body.zone_name}: ${money(body.quoted_price)} per mow.`
-          : `${body.zone_name}. We'll confirm pricing on site.`;
+        z.textContent = body.total != null
+          ? `${money(body.subtotal)} + ${money(body.tax)} Texas sales tax = ${money(body.total)} total.` +
+            (body.charity_amount ? ` Your ${body.package[0].toUpperCase() + body.package.slice(1)} package gives ${money(body.charity_amount)} to charity. Thank you!` : "")
+          : `${body.zone_name}. Your crew sets the price on site; Texas sales tax is added.`;
         ok.append(h, p, z);
+        if (body.access_code) {
+          const codeBox = document.createElement("div");
+          codeBox.className = "code-box";
+          const label = document.createElement("span"); label.textContent = "Your access code";
+          const code = document.createElement("strong"); code.textContent = body.access_code;
+          const note = document.createElement("span");
+          note.textContent = "Save it: it opens your visit page with arrival time, payment and before & after photos.";
+          const link = document.createElement("a"); link.className = "btn"; link.href = body.visit_url; link.textContent = "View my visit";
+          codeBox.append(label, code, note, link);
+          ok.append(codeBox);
+        }
         if (body.pay_url) {
           const pay = document.createElement("a");
           pay.className = "btn btn-primary";
           pay.href = body.pay_url;
-          pay.textContent = body.quoted_price != null ? "Pay now" : "Open your payment page";
+          pay.textContent = body.total != null ? `Pay ${money(body.total)} now` : "Open your payment page";
           const note = document.createElement("div");
           note.className = "hint";
-          note.textContent = body.quoted_price != null
+          note.textContent = body.total != null
             ? "Or pay later; we'll text you this link when the job's done."
             : "Your final price is set on site. We'll text you this link when the job's done.";
           ok.append(pay, note);

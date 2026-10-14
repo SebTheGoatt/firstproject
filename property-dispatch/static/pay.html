@@ -30,8 +30,10 @@
       <dl class="pay-summary">
         <div><dt>Service</dt><dd id="svc"></dd></div>
         <div><dt>Date</dt><dd id="when"></dd></div>
-        <div><dt>Price</dt><dd id="price"></dd></div>
+        <div><dt id="price-label">Price</dt><dd id="price"></dd></div>
+        <div id="tax-row" hidden><dt id="tax-label">Texas sales tax</dt><dd id="tax"></dd></div>
       </dl>
+      <p class="veteran-note" id="giving" style="margin-bottom:18px" hidden></p>
 
       <!-- Paid -->
       <div id="paid" class="alert alert-ok" hidden></div>
@@ -53,7 +55,8 @@
         <fieldset>
           <legend>Add a donation? <span class="optional">(optional)</span></legend>
           <p class="veteran-note"><span class="flag" aria-hidden="true">★</span>
-            No tip necessary. Donations are always welcome. We're a veteran-owned business.</p>
+            <span>No tip necessary. Donations are always welcome and never taxed. We're a veteran-owned business,
+            and we pass every donation on: <span id="charity-list">33% to the VFW, 33% to NICU families and 34% to at-risk youth programs</span>.</span></p>
           <div class="chips" id="chips" role="radiogroup" aria-label="Donation amount">
             <button type="button" class="chip is-on" data-amt="0" role="radio" aria-checked="true">No thanks</button>
             <button type="button" class="chip" data-amt="5" role="radio" aria-checked="false">$5</button>
@@ -65,11 +68,12 @@
             <label for="other">Donation amount ($)</label>
             <input id="other" type="text" inputmode="decimal" placeholder="15" autocomplete="off">
           </div>
+          <div class="donation-split" id="split" hidden aria-live="polite"></div>
         </fieldset>
         <div class="pay-total"><span>Total</span><strong id="total"></strong></div>
         <button class="btn btn-primary btn-block btn-lg" id="pay-btn" type="submit">Pay securely</button>
-        <p class="hint center">You'll pay on Stripe's secure page. We never see your card number.<br>
-          Donations go to the business and aren't tax-deductible.</p>
+        <p class="hint center">Pay with card, Apple Pay or Google Pay on Stripe's secure page. We never see your card number.<br>
+          Because donations are paid through our business, they aren't tax-deductible for you.</p>
       </form>
     </section>
   </main>
@@ -80,7 +84,7 @@
     const token = location.pathname.split("/").pop();
     const money = (n) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
     const fmtDay = (iso) => new Date(iso + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
-    let info = null, donation = 0;
+    let info = null, donation = 0, causes = charities.map((c) => ({ ...c, name: c.short }));
 
     function show(id, on = true) { $(id).hidden = !on; }
     function error(msg) { $("err").textContent = msg; show("err"); }
@@ -90,11 +94,27 @@
       $("hello").textContent = `Hi ${info.first_name}`;
       $("svc").textContent = info.service_label;
       $("when").textContent = fmtDay(info.scheduled_date);
-      $("price").textContent = info.amount_due != null ? money(info.amount_due) : "Set on site";
+      const hasBreakdown = info.subtotal != null && info.tax != null && info.amount_due != null;
+      $("price-label").textContent = info.lawn_sqft
+        ? `Price (${info.package_label ? info.package_label + ", " : ""}${info.lawn_sqft.toLocaleString()} sq ft)` : "Price";
+      $("price").textContent = info.amount_due == null ? "Set on site" : money(hasBreakdown ? info.subtotal : info.amount_due);
+      $("tax-row").hidden = !hasBreakdown || !(info.tax > 0);
+      if (hasBreakdown) {
+        $("tax-label").textContent = `Texas sales tax (${(info.tax_rate * 100).toFixed(2).replace(/\.?0+$/, "")}%)`;
+        $("tax").textContent = money(info.tax);
+      }
+      if (info.charity_amount > 0) {
+        $("giving").textContent = `★ Your ${info.package_label || ""} package gives ${money(info.charity_amount)} of this price ` +
+          `(${Math.round((info.charity_rate || 0) * 100)}%) to the VFW, NICU families and at-risk youth. It's included in your price, not added on.`;
+        show("giving");
+      }
       ["paid", "pending-price", "no-card", "pay-form", "confirming"].forEach((id) => show(id, false));
 
       if (info.payment_status === "paid") {
-        const extra = info.donation > 0 ? ` That includes your ${money(info.donation)} donation. Thank you for supporting a veteran-owned business!` : "";
+        const led = (info.donation_ledger || []).filter((c) => c.amount > 0);
+        const extra = info.donation > 0
+          ? ` That includes your ${money(info.donation)} donation${led.length ? ": " + led.map((c) => `${money(c.amount)} to ${c.name}`).join(", ") : ""}. Thank you!`
+          : "";
         $("paid").textContent = `Paid ${money(info.amount_paid)}${info.payment_method === "cash" ? " in cash" : ""}. Thank you!${extra}`;
         show("paid");
       } else if (info.amount_due == null) {
@@ -109,6 +129,17 @@
 
     function updateTotal() {
       const total = (info.amount_due || 0) + donation;
+      const sp = splitDonation(donation), box = $("split");
+      box.hidden = !(donation > 0);
+      if (donation > 0) {
+        box.replaceChildren(Object.assign(document.createElement("strong"), { textContent: `Where your ${money(donation)} goes` }),
+          ...causes.map((c) => {
+            const row = document.createElement("div"); row.className = "ledger-row";
+            row.append(Object.assign(document.createElement("span"), { textContent: `${c.name} (${c.percent}%)` }),
+                       Object.assign(document.createElement("b"), { textContent: money(sp[c.key] || 0) }));
+            return row;
+          }));
+      }
       $("total").textContent = money(total);
       $("pay-btn").textContent = `Pay ${money(total)} securely`;
     }
@@ -159,6 +190,10 @@
     (async () => {
       try {
         info = await load();
+        if (info.charities?.length) {
+          causes = info.charities;
+          $("charity-list").textContent = causes.map((c) => `${c.percent}% to ${c.name}`).join(", ").replace(/, ([^,]*)$/, " and $1");
+        }
         render();
         // Back from Stripe: the "paid" confirmation arrives by webhook a moment later.
         if (new URLSearchParams(location.search).has("done") && info.payment_status !== "paid") {

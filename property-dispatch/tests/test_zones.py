@@ -40,10 +40,11 @@ def test_validation_rejects_overlap():
         validate_zones((a, b))
 
 
+# Same price in every area: $50 + typical lot (4,500 sq ft) × 0.9¢ (Standard) = $90.50
 @pytest.mark.parametrize("letter, zone_key, price", [
-    ("A", "SPRING_LUXURY_LOOP", 55.0),
-    ("Spl", "I69_HIGH_DENSITY_SPINE", 40.0),
-    ("Clv", "CLEVELAND_HUB", 45.0),
+    ("A", "SPRING_LUXURY_LOOP", 90.5),
+    ("Spl", "I69_HIGH_DENSITY_SPINE", 90.5),
+    ("Clv", "CLEVELAND_HUB", 90.5),
 ])
 def test_intake_stores_zone_and_mow_price(client, repo, letter, zone_key, price):
     with patch("app.main.local_now", return_value=NOW):
@@ -70,7 +71,7 @@ def test_out_of_zone_address_is_turned_away(client, repo):
 
 def test_booking_info_lists_zones(client):
     zones = client.get("/api/booking-info").json()["zones"]
-    assert [z["mow_rate"] for z in zones] == [55.0, 55.0, 40.0, 45.0]
+    assert [z["mow_rate"] for z in zones] == [50.0, 50.0, 50.0, 50.0]  # one $50 minimum everywhere
     assert all(len(z["bbox"]) == 4 for z in zones)
 
 
