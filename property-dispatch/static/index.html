@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Book a Service</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <main class="wrap">
+    <header class="brand">
+      <h1>Book a service</h1>
+      <p>Mowing, bin cleaning and gutters in the Spring, TX area.</p>
+    </header>
+
+    <div id="ok" class="alert alert-ok" role="status" hidden></div>
+
+    <form id="intake" class="card" novalidate>
+      <div id="err" class="alert alert-error" role="alert" hidden></div>
+
+      <div class="field">
+        <label for="name">Full name</label>
+        <input id="name" name="name" type="text" autocomplete="name" required maxlength="120">
+      </div>
+
+      <div class="field">
+        <label for="phone">Mobile phone</label>
+        <input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required placeholder="(281) 555-0123">
+        <div class="hint">We'll text you when the crew is on the way.</div>
+      </div>
+
+      <div class="field">
+        <label for="address">Service address</label>
+        <input id="address" name="address" type="text" autocomplete="street-address" required
+               placeholder="123 Main St, Spring, TX 77373">
+      </div>
+
+      <fieldset>
+        <legend>Service</legend>
+        <div class="services" id="services">
+          <input type="radio" name="service" id="svc-mowing" value="mowing" required checked>
+          <label for="svc-mowing">Mowing</label>
+          <input type="radio" name="service" id="svc-bin_cleaning" value="bin_cleaning">
+          <label for="svc-bin_cleaning">Bin Cleaning</label>
+          <input type="radio" name="service" id="svc-gutters" value="gutters">
+          <label for="svc-gutters">Gutters</label>
+        </div>
+      </fieldset>
+
+      <div class="field">
+        <label for="date">Service day</label>
+        <input id="date" name="scheduled_date" type="date" required>
+        <div class="hint" id="date-hint">Next-day bookings close at 8 PM.</div>
+      </div>
+
+      <button class="btn btn-primary btn-block" type="submit" id="submit">Book service</button>
+    </form>
+  </main>
+
+  <script>
+    const form = document.getElementById("intake");
+    const err = document.getElementById("err");
+    const ok = document.getElementById("ok");
+    const submit = document.getElementById("submit");
+    const dateInput = document.getElementById("date");
+
+    const fmtDay = (iso) =>
+      new Date(iso + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
+
+    fetch("/api/booking-info").then(r => r.json()).then(info => {
+      dateInput.min = info.earliest_date;
+      dateInput.max = info.latest_date;
+      dateInput.value = info.earliest_date;
+      document.getElementById("date-hint").textContent =
+        `Earliest available: ${fmtDay(info.earliest_date)}. Next-day bookings close at 8 PM.`;
+    }).catch(() => {});
+
+    function showError(msg) {
+      err.textContent = msg;
+      err.hidden = false;
+      err.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      err.hidden = true;
+      if (!form.checkValidity()) { form.reportValidity(); return; }
+
+      const data = Object.fromEntries(new FormData(form));
+      submit.disabled = true;
+      submit.textContent = "Checking address…";
+      try {
+        const res = await fetch("/api/jobs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const detail = Array.isArray(body.detail)
+            ? body.detail.map(d => d.msg.replace(/^Value error, /, "")).join(". ")
+            : body.detail;
+          throw new Error(detail || "Something went wrong. Please try again.");
+        }
+        form.hidden = true;
+        ok.innerHTML = "";
+        const h = document.createElement("strong");
+        h.textContent = `You're booked for ${fmtDay(body.scheduled_date)}.`;
+        const p = document.createElement("div");
+        p.textContent = `We'll text ${data.phone} when the crew is headed to ${body.formatted_address}.`;
+        ok.append(h, p);
+        ok.hidden = false;
+      } catch (ex) {
+        showError(ex.message);
+      } finally {
+        submit.disabled = false;
+        submit.textContent = "Book service";
+      }
+    });
+  </script>
+</body>
+</html>

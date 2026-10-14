@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#2f7d4f">
+  <title>Crew Route</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <main class="wrap">
+    <!-- Sign-in -->
+    <section id="login" class="card" hidden>
+      <h1 style="margin-top:0;font-size:1.3rem">Crew sign-in</h1>
+      <form id="login-form">
+        <div class="field">
+          <label for="token">Crew access code</label>
+          <input id="token" type="password" autocomplete="current-password" required>
+        </div>
+        <button class="btn btn-primary btn-block" type="submit">Open today's route</button>
+      </form>
+    </section>
+
+    <!-- Dashboard -->
+    <section id="dash" hidden>
+      <div class="topbar">
+        <h1 style="margin:0;font-size:1.3rem">Route</h1>
+        <input type="date" id="day" aria-label="Route date">
+      </div>
+
+      <div id="err" class="alert alert-error" role="alert" hidden></div>
+
+      <div id="route" hidden>
+        <div class="summary">
+          <div class="stat"><b id="s-stops">0</b><span>stops left</span></div>
+          <div class="stat"><b id="s-miles">0</b><span>total miles</span></div>
+          <div class="stat"><b id="s-drive">0</b><span>drive time</span></div>
+        </div>
+        <div class="progress" aria-hidden="true"><div id="bar"></div></div>
+        <div class="full-route" id="full-route"></div>
+        <ol class="stops" id="stops"></ol>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const TOKEN_KEY = "crewToken";
+    let token = null;
+    try { token = localStorage.getItem(TOKEN_KEY); } catch {}
+
+    const todayLocal = () => {
+      const d = new Date();
+      return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    };
+    let tz;  // business timezone from the API, so ETAs never shift with the phone's setting
+    const fmtTime = (iso) => iso ? new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: tz }) : "";
+    const fmtDur = (s) => s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.round((s % 3600) / 60)}m` : `${Math.round(s / 60)}m`;
+    const miles = (m) => (m / 1609.344).toFixed(1);
+
+    function toast(msg) {
+      const t = $("toast");
+      t.textContent = msg;
+      t.hidden = false;
+      clearTimeout(toast._t);
+      toast._t = setTimeout(() => (t.hidden = true), 3500);
+    }
+
+    async function api(path, opts = {}) {
+      const res = await fetch(path, { ...opts, headers: { ...(opts.headers || {}), "X-Crew-Token": token } });
+      if (res.status === 401) { signOut(); throw new Error("Access code was not accepted."); }
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw Object.assign(new Error(body.detail || `Request failed (${res.status})`), { status: res.status });
+      return body;
+    }
+
+    function signOut() {
+      token = null;
+      try { localStorage.removeItem(TOKEN_KEY); } catch {}
+      $("dash").hidden = true;
+      $("login").hidden = false;
+    }
+
+    function el(tag, attrs = {}, ...children) {
+      const n = document.createElement(tag);
+      for (const [k, v] of Object.entries(attrs)) {
+        if (k === "class") n.className = v; else n.setAttribute(k, v);
+      }
+      n.append(...children.filter(c => c !== null && c !== undefined));
+      return n;
+    }
+
+    function render(route) {
+      tz = route.timezone;
+      const remaining = route.stops.filter(s => !s.completed_at);
+      const nextId = remaining[0]?.stop_id;
+      $("s-stops").textContent = remaining.length;
+      $("s-miles").textContent = miles(route.total_distance_m);
+      $("s-drive").textContent = fmtDur(route.total_duration_s);
+      $("bar").style.width = route.stops.length
+        ? `${(100 * (route.stops.length - remaining.length)) / route.stops.length}%` : "0";
+
+      const full = $("full-route");
+      full.replaceChildren();
+      route.full_route_google_urls.forEach((url, i, all) => {
+        const label = all.length > 1 ? `Full route in Google Maps (part ${i + 1}/${all.length})` : "Full route in Google Maps";
+        full.append(el("a", { class: "btn", href: url, target: "_blank", rel: "noopener" }, label));
+      });
+
+      const list = $("stops");
+      list.replaceChildren();
+      if (!route.stops.length) {
+        list.append(el("li", { class: "empty" }, "No stops on this route."));
+        return;
+      }
+      for (const s of route.stops) {
+        const done = !!s.completed_at;
+        const cls = ["stop", done ? "done" : "", s.stop_id === nextId ? "next" : ""].join(" ").trim();
+        const meta = el("div", { class: "meta" },
+          el("span", { class: "tag" }, s.service_label),
+          s.eta && !done ? el("span", {}, `ETA ${fmtTime(s.eta)}`) : null,
+          el("span", {}, `${miles(s.leg_distance_m)} mi · ${fmtDur(s.leg_duration_s)} drive`),
+          done ? el("span", {}, `Done ${fmtTime(s.completed_at)}`) : null,
+        );
+        const head = el("div", { class: "stop-head" },
+          el("div", { class: "seq" }, String(s.sequence)),
+          el("div", { class: "stop-body" },
+            el("div", { class: "name" }, s.customer_name),
+            el("div", { class: "addr" }, s.address),
+            meta),
+        );
+        const item = el("li", { class: cls }, head);
+        if (!done) {
+          const completeBtn = el("button", { class: "btn btn-primary", type: "button" }, "Mark complete");
+          completeBtn.addEventListener("click", () => complete(s, completeBtn));
+          item.append(el("div", { class: "actions" },
+            el("a", { class: "btn", href: s.apple_maps_url, target: "_blank", rel: "noopener" }, "Apple Maps"),
+            el("a", { class: "btn", href: s.google_maps_url, target: "_blank", rel: "noopener" }, "Google Maps"),
+            completeBtn,
+          ));
+        }
+        list.append(item);
+      }
+    }
+
+    async function load() {
+      $("err").hidden = true;
+      try {
+        const route = await api(`/api/routes/${$("day").value}`);
+        $("route").hidden = false;
+        render(route);
+      } catch (e) {
+        $("route").hidden = true;
+        if (!token) return;
+        $("err").textContent = e.status === 404 ? "No route has been built for this day yet." : e.message;
+        $("err").hidden = false;
+      }
+    }
+
+    async function complete(stop, btn) {
+      if (!confirm(`Mark stop ${stop.sequence} (${stop.customer_name}) complete?`)) return;
+      btn.disabled = true;
+      btn.textContent = "Saving…";
+      try {
+        const res = await api(`/api/stops/${stop.stop_id}/complete`, { method: "POST" });
+        const n = res.notification || {};
+        toast(n.notified ? "Done. Next customer has been texted." :
+              n.reason === "route_complete" ? "Done. That was the last stop!" :
+              n.reason === "twilio_disabled" ? "Marked complete. (SMS is off, so no text was sent.)" :
+              n.reason === "send_failed" ? "Marked complete, but the text failed to send." : "Marked complete.");
+        await load();
+      } catch (e) {
+        toast(e.message);
+        btn.disabled = false;
+        btn.textContent = "Mark complete";
+      }
+    }
+
+    $("login-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      token = $("token").value.trim();
+      try { localStorage.setItem(TOKEN_KEY, token); } catch {}
+      start();
+    });
+    $("day").addEventListener("change", load);
+
+    function start() {
+      $("login").hidden = true;
+      $("dash").hidden = false;
+      if (!$("day").value) $("day").value = todayLocal();
+      load();
+    }
+
+    if (token) start(); else $("login").hidden = false;
+  </script>
+</body>
+</html>
