@@ -6,13 +6,16 @@ from app.db import MemoryRepository
 from app.main import create_app
 from app.models import GeoPoint
 
-# A handful of real-ish points around Spring, TX.
+# Points inside the Spring zone, plus one per other zone and one outside all.
 ADDRESSES = {
-    "A": (30.1320, -95.4530),
-    "B": (30.0450, -95.3800),
-    "C": (30.1100, -95.4400),
-    "D": (30.0600, -95.3900),
-    "E": (30.0900, -95.4100),
+    "A": (30.1500, -95.3900),
+    "B": (30.1200, -95.3000),
+    "C": (30.1700, -95.4000),
+    "D": (30.1300, -95.3500),
+    "E": (30.1600, -95.3200),
+    "Spl": (30.2330, -95.1610),   # Splendora → I-69 spine
+    "Clv": (30.3400, -94.9800),   # Cleveland hub box
+    "Old": (30.0799, -95.4172),   # Old Town Spring → outside every zone
 }
 
 

@@ -19,6 +19,7 @@ On-demand scheduling and route optimization for a property-service crew
 |---|---|
 | `supabase/migrations/…_init.sql` | Schema: `customers`, `jobs`, `routes`, `route_stops`, `save_route()` transaction, RLS |
 | `app/main.py` | FastAPI app: pages, intake API, crew API, webhooks |
+| `app/zones.py` | Geo-fenced service zones + mowing rates |
 | `app/booking.py` | Runway quota + 8 PM time-window freeze rules |
 | `app/geocode.py` | Nominatim geocoder (rate-limited to 1 req/s per its policy) |
 | `app/routing/matrix.py` | OSRM driving distance/time matrix, haversine fallback |
@@ -39,6 +40,12 @@ date picker automatically starts at the earliest open day.
 **Quota.** Each day accepts at most `DAILY_JOB_QUOTA` active jobs; the next
 booking gets "That day is fully booked."
 
+**Service zones.** `app/zones.py` defines geo-fenced bounding boxes, each with a
+mowing rate. After geocoding, an address outside every zone is turned away; inside
+one, the job stores its `zone_key` and (for mowing) the `quoted_price`. Boxes are
+`(min_lng, min_lat, max_lng, max_lat)`, and the app refuses to start if a box is
+inverted, out of range, or overlaps another. To change a zone, edit that file and redeploy.
+
 **Nightly run.** Loads tomorrow's `pending`/`scheduled` jobs, builds a driving
 matrix from OSRM (falls back to straight-line × 1.3 if OSRM is down), solves
 the TSP with OR-Tools (`PATH_CHEAPEST_ARC` + `GUIDED_LOCAL_SEARCH`) starting at
@@ -58,7 +65,7 @@ webhook + button firing together never send a duplicate.
 cd property-dispatch
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
-pytest                                     # 33 tests
+pytest                                     # 46 tests
 
 export DATA_BACKEND=memory CREW_ACCESS_TOKEN=crew CRON_SECRET=cron \
        GEOCODER_USER_AGENT="property-dispatch/1.0 (you@yourbusiness.com)"
@@ -75,7 +82,7 @@ Without Twilio credentials the "next customer" text is logged instead of sent.
 
 ### 1. Supabase (database)
 1. Create a project at [supabase.com](https://supabase.com).
-2. **SQL Editor → New query**, paste `supabase/migrations/20261014000000_init.sql`, and **Run**.
+2. **SQL Editor → New query**, run each file in `supabase/migrations/` in name order.
    (Or with the CLI: `supabase link --project-ref <ref> && supabase db push`.)
 3. **Project Settings → API**: copy the **Project URL** and the **service_role** key.
    The service-role key bypasses RLS, so keep it on the server and never put it in the browser.

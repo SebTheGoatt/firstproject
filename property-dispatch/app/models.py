@@ -65,6 +65,8 @@ class JobCreated(BaseModel):
     formatted_address: str
     lat: float
     lng: float
+    zone_name: str
+    quoted_price: float | None  # mowing only; other services are quoted on site
 
 
 class GeoPoint(BaseModel):

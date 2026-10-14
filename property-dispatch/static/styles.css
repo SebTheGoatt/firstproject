@@ -157,3 +157,7 @@ fieldset { border: 0; padding: 0; margin: 0 0 18px; }
   padding: 10px 16px; border-radius: 10px; font-size: 0.9rem;
   max-width: calc(100% - 32px);
 }
+
+details.hint { margin-top: 6px; }
+details.hint summary { cursor: pointer; }
+details.hint ul { margin: 6px 0 0; padding-left: 20px; }

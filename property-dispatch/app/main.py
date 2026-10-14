@@ -29,6 +29,7 @@ from .geocode import GeocoderUnavailable, GeocodingError, NominatimGeocoder
 from .models import SERVICE_LABELS, SERVICE_MINUTES, JobCreated, JobRequest, RouteView, Service, StopView
 from .nightly import run_nightly
 from .notify import TwilioClient, notify_next_customer
+from .zones import SERVICE_ZONES, find_zone
 
 log = logging.getLogger(__name__)
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
@@ -119,6 +120,7 @@ def create_app(
             "latest_date": now.date() + timedelta(days=settings.booking_horizon_days),
             "freeze_hour": settings.freeze_hour,
             "services": [{"value": s.value, "label": SERVICE_LABELS[s]} for s in Service],
+            "zones": [{"name": z.name, "mow_rate": z.mow_rate} for z in SERVICE_ZONES],
         }
 
     @app.post("/api/jobs", response_model=JobCreated, status_code=201)
@@ -136,13 +138,22 @@ def create_app(
         except GeocodingError as exc:
             raise HTTPException(status_code=422, detail=str(exc))
 
+        zone = find_zone(geo.lat, geo.lng)
+        if zone is None:
+            raise HTTPException(status_code=422, detail=(
+                "Sorry, that address is outside our current service areas: "
+                + "; ".join(z.name for z in SERVICE_ZONES) + "."))
+        price = zone.mow_rate if body.service is Service.MOWING else None
+
         job = repo.create_job(
             name=body.name, phone=body.phone, address=body.address, geo=geo,
             service=body.service, scheduled_date=body.scheduled_date,
             service_minutes=SERVICE_MINUTES[body.service],
+            zone_key=zone.key, quoted_price=price,
         )
         return JobCreated(id=job["id"], scheduled_date=body.scheduled_date, service=body.service,
-                          formatted_address=geo.formatted_address, lat=geo.lat, lng=geo.lng)
+                          formatted_address=geo.formatted_address, lat=geo.lat, lng=geo.lng,
+                          zone_name=zone.name, quoted_price=price)
 
     # ---------- Crew dispatch -----------------------------------------
     @app.get("/api/routes/{day}", response_model=RouteView, dependencies=[Depends(crew_auth)])

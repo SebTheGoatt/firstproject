@@ -11,6 +11,10 @@
     <header class="brand">
       <h1>Book a service</h1>
       <p>Mowing, bin cleaning and gutters in the Spring, TX area.</p>
+      <details id="areas" class="hint" hidden>
+        <summary>Where we service</summary>
+        <ul id="area-list"></ul>
+      </details>
     </header>
 
     <div id="ok" class="alert alert-ok" role="status" hidden></div>
@@ -64,6 +68,7 @@
     const submit = document.getElementById("submit");
     const dateInput = document.getElementById("date");
 
+    const money = (n) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
     const fmtDay = (iso) =>
       new Date(iso + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
 
@@ -73,6 +78,13 @@
       dateInput.value = info.earliest_date;
       document.getElementById("date-hint").textContent =
         `Earliest available: ${fmtDay(info.earliest_date)}. Next-day bookings close at 8 PM.`;
+      const list = document.getElementById("area-list");
+      for (const z of info.zones) {
+        const li = document.createElement("li");
+        li.textContent = `${z.name}: mowing ${money(z.mow_rate)}`;
+        list.append(li);
+      }
+      document.getElementById("areas").hidden = !info.zones.length;
     }).catch(() => {});
 
     function showError(msg) {
@@ -108,7 +120,11 @@
         h.textContent = `You're booked for ${fmtDay(body.scheduled_date)}.`;
         const p = document.createElement("div");
         p.textContent = `We'll text ${data.phone} when the crew is headed to ${body.formatted_address}.`;
-        ok.append(h, p);
+        const z = document.createElement("div");
+        z.textContent = body.quoted_price != null
+          ? `${body.zone_name}: ${money(body.quoted_price)} per mow.`
+          : `${body.zone_name}. We'll confirm pricing on site.`;
+        ok.append(h, p, z);
         ok.hidden = false;
       } catch (ex) {
         showError(ex.message);

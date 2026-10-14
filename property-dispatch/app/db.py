@@ -27,7 +27,8 @@ def _now_iso() -> str:
 class Repository(Protocol):
     def count_active_jobs(self, day: date) -> int: ...
     def create_job(self, *, name: str, phone: str, address: str, geo: GeoPoint, service: Service,
-                   scheduled_date: date, service_minutes: int) -> dict: ...
+                   scheduled_date: date, service_minutes: int, zone_key: str,
+                   quoted_price: float | None) -> dict: ...
     def list_routable_jobs(self, day: date) -> list[Job]: ...
     def save_route(self, *, day: date, start: tuple[float, float], end: tuple[float, float],
                    total_distance_m: int, total_duration_s: int, matrix_source: str,
@@ -85,7 +86,8 @@ class SupabaseRepository:
         )
         return res.count or 0
 
-    def create_job(self, *, name, phone, address, geo, service, scheduled_date, service_minutes) -> dict:
+    def create_job(self, *, name, phone, address, geo, service, scheduled_date, service_minutes,
+                   zone_key, quoted_price) -> dict:
         cust = (
             self.sb.table("customers")
             .upsert({"name": name, "phone": phone}, on_conflict="phone").execute()
@@ -99,6 +101,8 @@ class SupabaseRepository:
             "service": service.value,
             "scheduled_date": scheduled_date.isoformat(),
             "service_minutes": service_minutes,
+            "zone_key": zone_key,
+            "quoted_price": quoted_price,
         }).execute().data[0]
         return job
 
@@ -193,7 +197,8 @@ class MemoryRepository:
     def count_active_jobs(self, day: date) -> int:
         return sum(1 for j in self.jobs.values() if j["scheduled_date"] == day and j["status"] in ACTIVE_STATUSES)
 
-    def create_job(self, *, name, phone, address, geo, service, scheduled_date, service_minutes) -> dict:
+    def create_job(self, *, name, phone, address, geo, service, scheduled_date, service_minutes,
+                   zone_key, quoted_price) -> dict:
         with self._lock:
             cust = next((c for c in self.customers.values() if c["phone"] == phone), None)
             if cust is None:
@@ -205,6 +210,7 @@ class MemoryRepository:
                 "formatted_address": geo.formatted_address, "lat": geo.lat, "lng": geo.lng,
                 "service": Service(service).value, "scheduled_date": scheduled_date,
                 "service_minutes": service_minutes, "status": "pending",
+                "zone_key": zone_key, "quoted_price": quoted_price,
                 "frozen_at": None, "completed_at": None, "created_at": _now_iso(),
             }
             self.jobs[job["id"]] = job
