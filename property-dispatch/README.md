@@ -31,6 +31,35 @@ On-demand scheduling and route optimization for a property-service crew
 | `static/index.html` | Customer intake form (mobile-first) |
 | `static/crew.html` | Crew dispatch dashboard (mobile-first) |
 
+## Website and installable app
+
+The same server is both a public website and an installable app
+(a Progressive Web App, so there's no App Store):
+
+| URL | Who | What |
+|---|---|---|
+| `/` | Customers, search engines | Home page: services, service areas with mowing prices, next open day, how it works |
+| `/book` | Customers | Booking form |
+| `/crew` | Crew | Route dashboard (hidden from search engines via `robots.txt` and `noindex`) |
+
+**Installing on a phone:**
+- **iPhone (Safari):** Share → **Add to Home Screen**. The pages show this hint automatically.
+- **Android (Chrome):** an **Install** button appears on the page, or use menu → **Install app**.
+
+Customers who install from `/` get the booking app. Crew members who install from
+`/crew` get a separate **Crew Route** app that opens straight to the dashboard.
+
+**Offline (crew):** the service worker keeps the last route each phone loaded.
+If the crew loses signal, the app still opens and shows the day's stops, with a
+"No signal" banner; *Mark complete* asks them to retry once they're back in
+coverage. Signing out deletes the saved route from the phone.
+
+**Updates:** every deploy changes a version hash of the static files, so
+installed apps pick up the new version on their next launch. You don't
+need to reinstall.
+
+The business name on every page comes from `BUSINESS_NAME`.
+
 ## How the rules work
 
 **Freeze.** A service day locks at `FREEZE_HOUR` (default 20:00, America/Chicago)

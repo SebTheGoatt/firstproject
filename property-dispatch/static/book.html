@@ -2,11 +2,27 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Book a Service</title>
-  <link rel="stylesheet" href="/static/styles.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Book a Service | {{BUSINESS_NAME}}</title>
+  <meta name="description" content="Book mowing, bin cleaning or gutter service online. We confirm your address and text you when the crew is on the way.">
+  <meta name="theme-color" content="#2f7d4f">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Book Service">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/static/styles.css?v={{V}}">
 </head>
-<body>
+<body class="site">
+  <header class="site-header">
+    <div class="site-wrap header-row">
+      <a class="brand" href="/">
+        <img src="/static/icons/icon-192.png" alt="" width="32" height="32">
+        <span>{{BUSINESS_NAME}}</span>
+      </a>
+      <a class="btn btn-sm" href="/">Home</a>
+    </div>
+  </header>
   <main class="wrap">
     <header class="brand">
       <h1>Book a service</h1>
@@ -61,6 +77,7 @@
     </form>
   </main>
 
+  <script src="/static/site.js?v={{V}}"></script>
   <script>
     const form = document.getElementById("intake");
     const err = document.getElementById("err");
@@ -127,7 +144,9 @@
         ok.append(h, p, z);
         ok.hidden = false;
       } catch (ex) {
-        showError(ex.message);
+        showError(navigator.onLine === false || ex instanceof TypeError
+          ? "You're offline. Check your connection and try again."
+          : ex.message);
       } finally {
         submit.disabled = false;
         submit.textContent = "Book service";

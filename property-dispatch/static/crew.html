@@ -2,10 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Crew Route | {{BUSINESS_NAME}}</title>
+  <meta name="robots" content="noindex">
   <meta name="theme-color" content="#2f7d4f">
-  <title>Crew Route</title>
-  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Crew Route">
+  <link rel="manifest" href="/crew.webmanifest">
+  <link rel="stylesheet" href="/static/styles.css?v={{V}}">
 </head>
 <body>
   <main class="wrap">
@@ -19,6 +25,10 @@
         </div>
         <button class="btn btn-primary btn-block" type="submit">Open today's route</button>
       </form>
+      <div class="install-row">
+        <button class="btn btn-block" id="install-btn" type="button" hidden>Install crew app on this phone</button>
+        <p class="hint" id="install-ios" hidden>iPhone: tap <strong>Share</strong> → <strong>Add to Home Screen</strong> to install the crew app.</p>
+      </div>
     </section>
 
     <!-- Dashboard -->
@@ -27,6 +37,7 @@
         <h1 style="margin:0;font-size:1.3rem">Route</h1>
         <input type="date" id="day" aria-label="Route date">
       </div>
+      <div id="offline" class="alert alert-warn" role="status" hidden></div>
 
       <div id="err" class="alert alert-error" role="alert" hidden></div>
 
@@ -45,6 +56,7 @@
 
   <div class="toast" id="toast" role="status" hidden></div>
 
+  <script src="/static/site.js?v={{V}}"></script>
   <script>
     const $ = (id) => document.getElementById(id);
     const TOKEN_KEY = "crewToken";
@@ -73,12 +85,15 @@
       if (res.status === 401) { signOut(); throw new Error("Access code was not accepted."); }
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw Object.assign(new Error(body.detail || `Request failed (${res.status})`), { status: res.status });
+      const offlineCopy = res.headers.get("X-Offline-Copy");
+      if (offlineCopy) Object.defineProperty(body, "_offlineSince", { value: offlineCopy });
       return body;
     }
 
     function signOut() {
       token = null;
       try { localStorage.removeItem(TOKEN_KEY); } catch {}
+      if (window.caches) caches.delete("crew-routes").catch(() => {});  // customer info leaves the phone
       $("dash").hidden = true;
       $("login").hidden = false;
     }
@@ -151,10 +166,20 @@
         const route = await api(`/api/routes/${$("day").value}`);
         $("route").hidden = false;
         render(route);
+        const off = $("offline");
+        if (route._offlineSince) {
+          const t = new Date(route._offlineSince);
+          off.textContent = `No signal. Showing the route saved${isNaN(t) ? "" : " at " + t.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}. Completions need a connection.`;
+          off.hidden = false;
+        } else {
+          off.hidden = true;
+        }
       } catch (e) {
         $("route").hidden = true;
         if (!token) return;
-        $("err").textContent = e.status === 404 ? "No route has been built for this day yet." : e.message;
+        $("err").textContent = e.status === 404 ? "No route has been built for this day yet."
+          : e instanceof TypeError ? "No signal, and this day's route isn't saved on this phone yet."
+          : e.message;
         $("err").hidden = false;
       }
     }
@@ -172,7 +197,7 @@
               n.reason === "send_failed" ? "Marked complete, but the text failed to send." : "Marked complete.");
         await load();
       } catch (e) {
-        toast(e.message);
+        toast(e instanceof TypeError ? "No signal. Tap again when you're back in coverage." : e.message);
         btn.disabled = false;
         btn.textContent = "Mark complete";
       }
