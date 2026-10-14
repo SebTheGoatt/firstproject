@@ -5,9 +5,11 @@
     python -m app.nightly --date 2026-10-15 --force
 
 Hosted cron services schedule in UTC, and 8 PM Central is 01:00 UTC in
-summer but 02:00 UTC in winter. Schedule the job at BOTH hours; this script
-checks the local clock and exits early on the run that isn't 8 PM. Re-running
-for the same date is safe: the route is rebuilt atomically.
+summer but 02:00 UTC in winter. Schedule it hourly from 01:00 to 04:00 UTC.
+Each run exits before the local freeze hour, builds tomorrow's route at or
+after it, and skips if that route already exists. So the first run after
+8 PM does the work, and later runs catch up if that one was missed (host
+outage, maintenance). --force rebuilds regardless.
 """
 
 import argparse
@@ -97,17 +99,22 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--date", type=date.fromisoformat, help="service date (default: tomorrow, local)")
-    parser.add_argument("--force", action="store_true", help="skip the 8 PM local-time guard")
+    parser.add_argument("--force", action="store_true", help="skip the time guard and rebuild even if a route exists")
     args = parser.parse_args(argv)
 
     settings = get_settings()
     now = local_now(settings)
-    if not args.force and now.hour != settings.freeze_hour:
-        log.info("Local time is %s; not the %d:00 freeze hour. Exiting.", now.strftime("%H:%M %Z"), settings.freeze_hour)
+    if not args.force and now.hour < settings.freeze_hour:
+        log.info("Local time is %s; before the %d:00 freeze. Exiting.", now.strftime("%H:%M %Z"), settings.freeze_hour)
         return 0
 
     day = args.date or next_service_day(now)
-    run_nightly(make_repository(settings), settings, day)
+    repo = make_repository(settings)
+    if not args.force and repo.get_route(day) is not None:
+        log.info("Route for %s already built. Nothing to do.", day)
+        return 0
+
+    run_nightly(repo, settings, day)
     return 0
 
 

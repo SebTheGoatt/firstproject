@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{{BUSINESS_NAME}} | Mowing, Bin Cleaning &amp; Gutters in Spring, TX</title>
-  <meta name="description" content="Book lawn mowing, trash bin cleaning and gutter service online in Spring, New Caney, Splendora and Cleveland, TX. We text you when the crew is on the way.">
+  <meta name="description" content="Book lawn mowing, trash bin cleaning and gutter service online in Spring, Klein, New Caney, Splendora and Cleveland, TX. We text you when the crew is on the way.">
   <meta property="og:title" content="{{BUSINESS_NAME}}">
   <meta property="og:description" content="Mowing, bin cleaning and gutters around Spring, TX. Book online in about a minute.">
   <meta property="og:type" content="website">
@@ -15,6 +15,7 @@
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Book Service">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
   <link rel="stylesheet" href="/static/styles.css?v={{V}}">
 </head>
 <body class="site">
@@ -28,6 +29,7 @@
         <a href="#services">Services</a>
         <a href="#areas">Service areas</a>
         <a href="#how">How it works</a>
+        <a href="/team">Meet the crew</a>
       </nav>
       <a class="btn btn-primary btn-sm" href="/book">Book now</a>
     </div>
@@ -37,7 +39,7 @@
     <section class="hero">
       <div class="site-wrap hero-grid">
         <div class="hero-copy">
-          <p class="eyebrow">Spring · New Caney · Splendora · Cleveland</p>
+          <p class="eyebrow">Spring · Klein · New Caney · Splendora · Cleveland</p>
           <h1>Yard and home care that shows up when we say it will.</h1>
           <p class="lede">Book mowing, trash bin cleaning or gutter cleaning in about a minute.
             We plan the crew's route the night before and text you when we're heading your way.</p>
@@ -56,8 +58,9 @@
           <p class="next-day" id="next-day">Checking…</p>
           <p class="hint" id="cutoff">Next-day booking closes at 8 PM.</p>
           <ul class="checks">
+            <li>Veteran-owned and operated</li>
+            <li>Pay your way: cash to the crew or card in the app</li>
             <li>Text when the crew is on the way</li>
-            <li>No account or app download needed</li>
             <li>Mowing priced by area, shown before you book</li>
           </ul>
         </aside>
@@ -95,10 +98,25 @@
         <h2>Service areas</h2>
         <p class="section-lede">We keep our routes tight so the crew spends time on lawns, not on the road.
           These are the neighborhoods we serve today, with the mowing price for each.</p>
-        <ul class="area-list" id="area-list">
-          <li class="card area skeleton">Loading service areas…</li>
-        </ul>
-        <p class="hint">Not sure if you're inside an area? Enter your address on the booking page and we'll check it right away.</p>
+        <div class="area-explorer">
+          <ul class="area-list" id="area-list" aria-label="Service areas">
+            <li class="card area skeleton">Loading service areas…</li>
+          </ul>
+          <div class="area-map-wrap" id="area-map-wrap">
+            <div id="area-map" class="area-map" role="img" aria-label="Map of our service areas around Spring, Klein, New Caney, Splendora and Cleveland, Texas"></div>
+          </div>
+        </div>
+        <p class="hint">Shaded areas are where we work today. Not sure if your home is inside one?
+          Enter your address on the <a href="/book">booking page</a> and we'll check it right away.</p>
+      </div>
+    </section>
+
+    <section id="crew" class="section section-alt" hidden>
+      <div class="site-wrap">
+        <h2>Meet the crew</h2>
+        <p class="section-lede">Real people from the neighborhood, led by a veteran. Here's who shows up at your door.</p>
+        <ul class="team-grid" id="crew-grid"></ul>
+        <p><a class="btn" href="/team">See everyone's work</a></p>
       </div>
     </section>
 
@@ -121,18 +139,145 @@
 
   <footer class="site-footer">
     <div class="site-wrap footer-row">
-      <span>© <span id="year"></span> {{BUSINESS_NAME}} · Spring, TX</span>
+      <span>© <span id="year"></span> {{BUSINESS_NAME}} · Veteran-owned · Spring, TX</span>
       <a href="/crew">Crew sign-in</a>
     </div>
   </footer>
 
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="/static/site.js?v={{V}}"></script>
   <script>
     document.getElementById("year").textContent = new Date().getFullYear();
     const money = (n) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+    const ZONE_COLORS = ["#2f7d4f", "#2b6cb0", "#b7791f", "#8a4fbf", "#c05621"];
+
+    // Realtor-style service-area map: shaded areas, price pins, and a list that
+    // highlights the matching area on hover/tap (and vice versa).
+    function drawAreaMap(zones) {
+      const wrap = document.getElementById("area-map-wrap");
+      if (!window.maplibregl || !zones.length) { wrap.hidden = true; return; }
+
+      const features = zones.map((z, i) => {
+        const [w, s, e, n] = z.bbox;
+        return {
+          type: "Feature", id: i,
+          properties: { key: z.key, name: z.name, price: money(z.mow_rate), color: ZONE_COLORS[i % ZONE_COLORS.length] },
+          geometry: { type: "Polygon", coordinates: [[[w, s], [e, s], [e, n], [w, n], [w, s]]] },
+        };
+      });
+      const all = zones.map((z) => z.bbox);
+      const bounds = [[Math.min(...all.map((b) => b[0])), Math.min(...all.map((b) => b[1]))],
+                      [Math.max(...all.map((b) => b[2])), Math.max(...all.map((b) => b[3]))]];
+
+      let map;
+      try {
+        map = new maplibregl.Map({
+          container: "area-map",
+          style: "https://tiles.openfreemap.org/styles/positron",
+          bounds, fitBoundsOptions: { padding: 32 },
+          cooperativeGestures: true,      // page scrolls normally; two fingers / Ctrl+scroll moves the map
+          attributionControl: { compact: true },
+        });
+      } catch { wrap.hidden = true; return; }
+      map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+
+      const cards = new Map([...document.querySelectorAll(".area[data-zone]")].map((el) => [el.dataset.zone, el]));
+      let active = null;
+      const setActive = (id) => {
+        if (active === id) return;
+        if (active !== null) map.setFeatureState({ source: "zones", id: active }, { active: false });
+        cards.forEach((el) => el.classList.remove("is-active"));
+        active = id;
+        if (id === null) return;
+        map.setFeatureState({ source: "zones", id }, { active: true });
+        cards.get(features[id].properties.key)?.classList.add("is-active");
+      };
+
+      map.on("load", () => {
+        // Start with the map credits collapsed to the (i) button so they don't cover the areas.
+        map.getContainer().querySelector(".maplibregl-ctrl-attrib")?.classList.remove("maplibregl-compact-show");
+        map.addSource("zones", { type: "geojson", data: { type: "FeatureCollection", features } });
+        map.addLayer({ id: "zone-fill", type: "fill", source: "zones", paint: {
+          "fill-color": ["get", "color"],
+          "fill-opacity": ["case", ["boolean", ["feature-state", "active"], false], 0.32, 0.16],
+        } });
+        map.addLayer({ id: "zone-line", type: "line", source: "zones", paint: {
+          "line-color": ["get", "color"],
+          "line-width": ["case", ["boolean", ["feature-state", "active"], false], 3, 2],
+        } });
+
+        // Price pins at each area's center.
+        features.forEach((f, i) => {
+          const [w, s, e, n] = zones[i].bbox;
+          const pin = document.createElement("button");
+          pin.type = "button";
+          pin.className = "zone-pin";
+          pin.style.setProperty("--zone", f.properties.color);
+          pin.innerHTML = "<span></span><b></b>";
+          pin.querySelector("span").textContent = f.properties.name.split(/ [\/&] /)[0];
+          pin.querySelector("b").textContent = f.properties.price;
+          pin.setAttribute("aria-label", `${f.properties.name}: ${f.properties.price} per mow`);
+          pin.addEventListener("mouseenter", () => setActive(i));
+          pin.addEventListener("mouseleave", () => setActive(null));
+          pin.addEventListener("click", () => openPopup(i, [(w + e) / 2, (s + n) / 2]));
+          new maplibregl.Marker({ element: pin }).setLngLat([(w + e) / 2, (s + n) / 2]).addTo(map);
+        });
+
+        map.on("mousemove", "zone-fill", (e) => { map.getCanvas().style.cursor = "pointer"; setActive(e.features[0].id); });
+        map.on("mouseleave", "zone-fill", () => { map.getCanvas().style.cursor = ""; setActive(null); });
+        map.on("click", "zone-fill", (e) => openPopup(e.features[0].id, e.lngLat));
+      });
+
+      let popup;
+      function openPopup(id, lngLat) {
+        const p = features[id].properties;
+        const box = document.createElement("div");
+        box.className = "zone-popup";
+        const h = document.createElement("strong"); h.textContent = p.name;
+        const price = document.createElement("div"); price.textContent = `Mowing ${p.price} per visit`;
+        const a = document.createElement("a"); a.href = "/book"; a.className = "btn btn-primary btn-sm"; a.textContent = "Book in this area";
+        box.append(h, price, a);
+        popup?.remove();
+        popup = new maplibregl.Popup({ offset: 12, maxWidth: "260px" }).setLngLat(lngLat).setDOMContent(box).addTo(map);
+        setActive(id);
+      }
+
+      cards.forEach((el, key) => {
+        const id = features.findIndex((f) => f.properties.key === key);
+        const [w, s, e, n] = zones[id].bbox;
+        el.addEventListener("mouseenter", () => setActive(id));
+        el.addEventListener("mouseleave", () => setActive(null));
+        el.addEventListener("focus", () => setActive(id));
+        el.addEventListener("click", () => {
+          map.fitBounds([[w, s], [e, n]], { padding: 48, maxZoom: 12.5 });
+          openPopup(id, [(w + e) / 2, (s + n) / 2]);
+        });
+        el.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); el.click(); } });
+      });
+    }
     const fmtDay = (iso) =>
       new Date(iso + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
     const hour12 = (h) => `${((h + 11) % 12) + 1} ${h < 12 ? "AM" : "PM"}`;
+
+    fetch("/api/team").then((r) => r.json()).then((team) => {
+      if (!Array.isArray(team) || !team.length) return;
+      const grid = document.getElementById("crew-grid");
+      for (const m of team.slice(0, 6)) {
+        const a = document.createElement("a");
+        a.className = "card team-card"; a.href = `/team/${m.slug}`; a.style.setProperty("--accent", m.accent_color);
+        const av = document.createElement("div");
+        av.className = "avatar avatar-lg"; av.style.setProperty("--accent", m.accent_color);
+        if (m.photo_url) { const img = document.createElement("img"); img.src = m.photo_url; img.alt = ""; av.append(img); }
+        else av.textContent = m.display_name.split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+        const body = document.createElement("div"); body.className = "team-card-body";
+        const name = document.createElement("strong"); name.textContent = m.display_name; body.append(name);
+        if (m.role_title) { const r = document.createElement("span"); r.className = "muted"; r.textContent = m.role_title; body.append(r); }
+        if (m.service_branch) { const b = document.createElement("span"); b.className = "badge badge-vet"; b.textContent = "★ " + m.service_branch; body.append(b); }
+        a.append(av, body);
+        const li = document.createElement("li"); li.append(a); grid.append(li);
+      }
+      document.getElementById("crew").hidden = false;
+    }).catch(() => {});
 
     fetch("/api/booking-info").then((r) => r.json()).then((info) => {
       document.getElementById("next-day").textContent = fmtDay(info.earliest_date);
@@ -140,9 +285,12 @@
 
       const list = document.getElementById("area-list");
       list.replaceChildren();
-      for (const z of info.zones) {
+      info.zones.forEach((z, i) => {
         const li = document.createElement("li");
         li.className = "card area";
+        li.dataset.zone = z.key;
+        li.tabIndex = 0;
+        li.style.setProperty("--zone", ZONE_COLORS[i % ZONE_COLORS.length]);
         const name = document.createElement("span");
         name.className = "area-name";
         name.textContent = z.name;
@@ -151,7 +299,8 @@
         price.textContent = `${money(z.mow_rate)} / mow`;
         li.append(name, price);
         list.append(li);
-      }
+      });
+      drawAreaMap(info.zones);
       if (info.zones.length) {
         const low = Math.min(...info.zones.map((z) => z.mow_rate));
         document.getElementById("mow-from").textContent = `From ${money(low)} per mow`;

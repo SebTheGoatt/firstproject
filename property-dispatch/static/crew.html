@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Crew Route | {{BUSINESS_NAME}}</title>
+  <title>Crew | {{BUSINESS_NAME}}</title>
   <meta name="robots" content="noindex">
   <meta name="theme-color" content="#2f7d4f">
   <link rel="icon" href="/favicon.ico" sizes="any">
@@ -13,46 +13,182 @@
   <link rel="manifest" href="/crew.webmanifest">
   <link rel="stylesheet" href="/static/styles.css?v={{V}}">
 </head>
-<body>
-  <main class="wrap">
-    <!-- Sign-in -->
-    <section id="login" class="card" hidden>
-      <h1 style="margin-top:0;font-size:1.3rem">Crew sign-in</h1>
-      <form id="login-form">
-        <div class="field">
-          <label for="token">Crew access code</label>
-          <input id="token" type="password" autocomplete="current-password" required>
-        </div>
-        <button class="btn btn-primary btn-block" type="submit">Open today's route</button>
-      </form>
-      <div class="install-row">
-        <button class="btn btn-block" id="install-btn" type="button" hidden>Install crew app on this phone</button>
-        <p class="hint" id="install-ios" hidden>iPhone: tap <strong>Share</strong> → <strong>Add to Home Screen</strong> to install the crew app.</p>
-      </div>
-    </section>
+<body class="crew-body">
 
-    <!-- Dashboard -->
-    <section id="dash" hidden>
-      <div class="topbar">
-        <h1 style="margin:0;font-size:1.3rem">Route</h1>
-        <input type="date" id="day" aria-label="Route date">
-      </div>
-      <div id="offline" class="alert alert-warn" role="status" hidden></div>
+  <!-- ================= Sign-in ================= -->
+  <main class="wrap" id="signin" hidden>
+    <header class="signin-head">
+      <img src="/static/icons/icon-192.png" alt="" width="56" height="56">
+      <h1>Who's working today?</h1>
+      <p class="muted">{{BUSINESS_NAME}} crew</p>
+    </header>
 
-      <div id="err" class="alert alert-error" role="alert" hidden></div>
+    <ul class="roster" id="roster"></ul>
+    <p class="hint center" id="roster-empty" hidden>No crew profiles yet. Owner: sign in below to add your crew.</p>
 
-      <div id="route" hidden>
-        <div class="summary">
-          <div class="stat"><b id="s-stops">0</b><span>stops left</span></div>
-          <div class="stat"><b id="s-miles">0</b><span>total miles</span></div>
-          <div class="stat"><b id="s-drive">0</b><span>drive time</span></div>
-        </div>
-        <div class="progress" aria-hidden="true"><div id="bar"></div></div>
-        <div class="full-route" id="full-route"></div>
-        <ol class="stops" id="stops"></ol>
+    <!-- Personal code for the picked crew member -->
+    <form class="card code-card" id="code-form" hidden>
+      <div class="code-who" id="code-who"></div>
+      <div class="field">
+        <label for="code">Your personal code</label>
+        <input id="code" type="password" autocomplete="current-password" required maxlength="32">
       </div>
-    </section>
+      <div class="row-2">
+        <button class="btn" type="button" id="code-back">Back</button>
+        <button class="btn btn-primary" type="submit">Let's go</button>
+      </div>
+    </form>
+
+    <!-- Owner master code -->
+    <form class="card code-card" id="owner-form" hidden>
+      <div class="field">
+        <label for="owner-code">Owner code</label>
+        <input id="owner-code" type="password" autocomplete="current-password" required>
+      </div>
+      <div class="row-2">
+        <button class="btn" type="button" id="owner-back">Back</button>
+        <button class="btn btn-primary" type="submit">Sign in</button>
+      </div>
+    </form>
+
+    <div id="signin-err" class="alert alert-error" role="alert" hidden></div>
+    <p class="center"><button class="link-btn" type="button" id="owner-link">Owner sign-in</button></p>
+
+    <div class="install-row">
+      <button class="btn btn-block" id="install-btn" type="button" hidden>Install the crew app on this phone</button>
+      <p class="hint" id="install-ios" hidden>iPhone: tap <strong>Share</strong> → <strong>Add to Home Screen</strong> to install the crew app.</p>
+    </div>
   </main>
+
+  <!-- ================= App ================= -->
+  <div id="app" hidden>
+    <header class="crew-hero">
+      <div class="crew-hero-inner">
+        <div class="avatar avatar-lg" id="me-avatar"></div>
+        <div class="crew-hero-text">
+          <p class="greeting" id="greeting">Hello</p>
+          <h1 id="me-name"></h1>
+          <p class="crew-hero-role" id="me-role"></p>
+        </div>
+      </div>
+      <div class="crew-stats" id="me-stats" hidden>
+        <div><b id="st-week">0</b><span>jobs this week</span></div>
+        <div><b id="st-total">0</b><span>all-time</span></div>
+        <div><b id="st-photos">0</b><span>work photos</span></div>
+      </div>
+    </header>
+
+    <main class="wrap crew-main">
+      <!-- -------- Today -------- -->
+      <section id="tab-today" class="tab">
+        <div class="topbar">
+          <h2 class="tab-title">Today's route</h2>
+          <input type="date" id="day" aria-label="Route date">
+        </div>
+        <div id="offline" class="alert alert-warn" role="status" hidden></div>
+        <div id="err" class="alert alert-error" role="alert" hidden></div>
+        <div id="route" hidden>
+          <div class="summary">
+            <div class="stat"><b id="s-stops">0</b><span>stops left</span></div>
+            <div class="stat"><b id="s-miles">0</b><span>total miles</span></div>
+            <div class="stat"><b id="s-drive">0</b><span>drive time</span></div>
+          </div>
+          <div class="progress" aria-hidden="true"><div id="bar"></div></div>
+          <div class="full-route" id="full-route"></div>
+          <ol class="stops" id="stops"></ol>
+        </div>
+      </section>
+
+      <!-- -------- My profile -------- -->
+      <section id="tab-profile" class="tab" hidden>
+        <h2 class="tab-title">My profile</h2>
+        <p class="hint">This is how customers see you on the website and in "on the way" texts.
+          <a id="public-link" href="#" target="_blank" rel="noopener">See my public page</a></p>
+
+        <form class="card profile-form" id="profile-form">
+          <div class="photo-row">
+            <div class="avatar avatar-xl" id="pf-avatar"></div>
+            <div>
+              <label class="btn" for="pf-photo">Change photo</label>
+              <input id="pf-photo" type="file" accept="image/*" class="visually-hidden">
+              <p class="hint">A friendly, clear photo of you.</p>
+            </div>
+          </div>
+          <div class="field"><label for="pf-name">Name</label><input id="pf-name" type="text" maxlength="60" required></div>
+          <div class="field"><label for="pf-role">What you do</label><input id="pf-role" type="text" maxlength="60" placeholder="Lead mower, edging specialist"></div>
+          <div class="field"><label for="pf-branch">Service (optional)</label><input id="pf-branch" type="text" maxlength="60" placeholder="U.S. Marine Corps veteran"></div>
+          <div class="field"><label for="pf-years">Years of experience</label><input id="pf-years" type="number" min="0" max="80" inputmode="numeric"></div>
+          <div class="field">
+            <label for="pf-bio">About you</label>
+            <textarea id="pf-bio" rows="5" maxlength="1200" placeholder="Who you are, what you're proud of, what customers can expect."></textarea>
+          </div>
+          <div class="field">
+            <label for="pf-specs">Specialties</label>
+            <input id="pf-specs" type="text" placeholder="Stripe patterns, edging, gutter guards">
+            <p class="hint">Separate with commas. Up to 8.</p>
+          </div>
+          <fieldset>
+            <legend>Your color</legend>
+            <div class="swatches" id="swatches"></div>
+          </fieldset>
+          <button class="btn btn-primary btn-block" type="submit">Save profile</button>
+        </form>
+
+        <details class="card settings-card">
+          <summary>Change my code</summary>
+          <form id="code-change">
+            <div class="field"><label for="cc-cur">Current code</label><input id="cc-cur" type="password" required></div>
+            <div class="field"><label for="cc-new">New code (4–32 characters)</label><input id="cc-new" type="password" required minlength="4" maxlength="32"></div>
+            <button class="btn" type="submit">Update code</button>
+          </form>
+        </details>
+        <button class="btn btn-block signout" type="button" data-signout>Sign out</button>
+      </section>
+
+      <!-- -------- My work (portfolio) -------- -->
+      <section id="tab-work" class="tab" hidden>
+        <div class="topbar">
+          <h2 class="tab-title">My work</h2>
+          <label class="btn btn-primary" for="pw-photo">+ Add photo</label>
+          <input id="pw-photo" type="file" accept="image/*" class="visually-hidden">
+        </div>
+        <p class="hint">Your best jobs, shown on your public profile. Tip: add an after photo right when you finish a job.</p>
+        <form class="card" id="pw-form" hidden>
+          <img id="pw-preview" class="pw-preview" alt="">
+          <div class="field"><label for="pw-caption">Caption</label><input id="pw-caption" type="text" maxlength="280" placeholder="Fresh stripes on Oak Forest Ln"></div>
+          <div class="field">
+            <label for="pw-service">Service</label>
+            <select id="pw-service"><option value="">Choose…</option><option value="mowing">Mowing</option><option value="bin_cleaning">Bin Cleaning</option><option value="gutters">Gutters</option></select>
+          </div>
+          <div class="row-2"><button class="btn" type="button" id="pw-cancel">Cancel</button><button class="btn btn-primary" type="submit">Add to my work</button></div>
+        </form>
+        <ul class="portfolio-grid" id="my-work"></ul>
+        <p class="empty" id="my-work-empty" hidden>No photos yet. Show off your best work!</p>
+      </section>
+
+      <!-- -------- Crew (owner) -------- -->
+      <section id="tab-crew" class="tab" hidden>
+        <h2 class="tab-title">Your crew</h2>
+        <ul class="member-list" id="members"></ul>
+        <form class="card" id="add-member">
+          <h3>Add a crew member</h3>
+          <div class="field"><label for="am-name">Name</label><input id="am-name" type="text" required maxlength="60"></div>
+          <div class="field"><label for="am-role">What they do</label><input id="am-role" type="text" maxlength="60" placeholder="Crew member"></div>
+          <div class="field"><label for="am-code">Their personal code (4–32 characters)</label><input id="am-code" type="text" required minlength="4" maxlength="32" autocomplete="off"></div>
+          <button class="btn btn-primary btn-block" type="submit">Add to crew</button>
+          <p class="hint">Give them the code in person. They can change it in their profile.</p>
+        </form>
+        <button class="btn btn-block signout" type="button" data-signout>Sign out</button>
+      </section>
+    </main>
+
+    <nav class="tabbar" id="tabbar" aria-label="Crew app">
+      <button type="button" data-tab="today" class="is-on"><span class="ti" aria-hidden="true">◎</span>Today</button>
+      <button type="button" data-tab="profile" data-member><span class="ti" aria-hidden="true">☺</span>My profile</button>
+      <button type="button" data-tab="work" data-member><span class="ti" aria-hidden="true">▦</span>My work</button>
+      <button type="button" data-tab="crew" data-owner><span class="ti" aria-hidden="true">☰</span>Crew</button>
+    </nav>
+  </div>
 
   <div class="toast" id="toast" role="status" hidden></div>
 
@@ -60,107 +196,284 @@
   <script>
     const $ = (id) => document.getElementById(id);
     const TOKEN_KEY = "crewToken";
-    let token = null;
+    const ACCENTS = ["#2f7d4f", "#1f4e8c", "#0f766e", "#6b3fa0", "#8a3b12", "#b3261e", "#9a6b00", "#374151"];
+    let token = null, me = null, tz;
     try { token = localStorage.getItem(TOKEN_KEY); } catch {}
 
-    const todayLocal = () => {
-      const d = new Date();
-      return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-    };
-    let tz;  // business timezone from the API, so ETAs never shift with the phone's setting
+    // ---------- helpers ----------
+    const todayLocal = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
     const fmtTime = (iso) => iso ? new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: tz }) : "";
     const fmtDur = (s) => s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.round((s % 3600) / 60)}m` : `${Math.round(s / 60)}m`;
     const miles = (m) => (m / 1609.344).toFixed(1);
+    const money = (n) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 
+    function el(tag, attrs = {}, ...kids) {
+      const n = document.createElement(tag);
+      for (const [k, v] of Object.entries(attrs)) {
+        if (v === false || v == null) continue;
+        if (k === "class") n.className = v; else if (k === "style") n.style.cssText = v; else n.setAttribute(k, v === true ? "" : v);
+      }
+      n.append(...kids.filter((k) => k !== null && k !== undefined && k !== false));
+      return n;
+    }
+    function avatar(m, size = "") {
+      const box = el("div", { class: `avatar ${size}`, style: `--accent:${m?.accent_color || "#2f7d4f"}` });
+      if (m?.photo_url) box.append(el("img", { src: m.photo_url, alt: "" }));
+      else box.textContent = (m?.display_name || "Owner").split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+      return box;
+    }
     function toast(msg) {
-      const t = $("toast");
-      t.textContent = msg;
-      t.hidden = false;
-      clearTimeout(toast._t);
-      toast._t = setTimeout(() => (t.hidden = true), 3500);
+      const t = $("toast"); t.textContent = msg; t.hidden = false;
+      clearTimeout(toast._t); toast._t = setTimeout(() => (t.hidden = true), 3800);
+    }
+    function applyAccent(color) {
+      const root = $("app");
+      root.style.setProperty("--accent", color);
+      root.style.setProperty("--brand", color);
+      root.style.setProperty("--brand-ink", "#ffffff");
+      root.style.setProperty("--brand-soft", `color-mix(in srgb, ${color} 14%, var(--surface))`);
+      document.querySelector('meta[name="theme-color"]').content = color;
+    }
+    // Shrink photos on the phone before upload: faster on cell data, smaller to store.
+    function resizeImage(file, max = 1600, quality = 0.82) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          const scale = Math.min(1, max / Math.max(img.width, img.height));
+          const c = document.createElement("canvas");
+          c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+          c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+          URL.revokeObjectURL(img.src);
+          resolve(c.toDataURL("image/jpeg", quality));
+        };
+        img.onerror = () => reject(new Error("That file isn't a photo we can use."));
+        img.src = URL.createObjectURL(file);
+      });
     }
 
     async function api(path, opts = {}) {
-      const res = await fetch(path, { ...opts, headers: { ...(opts.headers || {}), "X-Crew-Token": token } });
-      if (res.status === 401) { signOut(); throw new Error("Access code was not accepted."); }
+      const headers = { ...(opts.headers || {}) };
+      if (token) headers["X-Crew-Token"] = token;
+      if (opts.json !== undefined) { headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(opts.json); }
+      const res = await fetch(path, { ...opts, headers });
+      if (res.status === 401 && token) { signOut(); throw new Error("Please sign in again."); }
+      if (res.status === 204) return null;
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw Object.assign(new Error(body.detail || `Request failed (${res.status})`), { status: res.status });
+      if (!res.ok) {
+        const msg = Array.isArray(body.detail) ? body.detail.map((d) => d.msg.replace(/^Value error, /, "")).join(". ") : body.detail;
+        throw Object.assign(new Error(msg || `Request failed (${res.status})`), { status: res.status });
+      }
       const offlineCopy = res.headers.get("X-Offline-Copy");
-      if (offlineCopy) Object.defineProperty(body, "_offlineSince", { value: offlineCopy });
+      if (offlineCopy && body) Object.defineProperty(body, "_offlineSince", { value: offlineCopy });
       return body;
     }
 
+    // ---------- sign-in ----------
+    let picked = null;
+    function showSignin() {
+      $("app").hidden = true; $("signin").hidden = false;
+      $("code-form").hidden = true; $("owner-form").hidden = true; $("roster").hidden = false; $("owner-link").hidden = false;
+      api("/api/crew/roster").then((list) => {
+        const ul = $("roster"); ul.replaceChildren();
+        $("roster-empty").hidden = list.length > 0;
+        for (const m of list) {
+          const b = el("button", { type: "button", class: "roster-btn", style: `--accent:${m.accent_color}` },
+            avatar(m, "avatar-lg"), el("strong", {}, m.display_name.split(" ")[0]), m.role_title ? el("span", {}, m.role_title) : null);
+          b.addEventListener("click", () => pick(m));
+          ul.append(el("li", {}, b));
+        }
+      }).catch(() => { $("roster-empty").hidden = false; });
+    }
+    function pick(m) {
+      picked = m;
+      $("code-who").replaceChildren(avatar(m, "avatar-lg"), el("div", {}, el("strong", {}, `Hey ${m.display_name.split(" ")[0]}!`), el("span", { class: "muted" }, "Enter your code to start your day.")));
+      $("roster").hidden = true; $("owner-link").hidden = true; $("roster-empty").hidden = true;
+      $("code-form").hidden = false; $("signin-err").hidden = true;
+      $("code").value = ""; $("code").focus();
+    }
+    $("code-back").addEventListener("click", showSignin);
+    $("owner-back").addEventListener("click", showSignin);
+    $("owner-link").addEventListener("click", () => {
+      $("roster").hidden = true; $("roster-empty").hidden = true; $("owner-link").hidden = true;
+      $("owner-form").hidden = false; $("owner-code").focus();
+    });
+    async function doLogin(path, payload) {
+      $("signin-err").hidden = true;
+      try {
+        const r = await api(path, { method: "POST", json: payload });
+        token = r.token;
+        try { localStorage.setItem(TOKEN_KEY, token); } catch {}
+        start();
+      } catch (e) {
+        $("signin-err").textContent = e instanceof TypeError ? "No signal. Try again when you're connected." : e.message;
+        $("signin-err").hidden = false;
+      }
+    }
+    $("code-form").addEventListener("submit", (e) => { e.preventDefault(); doLogin("/api/crew/login", { member_id: picked.id, code: $("code").value }); });
+    $("owner-form").addEventListener("submit", (e) => { e.preventDefault(); doLogin("/api/crew/login/owner", { code: $("owner-code").value }); });
+
     function signOut() {
-      token = null;
+      token = null; me = null;
       try { localStorage.removeItem(TOKEN_KEY); } catch {}
       if (window.caches) caches.delete("crew-routes").catch(() => {});  // customer info leaves the phone
-      $("dash").hidden = true;
-      $("login").hidden = false;
+      showSignin();
+    }
+    document.querySelectorAll("[data-signout]").forEach((b) => b.addEventListener("click", signOut));
+
+    // ---------- app shell ----------
+    function greet(name) {
+      const h = new Date().getHours();
+      const part = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+      return name ? `${part}, ${name.split(" ")[0]}` : part;
+    }
+    function renderHeader() {
+      const m = me?.member;
+      $("me-avatar").replaceWith(Object.assign(avatar(m || { display_name: "Owner", accent_color: "#2f7d4f" }, "avatar-lg"), { id: "me-avatar" }));
+      $("greeting").textContent = greet(m?.display_name);
+      $("me-name").textContent = m ? m.display_name : "Owner";
+      $("me-role").textContent = m ? [m.role_title, m.service_branch].filter(Boolean).join(" · ") : "Dispatch & crew management";
+      applyAccent(m?.accent_color || "#2f7d4f");
+      if (me?.stats) {
+        $("me-stats").hidden = false;
+        $("st-week").textContent = me.stats.jobs_week;
+        $("st-total").textContent = me.stats.jobs_total;
+        $("st-photos").textContent = me.stats.photos;
+      } else $("me-stats").hidden = true;
+      document.querySelectorAll("[data-member]").forEach((b) => (b.hidden = !m));
+      document.querySelectorAll("[data-owner]").forEach((b) => (b.hidden = !me?.is_owner));
+    }
+    function showTab(name) {
+      document.querySelectorAll(".tab").forEach((t) => (t.hidden = t.id !== `tab-${name}`));
+      document.querySelectorAll("#tabbar button").forEach((b) => b.classList.toggle("is-on", b.dataset.tab === name));
+      if (name === "profile") fillProfile();
+      if (name === "work") loadWork();
+      if (name === "crew") loadMembers();
+      window.scrollTo({ top: 0 });
+    }
+    $("tabbar").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) showTab(b.dataset.tab); });
+
+    async function refreshMe() {
+      try { me = await api("/api/crew/me"); renderHeader(); } catch (e) { if (!(e instanceof TypeError)) throw e; }
     }
 
-    function el(tag, attrs = {}, ...children) {
-      const n = document.createElement(tag);
-      for (const [k, v] of Object.entries(attrs)) {
-        if (k === "class") n.className = v; else n.setAttribute(k, v);
-      }
-      n.append(...children.filter(c => c !== null && c !== undefined));
-      return n;
+    async function start() {
+      $("signin").hidden = true; $("app").hidden = false;
+      if (!$("day").value) $("day").value = todayLocal();
+      // Old saved master codes and new sessions both work here.
+      me = me || { is_owner: false, member: null, stats: null };
+      renderHeader();
+      try { await refreshMe(); } catch { return; }
+      showTab("today");
+      loadRoute();
+    }
+
+    // ---------- Today: route ----------
+    function payChip(s) {
+      if (s.payment_status === "paid") return el("span", { class: "pay-chip paid" }, `Paid ${money(s.amount_paid ?? 0)}${s.donation > 0 ? ` (incl. ${money(s.donation)} donation)` : ""}`);
+      const price = s.amount_due != null ? money(s.amount_due) : "price on site";
+      return s.payment_method === "card"
+        ? el("span", { class: "pay-chip card" }, `Card · ${price} · pays in app`)
+        : el("span", { class: "pay-chip cash" }, `Cash · collect ${price}`);
     }
 
     function render(route) {
       tz = route.timezone;
-      const remaining = route.stops.filter(s => !s.completed_at);
+      const remaining = route.stops.filter((s) => !s.completed_at);
       const nextId = remaining[0]?.stop_id;
       $("s-stops").textContent = remaining.length;
       $("s-miles").textContent = miles(route.total_distance_m);
       $("s-drive").textContent = fmtDur(route.total_duration_s);
-      $("bar").style.width = route.stops.length
-        ? `${(100 * (route.stops.length - remaining.length)) / route.stops.length}%` : "0";
+      $("bar").style.width = route.stops.length ? `${(100 * (route.stops.length - remaining.length)) / route.stops.length}%` : "0";
 
-      const full = $("full-route");
-      full.replaceChildren();
-      route.full_route_google_urls.forEach((url, i, all) => {
-        const label = all.length > 1 ? `Full route in Google Maps (part ${i + 1}/${all.length})` : "Full route in Google Maps";
-        full.append(el("a", { class: "btn", href: url, target: "_blank", rel: "noopener" }, label));
-      });
+      const full = $("full-route"); full.replaceChildren();
+      route.full_route_google_urls.forEach((url, i, all) => full.append(
+        el("a", { class: "btn", href: url, target: "_blank", rel: "noopener" }, all.length > 1 ? `Full route in Google Maps (part ${i + 1}/${all.length})` : "Full route in Google Maps")));
 
-      const list = $("stops");
-      list.replaceChildren();
-      if (!route.stops.length) {
-        list.append(el("li", { class: "empty" }, "No stops on this route."));
-        return;
-      }
+      const list = $("stops"); list.replaceChildren();
+      if (!route.stops.length) { list.append(el("li", { class: "empty" }, "No stops on this route.")); return; }
       for (const s of route.stops) {
         const done = !!s.completed_at;
-        const cls = ["stop", done ? "done" : "", s.stop_id === nextId ? "next" : ""].join(" ").trim();
-        const meta = el("div", { class: "meta" },
-          el("span", { class: "tag" }, s.service_label),
-          s.eta && !done ? el("span", {}, `ETA ${fmtTime(s.eta)}`) : null,
-          el("span", {}, `${miles(s.leg_distance_m)} mi · ${fmtDur(s.leg_duration_s)} drive`),
-          done ? el("span", {}, `Done ${fmtTime(s.completed_at)}`) : null,
-        );
-        const head = el("div", { class: "stop-head" },
-          el("div", { class: "seq" }, String(s.sequence)),
-          el("div", { class: "stop-body" },
-            el("div", { class: "name" }, s.customer_name),
-            el("div", { class: "addr" }, s.address),
-            meta),
-        );
-        const item = el("li", { class: cls }, head);
+        const item = el("li", { class: ["stop", done && "done", s.stop_id === nextId && "next"].filter(Boolean).join(" ") },
+          el("div", { class: "stop-head" },
+            el("div", { class: "seq" }, String(s.sequence)),
+            el("div", { class: "stop-body" },
+              el("div", { class: "name" }, s.customer_name),
+              el("div", { class: "addr" }, s.address),
+              el("div", { class: "meta" },
+                el("span", { class: "tag" }, s.service_label),
+                s.eta && !done ? el("span", {}, `ETA ${fmtTime(s.eta)}`) : null,
+                el("span", {}, `${miles(s.leg_distance_m)} mi · ${fmtDur(s.leg_duration_s)} drive`),
+                done ? el("span", {}, `Done ${fmtTime(s.completed_at)}${s.completed_by_name ? " by " + s.completed_by_name.split(" ")[0] : ""}`) : null),
+              el("div", { class: "meta" }, payChip(s)))));
         if (!done) {
-          const completeBtn = el("button", { class: "btn btn-primary", type: "button" }, "Mark complete");
-          completeBtn.addEventListener("click", () => complete(s, completeBtn));
+          const completeBtn = el("button", { class: "btn btn-primary", type: "button" }, "Finish job");
+          completeBtn.addEventListener("click", () => openFinish(item, s));
           item.append(el("div", { class: "actions" },
             el("a", { class: "btn", href: s.apple_maps_url, target: "_blank", rel: "noopener" }, "Apple Maps"),
             el("a", { class: "btn", href: s.google_maps_url, target: "_blank", rel: "noopener" }, "Google Maps"),
-            completeBtn,
-          ));
+            completeBtn));
         }
         list.append(item);
       }
     }
 
-    async function load() {
+    // In-card "Finish job" panel: price, cash, and an optional portfolio photo.
+    function openFinish(item, s) {
+      item.querySelector(".finish")?.remove();
+      const needsPrice = s.amount_due == null && s.payment_status !== "paid";
+      const isCash = s.payment_method === "cash" && s.payment_status !== "paid";
+      const priceIn = needsPrice ? el("input", { type: "text", inputmode: "decimal", placeholder: "e.g. 120", id: `fp-${s.stop_id}` }) : null;
+      const cashIn = isCash ? el("input", { type: "text", inputmode: "decimal", value: s.amount_due ?? "", id: `fc-${s.stop_id}` }) : null;
+      const photoIn = me?.member ? el("input", { type: "file", accept: "image/*", id: `fph-${s.stop_id}` }) : null;
+      const capIn = me?.member ? el("input", { type: "text", maxlength: 280, placeholder: "Caption (optional)", id: `fcap-${s.stop_id}` }) : null;
+      const confirmBtn = el("button", { class: "btn btn-primary", type: "submit" }, "Confirm: job done");
+      const cancelBtn = el("button", { class: "btn", type: "button" }, "Cancel");
+      const panel = el("form", { class: "finish" },
+        el("strong", {}, `Finishing stop ${s.sequence}: ${s.customer_name}`),
+        needsPrice ? el("div", { class: "field" }, el("label", { for: priceIn.id }, "Final price ($)"), priceIn) : null,
+        isCash ? el("div", { class: "field" }, el("label", { for: cashIn.id }, "Cash collected ($)"), cashIn,
+          el("p", { class: "hint" }, "Leave blank if they haven't paid yet. Anything over the price is saved as a donation.")) : null,
+        s.payment_method === "card" && s.payment_status !== "paid"
+          ? el("p", { class: "hint" }, "Card customer: we'll text them a secure payment link.") : null,
+        photoIn ? el("div", { class: "field" }, el("label", { for: photoIn.id }, "Add an after photo to My work (optional)"), photoIn, capIn) : null,
+        el("div", { class: "row-2" }, cancelBtn, confirmBtn));
+      cancelBtn.addEventListener("click", () => panel.remove());
+      panel.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const num = (input) => { const v = parseFloat((input?.value || "").replace(/[^0-9.]/g, "")); return isFinite(v) ? Math.round(v * 100) / 100 : null; };
+        const body = {};
+        if (priceIn) { const p = num(priceIn); if (p) body.amount_due = p; }
+        if (cashIn && cashIn.value.trim()) {
+          body.cash_collected = num(cashIn);
+          const due = body.amount_due ?? s.amount_due;
+          if (due == null) { toast("Enter the final price first."); return; }
+          if (body.cash_collected < due) { toast(`Cash is less than the ${money(due)} price.`); return; }
+        }
+        confirmBtn.disabled = true; confirmBtn.textContent = "Saving…";
+        try {
+          const res = await api(`/api/stops/${s.stop_id}/complete`, { method: "POST", json: body });
+          if (photoIn?.files?.[0]) {
+            try {
+              const photo = await resizeImage(photoIn.files[0]);
+              await api("/api/crew/me/portfolio", { method: "POST", json: { photo, caption: capIn.value || null, service: s.service, job_id: s.job_id } });
+            } catch (err) { toast(`Job saved, but the photo didn't upload: ${err.message}`); }
+          }
+          const n = res.notification || {};
+          const pay = res.payment || {};
+          const bits = [pay.status === "paid" && pay.method === "cash" ? `Cash ${money(pay.amount_paid)} recorded${pay.donation > 0 ? ` (${money(pay.donation)} donation)` : ""}.` : null,
+            n.notified ? "Next customer texted." : n.reason === "route_complete" ? "Last stop of the day. Nice work!" : null];
+          toast(["Job done!", ...bits].filter(Boolean).join(" "));
+          await Promise.all([loadRoute(), refreshMe()]);
+        } catch (err) {
+          toast(err instanceof TypeError ? "No signal. Tap again when you're back in coverage." : err.message);
+          confirmBtn.disabled = false; confirmBtn.textContent = "Confirm: job done";
+        }
+      });
+      item.append(panel);
+      (priceIn || cashIn || confirmBtn).focus();
+    }
+
+    async function loadRoute() {
       $("err").hidden = true;
       try {
         const route = await api(`/api/routes/${$("day").value}`);
@@ -169,56 +482,145 @@
         const off = $("offline");
         if (route._offlineSince) {
           const t = new Date(route._offlineSince);
-          off.textContent = `No signal. Showing the route saved${isNaN(t) ? "" : " at " + t.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}. Completions need a connection.`;
+          off.textContent = `No signal. Showing the route saved${isNaN(t) ? "" : " at " + t.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}. Finishing jobs needs a connection.`;
           off.hidden = false;
-        } else {
-          off.hidden = true;
-        }
+        } else off.hidden = true;
       } catch (e) {
         $("route").hidden = true;
         if (!token) return;
         $("err").textContent = e.status === 404 ? "No route has been built for this day yet."
-          : e instanceof TypeError ? "No signal, and this day's route isn't saved on this phone yet."
-          : e.message;
+          : e instanceof TypeError ? "No signal, and this day's route isn't saved on this phone yet." : e.message;
         $("err").hidden = false;
       }
     }
+    $("day").addEventListener("change", loadRoute);
 
-    async function complete(stop, btn) {
-      if (!confirm(`Mark stop ${stop.sequence} (${stop.customer_name}) complete?`)) return;
-      btn.disabled = true;
-      btn.textContent = "Saving…";
-      try {
-        const res = await api(`/api/stops/${stop.stop_id}/complete`, { method: "POST" });
-        const n = res.notification || {};
-        toast(n.notified ? "Done. Next customer has been texted." :
-              n.reason === "route_complete" ? "Done. That was the last stop!" :
-              n.reason === "twilio_disabled" ? "Marked complete. (SMS is off, so no text was sent.)" :
-              n.reason === "send_failed" ? "Marked complete, but the text failed to send." : "Marked complete.");
-        await load();
-      } catch (e) {
-        toast(e instanceof TypeError ? "No signal. Tap again when you're back in coverage." : e.message);
-        btn.disabled = false;
-        btn.textContent = "Mark complete";
+    // ---------- My profile ----------
+    let accentPick = null;
+    function fillProfile() {
+      const m = me?.member; if (!m) return;
+      $("pf-avatar").replaceWith(Object.assign(avatar(m, "avatar-xl"), { id: "pf-avatar" }));
+      $("pf-name").value = m.display_name; $("pf-role").value = m.role_title || ""; $("pf-branch").value = m.service_branch || "";
+      $("pf-years").value = m.years_experience ?? ""; $("pf-bio").value = m.bio || ""; $("pf-specs").value = (m.specialties || []).join(", ");
+      $("public-link").href = `/team/${m.slug}`;
+      accentPick = m.accent_color;
+      const sw = $("swatches"); sw.replaceChildren();
+      for (const c of ACCENTS) {
+        const b = el("button", { type: "button", class: "swatch" + (c === accentPick ? " is-on" : ""), style: `--c:${c}`, "aria-label": `Color ${c}`, "aria-pressed": String(c === accentPick) });
+        b.addEventListener("click", () => {
+          accentPick = c; applyAccent(c);
+          sw.querySelectorAll(".swatch").forEach((x) => { x.classList.toggle("is-on", x === b); x.setAttribute("aria-pressed", String(x === b)); });
+        });
+        sw.append(b);
       }
     }
-
-    $("login-form").addEventListener("submit", (e) => {
+    $("profile-form").addEventListener("submit", async (e) => {
       e.preventDefault();
-      token = $("token").value.trim();
-      try { localStorage.setItem(TOKEN_KEY, token); } catch {}
-      start();
+      const years = $("pf-years").value.trim();
+      try {
+        const m = await api("/api/crew/me", { method: "PUT", json: {
+          display_name: $("pf-name").value.trim(), role_title: $("pf-role").value.trim() || null,
+          service_branch: $("pf-branch").value.trim() || null, years_experience: years === "" ? null : Number(years),
+          bio: $("pf-bio").value.trim() || null, accent_color: accentPick,
+          specialties: $("pf-specs").value.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 8) } });
+        me.member = m; renderHeader(); toast("Profile saved.");
+      } catch (err) { toast(err.message); }
     });
-    $("day").addEventListener("change", load);
+    $("pf-photo").addEventListener("change", async () => {
+      const f = $("pf-photo").files[0]; if (!f) return;
+      try {
+        const photo = await resizeImage(f, 600, 0.85);
+        me.member = await api("/api/crew/me/photo", { method: "PUT", json: { photo } });
+        renderHeader(); fillProfile(); toast("Looking good! Photo updated.");
+      } catch (err) { toast(err.message); }
+      $("pf-photo").value = "";
+    });
+    $("code-change").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try {
+        await api("/api/crew/me/code", { method: "PUT", json: { current: $("cc-cur").value, new: $("cc-new").value } });
+        $("cc-cur").value = $("cc-new").value = ""; toast("Code updated. Use it next time you sign in.");
+      } catch (err) { toast(err.message); }
+    });
 
-    function start() {
-      $("login").hidden = true;
-      $("dash").hidden = false;
-      if (!$("day").value) $("day").value = todayLocal();
-      load();
+    // ---------- My work ----------
+    let pendingPhoto = null;
+    async function loadWork() {
+      try {
+        const items = await api("/api/crew/me/portfolio");
+        const ul = $("my-work"); ul.replaceChildren();
+        $("my-work-empty").hidden = items.length > 0;
+        for (const it of items) {
+          const del = el("button", { type: "button", class: "work-del", "aria-label": "Delete photo" }, "Delete");
+          del.addEventListener("click", async () => {
+            if (!del.classList.contains("confirm")) { del.classList.add("confirm"); del.textContent = "Tap to delete"; return; }
+            try { await api(`/api/crew/me/portfolio/${it.id}`, { method: "DELETE" }); loadWork(); refreshMe(); } catch (err) { toast(err.message); }
+          });
+          ul.append(el("li", { class: "work-item" },
+            el("div", { class: "portfolio-item" }, el("img", { src: it.photo_url, alt: it.caption || "Work photo", loading: "lazy" }),
+              it.caption ? el("span", {}, it.caption) : null), del));
+        }
+      } catch (err) { toast(err.message); }
     }
+    $("pw-photo").addEventListener("change", async () => {
+      const f = $("pw-photo").files[0]; if (!f) return;
+      try {
+        pendingPhoto = await resizeImage(f);
+        $("pw-preview").src = pendingPhoto; $("pw-form").hidden = false; $("pw-caption").focus();
+      } catch (err) { toast(err.message); }
+      $("pw-photo").value = "";
+    });
+    $("pw-cancel").addEventListener("click", () => { pendingPhoto = null; $("pw-form").hidden = true; });
+    $("pw-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!pendingPhoto) return;
+      try {
+        await api("/api/crew/me/portfolio", { method: "POST", json: { photo: pendingPhoto, caption: $("pw-caption").value || null, service: $("pw-service").value || null } });
+        pendingPhoto = null; $("pw-form").hidden = true; $("pw-caption").value = ""; $("pw-service").value = "";
+        toast("Added to your work."); loadWork(); refreshMe();
+      } catch (err) { toast(err.message); }
+    });
 
-    if (token) start(); else $("login").hidden = false;
+    // ---------- Crew (owner) ----------
+    async function loadMembers() {
+      try {
+        const list = await api("/api/crew/members");
+        const ul = $("members"); ul.replaceChildren();
+        if (!list.length) ul.append(el("li", { class: "empty" }, "No crew members yet. Add your first one below."));
+        for (const m of list) {
+          const toggle = el("button", { type: "button", class: "btn btn-sm" }, m.active ? "Deactivate" : "Reactivate");
+          toggle.addEventListener("click", async () => {
+            try { await api(`/api/crew/members/${m.id}`, { method: "PATCH", json: { active: !m.active } }); loadMembers(); } catch (err) { toast(err.message); }
+          });
+          const reset = el("button", { type: "button", class: "btn btn-sm" }, "New code");
+          reset.addEventListener("click", () => {
+            const box = el("form", { class: "reset-row" }, el("input", { type: "text", minlength: 4, maxlength: 32, required: true, placeholder: "New code", "aria-label": `New code for ${m.display_name}` }), el("button", { class: "btn btn-sm btn-primary", type: "submit" }, "Save"));
+            box.addEventListener("submit", async (e) => {
+              e.preventDefault();
+              try { await api(`/api/crew/members/${m.id}`, { method: "PATCH", json: { code: box.querySelector("input").value } }); toast(`New code saved for ${m.display_name.split(" ")[0]}.`); box.remove(); } catch (err) { toast(err.message); }
+            });
+            row.querySelector(".reset-row")?.remove(); row.append(box); box.querySelector("input").focus();
+          });
+          const row = el("li", { class: "card member" + (m.active ? "" : " inactive") },
+            el("div", { class: "member-main" }, avatar(m),
+              el("div", { class: "member-text" }, el("strong", {}, m.display_name), el("span", { class: "muted" }, m.active ? (m.role_title || "Crew member") : "Inactive")),
+              el("a", { href: `/team/${m.slug}`, target: "_blank", rel: "noopener", class: "muted small" }, "Profile")),
+            el("div", { class: "member-actions" }, reset, toggle));
+          ul.append(row);
+        }
+      } catch (err) { toast(err.message); }
+    }
+    $("add-member").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try {
+        const m = await api("/api/crew/members", { method: "POST", json: { display_name: $("am-name").value.trim(), role_title: $("am-role").value.trim() || null, code: $("am-code").value } });
+        toast(`${m.display_name.split(" ")[0]} added. Give them their code in person.`);
+        $("am-name").value = $("am-role").value = $("am-code").value = "";
+        loadMembers();
+      } catch (err) { toast(err.message); }
+    });
+
+    if (token) start(); else showSignin();
   </script>
 </body>
 </html>

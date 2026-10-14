@@ -35,6 +35,13 @@ services:
         sync: false
       - key: TWILIO_FROM_NUMBER
         sync: false
+      # Card payments (Stripe). Leave blank to take cash only.
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: PUBLIC_BASE_URL
+        sync: false
       - key: CREW_ACCESS_TOKEN
         generateValue: true
       - key: WEBHOOK_SECRET
@@ -48,8 +55,9 @@ services:
     rootDir: property-dispatch
     plan: 0.5c-512mb
     # Cron is UTC. 8 PM Central = 01:00 UTC (CDT) or 02:00 UTC (CST).
-    # Runs at both; the script exits unless it is 20:00 in America/Chicago.
-    schedule: "0 1,2 * * *"
+    # Hourly 01:00-04:00 UTC: the first run at/after 8 PM Central builds
+    # tomorrow's route; later runs catch up if it was missed, else no-op.
+    schedule: "0 1-4 * * *"
     dockerCommand: python -m app.nightly
     envVars:
       - key: DATA_BACKEND

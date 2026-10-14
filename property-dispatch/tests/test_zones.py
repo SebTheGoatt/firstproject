@@ -70,4 +70,34 @@ def test_out_of_zone_address_is_turned_away(client, repo):
 
 def test_booking_info_lists_zones(client):
     zones = client.get("/api/booking-info").json()["zones"]
-    assert [z["mow_rate"] for z in zones] == [55.0, 40.0, 45.0]
+    assert [z["mow_rate"] for z in zones] == [55.0, 55.0, 40.0, 45.0]
+    assert all(len(z["bbox"]) == 4 for z in zones)
+
+
+@pytest.mark.parametrize("lat, lng, key", [
+    (30.1160, -95.3636, "SPRING_LUXURY_LOOP"),   # Woodson's Reserve
+    (30.3391, -95.0579, "CLEVELAND_HUB"),        # Kingston Heath Dr, Grand Oaks Reserve
+    (30.3367, -95.0506, "CLEVELAND_HUB"),        # Spyglass Hill Dr, Grand Oaks clubhouse
+    (30.3415, -95.0900, "CLEVELAND_HUB"),        # downtown Cleveland
+])
+def test_zones_cover_the_places_they_are_named_for(lat, lng, key):
+    assert find_zone(lat, lng).key == key
+
+
+@pytest.mark.parametrize("lat, lng, place", [
+    (30.0600, -95.4921, "4726 Whispering Rock Ln, 77388"),
+    (30.0198, -95.5224, "Klein High School, 77379"),
+    (30.0633, -95.4762, "Klein Collins High School, 77388"),
+    (30.0278, -95.5622, "9000 Spring Cypress Rd, 77379"),
+    (30.0675, -95.4501, "2400 Spring Cypress Rd, 77388"),
+])
+def test_klein_covers_77379_and_77388(lat, lng, place):
+    assert find_zone(lat, lng).key == "KLEIN_CORE", place
+
+
+@pytest.mark.parametrize("lat, lng, place", [
+    (30.0947, -95.5172, "Klein Oak HS, 77389 (not in core Klein)"),
+    (30.0766, -95.4166, "Old Town Spring, east of I-45"),
+])
+def test_klein_stops_at_its_edges(lat, lng, place):
+    assert find_zone(lat, lng) is None, place

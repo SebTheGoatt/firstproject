@@ -14,7 +14,7 @@ def book(client, letter, phone_suffix, service="mowing", day=TOMORROW):
     return client.post("/api/jobs", json={
         "name": f"Customer {letter}",
         "phone": f"(281) 555-{phone_suffix}",
-        "address": f"{letter} Example Rd",
+        "address": f"100 {letter} Example Rd",
         "service": service,
         "scheduled_date": day.isoformat(),
     })
@@ -87,10 +87,10 @@ def test_intake_enforces_freeze_and_quota(client, settings):
 
 def test_intake_validation_errors(client):
     with patch("app.main.local_now", return_value=NOW):
-        r = client.post("/api/jobs", json={"name": "X", "phone": "123", "address": "A Example Rd",
+        r = client.post("/api/jobs", json={"name": "X", "phone": "123", "address": "100 A Example Rd",
                                            "service": "mowing", "scheduled_date": TOMORROW.isoformat()})
         assert r.status_code == 422
-        r = client.post("/api/jobs", json={"name": "X", "phone": "2815550100", "address": "A Example Rd",
+        r = client.post("/api/jobs", json={"name": "X", "phone": "2815550100", "address": "100 A Example Rd",
                                            "service": "pressure_washing", "scheduled_date": TOMORROW.isoformat()})
         assert r.status_code == 422
 
@@ -154,3 +154,26 @@ def test_geocoder_outage_is_503_not_422(settings, repo):
         c = TestClient(create_app(settings, repo=repo, geocoder=geo, sms=None))
         with patch("app.main.local_now", return_value=NOW):
             assert book(c, "A", "0100").status_code == code
+
+
+def test_nightly_main_time_guard_and_catch_up(monkeypatch, repo, settings):
+    from app import nightly
+
+    monkeypatch.setattr(nightly, "get_settings", lambda: settings)
+    monkeypatch.setattr(nightly, "make_repository", lambda s: repo)
+    calls = []
+    real = nightly.run_nightly
+    monkeypatch.setattr(nightly, "run_nightly", lambda r, s, d, **kw: calls.append(d) or real(r, s, d, **kw))
+
+    def at(hour):
+        monkeypatch.setattr(nightly, "local_now", lambda s: NOW.replace(hour=hour))
+        return nightly.main([])
+
+    at(19)                          # 7 PM: before the freeze → nothing
+    assert calls == []
+    at(21)                          # 8 PM run was missed; 9 PM catches up
+    assert calls == [TOMORROW]
+    at(22)                          # route exists → no rebuild
+    assert calls == [TOMORROW]
+    nightly.main(["--force"])       # explicit rebuild still works
+    assert calls == [TOMORROW, TOMORROW]

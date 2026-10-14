@@ -123,9 +123,17 @@ describe('POST /api/check-booking', () => {
 
 describe('validateCustomerLocation', () => {
   it('edges are inclusive', () => {
-    assert.equal(validateCustomerLocation(30.11, -95.42).isValid, true);
+    assert.equal(validateCustomerLocation(30.10, -95.42).isValid, true);
     assert.equal(validateCustomerLocation(30.18, -95.28).isValid, true);
-    assert.equal(validateCustomerLocation(30.1099, -95.42).isValid, false);
+    assert.equal(validateCustomerLocation(30.0999, -95.42).isValid, false);
+  });
+
+  it('covers the places each zone is named for', () => {
+    const zoneOf = (lat, lng) => validateCustomerLocation(lat, lng).zoneName;
+    assert.match(zoneOf(30.1160, -95.3636), /Woodson/);       // Woodson's Reserve
+    assert.match(zoneOf(30.3391, -95.0579), /Grand Oaks/);    // Kingston Heath Dr (Grand Oaks Reserve)
+    assert.match(zoneOf(30.3367, -95.0506), /Grand Oaks/);    // Spyglass Hill Dr (clubhouse)
+    assert.match(zoneOf(30.3415, -95.0900), /Cleveland/);     // downtown Cleveland
   });
 });
 

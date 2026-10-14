@@ -60,6 +60,46 @@ need to reinstall.
 
 The business name on every page comes from `BUSINESS_NAME`.
 
+## Pay your way (cash or card) and donations
+
+At booking, customers choose **Cash to the crew** or **Card in the app**.
+
+- **Cash:** when finishing a job the crew enters the cash they were handed.
+  Anything over the price is recorded as a donation.
+- **Card:** customers get a private link (`/pay/{token}`) on their booking confirmation,
+  and by text when the job is done. The page shows the price, offers optional donation
+  buttons ("No tip necessary. Donations are always welcome. We're a veteran-owned
+  business."), and sends them to **Stripe Checkout** to pay. We never see card numbers.
+  Stripe's signed webhook marks the job paid.
+- **Quoted services** (bin cleaning, gutters): the crew enters the final price when
+  finishing; card customers are then texted their pay link.
+- Donations are recorded per job. They go to the business and **aren't tax-deductible**,
+  and the pay page says so.
+
+**Turning on card payments** (until then the card option stays hidden):
+1. Create a Stripe account and finish its business verification.
+2. Stripe → Developers → API keys: copy the **Secret key** into `STRIPE_SECRET_KEY`.
+3. Stripe → Developers → Webhooks → **Add endpoint**: URL `https://<your-app>/webhooks/stripe`,
+   events `checkout.session.completed` and `checkout.session.async_payment_succeeded`.
+   Copy its **Signing secret** into `STRIPE_WEBHOOK_SECRET`.
+4. Set `PUBLIC_BASE_URL` to your site's address.
+
+## Crew app: personal sign-in, profiles, portfolios
+
+- **Sign-in:** `/crew` shows "Who's working today?" with each crew member's photo. They tap
+  themselves and enter their personal code. Codes are stored only as salted hashes, and
+  repeated wrong guesses are blocked for 15 minutes.
+- **Owner:** "Owner sign-in" uses `CREW_ACCESS_TOKEN` (the master code). The owner's
+  **Crew** tab adds people, issues new codes, and deactivates anyone who leaves (which
+  signs them out everywhere). Changing `CREW_ACCESS_TOKEN` signs every phone out.
+- **Each crew member gets** a personal header in their own color, their stats (jobs this
+  week, all-time, work photos), today's route, **My profile** (photo, title, service branch,
+  years, bio, specialties, color) and **My work** (portfolio photos, including one taken
+  when finishing a job). Photos are resized on the phone before upload.
+- **Public pages:** `/team` and `/team/{name}` show the crew's profiles and work. The home
+  page shows a "Meet the crew" section once profiles exist. The "on the way" text names the
+  crew member: "Hi Maria, this is Sam from …".
+
 ## How the rules work
 
 **Freeze.** A service day locks at `FREEZE_HOUR` (default 20:00, America/Chicago)
@@ -74,6 +114,9 @@ mowing rate. After geocoding, an address outside every zone is turned away; insi
 one, the job stores its `zone_key` and (for mowing) the `quoted_price`. Boxes are
 `(min_lng, min_lat, max_lng, max_lat)`, and the app refuses to start if a box is
 inverted, out of range, or overlaps another. To change a zone, edit that file and redeploy.
+The home page draws every zone on an interactive map (MapLibre + OpenFreeMap tiles:
+free, no API key, commercial use allowed) with price pins, so a new or resized
+zone shows up on the map automatically.
 
 **Nightly run.** Loads tomorrow's `pending`/`scheduled` jobs, builds a driving
 matrix from OSRM (falls back to straight-line × 1.3 if OSRM is down), solves
@@ -94,7 +137,7 @@ webhook + button firing together never send a duplicate.
 cd property-dispatch
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
-pytest                                     # 46 tests
+pytest
 
 export DATA_BACKEND=memory CREW_ACCESS_TOKEN=crew CRON_SECRET=cron \
        GEOCODER_USER_AGENT="property-dispatch/1.0 (you@yourbusiness.com)"
@@ -111,7 +154,8 @@ Without Twilio credentials the "next customer" text is logged instead of sent.
 
 ### 1. Supabase (database)
 1. Create a project at [supabase.com](https://supabase.com).
-2. **SQL Editor → New query**, run each file in `supabase/migrations/` in name order.
+2. **SQL Editor → New query**: paste the whole contents of `supabase/setup_all.sql`
+   (all migrations combined, in order) and click **Run** once.
    (Or with the CLI: `supabase link --project-ref <ref> && supabase db push`.)
 3. **Settings → API Keys**: copy the **secret** key (`sb_secret_…`), and copy the **Project URL**
    from the **Connect** button. The secret key bypasses RLS, so keep it on the server and
@@ -139,9 +183,12 @@ Without Twilio credentials the "next customer" text is logged instead of sent.
 4. On the crew's phones, open `https://<your-app>.onrender.com/crew` → enter the code →
    Share → **Add to Home Screen**.
 
-**Why the cron runs twice:** cron schedules are in UTC, and 8 PM Central is 01:00 UTC
-during daylight time but 02:00 UTC in winter. The job is scheduled at both hours,
-and `app/nightly.py` exits unless it's actually 20:00 in `BUSINESS_TIMEZONE`.
+**Why the cron runs hourly 01:00-04:00 UTC:** cron schedules are in UTC, and 8 PM
+Central is 01:00 UTC during daylight time but 02:00 UTC in winter. Each run exits
+before 8 PM local, builds tomorrow's route at or after it, and does nothing if the
+route already exists. The first run after 8 PM does the work; the later ones catch
+up if that run was missed (host outage or maintenance). The last run is 11 PM
+Central at the latest, so it never crosses midnight.
 
 The app refuses to start in `supabase` mode if any of the three secrets is
 empty or still `change-me`.

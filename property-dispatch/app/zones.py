@@ -25,22 +25,35 @@ SERVICE_ZONES: tuple[ServiceZone, ...] = (
     ServiceZone(
         key="SPRING_LUXURY_LOOP",
         name="Spring / Woodson's Reserve Corridor",
-        # Woodson's Reserve and surrounding SH-99 / Rayford Rd developments
-        bbox=(-95.4200, 30.1100, -95.2800, 30.1800),
+        # Woodson's Reserve and surrounding SH-99 / Rayford Rd developments.
+        # South edge at 30.10 so all of Woodson's Reserve (center ~30.116) fits.
+        bbox=(-95.4200, 30.1000, -95.2800, 30.1800),
         mow_rate=55.00,  # premium pricing for larger luxury lots
+    ),
+    ServiceZone(
+        key="KLEIN_CORE",
+        name="Klein",
+        # ZIPs 77379 and 77388: FM 1960 (south) to just below 77389 (north),
+        # west of Champion Forest Dr to just west of I-45. Stops at -95.425 so
+        # it never touches the Spring corridor or takes in Old Town Spring.
+        bbox=(-95.5850, 29.9950, -95.4250, 30.0900),
+        mow_rate=55.00,
     ),
     ServiceZone(
         key="I69_HIGH_DENSITY_SPINE",
         name="New Caney & Splendora High-Density Spine",
-        # The Canopies, Gemini, and Porters Mill developments
-        bbox=(-95.2300, 30.1850, -95.0900, 30.2950),
+        # The Canopies, Gemini, and Porters Mill developments.
+        # West edge at -95.26 so The Canopies (~-95.234 to -95.237) is inside.
+        bbox=(-95.2600, 30.1850, -95.0900, 30.2950),
         mow_rate=40.00,  # clustered pricing optimized for foot-traffic speed
     ),
     ServiceZone(
         key="CLEVELAND_HUB",
         name="Cleveland / Grand Oaks Reserve Hub",
-        # Grand Oaks Reserve and new construction off FM 1010 / SH-105
-        bbox=(-95.0500, 30.3000, -94.9100, 30.3800),
+        # Grand Oaks Reserve and new construction off FM 1010 / SH-105.
+        # West edge at -95.15 to include Grand Oaks Reserve (~-95.05 to -95.06)
+        # and downtown Cleveland (~-95.09).
+        bbox=(-95.1500, 30.3000, -94.9100, 30.3800),
         mow_rate=45.00,
     ),
 )

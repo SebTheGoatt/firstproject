@@ -52,7 +52,8 @@
       <div class="field">
         <label for="address">Service address</label>
         <input id="address" name="address" type="text" autocomplete="street-address" required
-               placeholder="123 Main St, Spring, TX 77373">
+               placeholder="1234 Oak Forest Ln, Spring, TX 77386">
+        <div class="hint">House number, street, city and ZIP.</div>
       </div>
 
       <fieldset>
@@ -72,6 +73,18 @@
         <input id="date" name="scheduled_date" type="date" required>
         <div class="hint" id="date-hint">Next-day bookings close at 8 PM.</div>
       </div>
+
+      <fieldset>
+        <legend>Pay your way</legend>
+        <div class="pay-options">
+          <input type="radio" name="payment_method" id="pay-cash" value="cash" checked>
+          <label for="pay-cash"><strong>Cash to the crew</strong><span>Pay when we arrive or when we finish.</span></label>
+          <input type="radio" name="payment_method" id="pay-card" value="card" disabled>
+          <label for="pay-card" id="pay-card-label"><strong>Card in the app</strong><span id="pay-card-note">Coming soon.</span></label>
+        </div>
+        <p class="veteran-note"><span class="flag" aria-hidden="true">★</span>
+          No tip necessary. Donations are always welcome. We're a veteran-owned business.</p>
+      </fieldset>
 
       <button class="btn btn-primary btn-block" type="submit" id="submit">Book service</button>
     </form>
@@ -102,6 +115,10 @@
         list.append(li);
       }
       document.getElementById("areas").hidden = !info.zones.length;
+      if (info.card_payments) {
+        document.getElementById("pay-card").disabled = false;
+        document.getElementById("pay-card-note").textContent = "Pay securely online before or after the visit.";
+      }
     }).catch(() => {});
 
     function showError(msg) {
@@ -142,6 +159,22 @@
           ? `${body.zone_name}: ${money(body.quoted_price)} per mow.`
           : `${body.zone_name}. We'll confirm pricing on site.`;
         ok.append(h, p, z);
+        if (body.pay_url) {
+          const pay = document.createElement("a");
+          pay.className = "btn btn-primary";
+          pay.href = body.pay_url;
+          pay.textContent = body.quoted_price != null ? "Pay now" : "Open your payment page";
+          const note = document.createElement("div");
+          note.className = "hint";
+          note.textContent = body.quoted_price != null
+            ? "Or pay later; we'll text you this link when the job's done."
+            : "Your final price is set on site. We'll text you this link when the job's done.";
+          ok.append(pay, note);
+        } else {
+          const cash = document.createElement("div");
+          cash.textContent = "You chose cash: pay the crew when they arrive.";
+          ok.append(cash);
+        }
         ok.hidden = false;
       } catch (ex) {
         showError(navigator.onLine === false || ex instanceof TypeError

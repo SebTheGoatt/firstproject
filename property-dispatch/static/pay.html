@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Pay | {{BUSINESS_NAME}}</title>
+  <meta name="robots" content="noindex">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#2f7d4f">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="/static/styles.css?v={{V}}">
+</head>
+<body class="site">
+  <header class="site-header">
+    <div class="site-wrap header-row">
+      <a class="brand" href="/">
+        <img src="/static/icons/icon-192.png" alt="" width="32" height="32">
+        <span>{{BUSINESS_NAME}}</span>
+      </a>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div id="err" class="alert alert-error" role="alert" hidden></div>
+
+    <section class="card pay-card" id="pay" hidden>
+      <p class="eyebrow">Pay your way</p>
+      <h1 id="hello">Hi there</h1>
+      <dl class="pay-summary">
+        <div><dt>Service</dt><dd id="svc"></dd></div>
+        <div><dt>Date</dt><dd id="when"></dd></div>
+        <div><dt>Price</dt><dd id="price"></dd></div>
+      </dl>
+
+      <!-- Paid -->
+      <div id="paid" class="alert alert-ok" hidden></div>
+
+      <!-- Waiting for the webhook after returning from Stripe -->
+      <div id="confirming" class="alert alert-ok" hidden>Confirming your payment…</div>
+
+      <!-- Price not set yet -->
+      <div id="pending-price" class="alert alert-warn" hidden>
+        Your final price is set when the crew finishes the job. We'll text you this link then.
+      </div>
+
+      <!-- Card not available -->
+      <div id="no-card" class="alert alert-warn" hidden>
+        Online card payments aren't available right now. You can pay the crew in cash.
+      </div>
+
+      <form id="pay-form" hidden>
+        <fieldset>
+          <legend>Add a donation? <span class="optional">(optional)</span></legend>
+          <p class="veteran-note"><span class="flag" aria-hidden="true">★</span>
+            No tip necessary. Donations are always welcome. We're a veteran-owned business.</p>
+          <div class="chips" id="chips" role="radiogroup" aria-label="Donation amount">
+            <button type="button" class="chip is-on" data-amt="0" role="radio" aria-checked="true">No thanks</button>
+            <button type="button" class="chip" data-amt="5" role="radio" aria-checked="false">$5</button>
+            <button type="button" class="chip" data-amt="10" role="radio" aria-checked="false">$10</button>
+            <button type="button" class="chip" data-amt="20" role="radio" aria-checked="false">$20</button>
+            <button type="button" class="chip" data-amt="other" role="radio" aria-checked="false">Other</button>
+          </div>
+          <div class="field" id="other-wrap" hidden>
+            <label for="other">Donation amount ($)</label>
+            <input id="other" type="text" inputmode="decimal" placeholder="15" autocomplete="off">
+          </div>
+        </fieldset>
+        <div class="pay-total"><span>Total</span><strong id="total"></strong></div>
+        <button class="btn btn-primary btn-block btn-lg" id="pay-btn" type="submit">Pay securely</button>
+        <p class="hint center">You'll pay on Stripe's secure page. We never see your card number.<br>
+          Donations go to the business and aren't tax-deductible.</p>
+      </form>
+    </section>
+  </main>
+
+  <script src="/static/site.js?v={{V}}"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const token = location.pathname.split("/").pop();
+    const money = (n) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+    const fmtDay = (iso) => new Date(iso + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+    let info = null, donation = 0;
+
+    function show(id, on = true) { $(id).hidden = !on; }
+    function error(msg) { $("err").textContent = msg; show("err"); }
+
+    function render() {
+      show("pay");
+      $("hello").textContent = `Hi ${info.first_name}`;
+      $("svc").textContent = info.service_label;
+      $("when").textContent = fmtDay(info.scheduled_date);
+      $("price").textContent = info.amount_due != null ? money(info.amount_due) : "Set on site";
+      ["paid", "pending-price", "no-card", "pay-form", "confirming"].forEach((id) => show(id, false));
+
+      if (info.payment_status === "paid") {
+        const extra = info.donation > 0 ? ` That includes your ${money(info.donation)} donation. Thank you for supporting a veteran-owned business!` : "";
+        $("paid").textContent = `Paid ${money(info.amount_paid)}${info.payment_method === "cash" ? " in cash" : ""}. Thank you!${extra}`;
+        show("paid");
+      } else if (info.amount_due == null) {
+        show("pending-price");
+      } else if (!info.card_enabled) {
+        show("no-card");
+      } else {
+        show("pay-form");
+        updateTotal();
+      }
+    }
+
+    function updateTotal() {
+      const total = (info.amount_due || 0) + donation;
+      $("total").textContent = money(total);
+      $("pay-btn").textContent = `Pay ${money(total)} securely`;
+    }
+
+    $("chips").addEventListener("click", (e) => {
+      const chip = e.target.closest(".chip");
+      if (!chip) return;
+      document.querySelectorAll(".chip").forEach((c) => { c.classList.toggle("is-on", c === chip); c.setAttribute("aria-checked", c === chip); });
+      const other = chip.dataset.amt === "other";
+      show("other-wrap", other);
+      donation = other ? (parseFloat($("other").value) || 0) : Number(chip.dataset.amt);
+      if (other) $("other").focus();
+      updateTotal();
+    });
+    $("other").addEventListener("input", () => {
+      const v = parseFloat($("other").value.replace(/[^0-9.]/g, ""));
+      donation = isFinite(v) && v > 0 ? Math.min(Math.round(v * 100) / 100, 500) : 0;
+      updateTotal();
+    });
+
+    $("pay-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      show("err", false);
+      const btn = $("pay-btn");
+      btn.disabled = true;
+      btn.textContent = "Opening secure checkout…";
+      try {
+        const res = await fetch(`/api/pay/${token}/checkout`, {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ donation }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(typeof body.detail === "string" ? body.detail : "Something went wrong. Please try again.");
+        location.href = body.url;
+      } catch (ex) {
+        error(ex instanceof TypeError ? "You're offline. Check your connection and try again." : ex.message);
+        btn.disabled = false;
+        updateTotal();
+      }
+    });
+
+    async function load() {
+      const res = await fetch(`/api/pay/${token}`);
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.detail || "We couldn't load this payment.");
+      return body;
+    }
+
+    (async () => {
+      try {
+        info = await load();
+        render();
+        // Back from Stripe: the "paid" confirmation arrives by webhook a moment later.
+        if (new URLSearchParams(location.search).has("done") && info.payment_status !== "paid") {
+          show("pay-form", false);
+          show("confirming");
+          for (let i = 0; i < 15 && info.payment_status !== "paid"; i++) {
+            await new Promise((r) => setTimeout(r, 2000));
+            info = await load();
+          }
+          render();
+          if (info.payment_status !== "paid") {
+            $("confirming").textContent = "We're still confirming your payment. You'll see it here shortly; no need to pay again.";
+            show("confirming");
+            show("pay-form", false);
+          }
+        }
+      } catch (ex) {
+        error(ex.message);
+      }
+    })();
+  </script>
+</body>
+</html>
