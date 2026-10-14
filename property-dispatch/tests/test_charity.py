@@ -35,18 +35,20 @@ def test_shares_add_up_to_100_percent_and_names_are_settings(settings):
         ("VFW Post 4010", 33), ("Neonatal intensive care (NICU) families", 33), ("At-risk youth programs", 34)]
 
 
-def test_booking_info_offers_the_rates_and_causes(client):
+def test_booking_info_offers_the_packages_and_causes(client):
     info = client.get("/api/booking-info").json()
-    assert info["sqft_rates"] == [0.009, 0.01, 0.011] and info["default_sqft_rate"] == 0.01
+    assert [(p["key"], p["sqft_rate"], p["charity_rate"]) for p in info["packages"]] == [
+        ("standard", 0.009, 0.02), ("supporter", 0.01, 0.07), ("hero", 0.011, 0.12)]
+    assert info["default_package"] == "standard"
     assert [c["percent"] for c in info["charities"]] == [33, 33, 34]
 
 
-def test_a_rate_off_the_menu_is_refused(client):
+def test_a_package_off_the_menu_is_refused(client):
     with patch("app.main.local_now", return_value=NOW):
         r = client.post("/api/jobs", json={"name": "Pat Doe", "phone": "2815550100", "address": "100 A Example Rd",
                                            "service": "mowing", "scheduled_date": TOMORROW.isoformat(),
-                                           "lawn_size": "large", "sqft_rate": 0.002})
-    assert r.status_code == 422 and "0.9¢, 1.0¢ or 1.1¢" in r.text
+                                           "lawn_size": "large", "package": "gold"})
+    assert r.status_code == 422 and "supporter" in r.text
 
 
 def test_cash_donation_is_split_and_shown_to_the_customer(client, repo, settings):
@@ -55,7 +57,7 @@ def test_cash_donation_is_split_and_shown_to_the_customer(client, repo, settings
                                              "service": "mowing", "scheduled_date": TOMORROW.isoformat()}).json()
     run_nightly(repo, settings, TOMORROW)
     stop = client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]
-    client.post(f"/api/stops/{stop['stop_id']}/complete", headers=CREW, json={"cash_collected": 64.13})   # $54.13 + $10
+    client.post(f"/api/stops/{stop['stop_id']}/complete", headers=CREW, json={"cash_collected": 107.97})   # $97.97 + $10
     pay = client.get(f"/api/visit/{job['access_code'].replace('-', '')}").json()["payment"]
     assert pay["donation"] == 10.0
     assert [(c["key"], c["amount"]) for c in pay["donation_ledger"]] == [("vfw", 3.3), ("nicu", 3.3), ("at_risk_youth", 3.4)]

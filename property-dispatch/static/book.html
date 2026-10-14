@@ -87,9 +87,10 @@
       <section class="step">
         <h2 class="step-title"><span>4</span>Your price</h2>
         <fieldset id="rate-fieldset">
-          <legend>Pick your rate <span class="optional">(pay what you can)</span></legend>
-          <div class="rates" id="rates" role="radiogroup"></div>
-          <p class="hint">Same great service at every rate. Every mow is at least $50.</p>
+          <legend>Choose your package</legend>
+          <div class="rates packages" id="rates" role="radiogroup"></div>
+          <p class="hint">Same great service in every package: $50 per visit plus a per-sq-ft rate.
+            Higher packages cost a little more and give a bigger share of your price to the VFW, NICU families and at-risk youth.</p>
         </fieldset>
         <div class="price-box" id="price-box" aria-live="polite">
           <p class="muted" id="price-empty">Enter your address to see your price.</p>
@@ -154,7 +155,12 @@
     const priceLines = document.getElementById("price-lines"), priceEmpty = document.getElementById("price-empty");
     const priceNote = document.getElementById("price-note");
     const sqftInput = document.getElementById("lawn-sqft");
-    let lawnSize = "medium", lastQuote = null, sqftRate = 0.01, rateChoices = [0.009, 0.01, 0.011], flatFee = 50;
+    let lawnSize = "medium", lastQuote = null, flatFee = 50, pkgKey = "standard", lastSqft = null;
+    let packages = [
+      { key: "standard", label: "Standard", sqft_rate: 0.009, charity_rate: 0.02 },
+      { key: "supporter", label: "Supporter", sqft_rate: 0.01, charity_rate: 0.07 },
+      { key: "hero", label: "Hero", sqft_rate: 0.011, charity_rate: 0.12 },
+    ];
     const cent = (r) => `${(r * 100).toFixed(1)}¢`;
     const pct = (r) => `${(r * 100).toFixed(2).replace(/\.?0+$/, "")}%`;
     const service = () => form.querySelector('input[name="service"]:checked')?.value || "mowing";
@@ -178,29 +184,41 @@
         priceNote.textContent = "Your crew takes a quick look and sets the price before starting. You'll see the total before you pay.";
         return;
       }
-      flatFee = q.flat_fee ?? flatFee;
+      flatFee = q.base_fee ?? q.flat_fee ?? flatFee;
       renderRates(q.lawn_sqft);
-      const what = q.lawn_sqft ? `Mowing · about ${q.lawn_sqft.toLocaleString()} sq ft` : q.service_label;
+      if (!q.package) {
+        priceLines.replaceChildren(row(q.service_label, money(q.subtotal)),
+          row(`Texas sales tax (${pct(q.tax_rate)})`, money(q.tax)), row("Total", money(q.total), "total"));
+        priceNote.hidden = true;
+        return;
+      }
+      const turf = Math.round((q.subtotal - q.base_fee) * 100) / 100;
       priceLines.replaceChildren(
-        row(what, money(q.subtotal)),
+        row(`Mowing, ${q.package_label} package`, ""),
+        row("Base trip fee", money(q.base_fee), "sub"),
+        row(`${q.lawn_sqft.toLocaleString()} sq ft × ${cent(q.sqft_rate)}`, money(turf), "sub"),
         row(`Texas sales tax (${pct(q.tax_rate)})`, money(q.tax)),
         row("Total", money(q.total), "total"));
-      priceNote.textContent = q.basis === "flat"
-        ? `Our ${money(q.flat_fee)} minimum visit. Your crew confirms the lawn size on site.`
-        : `${cent(q.sqft_rate)} per sq ft, your pick (minimum ${money(q.flat_fee)}). Your crew confirms the lawn size on site; the price only changes if it's different.`;
+      priceNote.textContent = `★ ${money(q.charity_amount)} of your price (${Math.round(q.charity_rate * 100)}%) goes to the VFW, ` +
+        "NICU families and at-risk youth. It's included in your price, not added on. Your crew confirms the lawn size on site; the price only changes if it's different.";
     }
 
-    // Pay-what-you-can rate: each option shows what this lawn costs at that rate.
+    // Packages: each card shows this lawn's price and how much of it goes to charity.
     function renderRates(sqft) {
+      if (sqft) lastSqft = sqft;
+      sqft = sqft || lastSqft;
       const box = document.getElementById("rates");
-      box.replaceChildren(...rateChoices.flatMap((r) => {
-        const input = Object.assign(document.createElement("input"), { type: "radio", name: "sqft_rate_pick", id: `rate-${r}`, value: r, checked: r === sqftRate });
+      box.replaceChildren(...packages.flatMap((pk) => {
+        const input = Object.assign(document.createElement("input"), { type: "radio", name: "package_pick", id: `pkg-${pk.key}`, value: pk.key, checked: pk.key === pkgKey });
         const label = document.createElement("label"); label.htmlFor = input.id;
-        const b = document.createElement("strong"); b.textContent = `${cent(r)} / sq ft`;
-        const p = document.createElement("span");
-        p.textContent = sqft ? money(Math.max(flatFee, Math.round(r * sqft * 100) / 100)) + " + tax" : `min ${money(flatFee)}`;
-        label.append(b, p);
-        input.addEventListener("change", () => { sqftRate = r; updateQuote(); });
+        const b = document.createElement("strong"); b.textContent = pk.label;
+        const r = document.createElement("small"); r.textContent = `${cent(pk.sqft_rate)} per sq ft`;
+        const price = sqft ? Math.round((flatFee + pk.sqft_rate * sqft) * 100) / 100 : null;
+        const p = document.createElement("span"); p.textContent = price != null ? `${money(price)} + tax` : "";
+        const g = document.createElement("em");
+        g.textContent = `${Math.round(pk.charity_rate * 100)}% to charity` + (price != null ? ` (${money(Math.round(price * pk.charity_rate * 100) / 100)})` : "");
+        label.append(b, r, p, g);
+        input.addEventListener("change", () => { pkgKey = pk.key; updateQuote(); });
         return [input, label];
       }));
     }
@@ -213,7 +231,7 @@
       const payload = { address, service: service() };
       document.getElementById("rate-fieldset").hidden = service() !== "mowing";
       if (service() === "mowing") {
-        payload.sqft_rate = sqftRate;
+        payload.package = pkgKey;
         const exact = parseInt(sqftInput.value, 10);
         if (exact >= 200) payload.lawn_sqft = exact; else payload.lawn_size = lawnSize;
       }
@@ -319,13 +337,13 @@
       const list = document.getElementById("area-list");
       for (const z of info.zones) {
         const li = document.createElement("li");
-        li.textContent = `${z.name}: mowing from ${money(z.mow_rate)} + tax`;
+        li.textContent = `${z.name}: mowing ${money(z.mow_rate)} per visit + sq ft rate + tax`;
         list.append(li);
       }
       document.getElementById("areas").hidden = !info.zones.length;
       if (info.google_maps_key) setUpGoogleAutocomplete(info.google_maps_key);
       if (info.lawn_sizes) renderSizes(info.lawn_sizes);
-      if (info.sqft_rates) { rateChoices = info.sqft_rates; sqftRate = info.default_sqft_rate ?? sqftRate; renderRates(null); }
+      if (info.packages) { packages = info.packages; pkgKey = info.default_package || pkgKey; renderRates(null); }
       if (info.charities) document.getElementById("charity-list").textContent =
         info.charities.map((c) => `${c.name} (${c.percent}%)`).join(", ").replace(/, ([^,]*)$/, " and $1");
       if (info.card_payments) {
@@ -347,9 +365,9 @@
       if (!addressInput.value.trim()) { showError("Please choose your address from the list."); return; }
 
       const data = Object.fromEntries(new FormData(form));
-      delete data.lawn_size_pick; delete data.sqft_rate_pick;
+      delete data.lawn_size_pick; delete data.package_pick;
       if (data.service === "mowing") {
-        data.sqft_rate = sqftRate;
+        data.package = pkgKey;
         const exact = parseInt(sqftInput.value, 10);
         if (exact >= 200) data.lawn_sqft = exact; else data.lawn_size = lawnSize;
       }
@@ -380,7 +398,8 @@
         p.textContent = `We'll text ${data.phone} when the crew is headed to ${body.formatted_address}.`;
         const z = document.createElement("div");
         z.textContent = body.total != null
-          ? `${money(body.subtotal)} + ${money(body.tax)} Texas sales tax = ${money(body.total)} total.`
+          ? `${money(body.subtotal)} + ${money(body.tax)} Texas sales tax = ${money(body.total)} total.` +
+            (body.charity_amount ? ` Your ${body.package[0].toUpperCase() + body.package.slice(1)} package gives ${money(body.charity_amount)} to charity. Thank you!` : "")
           : `${body.zone_name}. Your crew sets the price on site; Texas sales tax is added.`;
         ok.append(h, p, z);
         if (body.access_code) {

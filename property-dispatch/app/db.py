@@ -28,7 +28,8 @@ CREW_PUBLIC_FIELDS = ("id", "slug", "display_name", "role_title", "bio", "years_
 PORTFOLIO_FIELDS = ("id", "member_id", "job_id", "service", "caption", "created_at")
 PAYMENT_FIELDS = ("payment_method", "payment_status", "amount_due", "donation", "amount_paid", "pay_token",
                   "donation_split")
-PRICE_FIELDS = ("subtotal", "tax_rate", "tax_amount", "lawn_sqft", "zone_key", "sqft_rate")
+PRICE_FIELDS = ("subtotal", "tax_rate", "tax_amount", "lawn_sqft", "zone_key", "sqft_rate",
+                "package", "charity_rate", "charity_amount", "giving_split")
 
 
 def _now_iso() -> str:
@@ -41,10 +42,12 @@ def _money(v: Any) -> float | None:
 
 def _price(j: dict) -> dict:
     """Price breakdown of a booking: amount_due (the total) = subtotal + tax_amount."""
-    rate, per_sqft = j.get("tax_rate"), j.get("sqft_rate")
+    rate, per_sqft, giving = j.get("tax_rate"), j.get("sqft_rate"), j.get("charity_rate")
     return {"subtotal": _money(j.get("subtotal")), "tax_rate": float(rate) if rate is not None else None,
             "tax_amount": _money(j.get("tax_amount")), "lawn_sqft": j.get("lawn_sqft"), "zone_key": j.get("zone_key"),
             "sqft_rate": float(per_sqft) if per_sqft is not None else None,
+            "package": j.get("package"), "charity_rate": float(giving) if giving is not None else None,
+            "charity_amount": _money(j.get("charity_amount")), "giving_split": j.get("giving_split") or None,
             "donation_split": j.get("donation_split") or None}
 
 
@@ -87,7 +90,9 @@ class Repository(Protocol):
                    access_code: str | None = None, amount_due: float | None = None,
                    lawn_sqft: int | None = None, subtotal: float | None = None,
                    tax_rate: float | None = None, tax_amount: float | None = None,
-                   sqft_rate: float | None = None) -> dict: ...
+                   sqft_rate: float | None = None, package: str | None = None,
+                   charity_rate: float | None = None, charity_amount: float | None = None,
+                   giving_split: dict | None = None) -> dict: ...
     def list_routable_jobs(self, day: date) -> list[Job]: ...
     def save_route(self, *, day: date, start: tuple[float, float], end: tuple[float, float],
                    total_distance_m: int, total_duration_s: int, matrix_source: str,
@@ -102,7 +107,8 @@ class Repository(Protocol):
     # Payments
     def get_payment(self, pay_token: str) -> dict | None: ...
     def set_price(self, job_id: str, *, subtotal: float, tax_amount: float, total: float,
-                  lawn_sqft: int | None = None) -> None: ...
+                  lawn_sqft: int | None = None, charity_amount: float | None = None,
+                  giving_split: dict | None = None) -> None: ...
     def record_checkout(self, job_id: str, session_id: str) -> None: ...
     def mark_paid(self, job_id: str, *, method: str, amount_paid: float, donation: float,
                   donation_split: dict | None = None) -> bool: ...
@@ -188,7 +194,8 @@ class SupabaseRepository:
     def create_job(self, *, name, phone, address, geo, service, scheduled_date, service_minutes,
                    zone_key, quoted_price, payment_method="cash", pay_token=None, access_code=None,
                    amount_due=None, lawn_sqft=None, subtotal=None, tax_rate=None, tax_amount=None,
-                   sqft_rate=None) -> dict:
+                   sqft_rate=None, package=None, charity_rate=None, charity_amount=None,
+                   giving_split=None) -> dict:
         cust = (
             self.sb.table("customers")
             .upsert({"name": name, "phone": phone}, on_conflict="phone").execute()
@@ -206,7 +213,8 @@ class SupabaseRepository:
             "quoted_price": quoted_price,
             "amount_due": amount_due if amount_due is not None else quoted_price,
             "lawn_sqft": lawn_sqft, "subtotal": subtotal, "tax_rate": tax_rate, "tax_amount": tax_amount,
-            "sqft_rate": sqft_rate,
+            "sqft_rate": sqft_rate, "package": package, "charity_rate": charity_rate,
+            "charity_amount": charity_amount, "giving_split": giving_split or None,
             "payment_method": payment_method,
             "pay_token": pay_token,
             "access_code": access_code,
@@ -313,10 +321,13 @@ class SupabaseRepository:
             **_price(r),
         }
 
-    def set_price(self, job_id, *, subtotal, tax_amount, total, lawn_sqft=None) -> None:
+    def set_price(self, job_id, *, subtotal, tax_amount, total, lawn_sqft=None,
+                  charity_amount=None, giving_split=None) -> None:
         fields = {"subtotal": subtotal, "tax_amount": tax_amount, "amount_due": total}
         if lawn_sqft is not None:
             fields["lawn_sqft"] = lawn_sqft
+        if charity_amount is not None:
+            fields.update(charity_amount=charity_amount, giving_split=giving_split or None)
         self.sb.table("jobs").update(fields).eq("id", job_id).eq("payment_status", "unpaid").execute()
 
     def record_checkout(self, job_id: str, session_id: str) -> None:
@@ -394,7 +405,7 @@ class SupabaseRepository:
     # ---------- Owner dashboard + customer visit ----------
     JOB_COLS = ("id, address, service, status, zone_key, scheduled_date, created_at, payment_method, payment_status,"
                 " amount_due, amount_paid, donation, access_code, pay_token, subtotal, tax_rate, tax_amount, lawn_sqft,"
-                " sqft_rate, donation_split")
+                " sqft_rate, donation_split, package, charity_rate, charity_amount, giving_split")
 
     @staticmethod
     def _one(v):
@@ -470,7 +481,8 @@ class MemoryRepository:
     def create_job(self, *, name, phone, address, geo, service, scheduled_date, service_minutes,
                    zone_key, quoted_price, payment_method="cash", pay_token=None, access_code=None,
                    amount_due=None, lawn_sqft=None, subtotal=None, tax_rate=None, tax_amount=None,
-                   sqft_rate=None) -> dict:
+                   sqft_rate=None, package=None, charity_rate=None, charity_amount=None,
+                   giving_split=None) -> dict:
         with self._lock:
             cust = next((c for c in self.customers.values() if c["phone"] == phone), None)
             if cust is None:
@@ -486,7 +498,8 @@ class MemoryRepository:
                 "payment_method": payment_method, "payment_status": "unpaid",
                 "amount_due": amount_due if amount_due is not None else quoted_price,
                 "lawn_sqft": lawn_sqft, "subtotal": subtotal, "tax_rate": tax_rate, "tax_amount": tax_amount,
-                "sqft_rate": sqft_rate, "donation_split": None,
+                "sqft_rate": sqft_rate, "donation_split": None, "package": package,
+                "charity_rate": charity_rate, "charity_amount": charity_amount, "giving_split": giving_split or None,
                 "donation": 0.0, "amount_paid": None, "paid_at": None, "pay_token": pay_token,
                 "access_code": access_code,
                 "stripe_session_id": None,
@@ -601,12 +614,15 @@ class MemoryRepository:
             **_price(j),
         }
 
-    def set_price(self, job_id, *, subtotal, tax_amount, total, lawn_sqft=None) -> None:
+    def set_price(self, job_id, *, subtotal, tax_amount, total, lawn_sqft=None,
+                  charity_amount=None, giving_split=None) -> None:
         j = self.jobs[job_id]
         if j["payment_status"] == "unpaid":
             j.update(subtotal=subtotal, tax_amount=tax_amount, amount_due=total)
             if lawn_sqft is not None:
                 j["lawn_sqft"] = lawn_sqft
+            if charity_amount is not None:
+                j.update(charity_amount=charity_amount, giving_split=giving_split or None)
 
     def record_checkout(self, job_id: str, session_id: str) -> None:
         self.jobs[job_id]["stripe_session_id"] = session_id

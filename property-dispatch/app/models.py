@@ -2,7 +2,6 @@
 
 import re
 from datetime import date, datetime
-from decimal import Decimal, InvalidOperation
 from enum import Enum
 from typing import Literal
 
@@ -39,20 +38,8 @@ def normalize_us_phone(raw: str) -> str:
     return f"+1{digits}"
 
 
-# Pay-what-you-can mowing rates, dollars per square foot (see app/pricing.py).
-SQFT_RATE_CHOICES = ("0.009", "0.010", "0.011")
-
-
-def check_sqft_rate(v):
-    if v is None:
-        return None
-    try:
-        d = Decimal(str(v))
-    except InvalidOperation:
-        d = None
-    if d not in {Decimal(c) for c in SQFT_RATE_CHOICES}:
-        raise ValueError("Please choose 0.9¢, 1.0¢ or 1.1¢ per square foot.")
-    return float(d)
+# Mowing packages (rates and charity giving are in app/pricing.py).
+Package = Literal["standard", "supporter", "hero"]
 
 
 class JobRequest(BaseModel):
@@ -68,12 +55,7 @@ class JobRequest(BaseModel):
     # Mowing: lawn size (a size from the picker, or an exact number). Crew confirms on site.
     lawn_size: Literal["small", "medium", "large", "xl"] | None = None
     lawn_sqft: int | None = Field(default=None, ge=100, le=200_000)
-    sqft_rate: float | None = None   # the customer's pick from SQFT_RATE_CHOICES
-
-    @field_validator("sqft_rate", mode="before")
-    @classmethod
-    def valid_rate(cls, v):
-        return check_sqft_rate(v)
+    package: Package | None = None   # mowing package; none → Standard
 
     @field_validator("name", "address")
     @classmethod
@@ -111,7 +93,10 @@ class JobCreated(BaseModel):
     visit_url: str | None = None
     # Price breakdown (None = priced on site). total = subtotal + tax.
     lawn_sqft: int | None = None
+    package: str | None = None
     sqft_rate: float | None = None
+    charity_rate: float | None = None     # share of the price the business gives to charity
+    charity_amount: float | None = None
     subtotal: float | None = None
     tax_rate: float | None = None
     tax: float | None = None
@@ -168,7 +153,10 @@ class StopView(BaseModel):
     tax_rate: float | None = None
     tax_amount: float | None = None
     lawn_sqft: int | None = None
-    sqft_rate: float | None = None   # mowing: the customer's chosen rate
+    package: str | None = None       # mowing: the customer's package
+    sqft_rate: float | None = None
+    charity_rate: float | None = None
+    charity_amount: float | None = None
     flat_fee: float | None = None   # mowing minimum for this stop's area (for the crew's live price)
 
 
@@ -237,9 +225,4 @@ class QuoteRequest(BaseModel):
     lng: float | None = Field(default=None, ge=-180, le=180)
     lawn_size: Literal["small", "medium", "large", "xl"] | None = None
     lawn_sqft: int | None = Field(default=None, ge=100, le=200_000)
-    sqft_rate: float | None = None
-
-    @field_validator("sqft_rate", mode="before")
-    @classmethod
-    def valid_rate(cls, v):
-        return check_sqft_rate(v)
+    package: Package | None = None

@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 
 Box = tuple[float, float, float, float]  # min_lng, min_lat, max_lng, max_lat
 DEFAULT_TAX_RATE = 0.0825
-FLAT_FEE = 50.00  # mowing minimum per visit, the same in every area
+FLAT_FEE = 50.00  # mowing base trip fee per visit, the same in every area
 
 
 @dataclass(frozen=True)
@@ -23,7 +23,7 @@ class ServiceZone:
     key: str
     name: str
     bbox: Box                                 # main box (map pin + label)
-    mow_rate: float                           # mowing flat fee (minimum) per visit, USD
+    mow_rate: float                           # mowing base trip fee per visit, USD (+ rate × sq ft)
     extra_boxes: tuple[Box, ...] = field(default=())
     tax_rate: float = DEFAULT_TAX_RATE
 

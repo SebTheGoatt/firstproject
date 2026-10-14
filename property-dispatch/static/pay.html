@@ -33,6 +33,7 @@
         <div><dt id="price-label">Price</dt><dd id="price"></dd></div>
         <div id="tax-row" hidden><dt id="tax-label">Texas sales tax</dt><dd id="tax"></dd></div>
       </dl>
+      <p class="veteran-note" id="giving" style="margin-bottom:18px" hidden></p>
 
       <!-- Paid -->
       <div id="paid" class="alert alert-ok" hidden></div>
@@ -94,12 +95,18 @@
       $("svc").textContent = info.service_label;
       $("when").textContent = fmtDay(info.scheduled_date);
       const hasBreakdown = info.subtotal != null && info.tax != null && info.amount_due != null;
-      $("price-label").textContent = info.lawn_sqft ? `Price (${info.lawn_sqft.toLocaleString()} sq ft)` : "Price";
+      $("price-label").textContent = info.lawn_sqft
+        ? `Price (${info.package_label ? info.package_label + ", " : ""}${info.lawn_sqft.toLocaleString()} sq ft)` : "Price";
       $("price").textContent = info.amount_due == null ? "Set on site" : money(hasBreakdown ? info.subtotal : info.amount_due);
       $("tax-row").hidden = !hasBreakdown || !(info.tax > 0);
       if (hasBreakdown) {
         $("tax-label").textContent = `Texas sales tax (${(info.tax_rate * 100).toFixed(2).replace(/\.?0+$/, "")}%)`;
         $("tax").textContent = money(info.tax);
+      }
+      if (info.charity_amount > 0) {
+        $("giving").textContent = `★ Your ${info.package_label || ""} package gives ${money(info.charity_amount)} of this price ` +
+          `(${Math.round((info.charity_rate || 0) * 100)}%) to the VFW, NICU families and at-risk youth. It's included in your price, not added on.`;
+        show("giving");
       }
       ["paid", "pending-price", "no-card", "pay-form", "confirming"].forEach((id) => show(id, false));
 

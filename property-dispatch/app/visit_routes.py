@@ -24,6 +24,7 @@ from pydantic import BaseModel, Field
 
 from .booking import local_now
 from .charity import describe as describe_charities, ledger
+from .pricing import PACKAGES
 from .config import Settings
 from .crew_auth import CrewIdentity
 from .crew_routes import photo_url
@@ -112,6 +113,9 @@ def register_visit_routes(app: FastAPI, settings: Settings, crew_auth):
                 "amount_due": v["amount_due"], "amount_paid": v["amount_paid"], "donation": v["donation"],
                 "subtotal": v.get("subtotal"), "tax": v.get("tax_amount"), "tax_rate": v.get("tax_rate"),
                 "lawn_sqft": v.get("lawn_sqft"), "sqft_rate": v.get("sqft_rate"),
+                "package": v.get("package"), "package_label": PACKAGES[v["package"]]["label"] if v.get("package") in PACKAGES else None,
+                "charity_rate": v.get("charity_rate"), "charity_amount": v.get("charity_amount"),
+                "giving_ledger": ledger(settings, v.get("giving_split")) if v.get("giving_split") else [],
                 "donation_ledger": ledger(settings, v.get("donation_split")) if v.get("donation_split") else [],
                 "pay_url": f"/pay/{v['pay_token']}" if v["pay_token"] and v["payment_status"] == "unpaid" else None,
             },
@@ -164,9 +168,12 @@ def register_visit_routes(app: FastAPI, settings: Settings, crew_auth):
             "quoted_on_site": sum(1 for j in jobs if j["amount_due"] is None),
             # Sales tax actually collected (paid jobs), for the owner's Texas sales-tax filing.
             "sales_tax": round(sum(j.get("tax_amount") or 0 for j in paid), 2),
-            # Donations to pass on, per cause (from each payment's saved split).
+            # Package giving (part of each paid price) — owed to charity like donations.
+            "charity_giving": round(sum(j.get("charity_amount") or 0 for j in paid), 2),
+            # What to pass on, per cause: package giving + voluntary donations, from each job's saved splits.
             "donations_by_charity": [
-                {**c, "amount": round(sum(float((j.get("donation_split") or {}).get(c["key"], 0)) for j in paid), 2)}
+                {**c, "amount": round(sum(float((j.get("giving_split") or {}).get(c["key"], 0))
+                                          + float((j.get("donation_split") or {}).get(c["key"], 0)) for j in paid), 2)}
                 for c in describe_charities(settings)],
         }
 

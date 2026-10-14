@@ -106,19 +106,22 @@ on my public profile" to add the after photo to their public portfolio.
 
 ## Pricing and Texas sales tax
 
-**Mowing price** = **$50** (the minimum visit, the same in every area) **or** the customer's
-chosen rate × square feet of lawn, whichever is higher. Rates are **pay-what-you-can**: the
-customer picks **0.9¢, 1.0¢ or 1.1¢ per sq ft** (same service at every rate; 1.0¢ is preselected).
+**Mowing price** = **$50 base trip fee** (the same in every area) **+ the package's rate × square
+feet of lawn**. The customer picks a package, and part of each price goes to charity. The giving
+comes out of what the business keeps; the customer pays nothing extra for it.
 
-| Lawn | 0.9¢ | 1.0¢ | 1.1¢ |
-|---|---|---|---|
-| 4,500 sq ft (Medium) | $50.00 | $50.00 | $50.00 |
-| 8,000 sq ft (Large) | $72.00 | $80.00 | $88.00 |
-| 12,500 sq ft (X-Large) | $112.50 | $125.00 | $137.50 |
+| Package | Rate | Given to charity | 3,500 sq ft | 8,000 sq ft |
+|---|---|---|---|---|
+| Standard (default) | 0.9¢ / sq ft | 2% of the price | $81.50 ($1.63 to charity) | $122.00 ($2.44) |
+| Supporter | 1.0¢ / sq ft | 7% | $85.00 ($5.95) | $130.00 ($9.10) |
+| Hero | 1.1¢ / sq ft | 12% | $88.50 ($10.62) | $138.00 ($16.56) |
 
-The rate is saved on the booking, so if the crew corrects the lawn size on site the price is
-redone at the rate the customer chose. Rates live in `app/models.py` (`SQFT_RATE_CHOICES`);
-the $50 minimum is `FLAT_FEE` in `app/zones.py`.
+Example: 3,500 sq ft on Supporter = $50 + $35 = **$85.00** + $7.01 tax = **$92.01**. $5.95 goes to
+charity and the business keeps $79.05. Sales tax is on the whole $85 (the charity share is part
+of the sale). Packages live in `app/pricing.py` (`PACKAGES`); the $50 base is `FLAT_FEE` in
+`app/zones.py`. The package is saved on the booking, so if the crew corrects the lawn size on site,
+the price and the charity share are redone with the same package. No size given → priced as a
+typical 4,500 sq ft lot until the crew confirms.
 
 - **Lawn size at booking.** Customers pick Small (~2,500 sq ft), Medium (~4,500), Large
   (~8,000) or X-Large (~12,500), or type an exact size. They see the price, tax and total
@@ -144,14 +147,14 @@ the $50 minimum is `FLAT_FEE` in `app/zones.py`.
 
 ## Pay your way (cash or card) and donations
 
-**Where donations go.** Every donation is split **33% Veterans of Foreign Wars, 33% NICU
+**Where donations go.** Package giving (above) and every voluntary donation are each split **33% Veterans of Foreign Wars, 33% NICU
 (neonatal intensive care) families, 34% at-risk youth programs** (`app/charity.py`). The split
 is worked out to the cent when the donation is paid (leftover cents go to the largest
 remainders, so the shares always add up exactly) and saved on the job, so the ledger never
 changes later. Customers see the split on the booking page, live on the pay page ("Where your
 $10.00 goes"), as separate lines on their Stripe receipt, and on their visit page. The crew's
 finish screen previews the split when cash is over the total, and the owner dashboard shows
-**Donations to pass on** per cause for each day.
+**Package giving** and **To pass on** per cause for each day (package giving + donations, paid jobs only).
 
 - Rename the causes to the specific organizations you give to (no code change):
   `CHARITY_VFW_NAME`, `CHARITY_NICU_NAME`, `CHARITY_YOUTH_NAME` in Render's environment.
@@ -262,7 +265,8 @@ Without Twilio credentials the "next customer" text is logged instead of sent.
    open each new file in `supabase/migrations/` (for example
    `20261019000000_access_codes_and_job_photos.sql`, then
    `20261020000000_pricing_and_sales_tax.sql`, then
-   `20261021000000_rate_choice_and_donation_split.sql`), paste it into the SQL Editor, and click **Run**.
+   `20261021000000_rate_choice_and_donation_split.sql`, then
+   `20261022000000_packages_and_charity_giving.sql`), paste it into the SQL Editor, and click **Run**.
 
 ### 2. Twilio (SMS)
 1. Buy a local (281/832/346) number in the Twilio console.
@@ -337,7 +341,7 @@ Updates that aren't completions are ignored.
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | GET | `/api/booking-info` | none | earliest/latest bookable dates, services |
-| POST | `/api/quote` | none | price, tax and total for an address, service, lawn size and chosen rate |
+| POST | `/api/quote` | none | price, tax and total for an address, service, lawn size and package |
 | POST | `/api/jobs` | none | `409` frozen/full · `422` bad input/unknown address · `503` geocoder down |
 | GET | `/api/routes/{YYYY-MM-DD}` | `X-Crew-Token` | stops in order with ETAs and map URLs |
 | POST | `/api/stops/{id}/complete` | `X-Crew-Token` | idempotent; returns notification result |

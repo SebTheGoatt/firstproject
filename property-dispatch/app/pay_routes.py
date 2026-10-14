@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from .charity import describe as describe_charities, ledger, split_donation
 from .config import Settings
 from .models import SERVICE_LABELS, Service
+from .pricing import PACKAGES
 from .payments import PaymentError, StripeClient, clean_donation, verify_webhook
 
 log = logging.getLogger(__name__)
@@ -47,6 +48,8 @@ def register_pay_routes(app: FastAPI, settings: Settings, stripe: StripeClient |
             "tax": p.get("tax_amount"),
             "tax_rate": p.get("tax_rate"),
             "lawn_sqft": p.get("lawn_sqft"),
+            "package_label": PACKAGES[p["package"]]["label"] if p.get("package") in PACKAGES else None,
+            "charity_rate": p.get("charity_rate"), "charity_amount": p.get("charity_amount"),
             "payment_status": p["payment_status"],
             "payment_method": p["payment_method"],
             "amount_paid": p["amount_paid"],
@@ -75,6 +78,8 @@ def register_pay_routes(app: FastAPI, settings: Settings, stripe: StripeClient |
                 success_url=f"{base}/pay/{token}?done=1", cancel_url=f"{base}/pay/{token}",
                 subtotal=p.get("subtotal"), tax=p.get("tax_amount"), tax_rate=p.get("tax_rate"),
                 charities=describe_charities(settings),
+                package_label=PACKAGES[p["package"]]["label"] if p.get("package") in PACKAGES else None,
+                charity_rate=p.get("charity_rate"), charity_amount=p.get("charity_amount"),
             )
         except PaymentError as exc:
             raise HTTPException(status_code=503 if "unavailable" in str(exc) else 422, detail=str(exc))

@@ -166,7 +166,7 @@
         } else if (p.subtotal != null && p.tax != null) {
           const rate = p.tax_rate ? ` (${(p.tax_rate * 100).toFixed(2).replace(/\.?0+$/, "")}%)` : "";
           pay.append(el("dl", { class: "price-lines" },
-            el("div", {}, el("dt", {}, p.lawn_sqft ? `${v.service_label} · ${p.lawn_sqft.toLocaleString()} sq ft${p.sqft_rate ? ` at ${(p.sqft_rate * 100).toFixed(1)}¢` : ""}` : v.service_label), el("dd", {}, money(p.subtotal))),
+            el("div", {}, el("dt", {}, p.lawn_sqft ? `${v.service_label}${p.package_label ? `, ${p.package_label}` : ""} · ${p.lawn_sqft.toLocaleString()} sq ft` : v.service_label), el("dd", {}, money(p.subtotal))),
             p.tax > 0 ? el("div", {}, el("dt", {}, `Texas sales tax${rate}`), el("dd", {}, money(p.tax))) : null,
             el("div", { class: "total" }, el("dt", {}, "Total"), el("dd", {}, money(p.amount_due)))));
         } else {
@@ -176,6 +176,13 @@
         else pay.append(el("p", { class: "muted" }, "You chose cash: pay the crew when they arrive."));
         pay.append(el("p", { class: "veteran-note" }, el("span", { class: "flag", "aria-hidden": "true" }, "★"),
           "No tip necessary. Donations are always welcome and go to the VFW (33%), NICU families (33%) and at-risk youth programs (34%)."));
+      }
+
+      if (p.charity_amount > 0) {
+        const led = (p.giving_ledger || []).filter((c) => c.amount > 0);
+        pay.append(el("div", { class: "donation-split" },
+          el("strong", {}, `${money(p.charity_amount)} of your price goes to charity${p.package_label ? ` (${p.package_label} package)` : ""}`),
+          ...led.map((c) => el("div", { class: "ledger-row" }, el("span", {}, `${c.name} (${c.percent}%)`), el("b", {}, money(c.amount))))));
       }
 
       // Before & after

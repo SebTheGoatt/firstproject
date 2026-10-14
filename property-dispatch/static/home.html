@@ -298,14 +298,14 @@
         name.textContent = z.name;
         const price = document.createElement("span");
         price.className = "area-price";
-        price.textContent = `from ${money(z.mow_rate)} / mow + tax`;
+        price.textContent = `${money(z.mow_rate)} per visit + sq ft rate`;
         li.append(name, price);
         list.append(li);
       });
       drawAreaMap(info.zones);
       if (info.zones.length) {
         const low = Math.min(...info.zones.map((z) => z.mow_rate));
-        document.getElementById("mow-from").textContent = `From ${money(low)} per mow + tax. Larger lawns: you pick 0.9¢, 1.0¢ or 1.1¢ per sq ft`;
+        document.getElementById("mow-from").textContent = `${money(low)} per visit + 0.9¢ to 1.1¢ per sq ft + tax. Every package gives to the VFW, NICU families and at-risk youth`;
       }
     }).catch(() => {
       document.getElementById("next-day").textContent = "See the booking page";

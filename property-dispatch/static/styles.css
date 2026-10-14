@@ -573,6 +573,11 @@ label.check input { width: 18px; height: 18px; }
 .rates input:checked + label { border-color: var(--brand); background: var(--brand-soft); }
 .rates input:checked + label span { color: var(--text); }
 .rates input:focus-visible + label { outline: 3px solid color-mix(in srgb, var(--brand) 45%, transparent); }
+.packages label small { color: var(--muted); font-size: 0.75rem; }
+.packages label span { color: var(--text); font-weight: 600; }
+.packages label em { font-style: normal; font-size: 0.75rem; color: var(--brand); }
+.price-lines .sub dt, .price-lines .sub dd { font-size: 0.88rem; color: var(--muted); }
+.price-lines .sub dt { padding-left: 12px; }
 
 /* Where donations go */
 .donation-split { margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--brand-soft); font-size: 0.9rem; }

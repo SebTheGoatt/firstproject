@@ -39,7 +39,7 @@ from .crew_routes import register_crew_routes
 from .models import (SERVICE_LABELS, SERVICE_MINUTES, AddressCheck, CompleteStopRequest, GeoPoint, JobCreated,
                      JobRequest, QuoteRequest, RouteView, Service, StopView)
 from .charity import describe as describe_charities, split_donation
-from .pricing import DEFAULT_RATE, LAWN_SIZES, RATE_CHOICES, quote, resolve_sqft
+from .pricing import DEFAULT_PACKAGE, DEFAULT_SIZE, LAWN_SIZES, PACKAGES, package_for_rate, quote, resolve_sqft
 from .routing.matrix import haversine_m
 from .nightly import run_nightly
 from .notify import TwilioClient, booking_message, notify_next_customer, send_pay_link, send_text
@@ -98,9 +98,6 @@ def _check_secret(provided: str | None, expected: str) -> None:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 
-RATE_FLOATS = {float(r) for r in RATE_CHOICES}
-
-
 def build_route_view(route: dict, settings: Settings) -> RouteView:
     start = (route["start_lat"], route["start_lng"])
     end = (route["end_lat"], route["end_lng"])
@@ -119,7 +116,8 @@ def build_route_view(route: dict, settings: Settings) -> RouteView:
             payment_method=s.get("payment_method") or "cash", payment_status=s.get("payment_status") or "unpaid",
             amount_due=s.get("amount_due"), amount_paid=s.get("amount_paid"), donation=s.get("donation") or 0.0,
             subtotal=s.get("subtotal"), tax_rate=s.get("tax_rate"), tax_amount=s.get("tax_amount"),
-            lawn_sqft=s.get("lawn_sqft"), sqft_rate=s.get("sqft_rate"),
+            lawn_sqft=s.get("lawn_sqft"), sqft_rate=s.get("sqft_rate"), package=s.get("package"),
+            charity_rate=s.get("charity_rate"), charity_amount=s.get("charity_amount"),
             flat_fee=(z.mow_rate if (z := zone_by_key(s.get("zone_key"))) and s["service"] == "mowing" else None),
             # Origin omitted → navigation starts from the phone's live location.
             google_maps_url=deeplinks.google_directions(dest),
@@ -251,9 +249,11 @@ def create_app(
                        "bbox": list(z.bbox), "boxes": [list(b) for b in z.boxes]}
                       for z in SERVICE_ZONES],
             "lawn_sizes": [{"key": k, **v} for k, v in LAWN_SIZES.items()],
-            # Pay-what-you-can mowing rates; the price is the flat fee or rate × sq ft, whichever is higher.
-            "sqft_rates": [float(r) for r in RATE_CHOICES],
-            "default_sqft_rate": float(DEFAULT_RATE),
+            # Mowing packages: price = base trip fee + rate × sq ft; part of it goes to charity.
+            "packages": [{"key": k, "label": p["label"], "sqft_rate": float(p["rate"]),
+                          "charity_rate": float(p["giving"])} for k, p in PACKAGES.items()],
+            "default_package": DEFAULT_PACKAGE,
+            "default_size": DEFAULT_SIZE,
             "charities": describe_charities(settings),
             "business_name": settings.business_name,
             "card_payments": app.state.stripe is not None,
@@ -299,7 +299,7 @@ def create_app(
             "zone_name": zone.name if zone else None,
             "mow_rate": zone.mow_rate if zone else None,
             "matched_address": geo.formatted_address if geo.precision == "address" else body.address.strip(),
-            "message": (f"Good news: you're in our {zone.name} area. Mowing starts at ${zone.mow_rate:,.2f} per visit."
+            "message": (f"Good news: you're in our {zone.name} area. Mowing is ${zone.mow_rate:,.2f} per visit plus a small per-sq-ft rate."
                         if zone else outside_message()),
         }
 
@@ -312,7 +312,7 @@ def create_app(
         zone = find_zone(geo.lat, geo.lng)
         if zone is None:
             return {"in_area": False, "message": outside_message()}
-        q = quote(zone, body.service, resolve_sqft(body.lawn_size, body.lawn_sqft), sqft_rate=body.sqft_rate)
+        q = quote(zone, body.service, resolve_sqft(body.lawn_size, body.lawn_sqft), package=body.package)
         return {"in_area": True, "zone_name": zone.name, "flat_fee": zone.mow_rate,
                 "service_label": SERVICE_LABELS[body.service], **q.as_dict()}
 
@@ -328,11 +328,12 @@ def create_app(
         zone = find_zone(geo.lat, geo.lng)
         if zone is None:
             raise HTTPException(status_code=422, detail=outside_message())
-        # No size given → priced at the flat fee (the minimum); the crew sets the real size on site.
-        sqft = resolve_sqft(body.lawn_size, body.lawn_sqft) if body.service is Service.MOWING else None
-        q = quote(zone, body.service, sqft, sqft_rate=body.sqft_rate)
+        # No size given → priced as a typical lot; the crew confirms the real size on site.
+        q = quote(zone, body.service, resolve_sqft(body.lawn_size, body.lawn_sqft), package=body.package)
+        sqft = q.lawn_sqft
         price = float(q.subtotal) if q.subtotal is not None else None
         rate = float(q.sqft_rate) if q.sqft_rate is not None else None
+        giving = float(q.charity_amount) if q.charity_amount is not None else None
         if body.payment_method == "card" and app.state.stripe is None:
             raise HTTPException(status_code=422, detail="Card payments aren't available yet. Please choose cash.")
         pay_token = secrets.token_urlsafe(18)
@@ -346,7 +347,9 @@ def create_app(
             payment_method=body.payment_method, pay_token=pay_token, access_code=access_code,
             amount_due=float(q.total) if q.total is not None else None, lawn_sqft=sqft,
             subtotal=price, tax_rate=float(q.tax_rate), tax_amount=float(q.tax) if q.tax is not None else None,
-            sqft_rate=rate,
+            sqft_rate=rate, package=q.package,
+            charity_rate=float(q.charity_rate) if q.charity_rate is not None else None,
+            charity_amount=giving, giving_split=split_donation(giving) if giving else None,
         )
         base = str(request.base_url).rstrip("/")
         visit_url = f"{base}/visit/{access_code}"
@@ -361,7 +364,9 @@ def create_app(
                           zone_name=zone.name, quoted_price=price, payment_method=body.payment_method,
                           pay_url=f"/pay/{pay_token}" if body.payment_method == "card" else None,
                           access_code=format_code(access_code), visit_url=f"/visit/{access_code}",
-                          lawn_sqft=sqft, sqft_rate=rate, subtotal=price, tax_rate=float(q.tax_rate),
+                          lawn_sqft=sqft, sqft_rate=rate, package=q.package,
+                          charity_rate=float(q.charity_rate) if q.charity_rate is not None else None,
+                          charity_amount=giving, subtotal=price, tax_rate=float(q.tax_rate),
                           tax=float(q.tax) if q.tax is not None else None,
                           total=float(q.total) if q.total is not None else None)
 
@@ -389,9 +394,9 @@ def create_app(
         on_site = body.price if body.price is not None else body.amount_due
         if unpaid and zone is not None:
             if before["service"] == Service.MOWING.value and body.lawn_sqft and body.lawn_sqft != before.get("lawn_sqft"):
-                # Same rate the customer chose at booking (bookings made before rates existed: the middle rate).
+                # Same package the customer chose at booking.
                 new_price = quote(zone, Service.MOWING, body.lawn_sqft,
-                                  sqft_rate=before.get("sqft_rate") if before.get("sqft_rate") in RATE_FLOATS else None)
+                                  package=before.get("package") or package_for_rate(before.get("sqft_rate")))
             elif before["service"] != Service.MOWING.value and on_site is not None:
                 new_price = quote(zone, Service(before["service"]), on_site_price=on_site)
         if new_price is not None:
@@ -407,8 +412,10 @@ def create_app(
                 raise HTTPException(status_code=422, detail=f"Cash collected is less than the ${due:,.2f} total.")
 
         if new_price is not None:
+            giving = float(new_price.charity_amount) if new_price.charity_amount is not None else None
             repo.set_price(before["job_id"], subtotal=float(new_price.subtotal), tax_amount=float(new_price.tax),
-                           total=float(new_price.total), lawn_sqft=new_price.lawn_sqft)
+                           total=float(new_price.total), lawn_sqft=new_price.lawn_sqft,
+                           charity_amount=giving, giving_split=split_donation(giving) if giving else None)
         stop, newly = repo.complete_stop(stop_id, member_id)
 
         payment = {"status": stop["payment_status"], "total": due}
