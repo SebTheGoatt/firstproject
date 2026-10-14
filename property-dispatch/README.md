@@ -261,7 +261,10 @@ Without Twilio credentials the "next customer" text is logged instead of sent.
    from the **Connect** button. The secret key bypasses RLS, so keep it on the server and
    never put it in the browser. It goes in `SUPABASE_SERVICE_ROLE_KEY`. If the app logs
    "Invalid API key", use the legacy `service_role` key from the same page instead.
-4. **Already set up?** Run only the migrations you haven't run yet, once each and in order:
+4. **Already set up (through 20261018)?** Open `supabase/upgrade_2026-10_packages.sql`, copy **all of its
+   text** (not the file name), paste it into a new SQL Editor query and click **Run**. It adds
+   migrations 20261019 to 20261022 at once, is safe to run twice, and ends with a check that lists 12 rows.
+5. Otherwise, run only the migrations you haven't run yet, once each and in order:
    open each new file in `supabase/migrations/` (for example
    `20261019000000_access_codes_and_job_photos.sql`, then
    `20261020000000_pricing_and_sales_tax.sql`, then
