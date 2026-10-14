@@ -37,14 +37,15 @@ from .geocode import GeocoderUnavailable, GeocodingError, NominatimGeocoder
 from .crew_auth import CrewIdentity
 from .crew_routes import register_crew_routes
 from .models import (SERVICE_LABELS, SERVICE_MINUTES, AddressCheck, CompleteStopRequest, GeoPoint, JobCreated,
-                     JobRequest, RouteView, Service, StopView)
+                     JobRequest, QuoteRequest, RouteView, Service, StopView)
+from .pricing import LAWN_SIZES, PER_SQFT, quote, resolve_sqft
 from .routing.matrix import haversine_m
 from .nightly import run_nightly
 from .notify import TwilioClient, booking_message, notify_next_customer, send_pay_link, send_text
 from .pay_routes import register_pay_routes
 from .visit_routes import format_code, new_access_code, register_visit_routes
 from .payments import StripeClient
-from .zones import SERVICE_ZONES, find_zone
+from .zones import SERVICE_ZONES, find_zone, zone_by_key
 
 log = logging.getLogger(__name__)
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
@@ -113,6 +114,9 @@ def build_route_view(route: dict, settings: Settings) -> RouteView:
             completed_at=s["completed_at"], completed_by_name=s.get("completed_by_name"),
             payment_method=s.get("payment_method") or "cash", payment_status=s.get("payment_status") or "unpaid",
             amount_due=s.get("amount_due"), amount_paid=s.get("amount_paid"), donation=s.get("donation") or 0.0,
+            subtotal=s.get("subtotal"), tax_rate=s.get("tax_rate"), tax_amount=s.get("tax_amount"),
+            lawn_sqft=s.get("lawn_sqft"),
+            flat_fee=(z.mow_rate if (z := zone_by_key(s.get("zone_key"))) and s["service"] == "mowing" else None),
             # Origin omitted → navigation starts from the phone's live location.
             google_maps_url=deeplinks.google_directions(dest),
             apple_maps_url=deeplinks.apple_directions(dest),
@@ -239,8 +243,11 @@ def create_app(
             "latest_date": now.date() + timedelta(days=settings.booking_horizon_days),
             "freeze_hour": settings.freeze_hour,
             "services": [{"value": s.value, "label": SERVICE_LABELS[s]} for s in Service],
-            "zones": [{"key": z.key, "name": z.name, "mow_rate": z.mow_rate, "bbox": list(z.bbox)}
+            "zones": [{"key": z.key, "name": z.name, "mow_rate": z.mow_rate, "tax_rate": z.tax_rate,
+                       "bbox": list(z.bbox), "boxes": [list(b) for b in z.boxes]}
                       for z in SERVICE_ZONES],
+            "lawn_sizes": [{"key": k, **v} for k, v in LAWN_SIZES.items()],
+            "per_sqft": float(PER_SQFT),
             "business_name": settings.business_name,
             "card_payments": app.state.stripe is not None,
             "google_maps_key": settings.google_maps_browser_key or None,
@@ -289,6 +296,19 @@ def create_app(
                         if zone else outside_message()),
         }
 
+    @app.post("/api/quote")
+    def price_quote(body: QuoteRequest, request: Request):
+        """Live price while the customer fills in the form. Saves nothing."""
+        if not check_limiter.allow(request.client.host if request.client else "unknown"):
+            raise HTTPException(status_code=429, detail="Too many checks. Please wait a few minutes.")
+        geo = locate(body.address.strip(), body.lat, body.lng)
+        zone = find_zone(geo.lat, geo.lng)
+        if zone is None:
+            return {"in_area": False, "message": outside_message()}
+        q = quote(zone, body.service, resolve_sqft(body.lawn_size, body.lawn_sqft))
+        return {"in_area": True, "zone_name": zone.name, "flat_fee": zone.mow_rate,
+                "service_label": SERVICE_LABELS[body.service], **q.as_dict()}
+
     @app.post("/api/jobs", response_model=JobCreated, status_code=201)
     def create_job(body: JobRequest, request: Request, repo: Repository = Depends(get_repo)):
         now = local_now(settings)
@@ -301,7 +321,10 @@ def create_app(
         zone = find_zone(geo.lat, geo.lng)
         if zone is None:
             raise HTTPException(status_code=422, detail=outside_message())
-        price = zone.mow_rate if body.service is Service.MOWING else None
+        # No size given → priced at the flat fee (the minimum); the crew sets the real size on site.
+        sqft = resolve_sqft(body.lawn_size, body.lawn_sqft) if body.service is Service.MOWING else None
+        q = quote(zone, body.service, sqft)
+        price = float(q.subtotal) if q.subtotal is not None else None
         if body.payment_method == "card" and app.state.stripe is None:
             raise HTTPException(status_code=422, detail="Card payments aren't available yet. Please choose cash.")
         pay_token = secrets.token_urlsafe(18)
@@ -313,6 +336,8 @@ def create_app(
             service_minutes=SERVICE_MINUTES[body.service],
             zone_key=zone.key, quoted_price=price,
             payment_method=body.payment_method, pay_token=pay_token, access_code=access_code,
+            amount_due=float(q.total) if q.total is not None else None, lawn_sqft=sqft,
+            subtotal=price, tax_rate=float(q.tax_rate), tax_amount=float(q.tax) if q.tax is not None else None,
         )
         base = str(request.base_url).rstrip("/")
         visit_url = f"{base}/visit/{access_code}"
@@ -326,7 +351,10 @@ def create_app(
                           formatted_address=shown, lat=geo.lat, lng=geo.lng,
                           zone_name=zone.name, quoted_price=price, payment_method=body.payment_method,
                           pay_url=f"/pay/{pay_token}" if body.payment_method == "card" else None,
-                          access_code=format_code(access_code), visit_url=f"/visit/{access_code}")
+                          access_code=format_code(access_code), visit_url=f"/visit/{access_code}",
+                          lawn_sqft=sqft, subtotal=price, tax_rate=float(q.tax_rate),
+                          tax=float(q.tax) if q.tax is not None else None,
+                          total=float(q.total) if q.total is not None else None)
 
     # ---------- Crew dispatch -----------------------------------------
     @app.get("/api/routes/{day}", response_model=RouteView, dependencies=[Depends(crew_auth)])
@@ -343,23 +371,40 @@ def create_app(
         if before is None:
             raise HTTPException(status_code=404, detail="Stop not found")
 
-        # Quoted services: the crew sets the final price on site.
-        if body.amount_due is not None and before["payment_status"] == "unpaid":
-            repo.set_amount_due(before["job_id"], round(body.amount_due, 2))
+        # Re-price on site before anything is saved: the crew confirms the lawn size
+        # (mowing) or sets the price (bins, gutters). Tax is recalculated each time.
+        due = before["amount_due"]
+        unpaid = before["payment_status"] == "unpaid"
+        zone = zone_by_key(before.get("zone_key")) or find_zone(before["lat"], before["lng"])
+        new_price = None
+        on_site = body.price if body.price is not None else body.amount_due
+        if unpaid and zone is not None:
+            if before["service"] == Service.MOWING.value and body.lawn_sqft and body.lawn_sqft != before.get("lawn_sqft"):
+                new_price = quote(zone, Service.MOWING, body.lawn_sqft)
+            elif before["service"] != Service.MOWING.value and on_site is not None:
+                new_price = quote(zone, Service(before["service"]), on_site_price=on_site)
+        if new_price is not None:
+            due = float(new_price.total)
 
-        stop, newly = repo.complete_stop(stop_id, member_id)
-
-        # Cash: the crew records what they were handed. Anything over the price is a donation.
-        payment = {"status": stop["payment_status"]}
-        if body.cash_collected is not None and stop["payment_status"] == "unpaid":
-            due = stop["amount_due"]
+        # Cash: the crew records what they were handed. Anything over the total is a donation.
+        cash = None
+        if body.cash_collected is not None and unpaid:
             if due is None:
                 raise HTTPException(status_code=422, detail="Enter the job price before recording cash.")
             cash = round(body.cash_collected, 2)
             if cash < due:
-                raise HTTPException(status_code=422, detail=f"Cash collected is less than the ${due:,.2f} price.")
+                raise HTTPException(status_code=422, detail=f"Cash collected is less than the ${due:,.2f} total.")
+
+        if new_price is not None:
+            repo.set_price(before["job_id"], subtotal=float(new_price.subtotal), tax_amount=float(new_price.tax),
+                           total=float(new_price.total), lawn_sqft=new_price.lawn_sqft)
+        stop, newly = repo.complete_stop(stop_id, member_id)
+
+        payment = {"status": stop["payment_status"], "total": due}
+        if cash is not None and stop["payment_status"] == "unpaid":
             repo.mark_paid(stop["job_id"], method="cash", amount_paid=cash, donation=round(cash - due, 2))
-            payment = {"status": "paid", "method": "cash", "amount_paid": cash, "donation": round(cash - due, 2)}
+            payment = {"status": "paid", "method": "cash", "amount_paid": cash, "donation": round(cash - due, 2),
+                       "total": due}
         elif (newly and stop["payment_method"] == "card" and stop["payment_status"] == "unpaid"
               and stop["pay_token"] and stop["amount_due"] is not None and base_url):
             # Card customers who haven't paid yet get their private pay link when the job is done.

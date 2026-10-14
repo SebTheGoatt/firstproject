@@ -158,7 +158,17 @@
         pay.append(el("p", {}, el("strong", {}, `Paid ${money(p.amount_paid)}`), p.method === "cash" ? " in cash" : " by card",
           p.donation > 0 ? `, including a ${money(p.donation)} donation. Thank you for supporting a veteran-owned business!` : ". Thank you!"));
       } else {
-        pay.append(el("p", {}, p.amount_due != null ? `Price: ${money(p.amount_due)}` : "Your price is set on site when the job is done."));
+        if (p.amount_due == null) {
+          pay.append(el("p", {}, "Your price is set on site when the job is done. Texas sales tax is added."));
+        } else if (p.subtotal != null && p.tax != null) {
+          const rate = p.tax_rate ? ` (${(p.tax_rate * 100).toFixed(2).replace(/\.?0+$/, "")}%)` : "";
+          pay.append(el("dl", { class: "price-lines" },
+            el("div", {}, el("dt", {}, p.lawn_sqft ? `${v.service_label} · ${p.lawn_sqft.toLocaleString()} sq ft` : v.service_label), el("dd", {}, money(p.subtotal))),
+            p.tax > 0 ? el("div", {}, el("dt", {}, `Texas sales tax${rate}`), el("dd", {}, money(p.tax))) : null,
+            el("div", { class: "total" }, el("dt", {}, "Total"), el("dd", {}, money(p.amount_due)))));
+        } else {
+          pay.append(el("p", {}, `Price: ${money(p.amount_due)}`));
+        }
         if (p.method === "card" && p.pay_url) pay.append(el("a", { class: "btn btn-primary", href: p.pay_url }, p.amount_due != null ? "Pay now" : "Open payment page"));
         else pay.append(el("p", { class: "muted" }, "You chose cash: pay the crew when they arrive."));
         pay.append(el("p", { class: "veteran-note" }, el("span", { class: "flag", "aria-hidden": "true" }, "★"),

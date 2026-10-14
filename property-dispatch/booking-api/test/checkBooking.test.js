@@ -46,7 +46,7 @@ describe('POST /api/check-booking', () => {
   for (const [place, zoneName, rate] of [
     ['Rayford', "Spring / Woodson's Reserve Corridor", 55],
     ['Splendora', 'New Caney & Splendora High-Density Spine', 40],
-    ['Cleveland', 'Cleveland / Grand Oaks Reserve Hub', 45],
+    ['Cleveland', 'Cleveland, Plum Grove & Grand Oaks Reserve', 45],
   ]) {
     it(`in-zone (${place}) → 200, lead saved with $${rate}`, async () => {
       const { status, body } = await post({ address: `${place} Rd, TX 77386` });
@@ -134,6 +134,8 @@ describe('validateCustomerLocation', () => {
     assert.match(zoneOf(30.3391, -95.0579), /Grand Oaks/);    // Kingston Heath Dr (Grand Oaks Reserve)
     assert.match(zoneOf(30.3367, -95.0506), /Grand Oaks/);    // Spyglass Hill Dr (clubhouse)
     assert.match(zoneOf(30.3415, -95.0900), /Cleveland/);     // downtown Cleveland
+    assert.match(zoneOf(30.2000, -95.1010), /Plum Grove/);    // Plum Grove (served from Cleveland)
+    assert.match(zoneOf(30.2330, -95.1610), /Splendora/);     // I-69 spine still Splendora
   });
 });
 

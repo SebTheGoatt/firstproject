@@ -448,10 +448,36 @@
     // In-card "Finish job" panel: price, cash, and an optional portfolio photo.
     function openFinish(item, s) {
       item.querySelector(".finish")?.remove();
-      const needsPrice = s.amount_due == null && s.payment_status !== "paid";
-      const isCash = s.payment_method === "cash" && s.payment_status !== "paid";
+      const unpaid = s.payment_status !== "paid";
+      const isMow = s.service === "mowing";
+      const rate = s.tax_rate ?? 0.0825;
+      const needsPrice = unpaid && !isMow && s.amount_due == null;
+      const isCash = s.payment_method === "cash" && unpaid;
+      const sqftIn = unpaid && isMow ? el("input", { type: "number", inputmode: "numeric", min: 200, max: 87120, value: s.lawn_sqft ?? "", placeholder: "e.g. 5200", id: `fs-${s.stop_id}` }) : null;
       const priceIn = needsPrice ? el("input", { type: "text", inputmode: "decimal", placeholder: "e.g. 120", id: `fp-${s.stop_id}` }) : null;
       const cashIn = isCash ? el("input", { type: "text", inputmode: "decimal", value: s.amount_due ?? "", id: `fc-${s.stop_id}` }) : null;
+      const totalLine = el("p", { class: "finish-total" });
+      const cents = (x) => Math.round(x * 100) / 100;
+      let cashEdited = false;
+      cashIn?.addEventListener("input", () => { cashEdited = true; });
+      // Live total with Texas sales tax, matching the server's math.
+      function currentTotal() {
+        let sub = null;
+        if (isMow && s.flat_fee != null) {
+          const sq = parseInt(sqftIn?.value, 10);
+          sub = sq >= 200 ? Math.max(s.flat_fee, cents(0.015 * sq)) : (s.subtotal ?? s.flat_fee);
+        } else if (priceIn) {
+          const p = parseFloat((priceIn.value || "").replace(/[^0-9.]/g, ""));
+          sub = isFinite(p) && p > 0 ? cents(p) : null;
+        } else if (s.subtotal != null) sub = s.subtotal;
+        if (sub == null) return s.amount_due;
+        const tax = cents(sub * rate);
+        totalLine.textContent = `${money(sub)} + ${money(tax)} tax (${(rate * 100).toFixed(2).replace(/\.?0+$/, "")}%) = ${money(sub + tax)}`;
+        return cents(sub + tax);
+      }
+      const refresh = () => { const t = currentTotal(); if (cashIn && !cashEdited && t != null) cashIn.value = t.toFixed(2); };
+      sqftIn?.addEventListener("input", refresh);
+      priceIn?.addEventListener("input", refresh);
       const photoIn = el("input", { type: "file", accept: "image/*", capture: "environment", id: `fph-${s.stop_id}` });
       const shareIn = me?.member ? el("input", { type: "checkbox", id: `fsh-${s.stop_id}` }) : null;
       const capIn = me?.member ? el("input", { type: "text", maxlength: 280, placeholder: "Caption for My work (optional)", id: `fcap-${s.stop_id}` }) : null;
@@ -459,7 +485,9 @@
       const cancelBtn = el("button", { class: "btn", type: "button" }, "Cancel");
       const panel = el("form", { class: "finish" },
         el("strong", {}, `Finishing stop ${s.sequence}: ${s.customer_name}`),
-        needsPrice ? el("div", { class: "field" }, el("label", { for: priceIn.id }, "Final price ($)"), priceIn) : null,
+        sqftIn ? el("div", { class: "field" }, el("label", { for: sqftIn.id }, "Lawn size (sq ft): confirm or correct"), sqftIn) : null,
+        needsPrice ? el("div", { class: "field" }, el("label", { for: priceIn.id }, "Price before tax ($)"), priceIn) : null,
+        totalLine,
         isCash ? el("div", { class: "field" }, el("label", { for: cashIn.id }, "Cash collected ($)"), cashIn,
           el("p", { class: "hint" }, "Leave blank if they haven't paid yet. Anything over the price is saved as a donation.")) : null,
         s.payment_method === "card" && s.payment_status !== "paid"
@@ -473,12 +501,13 @@
         e.preventDefault();
         const num = (input) => { const v = parseFloat((input?.value || "").replace(/[^0-9.]/g, "")); return isFinite(v) ? Math.round(v * 100) / 100 : null; };
         const body = {};
-        if (priceIn) { const p = num(priceIn); if (p) body.amount_due = p; }
+        if (priceIn) { const p = num(priceIn); if (p) body.price = p; }
+        if (sqftIn) { const sq = parseInt(sqftIn.value, 10); if (sq >= 200 && sq !== s.lawn_sqft) body.lawn_sqft = sq; }
         if (cashIn && cashIn.value.trim()) {
           body.cash_collected = num(cashIn);
-          const due = body.amount_due ?? s.amount_due;
-          if (due == null) { toast("Enter the final price first."); return; }
-          if (body.cash_collected < due) { toast(`Cash is less than the ${money(due)} price.`); return; }
+          const due = currentTotal();
+          if (due == null) { toast("Enter the price first."); return; }
+          if (body.cash_collected < due) { toast(`Cash is less than the ${money(due)} total.`); return; }
         }
         confirmBtn.disabled = true; confirmBtn.textContent = "Saving…";
         try {
@@ -504,6 +533,7 @@
         }
       });
       item.append(panel);
+      refresh();
       (priceIn || cashIn || confirmBtn).focus();
     }
 
@@ -684,7 +714,7 @@
         const t = d.totals;
         $("kpis").replaceChildren(
           ...[["Bookings", `${t.jobs}/${d.quota}`], ["Expected", money(t.expected)], ["Collected", money(t.collected)],
-              ["Donations", money(t.donations)], ["Still owed", money(t.unpaid)]]
+              ["Donations", money(t.donations)], ["Still owed", money(t.unpaid)], ["Sales tax collected", money(t.sales_tax ?? 0)]]
             .map(([k, v]) => el("div", { class: "kpi" }, el("b", {}, v), el("span", {}, k))));
         const rc = $("route-card"); rc.replaceChildren();
         const r = d.route;

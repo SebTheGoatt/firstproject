@@ -42,6 +42,10 @@ def register_pay_routes(app: FastAPI, settings: Settings, stripe: StripeClient |
             "scheduled_date": p["scheduled_date"],
             "job_done": p["status"] == "completed",
             "amount_due": p["amount_due"],
+            "subtotal": p.get("subtotal"),
+            "tax": p.get("tax_amount"),
+            "tax_rate": p.get("tax_rate"),
+            "lawn_sqft": p.get("lawn_sqft"),
             "payment_status": p["payment_status"],
             "payment_method": p["payment_method"],
             "amount_paid": p["amount_paid"],
@@ -66,6 +70,7 @@ def register_pay_routes(app: FastAPI, settings: Settings, stripe: StripeClient |
                 job_id=p["job_id"], service_label=SERVICE_LABELS[Service(p["service"])],
                 service_date=str(p["scheduled_date"]), amount_due=p["amount_due"], donation=donation,
                 success_url=f"{base}/pay/{token}?done=1", cancel_url=f"{base}/pay/{token}",
+                subtotal=p.get("subtotal"), tax=p.get("tax_amount"), tax_rate=p.get("tax_rate"),
             )
         except PaymentError as exc:
             raise HTTPException(status_code=503 if "unavailable" in str(exc) else 422, detail=str(exc))

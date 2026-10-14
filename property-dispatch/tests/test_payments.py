@@ -74,15 +74,19 @@ def test_cash_booking_and_crew_records_cash_with_donation(client, repo, settings
     r = book_with(client, "A", "0100")
     assert r.status_code == 201 and r.json()["payment_method"] == "cash" and r.json()["pay_url"] is None
     stop = route_stops(client, repo, settings)[0]
-    assert (stop["payment_method"], stop["payment_status"], stop["amount_due"]) == ("cash", "unpaid", 55.0)
+    # $55 flat fee + 8.25% Texas sales tax ($4.54) = $59.54
+    assert (stop["payment_method"], stop["payment_status"], stop["amount_due"]) == ("cash", "unpaid", 59.54)
+    assert (stop["subtotal"], stop["tax_amount"], stop["tax_rate"]) == (55.0, 4.54, 0.0825)
 
-    short = client.post(f"/api/stops/{stop['stop_id']}/complete", headers=CREW, json={"cash_collected": 50})
-    assert short.status_code == 422  # less than the $55 price
+    short = client.post(f"/api/stops/{stop['stop_id']}/complete", headers=CREW, json={"cash_collected": 59})
+    assert short.status_code == 422  # less than the $59.54 total
+    # ...and a rejected cash amount must not mark the job done.
+    assert client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]["completed_at"] is None
 
-    r = client.post(f"/api/stops/{stop['stop_id']}/complete", headers=CREW, json={"cash_collected": 60}).json()
-    assert r["payment"] == {"status": "paid", "method": "cash", "amount_paid": 60.0, "donation": 5.0}
+    r = client.post(f"/api/stops/{stop['stop_id']}/complete", headers=CREW, json={"cash_collected": 65}).json()
+    assert r["payment"] == {"status": "paid", "method": "cash", "amount_paid": 65.0, "donation": 5.46, "total": 59.54}
     stop = client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]
-    assert (stop["payment_status"], stop["amount_paid"], stop["donation"]) == ("paid", 60.0, 5.0)
+    assert (stop["payment_status"], stop["amount_paid"], stop["donation"]) == ("paid", 65.0, 5.46)
 
 
 def test_card_prepay_with_donation_through_stripe(card_client, repo, stripe):
@@ -92,26 +96,27 @@ def test_card_prepay_with_donation_through_stripe(card_client, repo, stripe):
 
     info = card_client.get(f"/api/pay/{token}").json()
     assert (info["first_name"], info["amount_due"], info["payment_status"], info["card_enabled"]) == \
-        ("Customer", 55.0, "unpaid", True)
+        ("Customer", 59.54, "unpaid", True)
 
     assert card_client.post(f"/api/pay/{token}/checkout", json={"donation": 600}).status_code == 422
     assert card_client.post(f"/api/pay/{token}/checkout", json={"donation": -1}).status_code == 422
     out = card_client.post(f"/api/pay/{token}/checkout", json={"donation": 10}).json()
     assert out["url"].startswith("https://checkout.stripe.test/")
-    assert (stripe.sessions[-1]["amount_due"], stripe.sessions[-1]["donation"]) == (55.0, 10.0)
+    s = stripe.sessions[-1]
+    assert (s["amount_due"], s["subtotal"], s["tax"], s["tax_rate"], s["donation"]) == (59.54, 55.0, 4.54, 0.0825, 10.0)
     assert stripe.sessions[-1]["success_url"].endswith(f"/pay/{token}?done=1")
 
     job_id = r["id"]
-    payload, sig = signed(paid_event(job_id, 6500, 1000))
+    payload, sig = signed(paid_event(job_id, 6954, 1000))
     assert card_client.post("/webhooks/stripe", content=payload, headers={"Stripe-Signature": sig}).status_code == 200
     info = card_client.get(f"/api/pay/{token}").json()
-    assert (info["payment_status"], info["amount_paid"], info["donation"]) == ("paid", 65.0, 10.0)
+    assert (info["payment_status"], info["amount_paid"], info["donation"]) == ("paid", 69.54, 10.0)
     assert card_client.post(f"/api/pay/{token}/checkout", json={}).status_code == 409  # can't pay twice
 
     # Stripe retries webhooks; a replay must not change anything.
     payload, sig = signed(paid_event(job_id, 9900, 0))
     card_client.post("/webhooks/stripe", content=payload, headers={"Stripe-Signature": sig})
-    assert card_client.get(f"/api/pay/{token}").json()["amount_paid"] == 65.0
+    assert card_client.get(f"/api/pay/{token}").json()["amount_paid"] == 69.54
 
 
 def test_webhook_rejects_bad_or_stale_signatures(card_client):
@@ -131,11 +136,12 @@ def test_quoted_service_gets_price_on_site_then_pay_link(card_client, repo, sett
     assert blocked.status_code == 409 and "crew finishes" in blocked.json()["detail"]
 
     stop = route_stops(card_client, repo, settings)[0]
-    res = card_client.post(f"/api/stops/{stop['stop_id']}/complete", headers=CREW, json={"amount_due": 120}).json()
+    res = card_client.post(f"/api/stops/{stop['stop_id']}/complete", headers=CREW, json={"price": 120}).json()
     assert res["payment"]["pay_link"]["sent"] is True
     to, text = sms.sent[-1]
     assert to == stop["phone"] and f"/pay/{token}" in text and "veteran-owned" in text and "No tip necessary" in text
-    assert card_client.get(f"/api/pay/{token}").json()["amount_due"] == 120.0
+    info = card_client.get(f"/api/pay/{token}").json()
+    assert (info["subtotal"], info["tax"], info["amount_due"]) == (120.0, 9.9, 129.9)   # $120 + 8.25% tax
     assert card_client.post(f"/api/pay/{token}/checkout", json={}).status_code == 200
 
 

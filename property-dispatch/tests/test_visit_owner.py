@@ -48,7 +48,7 @@ def test_visit_page_follows_the_job_from_booking_to_photos(client, repo, setting
 
     v = client.get(f"/api/visit/{code.lower()}").json()
     assert (v["status"], v["eta"], v["first_name"], v["photos"]) == ("pending", None, "Customer", [])
-    assert v["payment"]["amount_due"] == 55.0
+    assert v["payment"]["amount_due"] == 59.54 and v["payment"]["tax"] == 4.54
 
     run_nightly(repo, settings, TOMORROW)
     v = client.get(f"/api/visit/{code}").json()
@@ -56,7 +56,7 @@ def test_visit_page_follows_the_job_from_booking_to_photos(client, repo, setting
 
     stop = client.get(f"/api/routes/{TOMORROW}", headers=h).json()["stops"][0]
     assert client.post(f"/api/stops/{stop['stop_id']}/photos", headers=h, json={"kind": "before", "photo": JPEG}).status_code == 201
-    client.post(f"/api/stops/{stop['stop_id']}/complete", headers=h, json={"cash_collected": 55})
+    client.post(f"/api/stops/{stop['stop_id']}/complete", headers=h, json={"cash_collected": 59.54})
     client.post(f"/api/stops/{stop['stop_id']}/photos", headers=h, json={"kind": "after", "photo": JPEG})
 
     v = client.get(f"/api/visit/{code}").json()
@@ -103,8 +103,8 @@ def test_bookings_show_on_the_dashboard_before_any_route_exists(client):
     assert [j["customer_name"] for j in d["jobs"]] == ["Customer A", "Customer B"]
     assert all(j["status"] == "pending" and j["sequence"] is None for j in d["jobs"])
     assert d["route"]["built"] is False and d["route"]["missing"] == 2
-    assert d["totals"] == {"jobs": 2, "done": 0, "expected": 55.0, "collected": 0, "donations": 0,
-                           "unpaid": 55.0, "quoted_on_site": 1}
+    assert d["totals"] == {"jobs": 2, "done": 0, "expected": 59.54, "collected": 0, "donations": 0,
+                           "unpaid": 59.54, "quoted_on_site": 1, "sales_tax": 0}
     assert re.fullmatch(r"\w{4}-\w{4}", d["jobs"][0]["access_code"])
     assert d["auto_build"]["hour"] == 17
 
@@ -126,7 +126,8 @@ def test_owner_builds_route_now_and_sees_order(client):
         assert client.post(f"/api/owner/routes/{NOW.date() - timedelta(days=1)}/build", headers=CREW).status_code == 409
         assert client.post(f"/api/owner/routes/{TOMORROW + timedelta(days=3)}/build", headers=CREW).status_code == 409
     d = owner_get(client, f"/api/owner/day/{TOMORROW}").json()
-    assert d["totals"]["collected"] == 60.0 and d["totals"]["donations"] == 5.0 and d["totals"]["done"] == 1
+    assert d["totals"]["collected"] == 60.0 and d["totals"]["donations"] == 0.46 and d["totals"]["done"] == 1
+    assert d["totals"]["sales_tax"] == 4.54   # tax on what's been paid, for the owner's sales-tax filing
 
 
 def test_outlook_and_owner_only(client):
@@ -134,7 +135,7 @@ def test_outlook_and_owner_only(client):
     week = owner_get(client, "/api/owner/outlook?days=7").json()
     assert len(week) == 7 and week[0]["date"] == NOW.date().isoformat()
     tomorrow = next(d for d in week if d["date"] == TOMORROW.isoformat())
-    assert tomorrow["jobs"] == 2 and tomorrow["expected"] == 110.0
+    assert tomorrow["jobs"] == 2 and tomorrow["expected"] == 119.08
     sam = client.post("/api/crew/members", headers=CREW, json={"display_name": "Sam", "code": "4321"}).json()
     h = {"X-Crew-Token": client.post("/api/crew/login", json={"member_id": sam["id"], "code": "4321"}).json()["token"]}
     assert client.get(f"/api/owner/day/{TOMORROW}", headers=h).status_code == 403

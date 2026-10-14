@@ -104,6 +104,40 @@ finishing, the **after photo** goes to the customer's visit page. These photos a
 to that customer's code (`/media/visit/{id}?code=…`). A crew member can tick "Also show it
 on my public profile" to add the after photo to their public portfolio.
 
+## Pricing and Texas sales tax
+
+**Mowing price** = the area's flat fee **or** $0.015 per square foot of lawn, whichever is
+higher. The flat fee is the minimum visit charge.
+
+| Area | Flat fee (minimum) | Example: 8,000 sq ft lawn |
+|---|---|---|
+| Spring / Woodson's Reserve | $55 | $120.00 |
+| Klein | $55 | $120.00 |
+| New Caney & Splendora | $40 | $120.00 |
+| Cleveland, Plum Grove & Grand Oaks Reserve | $45 | $120.00 |
+
+- **Lawn size at booking.** Customers pick Small (~2,500 sq ft), Medium (~4,500), Large
+  (~8,000) or X-Large (~12,500), or type an exact size. They see the price, tax and total
+  before they book. Skipping the size books at the flat fee.
+- **Crew confirms on site.** The finish panel shows the booked size; if the lawn is
+  bigger or smaller, the crew types the real size and the price, tax, total and the
+  cash amount update live. The price can only change while the job is unpaid.
+- **Bin cleaning and gutters** are priced on site: the crew enters the price before tax
+  when finishing, and tax is added the same way.
+- **Texas sales tax** is added to all three services at 8.25% (6.25% state + up to 2%
+  local), set per zone in `app/zones.py` (`tax_rate`). Donations are never taxed.
+  Customers see "price + Texas sales tax = total" on the booking page, confirmation,
+  visit page, pay page and Stripe receipt. The owner dashboard shows **Sales tax
+  collected** for each day so it's easy to set aside for your Comptroller filing.
+  - Lawn mowing is a taxable service in Texas
+    ([Comptroller Pub. 94-112](https://www.comptroller.texas.gov/taxes/publications/94-112.php)).
+    Gutter and bin cleaning are most likely taxable as building/real-property services;
+    confirm both with a tax professional.
+  - Local rates vary by address. Check each area's exact rate with the Comptroller's
+    [sales tax rate locator](https://gis.cpa.texas.gov/search/) and update `tax_rate`
+    if it's lower than 8.25%.
+  - Bookings made before this change keep their original price with no tax added.
+
 ## Pay your way (cash or card) and donations
 
 At booking, customers choose **Cash to the crew** or **Card in the app**.
@@ -154,7 +188,8 @@ date picker automatically starts at the earliest open day.
 booking gets "That day is fully booked."
 
 **Service zones.** `app/zones.py` defines geo-fenced bounding boxes, each with a
-mowing rate. After geocoding, an address outside every zone is turned away; inside
+flat mowing fee and a sales tax rate. A zone can have extra boxes: Plum Grove is
+served from the Cleveland hub this way. After geocoding, an address outside every zone is turned away; inside
 one, the job stores its `zone_key` and (for mowing) the `quoted_price`. Boxes are
 `(min_lng, min_lat, max_lng, max_lat)`, and the app refuses to start if a box is
 inverted, out of range, or overlaps another. To change a zone, edit that file and redeploy.
@@ -205,6 +240,10 @@ Without Twilio credentials the "next customer" text is logged instead of sent.
    from the **Connect** button. The secret key bypasses RLS, so keep it on the server and
    never put it in the browser. It goes in `SUPABASE_SERVICE_ROLE_KEY`. If the app logs
    "Invalid API key", use the legacy `service_role` key from the same page instead.
+4. **Already set up?** Run only the migrations you haven't run yet, once each and in order:
+   open each new file in `supabase/migrations/` (for example
+   `20261019000000_access_codes_and_job_photos.sql`, then
+   `20261020000000_pricing_and_sales_tax.sql`), paste it into the SQL Editor, and click **Run**.
 
 ### 2. Twilio (SMS)
 1. Buy a local (281/832/346) number in the Twilio console.
@@ -279,6 +318,7 @@ Updates that aren't completions are ignored.
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | GET | `/api/booking-info` | none | earliest/latest bookable dates, services |
+| POST | `/api/quote` | none | price, tax and total for an address, service and lawn size |
 | POST | `/api/jobs` | none | `409` frozen/full · `422` bad input/unknown address · `503` geocoder down |
 | GET | `/api/routes/{YYYY-MM-DD}` | `X-Crew-Token` | stops in order with ETAs and map URLs |
 | POST | `/api/stops/{id}/complete` | `X-Crew-Token` | idempotent; returns notification result |

@@ -24,15 +24,18 @@ export const SERVICE_ZONES = {
     name: "New Caney & Splendora High-Density Spine",
     // Concentrated spine covering The Canopies, Gemini, and Porters Mill developments.
     // West edge at -95.26 so The Canopies (~-95.234 to -95.237) is inside.
-    boundingBox: [-95.2600, 30.1850, -95.0900, 30.2950],
+    // East edge at -95.115 so Plum Grove belongs to the Cleveland hub.
+    boundingBox: [-95.2600, 30.1850, -95.1150, 30.2950],
     targetRateMow: 40.00, // Clustered pricing optimized for foot-traffic speed
   },
   CLEVELAND_HUB: {
-    name: "Cleveland / Grand Oaks Reserve Hub",
+    name: "Cleveland, Plum Grove & Grand Oaks Reserve",
     // Covers Grand Oaks Reserve and new construction off FM 1010 / SH-105.
     // West edge at -95.15 to include Grand Oaks Reserve (~-95.05 to -95.06)
     // and downtown Cleveland (~-95.09).
     boundingBox: [-95.1500, 30.3000, -94.9100, 30.3800],
+    // Plum Grove (~-95.10, 30.20), served from the Cleveland hub.
+    extraBoxes: [[-95.1120, 30.1650, -95.0800, 30.2350]],
     targetRateMow: 45.00,
   }
 };
@@ -47,9 +50,11 @@ export const SERVICE_ZONES = {
 export function validateCustomerLocation(lat, lng) {
   for (const zoneKey in SERVICE_ZONES) {
     const zone = SERVICE_ZONES[zoneKey];
-    const [minLng, minLat, maxLng, maxLat] = zone.boundingBox;
+    const boxes = [zone.boundingBox, ...(zone.extraBoxes || [])];
+    const inside = boxes.some(([minLng, minLat, maxLng, maxLat]) =>
+      lng >= minLng && lng <= maxLng && lat >= minLat && lat <= maxLat);
 
-    if (lng >= minLng && lng <= maxLng && lat >= minLat && lat <= maxLat) {
+    if (inside) {
       return {
         isValid: true,
         zoneName: zone.name,

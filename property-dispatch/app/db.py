@@ -27,6 +27,7 @@ CREW_PUBLIC_FIELDS = ("id", "slug", "display_name", "role_title", "bio", "years_
                       "service_branch", "accent_color", "photo_updated_at", "active", "created_at")
 PORTFOLIO_FIELDS = ("id", "member_id", "job_id", "service", "caption", "created_at")
 PAYMENT_FIELDS = ("payment_method", "payment_status", "amount_due", "donation", "amount_paid", "pay_token")
+PRICE_FIELDS = ("subtotal", "tax_rate", "tax_amount", "lawn_sqft", "zone_key")
 
 
 def _now_iso() -> str:
@@ -35,6 +36,13 @@ def _now_iso() -> str:
 
 def _money(v: Any) -> float | None:
     return None if v is None else round(float(v), 2)
+
+
+def _price(j: dict) -> dict:
+    """Price breakdown of a booking: amount_due (the total) = subtotal + tax_amount."""
+    rate = j.get("tax_rate")
+    return {"subtotal": _money(j.get("subtotal")), "tax_rate": float(rate) if rate is not None else None,
+            "tax_amount": _money(j.get("tax_amount")), "lawn_sqft": j.get("lawn_sqft"), "zone_key": j.get("zone_key")}
 
 
 def _owner_job(j: dict, cust: dict, stop: dict | None, crew_name: str | None) -> dict:
@@ -48,6 +56,7 @@ def _owner_job(j: dict, cust: dict, stop: dict | None, crew_name: str | None) ->
         "donation": _money(j.get("donation")) or 0.0, "access_code": j.get("access_code"),
         "sequence": stop.get("sequence") if stop else None, "eta": stop.get("eta") if stop else None,
         "completed_at": stop.get("completed_at") if stop else None, "completed_by_name": crew_name,
+        **_price(j),
     }
 
 
@@ -62,6 +71,7 @@ def _visit(j: dict, cust: dict, stop: dict | None, member: dict | None, photos: 
         "eta": stop.get("eta") if stop else None, "on_the_way_at": stop.get("notified_at") if stop else None,
         "completed_at": stop.get("completed_at") if stop else None,
         "crew_member": member, "photos": photos,
+        **_price(j),
     }
 
 
@@ -71,7 +81,9 @@ class Repository(Protocol):
     def create_job(self, *, name: str, phone: str, address: str, geo: GeoPoint, service: Service,
                    scheduled_date: date, service_minutes: int, zone_key: str, quoted_price: float | None,
                    payment_method: str = "cash", pay_token: str | None = None,
-                   access_code: str | None = None) -> dict: ...
+                   access_code: str | None = None, amount_due: float | None = None,
+                   lawn_sqft: int | None = None, subtotal: float | None = None,
+                   tax_rate: float | None = None, tax_amount: float | None = None) -> dict: ...
     def list_routable_jobs(self, day: date) -> list[Job]: ...
     def save_route(self, *, day: date, start: tuple[float, float], end: tuple[float, float],
                    total_distance_m: int, total_duration_s: int, matrix_source: str,
@@ -85,7 +97,8 @@ class Repository(Protocol):
     def release_notification(self, stop_id: str) -> None: ...
     # Payments
     def get_payment(self, pay_token: str) -> dict | None: ...
-    def set_amount_due(self, job_id: str, amount: float) -> None: ...
+    def set_price(self, job_id: str, *, subtotal: float, tax_amount: float, total: float,
+                  lawn_sqft: int | None = None) -> None: ...
     def record_checkout(self, job_id: str, session_id: str) -> None: ...
     def mark_paid(self, job_id: str, *, method: str, amount_paid: float, donation: float) -> bool: ...
     # Crew
@@ -117,7 +130,7 @@ class SupabaseRepository:
     STOP_SELECT = (
         "id, route_id, job_id, sequence, leg_distance_m, leg_duration_s, eta, completed_at, notified_at,"
         " completed_by, crew_members(display_name),"
-        " jobs(address, formatted_address, lat, lng, service, " + ", ".join(PAYMENT_FIELDS) + ","
+        " jobs(address, formatted_address, lat, lng, service, " + ", ".join(PAYMENT_FIELDS + PRICE_FIELDS) + ","
         " customers(name, phone))"
     )
 
@@ -157,6 +170,7 @@ class SupabaseRepository:
             "donation": _money(job["donation"]) or 0.0,
             "amount_paid": _money(job["amount_paid"]),
             "pay_token": job["pay_token"],
+            **_price(job),
         }
 
     def count_active_jobs(self, day: date) -> int:
@@ -167,7 +181,8 @@ class SupabaseRepository:
         return res.count or 0
 
     def create_job(self, *, name, phone, address, geo, service, scheduled_date, service_minutes,
-                   zone_key, quoted_price, payment_method="cash", pay_token=None, access_code=None) -> dict:
+                   zone_key, quoted_price, payment_method="cash", pay_token=None, access_code=None,
+                   amount_due=None, lawn_sqft=None, subtotal=None, tax_rate=None, tax_amount=None) -> dict:
         cust = (
             self.sb.table("customers")
             .upsert({"name": name, "phone": phone}, on_conflict="phone").execute()
@@ -183,7 +198,8 @@ class SupabaseRepository:
             "service_minutes": service_minutes,
             "zone_key": zone_key,
             "quoted_price": quoted_price,
-            "amount_due": quoted_price,
+            "amount_due": amount_due if amount_due is not None else quoted_price,
+            "lawn_sqft": lawn_sqft, "subtotal": subtotal, "tax_rate": tax_rate, "tax_amount": tax_amount,
             "payment_method": payment_method,
             "pay_token": pay_token,
             "access_code": access_code,
@@ -274,7 +290,7 @@ class SupabaseRepository:
         rows = (
             self.sb.table("jobs")
             .select("id, service, scheduled_date, address, status, paid_at, stripe_session_id, "
-                    + ", ".join(PAYMENT_FIELDS) + ", customers(name)")
+                    + ", ".join(PAYMENT_FIELDS + PRICE_FIELDS) + ", customers(name)")
             .eq("pay_token", pay_token).limit(1).execute()
         ).data
         if not rows:
@@ -287,10 +303,14 @@ class SupabaseRepository:
             "amount_due": _money(r["amount_due"]), "donation": _money(r["donation"]) or 0.0,
             "amount_paid": _money(r["amount_paid"]), "paid_at": r["paid_at"],
             "stripe_session_id": r["stripe_session_id"],
+            **_price(r),
         }
 
-    def set_amount_due(self, job_id: str, amount: float) -> None:
-        self.sb.table("jobs").update({"amount_due": amount}).eq("id", job_id).eq("payment_status", "unpaid").execute()
+    def set_price(self, job_id, *, subtotal, tax_amount, total, lawn_sqft=None) -> None:
+        fields = {"subtotal": subtotal, "tax_amount": tax_amount, "amount_due": total}
+        if lawn_sqft is not None:
+            fields["lawn_sqft"] = lawn_sqft
+        self.sb.table("jobs").update(fields).eq("id", job_id).eq("payment_status", "unpaid").execute()
 
     def record_checkout(self, job_id: str, session_id: str) -> None:
         self.sb.table("jobs").update({"stripe_session_id": session_id}).eq("id", job_id).execute()
@@ -365,7 +385,7 @@ class SupabaseRepository:
 
     # ---------- Owner dashboard + customer visit ----------
     JOB_COLS = ("id, address, service, status, zone_key, scheduled_date, created_at, payment_method, payment_status,"
-                " amount_due, amount_paid, donation, access_code, pay_token")
+                " amount_due, amount_paid, donation, access_code, pay_token, subtotal, tax_rate, tax_amount, lawn_sqft")
 
     @staticmethod
     def _one(v):
@@ -388,7 +408,7 @@ class SupabaseRepository:
     def list_jobs_between(self, start: date, end: date) -> list[dict]:
         return (
             self.sb.table("jobs")
-            .select("scheduled_date, status, payment_status, amount_due, amount_paid, donation")
+            .select("scheduled_date, status, payment_status, amount_due, amount_paid, donation, tax_amount")
             .gte("scheduled_date", start.isoformat()).lte("scheduled_date", end.isoformat())
             .neq("status", "cancelled").execute()
         ).data
@@ -439,7 +459,8 @@ class MemoryRepository:
         return sum(1 for j in self.jobs.values() if j["scheduled_date"] == day and j["status"] in ACTIVE_STATUSES)
 
     def create_job(self, *, name, phone, address, geo, service, scheduled_date, service_minutes,
-                   zone_key, quoted_price, payment_method="cash", pay_token=None, access_code=None) -> dict:
+                   zone_key, quoted_price, payment_method="cash", pay_token=None, access_code=None,
+                   amount_due=None, lawn_sqft=None, subtotal=None, tax_rate=None, tax_amount=None) -> dict:
         with self._lock:
             cust = next((c for c in self.customers.values() if c["phone"] == phone), None)
             if cust is None:
@@ -452,7 +473,9 @@ class MemoryRepository:
                 "service": Service(service).value, "scheduled_date": scheduled_date,
                 "service_minutes": service_minutes, "status": "pending",
                 "zone_key": zone_key, "quoted_price": quoted_price,
-                "payment_method": payment_method, "payment_status": "unpaid", "amount_due": quoted_price,
+                "payment_method": payment_method, "payment_status": "unpaid",
+                "amount_due": amount_due if amount_due is not None else quoted_price,
+                "lawn_sqft": lawn_sqft, "subtotal": subtotal, "tax_rate": tax_rate, "tax_amount": tax_amount,
                 "donation": 0.0, "amount_paid": None, "paid_at": None, "pay_token": pay_token,
                 "access_code": access_code,
                 "stripe_session_id": None,
@@ -506,6 +529,7 @@ class MemoryRepository:
             "customer_name": c["name"], "phone": c["phone"], "address": j["address"],
             "lat": j["lat"], "lng": j["lng"], "service": j["service"],
             **{k: j[k] for k in PAYMENT_FIELDS},
+            **_price(j),
         }
 
     def get_route(self, day: date) -> dict | None:
@@ -563,12 +587,15 @@ class MemoryRepository:
             "address": j["address"], "status": j["status"], "customer_name": self.customers[j["customer_id"]]["name"],
             "paid_at": j["paid_at"], "stripe_session_id": j["stripe_session_id"],
             **{k: j[k] for k in PAYMENT_FIELDS if k != "pay_token"},
+            **_price(j),
         }
 
-    def set_amount_due(self, job_id: str, amount: float) -> None:
+    def set_price(self, job_id, *, subtotal, tax_amount, total, lawn_sqft=None) -> None:
         j = self.jobs[job_id]
         if j["payment_status"] == "unpaid":
-            j["amount_due"] = amount
+            j.update(subtotal=subtotal, tax_amount=tax_amount, amount_due=total)
+            if lawn_sqft is not None:
+                j["lawn_sqft"] = lawn_sqft
 
     def record_checkout(self, job_id: str, session_id: str) -> None:
         self.jobs[job_id]["stripe_session_id"] = session_id
@@ -669,7 +696,7 @@ class MemoryRepository:
         return sorted(out, key=lambda j: (j["sequence"] is None, j["sequence"] or 0, j["created_at"] or ""))
 
     def list_jobs_between(self, start: date, end: date) -> list[dict]:
-        return [{k: j[k] for k in ("scheduled_date", "status", "payment_status", "amount_due", "amount_paid", "donation")}
+        return [{k: j.get(k) for k in ("scheduled_date", "status", "payment_status", "amount_due", "amount_paid", "donation", "tax_amount")}
                 for j in self.jobs.values() if start <= j["scheduled_date"] <= end and j["status"] != "cancelled"]
 
     def get_visit(self, access_code: str) -> dict | None:

@@ -48,6 +48,9 @@ class JobRequest(BaseModel):
     # Coordinates from the Google address dropdown, when the customer used it.
     lat: float | None = Field(default=None, ge=-90, le=90)
     lng: float | None = Field(default=None, ge=-180, le=180)
+    # Mowing: lawn size (a size from the picker, or an exact number). Crew confirms on site.
+    lawn_size: Literal["small", "medium", "large", "xl"] | None = None
+    lawn_sqft: int | None = Field(default=None, ge=100, le=200_000)
 
     @field_validator("name", "address")
     @classmethod
@@ -83,6 +86,12 @@ class JobCreated(BaseModel):
     pay_url: str | None = None  # card customers: their private payment page
     access_code: str | None = None  # e.g. "K7MX-3QPA": opens the customer's visit page
     visit_url: str | None = None
+    # Price breakdown (None = priced on site). total = subtotal + tax.
+    lawn_sqft: int | None = None
+    subtotal: float | None = None
+    tax_rate: float | None = None
+    tax: float | None = None
+    total: float | None = None
 
 
 class GeoPoint(BaseModel):
@@ -131,6 +140,11 @@ class StopView(BaseModel):
     amount_due: float | None = None
     amount_paid: float | None = None
     donation: float = 0.0
+    subtotal: float | None = None
+    tax_rate: float | None = None
+    tax_amount: float | None = None
+    lawn_sqft: int | None = None
+    flat_fee: float | None = None   # mowing minimum for this stop's area (for the crew's live price)
 
 
 class RouteView(BaseModel):
@@ -179,7 +193,9 @@ class CrewProfileUpdate(BaseModel):
 
 
 class CompleteStopRequest(BaseModel):
-    amount_due: float | None = Field(default=None, gt=0, le=5000)       # final price for quoted services
+    price: float | None = Field(default=None, gt=0, le=5000)          # quoted services: price before tax
+    amount_due: float | None = Field(default=None, gt=0, le=5000)     # older crew app: same as `price`
+    lawn_sqft: int | None = Field(default=None, ge=100, le=200_000)    # mowing: corrected lawn size
     cash_collected: float | None = Field(default=None, ge=0, le=10000)  # total cash handed to the crew
 
 
@@ -187,3 +203,12 @@ class AddressCheck(BaseModel):
     address: str = Field(min_length=5, max_length=300)
     lat: float | None = Field(default=None, ge=-90, le=90)
     lng: float | None = Field(default=None, ge=-180, le=180)
+
+
+class QuoteRequest(BaseModel):
+    address: str = Field(min_length=5, max_length=300)
+    service: Service
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lng: float | None = Field(default=None, ge=-180, le=180)
+    lawn_size: Literal["small", "medium", "large", "xl"] | None = None
+    lawn_sqft: int | None = Field(default=None, ge=100, le=200_000)

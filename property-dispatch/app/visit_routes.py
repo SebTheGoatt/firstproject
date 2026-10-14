@@ -109,6 +109,8 @@ def register_visit_routes(app: FastAPI, settings: Settings, crew_auth):
             "payment": {
                 "method": v["payment_method"], "status": v["payment_status"],
                 "amount_due": v["amount_due"], "amount_paid": v["amount_paid"], "donation": v["donation"],
+                "subtotal": v.get("subtotal"), "tax": v.get("tax_amount"), "tax_rate": v.get("tax_rate"),
+                "lawn_sqft": v.get("lawn_sqft"),
                 "pay_url": f"/pay/{v['pay_token']}" if v["pay_token"] and v["payment_status"] == "unpaid" else None,
             },
             "crew_member": {
@@ -158,6 +160,8 @@ def register_visit_routes(app: FastAPI, settings: Settings, crew_auth):
             "donations": round(sum(j["donation"] or 0 for j in paid), 2),
             "unpaid": round(sum(j["amount_due"] or 0 for j in unpaid), 2),
             "quoted_on_site": sum(1 for j in jobs if j["amount_due"] is None),
+            # Sales tax actually collected (paid jobs), for the owner's Texas sales-tax filing.
+            "sales_tax": round(sum(j.get("tax_amount") or 0 for j in paid), 2),
         }
 
     @app.get("/api/owner/day/{day}", dependencies=[Depends(owner)])

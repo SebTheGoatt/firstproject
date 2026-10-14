@@ -550,3 +550,31 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
 label.check { display: flex; align-items: center; gap: 8px; font-weight: 500; margin: 6px 0; }
 label.check input { width: 18px; height: 18px; }
 @media (max-width: 400px) { .week { gap: 4px; } .day-card { padding: 6px 0; } .dc-money { display: none; } }
+
+/* ---------- Booking steps, lawn sizes, live price ---------- */
+.step { padding-block: 6px 14px; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+.step:last-of-type { border-bottom: 0; }
+.step-title { display: flex; align-items: center; gap: 10px; margin: 4px 0 12px; font-size: 1.05rem; }
+.step-title span { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--brand); color: var(--brand-ink); font-size: 0.85rem; flex: none; }
+.sizes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sizes input { position: absolute; opacity: 0; pointer-events: none; }
+.sizes label { margin: 0; display: grid; gap: 1px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); cursor: pointer; font-weight: 500; }
+.sizes label span { font-size: 0.85rem; color: var(--text); }
+.sizes label small { color: var(--muted); font-size: 0.78rem; }
+.sizes input:checked + label { border-color: var(--brand); background: var(--brand-soft); }
+.sizes input:focus-visible + label { outline: 3px solid color-mix(in srgb, var(--brand) 45%, transparent); }
+.exact-row { margin: 12px 0 4px; }
+.sqft-input { display: flex; align-items: center; gap: 8px; }
+.sqft-input input { max-width: 160px; }
+.price-box { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+.price-box > p { margin: 0; }
+.price-lines { margin: 0; display: grid; }
+.price-lines div { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px dashed var(--border); }
+.price-lines dt { color: var(--muted); }
+.price-lines dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
+.price-lines .total { border-bottom: 0; padding-top: 10px; font-size: 1.15rem; }
+.price-lines .total dt { color: var(--text); font-weight: 700; }
+.price-lines .total dd { font-weight: 800; }
+#price-note { margin-top: 8px; }
+.finish-total { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.finish-total:empty { display: none; }

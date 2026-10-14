@@ -45,8 +45,11 @@ class StripeClient:
 
     def create_checkout(
         self, *, job_id: str, service_label: str, service_date: str, amount_due: float, donation: float,
-        success_url: str, cancel_url: str, phone: str | None = None,
+        success_url: str, cancel_url: str, subtotal: float | None = None, tax: float | None = None,
+        tax_rate: float | None = None,
     ) -> dict:
+        """One Stripe line for the service, one for Texas sales tax, one for an optional donation.
+        Checkout offers whichever methods are on in the Stripe Dashboard (cards, Apple Pay, Google Pay…)."""
         data: dict[str, str] = {
             "mode": "payment",
             "success_url": success_url,
@@ -56,17 +59,22 @@ class StripeClient:
             "metadata[amount_due_cents]": str(to_cents(amount_due)),
             "metadata[donation_cents]": str(to_cents(donation)),
             "payment_intent_data[description]": f"{self.settings.business_name}: {service_label} on {service_date}",
-            "line_items[0][quantity]": "1",
-            "line_items[0][price_data][currency]": "usd",
-            "line_items[0][price_data][unit_amount]": str(to_cents(amount_due)),
-            "line_items[0][price_data][product_data][name]": f"{service_label} ({service_date})",
         }
+        lines: list[tuple[str, float]] = []
+        if subtotal is not None and tax is not None and abs(subtotal + tax - amount_due) < 0.005:
+            lines.append((f"{service_label} ({service_date})", subtotal))
+            if tax > 0:
+                lines.append((f"Texas sales tax ({tax_rate * 100:.2f}%)" if tax_rate else "Texas sales tax", tax))
+        else:
+            lines.append((f"{service_label} ({service_date})", amount_due))
         if donation > 0:
+            lines.append(("Donation to a veteran-owned business (not taxed). Thank you!", donation))
+        for i, (name, amount) in enumerate(lines):
             data.update({
-                "line_items[1][quantity]": "1",
-                "line_items[1][price_data][currency]": "usd",
-                "line_items[1][price_data][unit_amount]": str(to_cents(donation)),
-                "line_items[1][price_data][product_data][name]": "Donation to a veteran-owned business. Thank you!",
+                f"line_items[{i}][quantity]": "1",
+                f"line_items[{i}][price_data][currency]": "usd",
+                f"line_items[{i}][price_data][unit_amount]": str(to_cents(amount)),
+                f"line_items[{i}][price_data][product_data][name]": name,
             })
         try:
             resp = self.client.post(f"{self.API}/checkout/sessions", data=data,
