@@ -170,7 +170,8 @@ def create_app(
             "latest_date": now.date() + timedelta(days=settings.booking_horizon_days),
             "freeze_hour": settings.freeze_hour,
             "services": [{"value": s.value, "label": SERVICE_LABELS[s]} for s in Service],
-            "zones": [{"name": z.name, "mow_rate": z.mow_rate} for z in SERVICE_ZONES],
+            "zones": [{"key": z.key, "name": z.name, "mow_rate": z.mow_rate, "bbox": list(z.bbox)}
+                      for z in SERVICE_ZONES],
             "business_name": settings.business_name,
         }
 

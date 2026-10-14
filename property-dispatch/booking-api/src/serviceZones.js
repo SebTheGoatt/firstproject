@@ -13,6 +13,13 @@ export const SERVICE_ZONES = {
     boundingBox: [-95.4200, 30.1000, -95.2800, 30.1800],
     targetRateMow: 55.00, // Premium pricing for larger luxury lots
   },
+  KLEIN_CORE: {
+    name: "Klein",
+    // ZIPs 77379 and 77388: FM 1960 (south) to just below 77389 (north),
+    // west of Champion Forest Dr to just west of I-45.
+    boundingBox: [-95.5850, 29.9950, -95.4250, 30.0900],
+    targetRateMow: 55.00,
+  },
   I69_HIGH_DENSITY_SPINE: {
     name: "New Caney & Splendora High-Density Spine",
     // Concentrated spine covering The Canopies, Gemini, and Porters Mill developments.

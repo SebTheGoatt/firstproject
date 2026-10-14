@@ -269,3 +269,36 @@ html { scroll-behavior: smooth; }
 @media (display-mode: standalone) {
   body:not(.site) { padding-top: env(safe-area-inset-top, 0px); }
 }
+
+/* ---------- Service-area map ---------- */
+.area-explorer { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr); gap: 16px; align-items: stretch; margin-bottom: 16px; }
+.area-explorer .area-list { grid-template-columns: 1fr; margin: 0; align-content: start; }
+.area-explorer .area { cursor: pointer; border-left: 5px solid var(--zone, var(--brand)); transition: background 0.15s, box-shadow 0.15s; }
+.area-explorer .area .area-price { color: var(--text); }
+.area-explorer .area.is-active, .area-explorer .area:hover { background: var(--surface); box-shadow: var(--shadow), 0 0 0 2px color-mix(in srgb, var(--zone) 40%, transparent); }
+.area-map-wrap { min-width: 0; }
+.area-map { height: 100%; min-height: 440px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); background: var(--bg); }
+
+.zone-pin {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px 4px 8px; border-radius: 999px; border: 2px solid #fff;
+  background: var(--zone); color: #fff; font: 600 13px/1.2 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.25); cursor: pointer; white-space: nowrap;
+}
+.zone-pin span { font-weight: 500; opacity: 0.92; }
+.zone-pin:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.zone-popup { display: grid; gap: 6px; color: #1b2420; font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.zone-popup .btn { margin-top: 4px; color: #fff; }
+.maplibregl-popup-content { border-radius: 12px; padding: 14px 16px; }
+
+@media (max-width: 860px) {
+  .area-explorer { grid-template-columns: 1fr; }
+  .area-map-wrap { order: -1; }
+  .area-map { min-height: 340px; }
+  .area-explorer .area-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 520px) {
+  .area-explorer .area-list { grid-template-columns: 1fr; }
+  .zone-pin { font-size: 12px; padding: 3px 8px 3px 6px; }
+}
+.section, .hero { scroll-margin-top: 72px; } /* clear the sticky header on #anchor jumps */

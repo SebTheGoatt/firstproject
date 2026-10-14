@@ -74,6 +74,9 @@ mowing rate. After geocoding, an address outside every zone is turned away; insi
 one, the job stores its `zone_key` and (for mowing) the `quoted_price`. Boxes are
 `(min_lng, min_lat, max_lng, max_lat)`, and the app refuses to start if a box is
 inverted, out of range, or overlaps another. To change a zone, edit that file and redeploy.
+The home page draws every zone on an interactive map (MapLibre + OpenFreeMap tiles:
+free, no API key, commercial use allowed) with price pins, so a new or resized
+zone shows up on the map automatically.
 
 **Nightly run.** Loads tomorrow's `pending`/`scheduled` jobs, builds a driving
 matrix from OSRM (falls back to straight-line × 1.3 if OSRM is down), solves

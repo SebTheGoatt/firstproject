@@ -31,6 +31,15 @@ SERVICE_ZONES: tuple[ServiceZone, ...] = (
         mow_rate=55.00,  # premium pricing for larger luxury lots
     ),
     ServiceZone(
+        key="KLEIN_CORE",
+        name="Klein",
+        # ZIPs 77379 and 77388: FM 1960 (south) to just below 77389 (north),
+        # west of Champion Forest Dr to just west of I-45. Stops at -95.425 so
+        # it never touches the Spring corridor or takes in Old Town Spring.
+        bbox=(-95.5850, 29.9950, -95.4250, 30.0900),
+        mow_rate=55.00,
+    ),
+    ServiceZone(
         key="I69_HIGH_DENSITY_SPINE",
         name="New Caney & Splendora High-Density Spine",
         # The Canopies, Gemini, and Porters Mill developments.
