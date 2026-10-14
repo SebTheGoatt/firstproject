@@ -12,7 +12,7 @@
     GET  /api/routes/{date}         crew: optimized route with map links
     POST /api/stops/{id}/complete   crew: mark done → text next customer
     POST /webhooks/job-completed    external systems: same as above
-    POST /internal/nightly          HTTP trigger for the 8 PM run
+    POST /internal/nightly          HTTP trigger for the 5 PM route build
     GET  /healthz
 """
 
@@ -40,8 +40,9 @@ from .models import (SERVICE_LABELS, SERVICE_MINUTES, AddressCheck, CompleteStop
                      JobRequest, RouteView, Service, StopView)
 from .routing.matrix import haversine_m
 from .nightly import run_nightly
-from .notify import TwilioClient, notify_next_customer, send_pay_link
+from .notify import TwilioClient, booking_message, notify_next_customer, send_pay_link, send_text
 from .pay_routes import register_pay_routes
+from .visit_routes import format_code, new_access_code, register_visit_routes
 from .payments import StripeClient
 from .zones import SERVICE_ZONES, find_zone
 
@@ -189,8 +190,17 @@ def create_app(
         resp.headers["X-Robots-Tag"] = "noindex"
         return resp
 
+    @app.get("/visit", include_in_schema=False)
+    @app.get("/visit/{code}", include_in_schema=False)
+    def visit_page(code: str | None = None):
+        resp = page("visit.html")
+        resp.headers["Referrer-Policy"] = "no-referrer"   # keep the access code out of Referer headers
+        resp.headers["X-Robots-Tag"] = "noindex"
+        return resp
+
     crew_auth = register_crew_routes(app, settings)
     register_pay_routes(app, settings, app.state.stripe)
+    register_visit_routes(app, settings, crew_auth)
 
     @app.get("/sw.js", include_in_schema=False)
     def service_worker():
@@ -280,7 +290,7 @@ def create_app(
         }
 
     @app.post("/api/jobs", response_model=JobCreated, status_code=201)
-    def create_job(body: JobRequest, repo: Repository = Depends(get_repo)):
+    def create_job(body: JobRequest, request: Request, repo: Repository = Depends(get_repo)):
         now = local_now(settings)
         try:
             validate_booking(body.scheduled_date, now, repo.count_active_jobs(body.scheduled_date), settings)
@@ -295,21 +305,28 @@ def create_app(
         if body.payment_method == "card" and app.state.stripe is None:
             raise HTTPException(status_code=422, detail="Card payments aren't available yet. Please choose cash.")
         pay_token = secrets.token_urlsafe(18)
+        access_code = new_access_code()
 
         job = repo.create_job(
             name=body.name, phone=body.phone, address=body.address, geo=geo,
             service=body.service, scheduled_date=body.scheduled_date,
             service_minutes=SERVICE_MINUTES[body.service],
             zone_key=zone.key, quoted_price=price,
-            payment_method=body.payment_method, pay_token=pay_token,
+            payment_method=body.payment_method, pay_token=pay_token, access_code=access_code,
         )
+        base = str(request.base_url).rstrip("/")
+        visit_url = f"{base}/visit/{access_code}"
+        send_text(app.state.sms, body.phone, booking_message(
+            body.name.split()[0], settings, SERVICE_LABELS[body.service],
+            body.scheduled_date.strftime("%A, %b %-d"), format_code(access_code), visit_url))
         # Show the customer the house-level match when we have one; otherwise echo
         # their own address back (a street-level match would drop their house number).
         shown = geo.formatted_address if geo.precision == "address" else body.address
         return JobCreated(id=job["id"], scheduled_date=body.scheduled_date, service=body.service,
                           formatted_address=shown, lat=geo.lat, lng=geo.lng,
                           zone_name=zone.name, quoted_price=price, payment_method=body.payment_method,
-                          pay_url=f"/pay/{pay_token}" if body.payment_method == "card" else None)
+                          pay_url=f"/pay/{pay_token}" if body.payment_method == "card" else None,
+                          access_code=format_code(access_code), visit_url=f"/visit/{access_code}")
 
     # ---------- Crew dispatch -----------------------------------------
     @app.get("/api/routes/{day}", response_model=RouteView, dependencies=[Depends(crew_auth)])

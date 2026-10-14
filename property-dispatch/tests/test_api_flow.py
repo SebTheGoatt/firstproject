@@ -10,6 +10,11 @@ TOMORROW = date(2026, 10, 15)
 CREW = {"X-Crew-Token": "crew"}
 
 
+def on_the_way(sms):
+    """Only the "heading your way" texts (bookings also send a confirmation text)."""
+    return [m for m in sms.sent if "heading your way" in m[1]]
+
+
 def book(client, letter, phone_suffix, service="mowing", day=TOMORROW):
     return client.post("/api/jobs", json={
         "name": f"Customer {letter}",
@@ -41,7 +46,7 @@ def test_full_day_flow(client, repo, settings, sms):
     assert "origin=" in route["full_route_google_urls"][0]  # starts at base before any work
     assert route["timezone"] == "America/Chicago"
     etas = [datetime.fromisoformat(s["eta"]).astimezone(TZ) for s in stops]
-    assert etas == sorted(etas) and etas[0].hour == 8
+    assert etas == sorted(etas) and etas[0].hour == 7  # first stop around the 7 AM start
 
     # Crew completes stop 1 → stop 2's customer is texted
     r = client.post(f"/api/stops/{stops[0]['stop_id']}/complete", headers=CREW).json()
@@ -52,7 +57,7 @@ def test_full_day_flow(client, repo, settings, sms):
     # Retrying the same completion must not double-text
     r = client.post(f"/api/stops/{stops[0]['stop_id']}/complete", headers=CREW).json()
     assert r["notification"]["reason"] == "already_completed"
-    assert len(sms.sent) == 1
+    assert len(on_the_way(sms)) == 1
 
     # Mid-day, the full-route link starts from live location
     route = client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()
@@ -64,7 +69,7 @@ def test_full_day_flow(client, repo, settings, sms):
     assert sms.sent[-1][0] == stops[3]["phone"]
     r = client.post(f"/api/stops/{stops[1]['stop_id']}/complete", headers=CREW).json()
     assert r["notification"]["reason"] == "already_notified"
-    assert len(sms.sent) == 2
+    assert len(on_the_way(sms)) == 2
 
     for s in stops[3:]:
         r = client.post(f"/api/stops/{s['stop_id']}/complete", headers=CREW).json()
@@ -115,7 +120,7 @@ def test_webhook_and_http_nightly(client, repo, sms):
     # Supabase DB-webhook shape: non-completion updates are ignored
     r = client.post("/webhooks/job-completed", headers=hook,
                     json={"type": "UPDATE", "record": {"id": stops[0]["job_id"], "status": "scheduled"}})
-    assert r.json()["ignored"] is True and not sms.sent
+    assert r.json()["ignored"] is True and not on_the_way(sms)
 
     r = client.post("/webhooks/job-completed", headers=hook,
                     json={"type": "UPDATE", "record": {"id": stops[0]["job_id"], "status": "completed"}})
@@ -169,11 +174,11 @@ def test_nightly_main_time_guard_and_catch_up(monkeypatch, repo, settings):
         monkeypatch.setattr(nightly, "local_now", lambda s: NOW.replace(hour=hour))
         return nightly.main([])
 
-    at(19)                          # 7 PM: before the freeze → nothing
+    at(16)                          # 4 PM: before the 5 PM freeze → nothing
     assert calls == []
-    at(21)                          # 8 PM run was missed; 9 PM catches up
+    at(18)                          # 5 PM run was missed; 6 PM catches up
     assert calls == [TOMORROW]
-    at(22)                          # route exists → no rebuild
+    at(19)                          # route exists → no rebuild
     assert calls == [TOMORROW]
     nightly.main(["--force"])       # explicit rebuild still works
     assert calls == [TOMORROW, TOMORROW]

@@ -1,15 +1,15 @@
-"""Nightly freeze + route optimization (runs at 8 PM business-local time).
+"""Next-day freeze + route optimization (runs at close of business, 5 PM local).
 
-    python -m app.nightly                 # optimize tomorrow, only if it's 8 PM local
+    python -m app.nightly                 # optimize tomorrow, if it's past the 5 PM cutoff
     python -m app.nightly --force         # optimize tomorrow now
     python -m app.nightly --date 2026-10-15 --force
 
-Hosted cron services schedule in UTC, and 8 PM Central is 01:00 UTC in
-summer but 02:00 UTC in winter. Schedule it hourly from 01:00 to 04:00 UTC.
-Each run exits before the local freeze hour, builds tomorrow's route at or
-after it, and skips if that route already exists. So the first run after
-8 PM does the work, and later runs catch up if that one was missed (host
-outage, maintenance). --force rebuilds regardless.
+Hosted cron services schedule in UTC, and 5 PM Central is 22:00 UTC in
+summer but 23:00 UTC in winter. Schedule it hourly 22:00-02:00 UTC.
+Each run exits before the local freeze hour (FREEZE_HOUR, default 17),
+builds tomorrow's route at or after it, and skips if that route already
+exists. So the first run after 5 PM does the work, and later runs catch up
+if that one was missed (host outage, maintenance). --force rebuilds regardless.
 """
 
 import argparse

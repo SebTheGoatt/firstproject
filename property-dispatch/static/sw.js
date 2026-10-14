@@ -61,8 +61,8 @@ self.addEventListener("fetch", (event) => {
     return; // live data only
   } else if (url.pathname.startsWith("/static/")) {
     event.respondWith(cacheFirst(request));
-  } else if (url.pathname.startsWith("/pay/")) {
-    return; // private payment pages: never stored on the device
+  } else if (url.pathname.startsWith("/pay/") || url.pathname.startsWith("/visit") || url.pathname.startsWith("/media/visit/")) {
+    return; // private payment and visit pages: never stored on the device
   } else if (request.mode === "navigate") {
     event.respondWith(networkFirst(request, SHELL));
   }

@@ -74,7 +74,7 @@
       <div class="field">
         <label for="date">Service day</label>
         <input id="date" name="scheduled_date" type="date" required>
-        <div class="hint" id="date-hint">Next-day bookings close at 8 PM.</div>
+        <div class="hint" id="date-hint">Next-day bookings close at 5 PM.</div>
       </div>
 
       <fieldset>
@@ -190,7 +190,7 @@
       dateInput.max = info.latest_date;
       dateInput.value = info.earliest_date;
       document.getElementById("date-hint").textContent =
-        `Earliest available: ${fmtDay(info.earliest_date)}. Next-day bookings close at 8 PM.`;
+        `Earliest available: ${fmtDay(info.earliest_date)}. Next-day bookings close at ${((info.freeze_hour + 11) % 12) + 1} ${info.freeze_hour < 12 ? "AM" : "PM"}.`;
       const list = document.getElementById("area-list");
       for (const z of info.zones) {
         const li = document.createElement("li");
@@ -248,6 +248,17 @@
           ? `${body.zone_name}: ${money(body.quoted_price)} per mow.`
           : `${body.zone_name}. We'll confirm pricing on site.`;
         ok.append(h, p, z);
+        if (body.access_code) {
+          const codeBox = document.createElement("div");
+          codeBox.className = "code-box";
+          const label = document.createElement("span"); label.textContent = "Your access code";
+          const code = document.createElement("strong"); code.textContent = body.access_code;
+          const note = document.createElement("span");
+          note.textContent = "Save it: it opens your visit page with arrival time, payment and before & after photos.";
+          const link = document.createElement("a"); link.className = "btn"; link.href = body.visit_url; link.textContent = "View my visit";
+          codeBox.append(label, code, note, link);
+          ok.append(codeBox);
+        }
         if (body.pay_url) {
           const pay = document.createElement("a");
           pay.className = "btn btn-primary";

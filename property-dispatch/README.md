@@ -6,7 +6,7 @@ On-demand scheduling and route optimization for a property-service crew
 ```
  Customer ──► Intake form ──► FastAPI ──► Nominatim (geocode) ──► Supabase Postgres
                                                                       │
- 8 PM nightly ──► freeze tomorrow ──► OSRM matrix ──► OR-Tools TSP ───┘ routes + route_stops
+ 5 PM daily  ──► freeze tomorrow ──► OSRM matrix ──► OR-Tools TSP ───┘ routes + route_stops
                                                                       │
  Crew phone ◄── /crew dashboard ◄── optimized stops + Apple/Google Maps deep links
      │
@@ -20,11 +20,11 @@ On-demand scheduling and route optimization for a property-service crew
 | `supabase/migrations/…_init.sql` | Schema: `customers`, `jobs`, `routes`, `route_stops`, `save_route()` transaction, RLS |
 | `app/main.py` | FastAPI app: pages, intake API, crew API, webhooks |
 | `app/zones.py` | Geo-fenced service zones + mowing rates |
-| `app/booking.py` | Runway quota + 8 PM time-window freeze rules |
+| `app/booking.py` | Runway quota + 5 PM time-window freeze rules |
 | `app/geocode.py` | Nominatim geocoder (rate-limited to 1 req/s per its policy) |
 | `app/routing/matrix.py` | OSRM driving distance/time matrix, haversine fallback |
 | `app/routing/solver.py` | OR-Tools TSP with fixed start (base) and end point |
-| `app/nightly.py` | The 8 PM job: load tomorrow → optimize → save route + freeze jobs |
+| `app/nightly.py` | The 5 PM job: load tomorrow → optimize → save route + freeze jobs |
 | `app/deeplinks.py` | Google Maps / Apple Maps navigation URLs |
 | `app/notify.py` | Twilio "crew is heading your way" text, never sent twice |
 | `app/db.py` | Supabase repository + in-memory repository (demo/tests) |
@@ -83,6 +83,27 @@ box. Google's coordinates are only a hint: the server uses them when its own loo
 just the street (and Google's point is within 1.5 km of it) or nothing at all (brand-new
 subdivisions), and never outside Texas.
 
+## Owner dashboard, customer access codes, before/after photos
+
+**Owner dashboard** (`/crew` → Owner sign-in → **Dashboard**, the owner's first tab):
+- a 7-day strip with bookings per day against `DAILY_JOB_QUOTA` and expected revenue;
+- the selected day's totals: bookings, expected, collected, donations, still owed;
+- route status, with **Build route now** / **Rebuild route** (refused once any stop on
+  that day is finished, so the crew's route never changes under them);
+- every booking as soon as it's made (before the route exists), with status, payment,
+  phone, and the customer's access code to copy.
+
+**Customer access codes.** Every booking gets an 8-character code such as `K7MX-3QPA`
+(no look-alike characters). It's shown on the booking confirmation and texted with a link
+to `/visit/{code}`, where the customer sees their status (booked → route planned → on the
+way → done), arrival window, the crew member who did the job, payment (with a pay link for
+card customers), and their **before and after photos**. Lookups are rate-limited per IP.
+
+**Before/after photos.** On each stop the crew taps **Before photo** on arrival; when
+finishing, the **after photo** goes to the customer's visit page. These photos are private
+to that customer's code (`/media/visit/{id}?code=…`). A crew member can tick "Also show it
+on my public profile" to add the after photo to their public portfolio.
+
 ## Pay your way (cash or card) and donations
 
 At booking, customers choose **Cash to the crew** or **Card in the app**.
@@ -125,8 +146,8 @@ At booking, customers choose **Cash to the crew** or **Card in the app**.
 
 ## How the rules work
 
-**Freeze.** A service day locks at `FREEZE_HOUR` (default 20:00, America/Chicago)
-on the day before. After 8 PM tonight, tomorrow can't be booked; the form's
+**Freeze.** A service day locks at `FREEZE_HOUR` (default 17:00, close of business,
+America/Chicago) on the day before. After 5 PM today, tomorrow can't be booked; the form's
 date picker automatically starts at the earliest open day.
 
 **Quota.** Each day accepts at most `DAILY_JOB_QUOTA` active jobs; the next
@@ -192,7 +213,7 @@ Without Twilio credentials the "next customer" text is logged instead of sent.
    takes a few days, so start this first.
 3. Copy the Account SID, Auth Token, and the number in E.164 form (`+12815550000`).
 
-### 3. Render (web app + 8 PM cron), using `render.yaml` at the repo root
+### 3. Render (web app + 5 PM cron), using `render.yaml` at the repo root
 1. Push this repo to GitHub.
 2. Render → **New → Blueprint** → select the repo. It creates:
    - `property-dispatch`: the web service (Docker)
@@ -206,12 +227,18 @@ Without Twilio credentials the "next customer" text is logged instead of sent.
 4. On the crew's phones, open `https://<your-app>.onrender.com/crew` → enter the code →
    Share → **Add to Home Screen**.
 
-**Why the cron runs hourly 01:00-04:00 UTC:** cron schedules are in UTC, and 8 PM
-Central is 01:00 UTC during daylight time but 02:00 UTC in winter. Each run exits
-before 8 PM local, builds tomorrow's route at or after it, and does nothing if the
-route already exists. The first run after 8 PM does the work; the later ones catch
-up if that run was missed (host outage or maintenance). The last run is 11 PM
-Central at the latest, so it never crosses midnight.
+**Why the cron runs hourly 22:00-02:00 UTC:** cron schedules are in UTC, and 5 PM
+Central is 22:00 UTC during daylight time but 23:00 UTC in winter. Each run exits
+before 5 PM local, builds tomorrow's route at or after it, and does nothing if the
+route already exists. The first run after 5 PM does the work; the later ones catch
+up if that run was missed (host outage or maintenance). The last run is 9 PM
+Central at the latest, so it never crosses midnight. The first stop is planned for
+`CREW_START_TIME` (default 07:00). Texas has no statewide lawn-hours law; cities and
+HOAs set noise rules, so adjust it if a neighborhood requires a later start.
+
+**After changing the schedule in `render.yaml`:** a Blueprint only re-reads the file
+when it syncs. In Render open the Blueprint and click **Manual sync** (or turn on
+auto-sync), then check the cron job's schedule shows `0 22,23,0,1,2 * * *`.
 
 The app refuses to start in `supabase` mode if any of the three secrets is
 empty or still `change-me`.
@@ -221,16 +248,16 @@ If you'd rather not run a cron service, enable the `pg_cron` and `pg_net`
 extensions and have Postgres call the HTTP trigger:
 
 ```sql
-select cron.schedule('nightly-route-cdt', '0 1 * * *', $$
+select cron.schedule('route-build-cdt', '0 22 * * *', $$
   select net.http_post(
     url     := 'https://<your-app>/internal/nightly',
     headers := '{"X-Cron-Secret": "<CRON_SECRET>"}'::jsonb)
 $$);
--- plus an identical '0 2 * * *' job named 'nightly-route-cst'
+-- plus an identical '0 23 * * *' job named 'route-build-cst'
 ```
 
-The HTTP endpoint doesn't do the 8 PM check (it always builds tomorrow), so
-during daylight time disable the 02:00 job, and in winter disable the 01:00 job.
+The HTTP endpoint doesn't do the 5 PM check (it always builds tomorrow), so
+during daylight time disable the 23:00 job, and in winter disable the 22:00 job.
 Or simply use the Render cron above, which handles daylight time on its own.
 
 ### Optional: completion webhook from other systems

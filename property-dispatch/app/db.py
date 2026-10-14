@@ -37,12 +37,41 @@ def _money(v: Any) -> float | None:
     return None if v is None else round(float(v), 2)
 
 
+def _owner_job(j: dict, cust: dict, stop: dict | None, crew_name: str | None) -> dict:
+    """One booking as the owner dashboard shows it."""
+    return {
+        "job_id": j["id"], "customer_name": cust["name"], "phone": cust["phone"], "address": j["address"],
+        "service": j["service"], "status": j["status"], "zone_key": j.get("zone_key"),
+        "scheduled_date": str(j["scheduled_date"]), "created_at": j.get("created_at"),
+        "payment_method": j["payment_method"], "payment_status": j["payment_status"],
+        "amount_due": _money(j.get("amount_due")), "amount_paid": _money(j.get("amount_paid")),
+        "donation": _money(j.get("donation")) or 0.0, "access_code": j.get("access_code"),
+        "sequence": stop.get("sequence") if stop else None, "eta": stop.get("eta") if stop else None,
+        "completed_at": stop.get("completed_at") if stop else None, "completed_by_name": crew_name,
+    }
+
+
+def _visit(j: dict, cust: dict, stop: dict | None, member: dict | None, photos: list[dict]) -> dict:
+    """What a customer sees with their access code."""
+    return {
+        "job_id": j["id"], "first_name": cust["name"].split()[0], "address": j["address"],
+        "service": j["service"], "status": j["status"], "scheduled_date": str(j["scheduled_date"]),
+        "payment_method": j["payment_method"], "payment_status": j["payment_status"],
+        "amount_due": _money(j.get("amount_due")), "amount_paid": _money(j.get("amount_paid")),
+        "donation": _money(j.get("donation")) or 0.0, "pay_token": j.get("pay_token"),
+        "eta": stop.get("eta") if stop else None, "on_the_way_at": stop.get("notified_at") if stop else None,
+        "completed_at": stop.get("completed_at") if stop else None,
+        "crew_member": member, "photos": photos,
+    }
+
+
 class Repository(Protocol):
     # Jobs & routes
     def count_active_jobs(self, day: date) -> int: ...
     def create_job(self, *, name: str, phone: str, address: str, geo: GeoPoint, service: Service,
                    scheduled_date: date, service_minutes: int, zone_key: str, quoted_price: float | None,
-                   payment_method: str = "cash", pay_token: str | None = None) -> dict: ...
+                   payment_method: str = "cash", pay_token: str | None = None,
+                   access_code: str | None = None) -> dict: ...
     def list_routable_jobs(self, day: date) -> list[Job]: ...
     def save_route(self, *, day: date, start: tuple[float, float], end: tuple[float, float],
                    total_distance_m: int, total_duration_s: int, matrix_source: str,
@@ -72,6 +101,13 @@ class Repository(Protocol):
     def list_portfolio(self, member_id: str, limit: int = 60) -> list[dict]: ...
     def portfolio_photo(self, item_id: str) -> str | None: ...
     def delete_portfolio(self, item_id: str, member_id: str) -> bool: ...
+    # Owner dashboard + customer visit page
+    def list_jobs(self, day: date) -> list[dict]: ...
+    def list_jobs_between(self, start: date, end: date) -> list[dict]: ...
+    def get_visit(self, access_code: str) -> dict | None: ...
+    def add_job_photo(self, job_id: str, member_id: str | None, kind: str, photo: str) -> dict: ...
+    def list_job_photos(self, job_id: str) -> list[dict]: ...
+    def job_photo(self, photo_id: str) -> dict | None: ...
 
 
 # ======================================================================
@@ -131,7 +167,7 @@ class SupabaseRepository:
         return res.count or 0
 
     def create_job(self, *, name, phone, address, geo, service, scheduled_date, service_minutes,
-                   zone_key, quoted_price, payment_method="cash", pay_token=None) -> dict:
+                   zone_key, quoted_price, payment_method="cash", pay_token=None, access_code=None) -> dict:
         cust = (
             self.sb.table("customers")
             .upsert({"name": name, "phone": phone}, on_conflict="phone").execute()
@@ -150,6 +186,7 @@ class SupabaseRepository:
             "amount_due": quoted_price,
             "payment_method": payment_method,
             "pay_token": pay_token,
+            "access_code": access_code,
         }).execute().data[0]
         return job
 
@@ -326,6 +363,63 @@ class SupabaseRepository:
         rows = self.sb.table("portfolio_items").delete().eq("id", item_id).eq("member_id", member_id).execute().data
         return bool(rows)
 
+    # ---------- Owner dashboard + customer visit ----------
+    JOB_COLS = ("id, address, service, status, zone_key, scheduled_date, created_at, payment_method, payment_status,"
+                " amount_due, amount_paid, donation, access_code, pay_token")
+
+    @staticmethod
+    def _one(v):
+        return (v[0] if v else None) if isinstance(v, list) else v
+
+    def list_jobs(self, day: date) -> list[dict]:
+        rows = (
+            self.sb.table("jobs")
+            .select(self.JOB_COLS + ", customers(name, phone),"
+                    " route_stops(sequence, eta, completed_at, notified_at, crew_members(display_name))")
+            .eq("scheduled_date", day.isoformat()).neq("status", "cancelled").order("created_at").execute()
+        ).data
+        out = []
+        for r in rows:
+            stop = self._one(r.get("route_stops"))
+            member = self._one(stop.get("crew_members")) if stop else None
+            out.append(_owner_job(r, r["customers"], stop, member["display_name"] if member else None))
+        return sorted(out, key=lambda j: (j["sequence"] is None, j["sequence"] or 0, j["created_at"] or ""))
+
+    def list_jobs_between(self, start: date, end: date) -> list[dict]:
+        return (
+            self.sb.table("jobs")
+            .select("scheduled_date, status, payment_status, amount_due, amount_paid, donation")
+            .gte("scheduled_date", start.isoformat()).lte("scheduled_date", end.isoformat())
+            .neq("status", "cancelled").execute()
+        ).data
+
+    def get_visit(self, access_code: str) -> dict | None:
+        rows = (
+            self.sb.table("jobs")
+            .select(self.JOB_COLS + ", customers(name),"
+                    " route_stops(eta, completed_at, notified_at, completed_by)")
+            .eq("access_code", access_code).limit(1).execute()
+        ).data
+        if not rows:
+            return None
+        r = rows[0]
+        stop = self._one(r.get("route_stops"))
+        member = self.get_crew(stop["completed_by"]) if stop and stop.get("completed_by") else None
+        return _visit(r, r["customers"], stop, member, self.list_job_photos(r["id"]))
+
+    def add_job_photo(self, job_id, member_id, kind, photo) -> dict:
+        row = self.sb.table("job_photos").insert(
+            {"job_id": job_id, "member_id": member_id, "kind": kind, "photo": photo}).execute().data[0]
+        return {k: row[k] for k in ("id", "job_id", "kind", "created_at")}
+
+    def list_job_photos(self, job_id: str) -> list[dict]:
+        return (self.sb.table("job_photos").select("id, kind, created_at, member_id")
+                .eq("job_id", job_id).order("created_at").execute().data)
+
+    def job_photo(self, photo_id: str) -> dict | None:
+        rows = self.sb.table("job_photos").select("id, job_id, photo").eq("id", photo_id).limit(1).execute().data
+        return rows[0] if rows else None
+
 
 # ======================================================================
 #  In-memory (local demo + tests)
@@ -339,12 +433,13 @@ class MemoryRepository:
         self.stops: dict[str, dict] = {}
         self.crew: dict[str, dict] = {}
         self.portfolio: dict[str, dict] = {}
+        self.job_photos: dict[str, dict] = {}
 
     def count_active_jobs(self, day: date) -> int:
         return sum(1 for j in self.jobs.values() if j["scheduled_date"] == day and j["status"] in ACTIVE_STATUSES)
 
     def create_job(self, *, name, phone, address, geo, service, scheduled_date, service_minutes,
-                   zone_key, quoted_price, payment_method="cash", pay_token=None) -> dict:
+                   zone_key, quoted_price, payment_method="cash", pay_token=None, access_code=None) -> dict:
         with self._lock:
             cust = next((c for c in self.customers.values() if c["phone"] == phone), None)
             if cust is None:
@@ -359,6 +454,7 @@ class MemoryRepository:
                 "zone_key": zone_key, "quoted_price": quoted_price,
                 "payment_method": payment_method, "payment_status": "unpaid", "amount_due": quoted_price,
                 "donation": 0.0, "amount_paid": None, "paid_at": None, "pay_token": pay_token,
+                "access_code": access_code,
                 "stripe_session_id": None,
                 "frozen_at": None, "completed_at": None, "created_at": _now_iso(),
             }
@@ -557,6 +653,47 @@ class MemoryRepository:
             return False
         del self.portfolio[item_id]
         return True
+
+    # ---------- Owner dashboard + customer visit ----------
+    def _stop_for(self, job_id: str) -> dict | None:
+        return next((st for st in self.stops.values() if st["job_id"] == job_id), None)
+
+    def list_jobs(self, day: date) -> list[dict]:
+        out = []
+        for j in self.jobs.values():
+            if j["scheduled_date"] != day or j["status"] == "cancelled":
+                continue
+            st = self._stop_for(j["id"])
+            m = self.crew.get((st or {}).get("completed_by") or "")
+            out.append(_owner_job(j, self.customers[j["customer_id"]], st, m["display_name"] if m else None))
+        return sorted(out, key=lambda j: (j["sequence"] is None, j["sequence"] or 0, j["created_at"] or ""))
+
+    def list_jobs_between(self, start: date, end: date) -> list[dict]:
+        return [{k: j[k] for k in ("scheduled_date", "status", "payment_status", "amount_due", "amount_paid", "donation")}
+                for j in self.jobs.values() if start <= j["scheduled_date"] <= end and j["status"] != "cancelled"]
+
+    def get_visit(self, access_code: str) -> dict | None:
+        j = next((j for j in self.jobs.values() if access_code and j.get("access_code") == access_code), None)
+        if j is None:
+            return None
+        st = self._stop_for(j["id"])
+        member = self.get_crew(st["completed_by"]) if st and st.get("completed_by") else None
+        return _visit(j, self.customers[j["customer_id"]], st, member, self.list_job_photos(j["id"]))
+
+    def add_job_photo(self, job_id, member_id, kind, photo) -> dict:
+        p = {"id": str(uuid.uuid4()), "job_id": job_id, "member_id": member_id, "kind": kind, "photo": photo,
+             "created_at": _now_iso()}
+        self.job_photos[p["id"]] = p
+        return {k: p[k] for k in ("id", "job_id", "kind", "created_at")}
+
+    def list_job_photos(self, job_id: str) -> list[dict]:
+        photos = sorted((p for p in self.job_photos.values() if p["job_id"] == job_id),
+                        key=lambda p: p["created_at"])
+        return [{k: p[k] for k in ("id", "kind", "created_at", "member_id")} for p in photos]
+
+    def job_photo(self, photo_id: str) -> dict | None:
+        p = self.job_photos.get(photo_id)
+        return {k: p[k] for k in ("id", "job_id", "photo")} if p else None
 
 
 def make_repository(settings: Any) -> Repository:

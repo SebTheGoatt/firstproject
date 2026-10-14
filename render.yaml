@@ -1,5 +1,5 @@
 # Render Blueprint for property-dispatch (the website, booking, and crew app)
-# plus the nightly 8 PM route-building job.
+# plus the 5 PM (close of business) route-building job.
 #
 # Render → New → Blueprint → pick this repo and branch. Render will ask for
 # every value marked `sync: false`. Values with `generateValue` are created
@@ -57,10 +57,10 @@ services:
     runtime: docker
     rootDir: property-dispatch
     plan: 0.5c-512mb
-    # Cron is UTC. 8 PM Central = 01:00 UTC (CDT) or 02:00 UTC (CST).
-    # Hourly 01:00-04:00 UTC: the first run at/after 8 PM Central builds
-    # tomorrow's route; later runs catch up if it was missed, else no-op.
-    schedule: "0 1-4 * * *"
+    # Cron is UTC. 5 PM Central = 22:00 UTC (CDT) or 23:00 UTC (CST).
+    # Hourly 22:00-02:00 UTC: the first run at/after 5 PM Central builds
+    # tomorrow's route; later runs (until 8-9 PM) catch up if it was missed.
+    schedule: "0 22,23,0,1,2 * * *"
     dockerCommand: python -m app.nightly
     envVars:
       - key: DATA_BACKEND

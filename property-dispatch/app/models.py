@@ -81,6 +81,8 @@ class JobCreated(BaseModel):
     quoted_price: float | None  # mowing only; other services are quoted on site
     payment_method: Literal["cash", "card"] = "cash"
     pay_url: str | None = None  # card customers: their private payment page
+    access_code: str | None = None  # e.g. "K7MX-3QPA": opens the customer's visit page
+    visit_url: str | None = None
 
 
 class GeoPoint(BaseModel):

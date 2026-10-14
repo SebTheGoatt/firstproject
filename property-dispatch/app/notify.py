@@ -40,6 +40,26 @@ def next_customer_message(stop: dict, settings: Settings, crew_name: str | None 
     )
 
 
+def booking_message(first_name: str, settings: Settings, service_label: str, day_label: str,
+                    code: str, visit_url: str) -> str:
+    return (
+        f"Hi {first_name}, you're booked with {settings.business_name} for {service_label.lower()} on {day_label}. "
+        f"Your access code is {code}. Track your visit and see your before & after photos: {visit_url} . "
+        f"Reply STOP to opt out."
+    )
+
+
+def send_text(sms: TwilioClient | None, to: str, body: str) -> dict:
+    if sms is None:
+        log.info("Twilio not configured; would text %s: %s", to, body)
+        return {"sent": False, "reason": "twilio_disabled", "preview": body}
+    try:
+        return {"sent": True, "message_sid": sms.send_sms(to, body)}
+    except httpx.HTTPError as exc:
+        log.error("Text to %s failed: %s", to, exc)
+        return {"sent": False, "reason": "send_failed"}
+
+
 def pay_link_message(stop: dict, settings: Settings, pay_url: str) -> str:
     first = stop["customer_name"].split()[0]
     service = SERVICE_LABELS[Service(stop["service"])].lower()
