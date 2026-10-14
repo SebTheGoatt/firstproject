@@ -4,6 +4,9 @@
     GET  /book                      customer booking form
     GET  /crew                      field-crew dispatch dashboard
     GET  /sw.js, /*.webmanifest     installable app (PWA) support
+    GET  /team, /team/{slug}        public "Meet the crew" pages
+    GET  /pay/{token}               customer payment page
+    (crew sign-in/profiles: app/crew_routes.py · payments: app/pay_routes.py)
     GET  /api/booking-info          earliest bookable date, services
     POST /api/jobs                  intake: validate → geocode → store
     GET  /api/routes/{date}         crew: optimized route with map links
@@ -17,6 +20,7 @@ import hashlib
 import hmac
 import html
 import logging
+import secrets
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -30,9 +34,14 @@ from .booking import BookingRejected, earliest_bookable_day, local_now, next_ser
 from .config import Settings, get_settings
 from .db import Repository, make_repository
 from .geocode import GeocoderUnavailable, GeocodingError, NominatimGeocoder
-from .models import SERVICE_LABELS, SERVICE_MINUTES, JobCreated, JobRequest, RouteView, Service, StopView
+from .crew_auth import CrewIdentity
+from .crew_routes import register_crew_routes
+from .models import (SERVICE_LABELS, SERVICE_MINUTES, CompleteStopRequest, JobCreated, JobRequest, RouteView,
+                     Service, StopView)
 from .nightly import run_nightly
-from .notify import TwilioClient, notify_next_customer
+from .notify import TwilioClient, notify_next_customer, send_pay_link
+from .pay_routes import register_pay_routes
+from .payments import StripeClient
 from .zones import SERVICE_ZONES, find_zone
 
 log = logging.getLogger(__name__)
@@ -67,7 +76,9 @@ def build_route_view(route: dict, settings: Settings) -> RouteView:
             lat=s["lat"], lng=s["lng"], service=s["service"],
             service_label=SERVICE_LABELS[Service(s["service"])],
             eta=s["eta"], leg_distance_m=s["leg_distance_m"], leg_duration_s=s["leg_duration_s"],
-            completed_at=s["completed_at"],
+            completed_at=s["completed_at"], completed_by_name=s.get("completed_by_name"),
+            payment_method=s.get("payment_method") or "cash", payment_status=s.get("payment_status") or "unpaid",
+            amount_due=s.get("amount_due"), amount_paid=s.get("amount_paid"), donation=s.get("donation") or 0.0,
             # Origin omitted → navigation starts from the phone's live location.
             google_maps_url=deeplinks.google_directions(dest),
             apple_maps_url=deeplinks.apple_directions(dest),
@@ -92,6 +103,7 @@ def create_app(
     repo: Repository | None = None,
     geocoder: NominatimGeocoder | None = None,
     sms: TwilioClient | None = None,
+    stripe: StripeClient | None = None,
 ) -> FastAPI:
     settings = settings or get_settings()
     if settings.data_backend != "memory":
@@ -104,12 +116,11 @@ def create_app(
     app.state.repo = repo or make_repository(settings)
     app.state.geocoder = geocoder or NominatimGeocoder(settings)
     app.state.sms = sms if sms is not None else (TwilioClient(settings) if settings.twilio_enabled else None)
+    app.state.stripe = stripe if stripe is not None else (StripeClient(settings) if settings.stripe_enabled else None)
 
     def get_repo(request: Request) -> Repository:
         return request.app.state.repo
 
-    def crew_auth(x_crew_token: str | None = Header(default=None)) -> None:
-        _check_secret(x_crew_token, settings.crew_access_token)
 
     # ---------- Website + installable app -----------------------------
     version = static_version()
@@ -132,6 +143,21 @@ def create_app(
     @app.get("/crew", include_in_schema=False)
     def crew_page():
         return page("crew.html")
+
+    @app.get("/team", include_in_schema=False)
+    @app.get("/team/{slug}", include_in_schema=False)
+    def team_page(slug: str | None = None):
+        return page("team.html")
+
+    @app.get("/pay/{token}", include_in_schema=False)
+    def pay_page(token: str):
+        resp = page("pay.html")
+        resp.headers["Referrer-Policy"] = "no-referrer"   # keep the private link out of Referer headers
+        resp.headers["X-Robots-Tag"] = "noindex"
+        return resp
+
+    crew_auth = register_crew_routes(app, settings)
+    register_pay_routes(app, settings, app.state.stripe)
 
     @app.get("/sw.js", include_in_schema=False)
     def service_worker():
@@ -173,6 +199,7 @@ def create_app(
             "zones": [{"key": z.key, "name": z.name, "mow_rate": z.mow_rate, "bbox": list(z.bbox)}
                       for z in SERVICE_ZONES],
             "business_name": settings.business_name,
+            "card_payments": app.state.stripe is not None,
         }
 
     @app.post("/api/jobs", response_model=JobCreated, status_code=201)
@@ -196,19 +223,24 @@ def create_app(
                 "Sorry, that address is outside our current service areas: "
                 + "; ".join(z.name for z in SERVICE_ZONES) + "."))
         price = zone.mow_rate if body.service is Service.MOWING else None
+        if body.payment_method == "card" and app.state.stripe is None:
+            raise HTTPException(status_code=422, detail="Card payments aren't available yet. Please choose cash.")
+        pay_token = secrets.token_urlsafe(18)
 
         job = repo.create_job(
             name=body.name, phone=body.phone, address=body.address, geo=geo,
             service=body.service, scheduled_date=body.scheduled_date,
             service_minutes=SERVICE_MINUTES[body.service],
             zone_key=zone.key, quoted_price=price,
+            payment_method=body.payment_method, pay_token=pay_token,
         )
         # Show the customer the house-level match when we have one; otherwise echo
         # their own address back (a street-level match would drop their house number).
         shown = geo.formatted_address if geo.precision == "address" else body.address
         return JobCreated(id=job["id"], scheduled_date=body.scheduled_date, service=body.service,
                           formatted_address=shown, lat=geo.lat, lng=geo.lng,
-                          zone_name=zone.name, quoted_price=price)
+                          zone_name=zone.name, quoted_price=price, payment_method=body.payment_method,
+                          pay_url=f"/pay/{pay_token}" if body.payment_method == "card" else None)
 
     # ---------- Crew dispatch -----------------------------------------
     @app.get("/api/routes/{day}", response_model=RouteView, dependencies=[Depends(crew_auth)])
@@ -218,18 +250,45 @@ def create_app(
             raise HTTPException(status_code=404, detail=f"No route has been built for {day}")
         return build_route_view(route, settings)
 
-    def _complete(stop_id: str, repo: Repository) -> dict:
-        res = repo.complete_stop(stop_id)
-        if res is None:
+    def _complete(stop_id: str, repo: Repository, *, member_id: str | None = None,
+                  body: CompleteStopRequest | None = None, base_url: str = "") -> dict:
+        body = body or CompleteStopRequest()
+        before = repo.get_stop(stop_id)
+        if before is None:
             raise HTTPException(status_code=404, detail="Stop not found")
-        stop, newly = res
+
+        # Quoted services: the crew sets the final price on site.
+        if body.amount_due is not None and before["payment_status"] == "unpaid":
+            repo.set_amount_due(before["job_id"], round(body.amount_due, 2))
+
+        stop, newly = repo.complete_stop(stop_id, member_id)
+
+        # Cash: the crew records what they were handed. Anything over the price is a donation.
+        payment = {"status": stop["payment_status"]}
+        if body.cash_collected is not None and stop["payment_status"] == "unpaid":
+            due = stop["amount_due"]
+            if due is None:
+                raise HTTPException(status_code=422, detail="Enter the job price before recording cash.")
+            cash = round(body.cash_collected, 2)
+            if cash < due:
+                raise HTTPException(status_code=422, detail=f"Cash collected is less than the ${due:,.2f} price.")
+            repo.mark_paid(stop["job_id"], method="cash", amount_paid=cash, donation=round(cash - due, 2))
+            payment = {"status": "paid", "method": "cash", "amount_paid": cash, "donation": round(cash - due, 2)}
+        elif (newly and stop["payment_method"] == "card" and stop["payment_status"] == "unpaid"
+              and stop["pay_token"] and stop["amount_due"] is not None and base_url):
+            # Card customers who haven't paid yet get their private pay link when the job is done.
+            payment["pay_link"] = send_pay_link(settings, stop, f"{base_url}/pay/{stop['pay_token']}", app.state.sms)
+
         notification = notify_next_customer(repo, settings, stop, app.state.sms) if newly else {
             "notified": False, "reason": "already_completed"}
-        return {"stop_id": stop_id, "completed_at": stop["completed_at"], "notification": notification}
+        return {"stop_id": stop_id, "completed_at": stop["completed_at"], "notification": notification,
+                "payment": payment}
 
-    @app.post("/api/stops/{stop_id}/complete", dependencies=[Depends(crew_auth)])
-    def complete_stop(stop_id: str, repo: Repository = Depends(get_repo)):
-        return _complete(stop_id, repo)
+    @app.post("/api/stops/{stop_id}/complete")
+    def complete_stop(stop_id: str, request: Request, body: CompleteStopRequest | None = None,
+                      who: CrewIdentity = Depends(crew_auth), repo: Repository = Depends(get_repo)):
+        return _complete(stop_id, repo, member_id=who.member_id, body=body,
+                         base_url=str(request.base_url).rstrip("/"))
 
     class CompletionHook(BaseModel):
         stop_id: str | None = None
@@ -253,7 +312,7 @@ def create_app(
             stop_id = repo.stop_id_for_job(job_id)
         if stop_id is None:
             raise HTTPException(status_code=404, detail="No route stop for that job")
-        return _complete(stop_id, repo)
+        return _complete(stop_id, repo, base_url=settings.public_base_url)
 
     # ---------- Nightly (HTTP trigger) --------------------------------
     @app.post("/internal/nightly")

@@ -28,15 +28,38 @@ class TwilioClient:
         return resp.json()["sid"]
 
 
-def next_customer_message(stop: dict, settings: Settings) -> str:
+def next_customer_message(stop: dict, settings: Settings, crew_name: str | None = None) -> str:
     first = stop["customer_name"].split()[0]
     service = SERVICE_LABELS[Service(stop["service"])].lower()
     minutes = max(5, round(stop["leg_duration_s"] / 60))
+    who = f"{crew_name.split()[0]} from {settings.business_name}" if crew_name else settings.business_name
     return (
-        f"Hi {first}, this is {settings.business_name}. Our crew just finished the previous job "
-        f"and is heading your way for your {service} service, about {minutes} minutes out. "
+        f"Hi {first}, this is {who}. We just finished the previous job "
+        f"and are heading your way for your {service} service, about {minutes} minutes out. "
         f"Reply STOP to opt out."
     )
+
+
+def pay_link_message(stop: dict, settings: Settings, pay_url: str) -> str:
+    first = stop["customer_name"].split()[0]
+    service = SERVICE_LABELS[Service(stop["service"])].lower()
+    return (
+        f"Hi {first}, your {service} is done. Thanks for choosing {settings.business_name}! "
+        f"You can pay securely here: {pay_url} . No tip necessary; donations are welcome as "
+        f"we're a veteran-owned business. Reply STOP to opt out."
+    )
+
+
+def send_pay_link(settings: Settings, stop: dict, pay_url: str, sms: TwilioClient | None) -> dict:
+    body = pay_link_message(stop, settings, pay_url)
+    if sms is None:
+        log.info("Twilio not configured; would text %s: %s", stop["phone"], body)
+        return {"sent": False, "reason": "twilio_disabled", "preview": body}
+    try:
+        return {"sent": True, "message_sid": sms.send_sms(stop["phone"], body)}
+    except httpx.HTTPError as exc:
+        log.error("Pay-link text failed for job %s: %s", stop["job_id"], exc)
+        return {"sent": False, "reason": "send_failed"}
 
 
 def notify_next_customer(
@@ -50,7 +73,7 @@ def notify_next_customer(
     if not repo.claim_notification(nxt["stop_id"]):
         return {"notified": False, "reason": "already_notified", "stop_id": nxt["stop_id"]}
 
-    body = next_customer_message(nxt, settings)
+    body = next_customer_message(nxt, settings, completed_stop.get("completed_by_name"))
     if sms is None:
         log.info("Twilio not configured; would text %s: %s", nxt["phone"], body)
         return {"notified": False, "reason": "twilio_disabled", "stop_id": nxt["stop_id"], "preview": body}

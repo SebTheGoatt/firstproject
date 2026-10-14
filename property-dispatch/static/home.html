@@ -29,6 +29,7 @@
         <a href="#services">Services</a>
         <a href="#areas">Service areas</a>
         <a href="#how">How it works</a>
+        <a href="/team">Meet the crew</a>
       </nav>
       <a class="btn btn-primary btn-sm" href="/book">Book now</a>
     </div>
@@ -57,8 +58,9 @@
           <p class="next-day" id="next-day">Checking…</p>
           <p class="hint" id="cutoff">Next-day booking closes at 8 PM.</p>
           <ul class="checks">
+            <li>Veteran-owned and operated</li>
+            <li>Pay your way: cash to the crew or card in the app</li>
             <li>Text when the crew is on the way</li>
-            <li>No account or app download needed</li>
             <li>Mowing priced by area, shown before you book</li>
           </ul>
         </aside>
@@ -109,6 +111,15 @@
       </div>
     </section>
 
+    <section id="crew" class="section section-alt" hidden>
+      <div class="site-wrap">
+        <h2>Meet the crew</h2>
+        <p class="section-lede">Real people from the neighborhood, led by a veteran. Here's who shows up at your door.</p>
+        <ul class="team-grid" id="crew-grid"></ul>
+        <p><a class="btn" href="/team">See everyone's work</a></p>
+      </div>
+    </section>
+
     <section id="how" class="section">
       <div class="site-wrap">
         <h2>How it works</h2>
@@ -128,7 +139,7 @@
 
   <footer class="site-footer">
     <div class="site-wrap footer-row">
-      <span>© <span id="year"></span> {{BUSINESS_NAME}} · Spring, TX</span>
+      <span>© <span id="year"></span> {{BUSINESS_NAME}} · Veteran-owned · Spring, TX</span>
       <a href="/crew">Crew sign-in</a>
     </div>
   </footer>
@@ -247,6 +258,26 @@
     const fmtDay = (iso) =>
       new Date(iso + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
     const hour12 = (h) => `${((h + 11) % 12) + 1} ${h < 12 ? "AM" : "PM"}`;
+
+    fetch("/api/team").then((r) => r.json()).then((team) => {
+      if (!Array.isArray(team) || !team.length) return;
+      const grid = document.getElementById("crew-grid");
+      for (const m of team.slice(0, 6)) {
+        const a = document.createElement("a");
+        a.className = "card team-card"; a.href = `/team/${m.slug}`; a.style.setProperty("--accent", m.accent_color);
+        const av = document.createElement("div");
+        av.className = "avatar avatar-lg"; av.style.setProperty("--accent", m.accent_color);
+        if (m.photo_url) { const img = document.createElement("img"); img.src = m.photo_url; img.alt = ""; av.append(img); }
+        else av.textContent = m.display_name.split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+        const body = document.createElement("div"); body.className = "team-card-body";
+        const name = document.createElement("strong"); name.textContent = m.display_name; body.append(name);
+        if (m.role_title) { const r = document.createElement("span"); r.className = "muted"; r.textContent = m.role_title; body.append(r); }
+        if (m.service_branch) { const b = document.createElement("span"); b.className = "badge badge-vet"; b.textContent = "★ " + m.service_branch; body.append(b); }
+        a.append(av, body);
+        const li = document.createElement("li"); li.append(a); grid.append(li);
+      }
+      document.getElementById("crew").hidden = false;
+    }).catch(() => {});
 
     fetch("/api/booking-info").then((r) => r.json()).then((info) => {
       document.getElementById("next-day").textContent = fmtDay(info.earliest_date);

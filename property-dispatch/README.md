@@ -60,6 +60,46 @@ need to reinstall.
 
 The business name on every page comes from `BUSINESS_NAME`.
 
+## Pay your way (cash or card) and donations
+
+At booking, customers choose **Cash to the crew** or **Card in the app**.
+
+- **Cash:** when finishing a job the crew enters the cash they were handed.
+  Anything over the price is recorded as a donation.
+- **Card:** customers get a private link (`/pay/{token}`) on their booking confirmation,
+  and by text when the job is done. The page shows the price, offers optional donation
+  buttons ("No tip necessary. Donations are always welcome. We're a veteran-owned
+  business."), and sends them to **Stripe Checkout** to pay. We never see card numbers.
+  Stripe's signed webhook marks the job paid.
+- **Quoted services** (bin cleaning, gutters): the crew enters the final price when
+  finishing; card customers are then texted their pay link.
+- Donations are recorded per job. They go to the business and **aren't tax-deductible**,
+  and the pay page says so.
+
+**Turning on card payments** (until then the card option stays hidden):
+1. Create a Stripe account and finish its business verification.
+2. Stripe → Developers → API keys: copy the **Secret key** into `STRIPE_SECRET_KEY`.
+3. Stripe → Developers → Webhooks → **Add endpoint**: URL `https://<your-app>/webhooks/stripe`,
+   events `checkout.session.completed` and `checkout.session.async_payment_succeeded`.
+   Copy its **Signing secret** into `STRIPE_WEBHOOK_SECRET`.
+4. Set `PUBLIC_BASE_URL` to your site's address.
+
+## Crew app: personal sign-in, profiles, portfolios
+
+- **Sign-in:** `/crew` shows "Who's working today?" with each crew member's photo. They tap
+  themselves and enter their personal code. Codes are stored only as salted hashes, and
+  repeated wrong guesses are blocked for 15 minutes.
+- **Owner:** "Owner sign-in" uses `CREW_ACCESS_TOKEN` (the master code). The owner's
+  **Crew** tab adds people, issues new codes, and deactivates anyone who leaves (which
+  signs them out everywhere). Changing `CREW_ACCESS_TOKEN` signs every phone out.
+- **Each crew member gets** a personal header in their own color, their stats (jobs this
+  week, all-time, work photos), today's route, **My profile** (photo, title, service branch,
+  years, bio, specialties, color) and **My work** (portfolio photos, including one taken
+  when finishing a job). Photos are resized on the phone before upload.
+- **Public pages:** `/team` and `/team/{name}` show the crew's profiles and work. The home
+  page shows a "Meet the crew" section once profiles exist. The "on the way" text names the
+  crew member: "Hi Maria, this is Sam from …".
+
 ## How the rules work
 
 **Freeze.** A service day locks at `FREEZE_HOUR` (default 20:00, America/Chicago)
@@ -97,7 +137,7 @@ webhook + button firing together never send a duplicate.
 cd property-dispatch
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
-pytest                                     # 46 tests
+pytest
 
 export DATA_BACKEND=memory CREW_ACCESS_TOKEN=crew CRON_SECRET=cron \
        GEOCODER_USER_AGENT="property-dispatch/1.0 (you@yourbusiness.com)"

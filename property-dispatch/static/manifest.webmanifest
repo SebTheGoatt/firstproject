@@ -2,7 +2,7 @@
   "id": "/",
   "name": "{{BUSINESS_NAME}}",
   "short_name": "Book Service",
-  "description": "Book mowing, bin cleaning and gutter service around Spring, TX.",
+  "description": "Veteran-owned mowing, bin cleaning and gutter service around Spring, TX.",
   "start_url": "/?source=app",
   "scope": "/",
   "display": "standalone",

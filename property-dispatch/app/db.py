@@ -6,7 +6,12 @@ for local demos (DATA_BACKEND=memory) and the test suite.
 
 Stop records returned by `get_route` / `next_open_stop` are flat dicts:
     stop_id, route_id, job_id, sequence, leg_distance_m, leg_duration_s, eta,
-    completed_at, notified_at, customer_name, phone, address, lat, lng, service
+    completed_at, notified_at, completed_by, completed_by_name,
+    customer_name, phone, address, lat, lng, service,
+    payment_method, payment_status, amount_due, donation, amount_paid, pay_token
+
+Crew member records never include `passcode_hash` or `photo` unless a method
+says so; photos are served separately so lists stay small.
 """
 
 import threading
@@ -18,27 +23,55 @@ from typing import Any, Protocol
 from .models import GeoPoint, Job, Service
 
 ACTIVE_STATUSES = ("pending", "scheduled")
+CREW_PUBLIC_FIELDS = ("id", "slug", "display_name", "role_title", "bio", "years_experience", "specialties",
+                      "service_branch", "accent_color", "photo_updated_at", "active", "created_at")
+PORTFOLIO_FIELDS = ("id", "member_id", "job_id", "service", "caption", "created_at")
+PAYMENT_FIELDS = ("payment_method", "payment_status", "amount_due", "donation", "amount_paid", "pay_token")
 
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _money(v: Any) -> float | None:
+    return None if v is None else round(float(v), 2)
+
+
 class Repository(Protocol):
+    # Jobs & routes
     def count_active_jobs(self, day: date) -> int: ...
     def create_job(self, *, name: str, phone: str, address: str, geo: GeoPoint, service: Service,
-                   scheduled_date: date, service_minutes: int, zone_key: str,
-                   quoted_price: float | None) -> dict: ...
+                   scheduled_date: date, service_minutes: int, zone_key: str, quoted_price: float | None,
+                   payment_method: str = "cash", pay_token: str | None = None) -> dict: ...
     def list_routable_jobs(self, day: date) -> list[Job]: ...
     def save_route(self, *, day: date, start: tuple[float, float], end: tuple[float, float],
                    total_distance_m: int, total_duration_s: int, matrix_source: str,
                    stops: list[dict]) -> str: ...
     def get_route(self, day: date) -> dict | None: ...
-    def complete_stop(self, stop_id: str) -> tuple[dict, bool] | None: ...
+    def get_stop(self, stop_id: str) -> dict | None: ...
+    def complete_stop(self, stop_id: str, member_id: str | None = None) -> tuple[dict, bool] | None: ...
     def stop_id_for_job(self, job_id: str) -> str | None: ...
     def next_open_stop(self, route_id: str, after_sequence: int) -> dict | None: ...
     def claim_notification(self, stop_id: str) -> bool: ...
     def release_notification(self, stop_id: str) -> None: ...
+    # Payments
+    def get_payment(self, pay_token: str) -> dict | None: ...
+    def set_amount_due(self, job_id: str, amount: float) -> None: ...
+    def record_checkout(self, job_id: str, session_id: str) -> None: ...
+    def mark_paid(self, job_id: str, *, method: str, amount_paid: float, donation: float) -> bool: ...
+    # Crew
+    def list_crew(self, include_inactive: bool = False) -> list[dict]: ...
+    def get_crew(self, member_id: str, *, with_secret: bool = False) -> dict | None: ...
+    def get_crew_by_slug(self, slug: str) -> dict | None: ...
+    def create_crew(self, fields: dict) -> dict: ...
+    def update_crew(self, member_id: str, fields: dict) -> dict | None: ...
+    def crew_photo(self, member_id: str) -> str | None: ...
+    def crew_stats(self, member_id: str, since: datetime) -> dict: ...
+    def add_portfolio(self, member_id: str, *, photo: str, caption: str | None, service: str | None,
+                      job_id: str | None) -> dict: ...
+    def list_portfolio(self, member_id: str, limit: int = 60) -> list[dict]: ...
+    def portfolio_photo(self, item_id: str) -> str | None: ...
+    def delete_portfolio(self, item_id: str, member_id: str) -> bool: ...
 
 
 # ======================================================================
@@ -47,7 +80,9 @@ class Repository(Protocol):
 class SupabaseRepository:
     STOP_SELECT = (
         "id, route_id, job_id, sequence, leg_distance_m, leg_duration_s, eta, completed_at, notified_at,"
-        " jobs(address, formatted_address, lat, lng, service, customers(name, phone))"
+        " completed_by, crew_members(display_name),"
+        " jobs(address, formatted_address, lat, lng, service, " + ", ".join(PAYMENT_FIELDS) + ","
+        " customers(name, phone))"
     )
 
     def __init__(self, url: str, key: str):
@@ -61,6 +96,7 @@ class SupabaseRepository:
     def _flatten_stop(row: dict) -> dict:
         job = row["jobs"]
         cust = job["customers"]
+        member = row.get("crew_members") or {}
         return {
             "stop_id": row["id"],
             "route_id": row["route_id"],
@@ -71,12 +107,20 @@ class SupabaseRepository:
             "eta": row["eta"],
             "completed_at": row["completed_at"],
             "notified_at": row["notified_at"],
+            "completed_by": row.get("completed_by"),
+            "completed_by_name": member.get("display_name"),
             "customer_name": cust["name"],
             "phone": cust["phone"],
             "address": job["address"],
             "lat": job["lat"],
             "lng": job["lng"],
             "service": job["service"],
+            "payment_method": job["payment_method"],
+            "payment_status": job["payment_status"],
+            "amount_due": _money(job["amount_due"]),
+            "donation": _money(job["donation"]) or 0.0,
+            "amount_paid": _money(job["amount_paid"]),
+            "pay_token": job["pay_token"],
         }
 
     def count_active_jobs(self, day: date) -> int:
@@ -87,7 +131,7 @@ class SupabaseRepository:
         return res.count or 0
 
     def create_job(self, *, name, phone, address, geo, service, scheduled_date, service_minutes,
-                   zone_key, quoted_price) -> dict:
+                   zone_key, quoted_price, payment_method="cash", pay_token=None) -> dict:
         cust = (
             self.sb.table("customers")
             .upsert({"name": name, "phone": phone}, on_conflict="phone").execute()
@@ -98,11 +142,14 @@ class SupabaseRepository:
             "formatted_address": geo.formatted_address,
             "lat": geo.lat,
             "lng": geo.lng,
-            "service": service.value,
+            "service": Service(service).value,
             "scheduled_date": scheduled_date.isoformat(),
             "service_minutes": service_minutes,
             "zone_key": zone_key,
             "quoted_price": quoted_price,
+            "amount_due": quoted_price,
+            "payment_method": payment_method,
+            "pay_token": pay_token,
         }).execute().data[0]
         return job
 
@@ -115,7 +162,7 @@ class SupabaseRepository:
         ).data
         return [
             Job(id=r["id"], customer_name=r["customers"]["name"], phone=r["customers"]["phone"],
-                address=r["formatted_address"] or r["address"], lat=r["lat"], lng=r["lng"],
+                address=r["address"], lat=r["lat"], lng=r["lng"],
                 service=r["service"], service_minutes=r["service_minutes"], status=r["status"])
             for r in rows
         ]
@@ -144,18 +191,21 @@ class SupabaseRepository:
         route["stops"] = [self._flatten_stop(r) for r in rows]
         return route
 
-    def complete_stop(self, stop_id: str) -> tuple[dict, bool] | None:
+    def get_stop(self, stop_id: str) -> dict | None:
+        rows = self.sb.table("route_stops").select(self.STOP_SELECT).eq("id", stop_id).limit(1).execute().data
+        return self._flatten_stop(rows[0]) if rows else None
+
+    def complete_stop(self, stop_id: str, member_id: str | None = None) -> tuple[dict, bool] | None:
         now = _now_iso()
         # Conditional update → only the first caller "wins"; retries are no-ops.
         updated = (
-            self.sb.table("route_stops").update({"completed_at": now})
+            self.sb.table("route_stops").update({"completed_at": now, "completed_by": member_id})
             .eq("id", stop_id).is_("completed_at", "null").execute()
         ).data
         newly = bool(updated)
-        rows = self.sb.table("route_stops").select(self.STOP_SELECT).eq("id", stop_id).limit(1).execute().data
-        if not rows:
+        stop = self.get_stop(stop_id)
+        if stop is None:
             return None
-        stop = self._flatten_stop(rows[0])
         if newly:
             self.sb.table("jobs").update({"status": "completed", "completed_at": now}).eq("id", stop["job_id"]).execute()
         return stop, newly
@@ -182,6 +232,100 @@ class SupabaseRepository:
     def release_notification(self, stop_id: str) -> None:
         self.sb.table("route_stops").update({"notified_at": None}).eq("id", stop_id).execute()
 
+    # ---------- Payments ----------
+    def get_payment(self, pay_token: str) -> dict | None:
+        rows = (
+            self.sb.table("jobs")
+            .select("id, service, scheduled_date, address, status, paid_at, stripe_session_id, "
+                    + ", ".join(PAYMENT_FIELDS) + ", customers(name)")
+            .eq("pay_token", pay_token).limit(1).execute()
+        ).data
+        if not rows:
+            return None
+        r = rows[0]
+        return {
+            "job_id": r["id"], "service": r["service"], "scheduled_date": r["scheduled_date"],
+            "address": r["address"], "status": r["status"], "customer_name": r["customers"]["name"],
+            "payment_method": r["payment_method"], "payment_status": r["payment_status"],
+            "amount_due": _money(r["amount_due"]), "donation": _money(r["donation"]) or 0.0,
+            "amount_paid": _money(r["amount_paid"]), "paid_at": r["paid_at"],
+            "stripe_session_id": r["stripe_session_id"],
+        }
+
+    def set_amount_due(self, job_id: str, amount: float) -> None:
+        self.sb.table("jobs").update({"amount_due": amount}).eq("id", job_id).eq("payment_status", "unpaid").execute()
+
+    def record_checkout(self, job_id: str, session_id: str) -> None:
+        self.sb.table("jobs").update({"stripe_session_id": session_id}).eq("id", job_id).execute()
+
+    def mark_paid(self, job_id: str, *, method: str, amount_paid: float, donation: float) -> bool:
+        rows = (
+            self.sb.table("jobs").update({
+                "payment_status": "paid", "payment_method": method, "amount_paid": amount_paid,
+                "donation": donation, "paid_at": _now_iso(),
+            }).eq("id", job_id).eq("payment_status", "unpaid").execute()
+        ).data
+        return bool(rows)
+
+    # ---------- Crew ----------
+    def list_crew(self, include_inactive: bool = False) -> list[dict]:
+        q = self.sb.table("crew_members").select(", ".join(CREW_PUBLIC_FIELDS)).order("created_at")
+        if not include_inactive:
+            q = q.eq("active", True)
+        return q.execute().data
+
+    def get_crew(self, member_id: str, *, with_secret: bool = False) -> dict | None:
+        cols = ", ".join(CREW_PUBLIC_FIELDS) + (", passcode_hash" if with_secret else "")
+        rows = self.sb.table("crew_members").select(cols).eq("id", member_id).limit(1).execute().data
+        return rows[0] if rows else None
+
+    def get_crew_by_slug(self, slug: str) -> dict | None:
+        rows = (self.sb.table("crew_members").select(", ".join(CREW_PUBLIC_FIELDS))
+                .eq("slug", slug).eq("active", True).limit(1).execute().data)
+        return rows[0] if rows else None
+
+    def create_crew(self, fields: dict) -> dict:
+        row = self.sb.table("crew_members").insert(fields).execute().data[0]
+        return {k: row.get(k) for k in CREW_PUBLIC_FIELDS}
+
+    def update_crew(self, member_id: str, fields: dict) -> dict | None:
+        rows = self.sb.table("crew_members").update(fields).eq("id", member_id).execute().data
+        return {k: rows[0].get(k) for k in CREW_PUBLIC_FIELDS} if rows else None
+
+    def crew_photo(self, member_id: str) -> str | None:
+        rows = self.sb.table("crew_members").select("photo").eq("id", member_id).limit(1).execute().data
+        return rows[0]["photo"] if rows else None
+
+    def crew_stats(self, member_id: str, since: datetime) -> dict:
+        def count(q):
+            return q.execute().count or 0
+
+        base = lambda: self.sb.table("route_stops").select("id", count="exact", head=True).eq("completed_by", member_id)  # noqa: E731
+        return {
+            "jobs_total": count(base()),
+            "jobs_week": count(base().gte("completed_at", since.isoformat())),
+            "photos": count(self.sb.table("portfolio_items").select("id", count="exact", head=True)
+                            .eq("member_id", member_id)),
+        }
+
+    def add_portfolio(self, member_id, *, photo, caption, service, job_id) -> dict:
+        row = self.sb.table("portfolio_items").insert({
+            "member_id": member_id, "photo": photo, "caption": caption, "service": service, "job_id": job_id,
+        }).execute().data[0]
+        return {k: row.get(k) for k in PORTFOLIO_FIELDS}
+
+    def list_portfolio(self, member_id: str, limit: int = 60) -> list[dict]:
+        return (self.sb.table("portfolio_items").select(", ".join(PORTFOLIO_FIELDS))
+                .eq("member_id", member_id).order("created_at", desc=True).limit(limit).execute().data)
+
+    def portfolio_photo(self, item_id: str) -> str | None:
+        rows = self.sb.table("portfolio_items").select("photo").eq("id", item_id).limit(1).execute().data
+        return rows[0]["photo"] if rows else None
+
+    def delete_portfolio(self, item_id: str, member_id: str) -> bool:
+        rows = self.sb.table("portfolio_items").delete().eq("id", item_id).eq("member_id", member_id).execute().data
+        return bool(rows)
+
 
 # ======================================================================
 #  In-memory (local demo + tests)
@@ -193,12 +337,14 @@ class MemoryRepository:
         self.jobs: dict[str, dict] = {}
         self.routes: dict[str, dict] = {}
         self.stops: dict[str, dict] = {}
+        self.crew: dict[str, dict] = {}
+        self.portfolio: dict[str, dict] = {}
 
     def count_active_jobs(self, day: date) -> int:
         return sum(1 for j in self.jobs.values() if j["scheduled_date"] == day and j["status"] in ACTIVE_STATUSES)
 
     def create_job(self, *, name, phone, address, geo, service, scheduled_date, service_minutes,
-                   zone_key, quoted_price) -> dict:
+                   zone_key, quoted_price, payment_method="cash", pay_token=None) -> dict:
         with self._lock:
             cust = next((c for c in self.customers.values() if c["phone"] == phone), None)
             if cust is None:
@@ -211,6 +357,9 @@ class MemoryRepository:
                 "service": Service(service).value, "scheduled_date": scheduled_date,
                 "service_minutes": service_minutes, "status": "pending",
                 "zone_key": zone_key, "quoted_price": quoted_price,
+                "payment_method": payment_method, "payment_status": "unpaid", "amount_due": quoted_price,
+                "donation": 0.0, "amount_paid": None, "paid_at": None, "pay_token": pay_token,
+                "stripe_session_id": None,
                 "frozen_at": None, "completed_at": None, "created_at": _now_iso(),
             }
             self.jobs[job["id"]] = job
@@ -222,7 +371,7 @@ class MemoryRepository:
             if j["scheduled_date"] == day and j["status"] in ACTIVE_STATUSES:
                 c = self.customers[j["customer_id"]]
                 out.append(Job(id=j["id"], customer_name=c["name"], phone=c["phone"],
-                               address=j["formatted_address"] or j["address"], lat=j["lat"], lng=j["lng"],
+                               address=j["address"], lat=j["lat"], lng=j["lng"],
                                service=j["service"], service_minutes=j["service_minutes"], status=j["status"]))
         return out
 
@@ -241,7 +390,8 @@ class MemoryRepository:
             }
             for s in stops:
                 sid = str(uuid.uuid4())
-                self.stops[sid] = {"id": sid, "route_id": rid, "completed_at": None, "notified_at": None, **s}
+                self.stops[sid] = {"id": sid, "route_id": rid, "completed_at": None, "notified_at": None,
+                                   "completed_by": None, **s}
                 job = self.jobs[s["job_id"]]
                 if job["status"] == "pending":
                     job["status"] = "scheduled"
@@ -251,12 +401,15 @@ class MemoryRepository:
     def _flat(self, s: dict) -> dict:
         j = self.jobs[s["job_id"]]
         c = self.customers[j["customer_id"]]
+        member = self.crew.get(s.get("completed_by") or "")
         return {
             "stop_id": s["id"], "route_id": s["route_id"], "job_id": s["job_id"], "sequence": s["sequence"],
             "leg_distance_m": s["leg_distance_m"], "leg_duration_s": s["leg_duration_s"], "eta": s["eta"],
             "completed_at": s["completed_at"], "notified_at": s["notified_at"],
+            "completed_by": s.get("completed_by"), "completed_by_name": member["display_name"] if member else None,
             "customer_name": c["name"], "phone": c["phone"], "address": j["address"],
             "lat": j["lat"], "lng": j["lng"], "service": j["service"],
+            **{k: j[k] for k in PAYMENT_FIELDS},
         }
 
     def get_route(self, day: date) -> dict | None:
@@ -268,7 +421,11 @@ class MemoryRepository:
         route["stops"] = [self._flat(s) for s in stops]
         return route
 
-    def complete_stop(self, stop_id: str) -> tuple[dict, bool] | None:
+    def get_stop(self, stop_id: str) -> dict | None:
+        s = self.stops.get(stop_id)
+        return self._flat(s) if s else None
+
+    def complete_stop(self, stop_id: str, member_id: str | None = None) -> tuple[dict, bool] | None:
         with self._lock:
             s = self.stops.get(stop_id)
             if s is None:
@@ -276,7 +433,7 @@ class MemoryRepository:
             newly = s["completed_at"] is None
             if newly:
                 now = _now_iso()
-                s["completed_at"] = now
+                s["completed_at"], s["completed_by"] = now, member_id
                 job = self.jobs[s["job_id"]]
                 job["status"], job["completed_at"] = "completed", now
             return self._flat(s), newly
@@ -299,6 +456,107 @@ class MemoryRepository:
 
     def release_notification(self, stop_id: str) -> None:
         self.stops[stop_id]["notified_at"] = None
+
+    # ---------- Payments ----------
+    def get_payment(self, pay_token: str) -> dict | None:
+        j = next((j for j in self.jobs.values() if pay_token and j["pay_token"] == pay_token), None)
+        if j is None:
+            return None
+        return {
+            "job_id": j["id"], "service": j["service"], "scheduled_date": j["scheduled_date"],
+            "address": j["address"], "status": j["status"], "customer_name": self.customers[j["customer_id"]]["name"],
+            "paid_at": j["paid_at"], "stripe_session_id": j["stripe_session_id"],
+            **{k: j[k] for k in PAYMENT_FIELDS if k != "pay_token"},
+        }
+
+    def set_amount_due(self, job_id: str, amount: float) -> None:
+        j = self.jobs[job_id]
+        if j["payment_status"] == "unpaid":
+            j["amount_due"] = amount
+
+    def record_checkout(self, job_id: str, session_id: str) -> None:
+        self.jobs[job_id]["stripe_session_id"] = session_id
+
+    def mark_paid(self, job_id: str, *, method: str, amount_paid: float, donation: float) -> bool:
+        with self._lock:
+            j = self.jobs[job_id]
+            if j["payment_status"] != "unpaid":
+                return False
+            j.update(payment_status="paid", payment_method=method, amount_paid=amount_paid,
+                     donation=donation, paid_at=_now_iso())
+            return True
+
+    # ---------- Crew ----------
+    def _public(self, m: dict) -> dict:
+        return deepcopy({k: m.get(k) for k in CREW_PUBLIC_FIELDS})
+
+    def list_crew(self, include_inactive: bool = False) -> list[dict]:
+        ms = sorted(self.crew.values(), key=lambda m: m["created_at"])
+        return [self._public(m) for m in ms if include_inactive or m["active"]]
+
+    def get_crew(self, member_id: str, *, with_secret: bool = False) -> dict | None:
+        m = self.crew.get(member_id)
+        if m is None:
+            return None
+        out = self._public(m)
+        if with_secret:
+            out["passcode_hash"] = m["passcode_hash"]
+        return out
+
+    def get_crew_by_slug(self, slug: str) -> dict | None:
+        m = next((m for m in self.crew.values() if m["slug"] == slug and m["active"]), None)
+        return self._public(m) if m else None
+
+    def create_crew(self, fields: dict) -> dict:
+        with self._lock:
+            if any(m["slug"] == fields["slug"] for m in self.crew.values()):
+                raise ValueError("duplicate slug")
+            m = {"id": str(uuid.uuid4()), "role_title": None, "bio": None, "years_experience": None,
+                 "specialties": [], "service_branch": None, "accent_color": "#2f7d4f", "photo": None,
+                 "photo_updated_at": None, "active": True, "created_at": _now_iso(), **fields}
+            self.crew[m["id"]] = m
+            return self._public(m)
+
+    def update_crew(self, member_id: str, fields: dict) -> dict | None:
+        m = self.crew.get(member_id)
+        if m is None:
+            return None
+        m.update(fields)
+        return self._public(m)
+
+    def crew_photo(self, member_id: str) -> str | None:
+        m = self.crew.get(member_id)
+        return m["photo"] if m else None
+
+    def crew_stats(self, member_id: str, since: datetime) -> dict:
+        done = [s for s in self.stops.values() if s.get("completed_by") == member_id and s["completed_at"]]
+        return {
+            "jobs_total": len(done),
+            "jobs_week": sum(1 for s in done if datetime.fromisoformat(s["completed_at"]) >= since),
+            "photos": sum(1 for p in self.portfolio.values() if p["member_id"] == member_id),
+        }
+
+    def add_portfolio(self, member_id, *, photo, caption, service, job_id) -> dict:
+        item = {"id": str(uuid.uuid4()), "member_id": member_id, "job_id": job_id, "service": service,
+                "caption": caption, "photo": photo, "created_at": _now_iso()}
+        self.portfolio[item["id"]] = item
+        return {k: item[k] for k in PORTFOLIO_FIELDS}
+
+    def list_portfolio(self, member_id: str, limit: int = 60) -> list[dict]:
+        items = sorted((p for p in self.portfolio.values() if p["member_id"] == member_id),
+                       key=lambda p: p["created_at"], reverse=True)[:limit]
+        return [{k: p[k] for k in PORTFOLIO_FIELDS} for p in items]
+
+    def portfolio_photo(self, item_id: str) -> str | None:
+        p = self.portfolio.get(item_id)
+        return p["photo"] if p else None
+
+    def delete_portfolio(self, item_id: str, member_id: str) -> bool:
+        p = self.portfolio.get(item_id)
+        if p is None or p["member_id"] != member_id:
+            return False
+        del self.portfolio[item_id]
+        return True
 
 
 def make_repository(settings: Any) -> Repository:

@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Meet the Crew | {{BUSINESS_NAME}}</title>
+  <meta name="description" content="Meet the people who take care of your yard: who they are, what they do, and their recent work.">
+  <meta name="theme-color" content="#2f7d4f">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="/static/styles.css?v={{V}}">
+</head>
+<body class="site">
+  <header class="site-header">
+    <div class="site-wrap header-row">
+      <a class="brand" href="/">
+        <img src="/static/icons/icon-192.png" alt="" width="32" height="32">
+        <span>{{BUSINESS_NAME}}</span>
+      </a>
+      <nav class="site-nav" aria-label="Main">
+        <a href="/#services">Services</a>
+        <a href="/#areas">Service areas</a>
+        <a href="/team">Meet the crew</a>
+      </nav>
+      <a class="btn btn-primary btn-sm" href="/book">Book now</a>
+    </div>
+  </header>
+
+  <main>
+    <!-- Team overview -->
+    <section class="section" id="team-view" hidden>
+      <div class="site-wrap">
+        <p class="eyebrow">Veteran-owned · Spring, TX</p>
+        <h1 class="page-title">Meet the crew</h1>
+        <p class="section-lede">The people who show up at your door. Tap anyone to see their story and recent work.</p>
+        <ul class="team-grid" id="team-grid"></ul>
+        <p class="empty" id="team-empty" hidden>Our crew profiles are coming soon.</p>
+      </div>
+    </section>
+
+    <!-- One person's profile -->
+    <article id="profile-view" hidden>
+      <section class="profile-hero">
+        <div class="site-wrap profile-head">
+          <div class="avatar avatar-xl" id="p-avatar"></div>
+          <div class="profile-id">
+            <a class="back-link" href="/team">← All crew</a>
+            <h1 id="p-name"></h1>
+            <p class="profile-role" id="p-role"></p>
+            <div class="badges" id="p-badges"></div>
+          </div>
+        </div>
+      </section>
+      <section class="section">
+        <div class="site-wrap profile-body">
+          <div class="profile-about">
+            <h2>About</h2>
+            <p id="p-bio" class="bio"></p>
+            <div id="p-spec-wrap" hidden>
+              <h3>What I do best</h3>
+              <ul class="spec-list" id="p-specs"></ul>
+            </div>
+          </div>
+          <aside class="card profile-stats">
+            <div><b id="p-jobs">0</b><span>jobs completed</span></div>
+            <div><b id="p-years">–</b><span>years experience</span></div>
+            <a class="btn btn-primary btn-block" href="/book">Book a service</a>
+          </aside>
+        </div>
+        <div class="site-wrap">
+          <h2>Recent work</h2>
+          <ul class="portfolio-grid" id="p-portfolio"></ul>
+          <p class="empty" id="p-portfolio-empty" hidden>Photos of recent work will show up here.</p>
+        </div>
+      </section>
+    </article>
+
+    <div class="site-wrap"><div id="err" class="alert alert-error" role="alert" hidden></div></div>
+  </main>
+
+  <div class="lightbox" id="lightbox" hidden>
+    <button class="lightbox-close" type="button" aria-label="Close">×</button>
+    <figure><img id="lb-img" alt=""><figcaption id="lb-cap"></figcaption></figure>
+  </div>
+
+  <footer class="site-footer">
+    <div class="site-wrap footer-row">
+      <span>© <span id="year"></span> {{BUSINESS_NAME}} · Veteran-owned · Spring, TX</span>
+      <a href="/crew">Crew sign-in</a>
+    </div>
+  </footer>
+
+  <script src="/static/site.js?v={{V}}"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    $("year").textContent = new Date().getFullYear();
+    const slug = location.pathname.replace(/\/+$/, "").split("/")[2];
+
+    function el(tag, attrs = {}, ...kids) {
+      const n = document.createElement(tag);
+      for (const [k, v] of Object.entries(attrs)) {
+        if (k === "class") n.className = v; else if (k === "style") n.style.cssText = v; else n.setAttribute(k, v);
+      }
+      n.append(...kids.filter((k) => k !== null && k !== undefined && k !== false));
+      return n;
+    }
+    function avatar(m, size = "") {
+      const box = el("div", { class: `avatar ${size}`, style: `--accent:${m.accent_color}` });
+      if (m.photo_url) box.append(el("img", { src: m.photo_url, alt: "" }));
+      else box.textContent = m.display_name.split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+      return box;
+    }
+
+    async function getJSON(url) {
+      const r = await fetch(url);
+      const b = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(b.detail || "Something went wrong.");
+      return b;
+    }
+
+    async function showTeam() {
+      $("team-view").hidden = false;
+      const team = await getJSON("/api/team");
+      $("team-empty").hidden = team.length > 0;
+      for (const m of team) {
+        $("team-grid").append(el("li", {},
+          el("a", { class: "card team-card", href: `/team/${m.slug}`, style: `--accent:${m.accent_color}` },
+            avatar(m, "avatar-lg"),
+            el("div", { class: "team-card-body" },
+              el("strong", {}, m.display_name),
+              m.role_title ? el("span", { class: "muted" }, m.role_title) : null,
+              m.service_branch ? el("span", { class: "badge badge-vet" }, "★ " + m.service_branch) : null))));
+      }
+    }
+
+    async function showProfile() {
+      const m = await getJSON(`/api/team/${encodeURIComponent(slug)}`);
+      document.title = `${m.display_name} | ${document.title.split("|").pop().trim()}`;
+      document.documentElement.style.setProperty("--accent", m.accent_color);
+      $("profile-view").hidden = false;
+      $("p-avatar").replaceWith(Object.assign(avatar(m, "avatar-xl"), { id: "p-avatar" }));
+      $("p-name").textContent = m.display_name;
+      $("p-role").textContent = m.role_title || "Crew member";
+      if (m.service_branch) $("p-badges").append(el("span", { class: "badge badge-vet" }, "★ " + m.service_branch));
+      $("p-bio").textContent = m.bio || `${m.display_name.split(" ")[0]} hasn't written a bio yet.`;
+      if (m.specialties.length) {
+        $("p-spec-wrap").hidden = false;
+        m.specialties.forEach((s) => $("p-specs").append(el("li", {}, s)));
+      }
+      $("p-jobs").textContent = m.jobs_total;
+      $("p-years").textContent = m.years_experience ?? "–";
+      $("p-portfolio-empty").hidden = m.portfolio.length > 0;
+      for (const item of m.portfolio) {
+        const btn = el("button", { type: "button", class: "portfolio-item" },
+          el("img", { src: item.photo_url, alt: item.caption || "Recent work", loading: "lazy" }),
+          item.caption ? el("span", {}, item.caption) : null);
+        btn.addEventListener("click", () => openLightbox(item));
+        $("p-portfolio").append(el("li", {}, btn));
+      }
+    }
+
+    function openLightbox(item) {
+      $("lb-img").src = item.photo_url;
+      $("lb-img").alt = item.caption || "Recent work";
+      $("lb-cap").textContent = item.caption || "";
+      $("lightbox").hidden = false;
+      $("lightbox").querySelector("button").focus();
+    }
+    $("lightbox").addEventListener("click", (e) => { if (e.target.id !== "lb-img") $("lightbox").hidden = true; });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("lightbox").hidden = true; });
+
+    (slug ? showProfile() : showTeam()).catch((e) => { $("err").textContent = e.message; $("err").hidden = false; });
+  </script>
+</body>
+</html>

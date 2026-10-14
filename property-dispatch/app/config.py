@@ -47,6 +47,12 @@ class Settings(BaseSettings):
     twilio_auth_token: str = ""
     twilio_from_number: str = ""
     business_name: str = "Spring Property Services"
+    # Used in texts sent outside a web request (e.g. the completion webhook).
+    public_base_url: str = ""
+
+    # --- Stripe card payments (leave blank to take cash only) ---------
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
 
     # --- Security -----------------------------------------------------
     crew_access_token: str = "change-me"   # crew dashboard + complete API
@@ -66,6 +72,10 @@ class Settings(BaseSettings):
         if self.end_lat is None or self.end_lng is None:
             return self.start_point
         return (self.end_lat, self.end_lng)
+
+    @property
+    def stripe_enabled(self) -> bool:
+        return bool(self.stripe_secret_key and self.stripe_webhook_secret)
 
     @property
     def twilio_enabled(self) -> bool:

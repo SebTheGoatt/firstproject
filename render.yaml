@@ -35,6 +35,13 @@ services:
         sync: false
       - key: TWILIO_FROM_NUMBER
         sync: false
+      # Card payments (Stripe). Leave blank to take cash only.
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: PUBLIC_BASE_URL
+        sync: false
       - key: CREW_ACCESS_TOKEN
         generateValue: true
       - key: WEBHOOK_SECRET
