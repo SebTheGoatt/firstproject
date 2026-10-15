@@ -96,3 +96,21 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+LOCAL_HOSTS = ("localhost", "127.0.0.1", "0.0.0.0", "testserver")
+
+
+def site_url(settings: "Settings", request) -> str:
+    """The site's public address for links we send out (texts, Stripe return pages).
+
+    PUBLIC_BASE_URL wins when it's set. Otherwise the request's own address is used, upgraded
+    to https for any real host: Render ends TLS at its proxy, so the app can see plain http.
+    """
+    if settings.public_base_url:
+        return settings.public_base_url.rstrip("/")
+    base = str(request.base_url).rstrip("/")
+    host = request.url.hostname or ""
+    if base.startswith("http://") and host not in LOCAL_HOSTS:
+        base = "https://" + base[len("http://"):]
+    return base

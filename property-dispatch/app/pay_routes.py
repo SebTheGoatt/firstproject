@@ -15,7 +15,7 @@ from fastapi import FastAPI, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from .charity import describe as describe_charities, ledger, split_donation
-from .config import Settings
+from .config import Settings, site_url
 from .models import SERVICE_LABELS, Service, order_label
 from .pricing import PACKAGES
 from .payments import PaymentError, StripeClient, clean_donation, verify_webhook
@@ -72,7 +72,7 @@ def register_pay_routes(app: FastAPI, settings: Settings, stripe: StripeClient |
                 "Your final price is set when the crew finishes. We'll text you this link then."))
         try:
             donation = clean_donation(body.donation)
-            base = str(request.base_url).rstrip("/")
+            base = site_url(settings, request)   # https, so Stripe accepts the return links
             session = stripe.create_checkout(
                 job_id=p["job_id"], service_label=SERVICE_LABELS[Service(p["service"])], add_ons=p.get("add_ons"),
                 service_date=str(p["scheduled_date"]), amount_due=p["amount_due"], donation=donation,
