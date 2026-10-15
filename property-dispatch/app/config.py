@@ -51,7 +51,7 @@ class Settings(BaseSettings):
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""
     twilio_from_number: str = ""
-    business_name: str = "Spring Property Services"
+    business_name: str = "Semper Green Lawn Care"
     # Used in texts sent outside a web request (e.g. the completion webhook).
     public_base_url: str = ""
 

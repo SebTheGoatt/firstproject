@@ -34,6 +34,7 @@
     "View my visit": "Ver mi visita",
     "Crew sign-in": "Acceso del equipo",
     "Veteran-owned · Spring, TX": "De un veterano · Spring, TX",
+    "Clean lawns. Stronger communities.": "Jardines limpios. Comunidades más fuertes.",
     "Book again": "Reservar otra vez",
     "Close": "Cerrar",
     "Total": "Total",
@@ -148,7 +149,6 @@
       "Reservar toma como un minuto y verás tu precio completo antes de confirmar.",
 
     // ---------- Booking ----------
-    "Book a service | M&A Lawn Care": "Reservar un servicio | M&A Lawn Care",
     "Calculate your mowing price, add any extras, and book your visit. You'll see the full itemized total before you book.":
       "Calcula el precio de tu corte, agrega extras y reserva tu visita. Verás el total detallado antes de confirmar.",
     "Where we service": "Dónde trabajamos",
@@ -227,9 +227,6 @@
     "Too many checks. Please wait a few minutes.": "Demasiadas búsquedas. Espera unos minutos.",
 
     // ---------- Pay ----------
-    "Pay | M&A Lawn Care": "Pagar | M&A Lawn Care",
-    "M&A Lawn Care | Mowing, Bin Cleaning & Gutters in Spring, TX": "M&A Lawn Care | Corte de césped, limpieza de botes y canaletas en Spring, TX",
-    "Book a Service | M&A Lawn Care": "Reservar un servicio | M&A Lawn Care",
     "Data from": "Datos de",
     "Confirming your payment…": "Confirmando tu pago…",
     "Your final price is set when the crew finishes the job. We'll text you this link then.":
@@ -260,7 +257,6 @@
     "We couldn't load this payment.": "No pudimos cargar este pago.",
 
     // ---------- Visit ----------
-    "Your Visit | M&A Lawn Care": "Tu visita | M&A Lawn Care",
     "Your visit": "Tu visita",
     "Enter your access code": "Escribe tu código de acceso",
     "It's on your booking confirmation and in our text message. It looks like": "Está en la confirmación de tu reserva y en nuestro mensaje de texto. Se ve así:",
@@ -307,6 +303,9 @@
   const charityList = (s) => s.split(/, | and /).map((part) => part.replace(/^(\$[\d,.]+) to (.+)$/, (_, a, n) => `${a} para ${one(n)}`)).join(", ");
 
   const PATTERNS = [
+    // Page titles end with the business name, whatever it is.
+    [/^(Book a [Ss]ervice|Pay|Your Visit) \| (.+)$/, (m) => `${{ "Book a Service": "Reservar un servicio", "Book a service": "Reservar un servicio", Pay: "Pagar", "Your Visit": "Tu visita" }[m[1]]} | ${m[2]}`],
+    [/^(.+) \| Mowing, Bin Cleaning & Gutters in Spring, TX$/, (m) => `${m[1]} | Corte de césped, limpieza de botes y canaletas en Spring, TX`],
     [/^Starting at (\$[\d,.]+) per visit$/, (m) => `Desde ${m[1]} por visita`],
     [/^\+(\$[\d,.]+) per visit$/, (m) => `+${m[1]} por visita`],
     [/^Mowing starts at (\$[\d,.]+) per visit in every area\.$/, (m) => `El corte de césped empieza en ${m[1]} por visita en todas las áreas.`],
