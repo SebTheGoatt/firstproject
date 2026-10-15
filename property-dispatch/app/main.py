@@ -31,7 +31,7 @@ from pydantic import BaseModel
 
 from . import deeplinks
 from .booking import BookingRejected, earliest_bookable_day, local_now, next_service_day, validate_booking
-from .config import Settings, get_settings
+from .config import Settings, get_settings, site_url
 from .db import Repository, make_repository
 from .geocode import GeocoderUnavailable, GeocodingError, NominatimGeocoder
 from .crew_auth import CrewIdentity
@@ -376,7 +376,7 @@ def create_app(
             charity_amount=giving, giving_split=split_donation(giving) if giving else None,
             add_ons=add_ons, add_on_total=float(q.add_on_total),
         )
-        base = str(request.base_url).rstrip("/")
+        base = site_url(settings, request)
         visit_url = f"{base}/visit/{access_code}"
         send_text(app.state.sms, body.phone, booking_message(
             body.name.split()[0], settings, order_label(body.service.value, add_ons),
@@ -466,7 +466,7 @@ def create_app(
     def complete_stop(stop_id: str, request: Request, body: CompleteStopRequest | None = None,
                       who: CrewIdentity = Depends(crew_auth), repo: Repository = Depends(get_repo)):
         return _complete(stop_id, repo, member_id=who.member_id, body=body,
-                         base_url=str(request.base_url).rstrip("/"))
+                         base_url=site_url(settings, request))
 
     class CompletionHook(BaseModel):
         stop_id: str | None = None

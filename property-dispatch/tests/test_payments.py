@@ -157,3 +157,23 @@ def test_pay_page_is_private(card_client):
     r = card_client.get("/pay/whatever-token-value")
     assert r.status_code == 200 and r.headers["referrer-policy"] == "no-referrer"
     assert r.headers["x-robots-tag"] == "noindex"
+
+
+def test_stripe_return_links_are_https_behind_renders_proxy(settings, repo, sms, stripe):
+    """Render ends TLS at its proxy, so the app may see http://; Stripe must still get https links."""
+    settings.stripe_secret_key, settings.stripe_webhook_secret = "sk_test", WHSEC
+    c = TestClient(create_app(settings, repo=repo, geocoder=FakeGeocoder(), sms=sms, stripe=stripe),
+                   base_url="http://property-dispatch.onrender.com")
+    token = book_with(c, "A", "0100", method="card").json()["pay_url"].rsplit("/", 1)[1]
+    assert c.post(f"/api/pay/{token}/checkout", json={}).status_code == 200
+    assert stripe.sessions[-1]["success_url"] == f"https://property-dispatch.onrender.com/pay/{token}?done=1"
+    assert stripe.sessions[-1]["cancel_url"] == f"https://property-dispatch.onrender.com/pay/{token}"
+
+
+def test_public_base_url_wins_for_stripe_links(settings, repo, sms, stripe):
+    settings.stripe_secret_key, settings.stripe_webhook_secret = "sk_test", WHSEC
+    settings.public_base_url = "https://www.mandalawncare.example/"
+    c = TestClient(create_app(settings, repo=repo, geocoder=FakeGeocoder(), sms=sms, stripe=stripe))
+    token = book_with(c, "A", "0100", method="card").json()["pay_url"].rsplit("/", 1)[1]
+    c.post(f"/api/pay/{token}/checkout", json={})
+    assert stripe.sessions[-1]["success_url"].startswith("https://www.mandalawncare.example/pay/")
