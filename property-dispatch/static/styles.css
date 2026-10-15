@@ -25,7 +25,7 @@
     --text: #e7ece9;
     --muted: #9aa7a0;
     --border: #2c3631;
-    --brand: #5fbf84;
+    --brand: #4caf50;
     --brand-ink: #0d1a12;
     --brand-soft: #1f3327;
     --danger: #f2a49d;
@@ -175,13 +175,13 @@ details.hint ul { margin: 6px 0 0; padding-left: 20px; }
 
 /* =====================  Public website  ===================== */
 :root {
-  --brand-deep: #1d4a31;     /* deep forest green: footer, headings accents */
-  --fresh: #4caf6e;          /* fresh green accent, used sparingly */
+  --brand-deep: #0b3d2e;     /* Semper Green forest green: footer, call-to-action band */
+  --fresh: #4caf50;          /* Semper Green fresh green, used sparingly */
   --space-1: 8px; --space-2: 12px; --space-3: 16px; --space-4: 24px; --space-5: 32px;
   --section-y: 64px;
   --gutter: 20px;
 }
-@media (prefers-color-scheme: dark) { :root { --brand-deep: #0f2a1c; --fresh: #6fd093; } }
+@media (prefers-color-scheme: dark) { :root { --brand-deep: #0b3d2e; --fresh: #a7d129; } }
 @media (min-width: 900px) { :root { --gutter: 32px; } }
 @media (max-width: 680px) { :root { --section-y: 44px; --gutter: 16px; } }
 
@@ -218,6 +218,12 @@ html { scroll-behavior: smooth; }
 .brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-weight: 700; min-width: 0; margin-right: auto; }
 .brand img { border-radius: 8px; flex: none; }
 .brand span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.footer-tagline { font-weight: 600; color: var(--fresh); }
+/* On phones a long business name wraps to two short lines instead of being cut off. */
+@media (max-width: 640px) {
+  .site-header .brand span { white-space: normal; line-height: 1.15; font-size: 15px;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+}
 .site-nav { display: flex; gap: 4px; }
 .site-nav a { color: var(--muted); text-decoration: none; font-weight: 500; padding: 8px 12px; border-radius: 8px; white-space: nowrap; }
 .site-nav a:hover { color: var(--text); background: var(--brand-soft); }

@@ -58,7 +58,10 @@ coverage. Signing out deletes the saved route from the phone.
 installed apps pick up the new version on their next launch. You don't
 need to reinstall.
 
-The business name on every page comes from `BUSINESS_NAME`.
+The business name on every page comes from `BUSINESS_NAME` (Semper Green Lawn Care). The logo
+lives in `static/icons/` (header `logo-64.png`, app icons, `favicon.ico`, and `social.jpg`, the
+picture shown when the site is shared in a text or on social media). Brand colors: forest green
+`#0B3D2E`, fresh green `#4CAF50`, sunlit green `#A7D129`.
 
 ## Address entry: instant area check + optional Google dropdown
 
