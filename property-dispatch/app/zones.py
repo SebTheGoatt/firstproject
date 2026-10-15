@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 
 Box = tuple[float, float, float, float]  # min_lng, min_lat, max_lng, max_lat
 DEFAULT_TAX_RATE = 0.0825
-FLAT_FEE = 50.00  # mowing base trip fee per visit, the same in every area
+FLAT_FEE = 35.00  # mowing base service fee, once per visit, the same in every area
 
 
 @dataclass(frozen=True)

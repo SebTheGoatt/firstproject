@@ -106,36 +106,42 @@ on my public profile" to add the after photo to their public portfolio.
 
 ## Pricing and Texas sales tax
 
-**Mowing price** = **$50 base trip fee** (the same in every area) **+ the package's rate × square
-feet of lawn**. The customer picks a package, and part of each price goes to charity. The giving
-comes out of what the business keeps; the customer pays nothing extra for it.
+**Mowing price (the calculator).** Subtotal = **$35 base service fee** (once per visit, the same in
+every area) **+ lawn square feet × the rate the customer picks**; sales tax is added at checkout.
+The customer must enter a real lawn size (whole square feet, 100 to 87,120) and must pick a rate;
+nothing is preselected and no size is ever guessed. The tiers are prices only: the work is the same.
 
-| Package | Rate | Given to charity | 3,500 sq ft | 8,000 sq ft |
-|---|---|---|---|---|
-| Standard Tier (default) | 0.9¢ / sq ft | 2% of the price | $81.50 ($1.63 to charity) | $122.00 ($2.44) |
-| Community Supporter | 1.0¢ / sq ft | 7% | $85.00 ($5.95) | $130.00 ($9.10) |
-| Impact Champion | 1.1¢ / sq ft | 12% | $88.50 ($10.62) | $138.00 ($16.56) |
+| Rate | Per sq ft | Share given to charity | 5,000 sq ft before tax |
+|---|---|---|---|
+| Standard | $0.009 | 2% of the price | $80.00 |
+| Plus | $0.010 | 7% | $85.00 |
+| Premium | $0.012 | 12% | $95.00 |
 
-Example: 3,500 sq ft on Supporter = $50 + $35 = **$85.00** + $7.01 tax = **$92.01**. $5.95 goes to
-charity and the business keeps $79.05. Sales tax is on the whole $85 (the charity share is part
-of the sale). Packages live in `app/pricing.py` (`PACKAGES`); the $50 base is `FLAT_FEE` in
-`app/zones.py`. The package is saved on the booking, so if the crew corrects the lawn size on site,
-the price and the charity share are redone with the same package. No size given → priced as a
-typical 4,500 sq ft lot until the crew confirms.
+The booking page shows a live estimate (base fee, lawn size, rate, lawn size charge, subtotal,
+"Sales tax: Calculated at checkout") that updates as the customer types. Once the address is known,
+the server prices the order with that service area's tax rate and shows the itemized total; the
+confirmation, pay page and Stripe Checkout all use the server's numbers, so the amount charged
+always equals the total shown. The browser's numbers are never trusted. Rates are `PACKAGES` in
+`app/pricing.py` (keys `standard`, `supporter`, `hero` stay the same on stored bookings), the $35
+is `FLAT_FEE` in `app/zones.py`, and the size limits are `MIN_SQFT`/`MAX_SQFT`.
 
 **Add-ons (with a mow only).** Every booking is a mowing visit; customers can add:
 
 | Add-on | Price | Extra time on site | When |
 |---|---|---|---|
 | Bin cleaning | $15 | 15 min | all year |
-| Gutter cleaning | $20 | 30 min | all year |
-| Holiday lighting hang-up | $30 | 45 min | service dates Oct 15 – Jan 15 |
+| Gutter cleaning | $15 | 30 min | all year |
+| Holiday lighting | **Custom quote: free, never charged online** | 10 min look | service dates Oct 15 – Jan 15 |
 
-Add-ons are part of the order: they're taxed and the impact level's charity share applies to
+Add-ons are part of the order: they're taxed and the rate tier's charity share applies to
 the whole order. They're itemized on the order summary, pay page, visit page and Stripe receipt,
 the crew's stop card reads e.g. "Mowing + Gutter cleaning", and the route allows the extra time.
 Prices, times and the season live in `ADD_ONS` in `app/pricing.py`. Bin- or gutter-only bookings
 are refused; any made before add-ons existed are still priced on site by the crew.
+Holiday lighting is a quote request: ticking it adds "Holiday lighting quote" to the booking (the
+crew sees it on the stop) at no charge, and it never appears on the Stripe receipt. The home page's
+"Get a Quote", "Add Bin Cleaning" and "Add Gutter Cleaning" buttons open the booking page with that
+add-on already ticked (`/book?addon=…`). An add-on can only be on an order once.
 
 - **Lawn size at booking.** Customers pick Small (~2,500 sq ft), Medium (~4,500), Large
   (~8,000) or X-Large (~12,500), or type an exact size. They see the price, tax and total

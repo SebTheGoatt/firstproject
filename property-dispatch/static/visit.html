@@ -168,7 +168,8 @@
           pay.append(el("dl", { class: "price-lines" },
             el("div", {}, el("dt", {}, p.lawn_sqft ? `Mowing${p.package_label ? `, ${p.package_label}` : ""} · ${p.lawn_sqft.toLocaleString()} sq ft` : v.service_label),
               el("dd", {}, money(Math.round((p.subtotal - (p.add_on_total || 0)) * 100) / 100))),
-            ...(p.add_ons || []).map((a) => el("div", {}, el("dt", {}, `Add-on: ${a.label}`), el("dd", {}, money(a.price)))),
+            ...(p.add_ons || []).map((a) => el("div", {}, el("dt", {}, a.price == null ? a.label : `Add-on: ${a.label}`),
+              el("dd", {}, a.price == null ? "No charge" : money(a.price)))),
             p.tax > 0 ? el("div", {}, el("dt", {}, `Texas sales tax${rate}`), el("dd", {}, money(p.tax))) : null,
             el("div", { class: "total" }, el("dt", {}, "Total"), el("dd", {}, money(p.amount_due)))));
         } else {

@@ -1,18 +1,21 @@
-"""Prices, lawn sizes, package giving and Texas sales tax.
+"""Prices, lawn sizes, rate tiers and Texas sales tax.
 
-Mowing:   price = $50 base trip fee + (the package's rate × square feet of lawn).
-          The customer picks a package; each gives part of the price to charity:
-            Standard   0.9¢ / sq ft,  2% of the price to charity
-            Supporter  1.0¢ / sq ft,  7% of the price to charity
-            Hero       1.1¢ / sq ft, 12% of the price to charity
-          The giving comes out of what the business keeps; the customer pays the
-          price + tax, nothing extra. It's split between the three causes in
-          app/charity.py, like voluntary donations.
-Add-ons:  bin cleaning $15, gutter cleaning $20, holiday lighting hang-up $30
-          (Oct 15 – Jan 15 service dates), only together with a mow. They're part
-          of the order: taxed, and the package's charity share applies to them too.
+Mowing:   subtotal = $35 base service fee (once per visit) + square feet × the
+          rate the customer picks. The customer must pick one; nothing is preselected.
+            Standard  $0.009 / sq ft
+            Plus      $0.010 / sq ft
+            Premium   $0.012 / sq ft
+          The tiers are prices only; the work is the same. Each tier also gives a
+          share of the price to charity (2% / 7% / 12%), split between the causes
+          in app/charity.py. That comes out of what the business keeps; the
+          customer pays the price + tax, nothing extra.
+          Lawn size is required and must be a whole number of square feet between
+          MIN_SQFT and MAX_SQFT. Nothing is substituted when it's missing.
+Add-ons:  bin cleaning $15, gutter cleaning $15, with a mowing visit. Holiday
+          lighting (Oct 15 – Jan 15) is a free quote request: it's noted on the
+          booking for the crew and never charged online.
 Old bin/gutter-only bookings: priced on site by the crew; tax is added the same way.
-Tax:      the area's combined Texas rate (state 6.25% + local) on the whole service
+Tax:      the service area's configured Texas rate (zones.py) on the whole service
           price, rounded to the cent. Voluntary donations are separate and untaxed.
 
 All money math uses Decimal so totals never drift by a cent.
@@ -26,12 +29,16 @@ from .zones import ServiceZone
 
 # key → per-square-foot rate and the share of the price given to charity.
 PACKAGES: dict[str, dict] = {
-    "standard":  {"label": "Standard Tier",       "rate": Decimal("0.009"), "giving": Decimal("0.02")},
-    "supporter": {"label": "Community Supporter", "rate": Decimal("0.010"), "giving": Decimal("0.07")},
-    "hero":      {"label": "Impact Champion",     "rate": Decimal("0.011"), "giving": Decimal("0.12")},
+    # Keys are stored on bookings, so they stay stable when the shown names change.
+    "standard":  {"label": "Standard", "rate": Decimal("0.009"), "giving": Decimal("0.02"),
+                  "description": "Essential lawn maintenance at our most affordable rate."},
+    "supporter": {"label": "Plus",     "rate": Decimal("0.010"), "giving": Decimal("0.07"),
+                  "description": "A balanced option for dependable lawn care."},
+    "hero":      {"label": "Premium",  "rate": Decimal("0.012"), "giving": Decimal("0.12"),
+                  "description": "Our highest service rate for customers who prefer the premium option."},
 }
 DEFAULT_PACKAGE = "standard"
-MIN_SQFT, MAX_SQFT = 200, 87_120  # up to 2 acres; bigger jobs are quoted in person
+MIN_SQFT, MAX_SQFT = 100, 87_120  # up to 2 acres; bigger properties are quoted in person
 
 # Size picker shown at booking. `sqft` is the representative size we price on;
 # the crew confirms the real size on site before anything is charged.
@@ -47,8 +54,9 @@ DEFAULT_SIZE = "medium"  # no size given → priced as a typical lot; the crew c
 # `season` = (start (month, day), end (month, day)) of service dates it's offered, wrapping the new year.
 ADD_ONS: dict[str, dict] = {
     "bin_cleaning":   {"label": "Bin cleaning",              "price": Decimal("15.00"), "minutes": 15},
-    "gutters":        {"label": "Gutter cleaning",           "price": Decimal("20.00"), "minutes": 30},
-    "holiday_lights": {"label": "Holiday lighting hang-up",  "price": Decimal("30.00"), "minutes": 45,
+    "gutters":        {"label": "Gutter cleaning",           "price": Decimal("15.00"), "minutes": 30},
+    # Quote only: no price, nothing charged. The crew sees the request on the stop.
+    "holiday_lights": {"label": "Holiday lighting quote",    "price": None, "quote": True, "minutes": 10,
                        "season": ((10, 15), (1, 15))},
 }
 
@@ -112,7 +120,7 @@ class Quote:
                 "sqft_rate": f(self.sqft_rate), "base_fee": f(self.base_fee),
                 "charity_rate": f(self.charity_rate), "charity_amount": f(self.charity_amount),
                 "business_net": f(self.business_net), "mow_price": f(self.mow_price),
-                "add_ons": [{**a, "price": float(a["price"])} for a in self.add_ons],
+                "add_ons": [{**a, "price": f(a["price"])} for a in self.add_ons],
                 "add_on_total": float(self.add_on_total)}
 
 
@@ -148,7 +156,32 @@ def priced_add_ons(keys) -> tuple:
     unknown = chosen - ADD_ONS.keys()
     if unknown:
         raise ValueError(f"Unknown add-on: {', '.join(sorted(unknown))}")
-    return tuple({"key": k, "label": a["label"], "price": a["price"]} for k, a in ADD_ONS.items() if k in chosen)
+    return tuple({"key": k, "label": a["label"], "price": a["price"], **({"quote": True} if a.get("quote") else {})}
+                 for k, a in ADD_ONS.items() if k in chosen)
+
+
+class LawnSizeError(ValueError):
+    pass
+
+
+def check_sqft(lawn_sqft) -> int:
+    """A customer's lawn size: a whole number of square feet within our limits. Never guessed."""
+    if lawn_sqft is None or lawn_sqft == "":
+        raise LawnSizeError("Enter your lawn size in square feet.")
+    try:
+        n = int(lawn_sqft)
+    except (TypeError, ValueError):
+        raise LawnSizeError("Lawn size must be a whole number of square feet.")
+    if isinstance(lawn_sqft, float) and lawn_sqft != n:
+        raise LawnSizeError("Lawn size must be a whole number of square feet.")
+    if n <= 0:
+        raise LawnSizeError("Lawn size must be greater than zero.")
+    if n < MIN_SQFT:
+        raise LawnSizeError(f"The smallest lawn we can book online is {MIN_SQFT:,} sq ft.")
+    if n > MAX_SQFT:
+        raise LawnSizeError(f"Lawns over {MAX_SQFT:,} sq ft (2 acres) are quoted in person. "
+                            "Book with your best estimate and the crew will confirm, or reach out to us.")
+    return n
 
 
 def quote(zone: ServiceZone, service: Service, lawn_sqft: int | None = None,
@@ -159,10 +192,12 @@ def quote(zone: ServiceZone, service: Service, lawn_sqft: int | None = None,
     if service is Service.MOWING:
         key = resolve_package(package)
         pkg = PACKAGES[key]
-        sqft = lawn_sqft or LAWN_SIZES[DEFAULT_SIZE]["sqft"]
-        base = money(zone.mow_rate)
+        if not lawn_sqft:
+            raise LawnSizeError("Enter your lawn size in square feet.")
+        sqft = int(lawn_sqft)
+        base = money(zone.mow_rate)          # charged once per visit
         extras = priced_add_ons(add_ons)
-        extra_total = sum((a["price"] for a in extras), Decimal(0))
+        extra_total = sum((a["price"] for a in extras if a["price"] is not None), Decimal(0))   # quotes are free
         subtotal = money(base + pkg["rate"] * sqft) + extra_total
         tax, total = with_tax(subtotal, rate)
         return Quote(subtotal, rate, tax, total, sqft, "base_plus_sqft", key, pkg["rate"], base,

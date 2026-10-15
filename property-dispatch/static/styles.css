@@ -275,17 +275,29 @@ html { scroll-behavior: smooth; }
 .home .section + .section { border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
 
 /* Services: equal cards, price and button aligned at the bottom */
-.service-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
-.service { display: flex; flex-direction: column; padding: var(--space-4); }
+.service-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.service { display: flex; flex-direction: column; padding: 28px; border-color: color-mix(in srgb, var(--border) 70%, transparent);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease; }
+@media (hover: hover) { .service:hover { border-color: color-mix(in srgb, var(--brand) 35%, var(--border)); box-shadow: var(--shadow), 0 8px 24px rgb(0 0 0 / 0.06); } }
+@media (prefers-reduced-motion: reduce) { .service { transition: none; } }
 .service-icon { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--brand-soft); margin-bottom: var(--space-3); }
 .service-icon svg { width: 24px; height: 24px; fill: none; stroke: var(--brand); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .service h3 { margin: 0 0 6px; font-size: 1.12rem; }
-.service > p { margin: 0 0 var(--space-3); color: var(--muted); }
-.service-foot { margin-top: auto; display: grid; gap: 6px; }
-.service .price { font-weight: 700; color: var(--text); margin: 0; }
-.service .hint { margin: 0 0 var(--space-2); }
-@media (max-width: 1040px) { .service-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 520px) { .service-grid { grid-template-columns: 1fr; } }
+.service > p { margin: 0 0 var(--space-4); color: var(--muted); line-height: 1.55; }
+.service-foot { margin-top: auto; display: grid; gap: 6px; padding-top: var(--space-3); border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
+.service .price { font-weight: 750; font-size: 1.3rem; letter-spacing: -0.01em; color: var(--text); margin: 0; }
+.service .hint { margin: 0 0 var(--space-3); line-height: 1.45; }
+.service .btn { min-height: 48px; }
+@media (max-width: 640px) { .service-grid { grid-template-columns: 1fr; } .service { padding: 22px; } }
+
+/* Three-item trust strip under the services */
+.trust-strip { list-style: none; margin: 40px 0 0; padding: 22px 0 0; border-top: 1px solid var(--border);
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px 28px; }
+.trust-strip li { display: flex; gap: 12px; align-items: flex-start; }
+.trust-strip svg { width: 22px; height: 22px; flex: none; margin-top: 2px; fill: none; stroke: var(--brand); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.trust-strip strong { display: block; font-size: 0.98rem; }
+.trust-strip span { color: var(--muted); font-size: 0.9rem; }
+@media (max-width: 760px) { .trust-strip { grid-template-columns: 1fr; gap: 16px; } }
 
 /* Service areas: the information first, the map second */
 .area-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: var(--space-5); align-items: start; }
@@ -680,6 +692,21 @@ label.check input { width: 18px; height: 18px; }
 .add-ons input:checked + label strong::before { content: "✓ "; color: var(--brand); }
 .add-ons input:disabled + label { opacity: 0.55; cursor: not-allowed; }
 .add-ons input:focus-visible + label { outline: 3px solid color-mix(in srgb, var(--brand) 45%, transparent); }
+
+/* Mowing calculator: rate tiers, field errors, estimate */
+.field-error { margin: 6px 0 0; color: var(--danger); font-size: 0.9rem; font-weight: 600; }
+.sqft-input input[aria-invalid="true"] { border-color: var(--danger); }
+.rates.tiers { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.rates.tiers label { text-align: left; padding: 14px; gap: 4px; align-content: start; }
+.rates.tiers label strong { font-size: 1.02rem; }
+.rates.tiers .tier-rate { color: var(--brand); font-weight: 700; font-size: 0.92rem; }
+.rates.tiers small { color: var(--muted); font-size: 0.82rem; line-height: 1.35; }
+.rates.tiers em { font-style: normal; font-weight: 700; color: var(--text); font-size: 0.92rem; margin-top: 4px; }
+.rates.tiers em:empty { display: none; }
+.estimate { margin-top: 14px; }
+.price-lines .sub-strong dt, .price-lines .sub-strong dd { font-weight: 700; color: var(--text); }
+.confirm-lines { margin: 12px 0; padding: 12px 14px; border-radius: 10px; background: var(--surface); }
+@media (max-width: 560px) { .rates.tiers { grid-template-columns: 1fr; } }
 
 /* Pay-what-you-can rate picker */
 #rate-fieldset { margin-bottom: 12px; }

@@ -21,6 +21,8 @@ def book(client, letter, phone_suffix, service="mowing", day=TOMORROW):
         "phone": f"(281) 555-{phone_suffix}",
         "address": f"100 {letter} Example Rd",
         "service": service,
+        "lawn_sqft": 5000,          # 5,000 sq ft on Standard: $35 + $45 = $80.00 before tax
+        "package": "standard",
         "scheduled_date": day.isoformat(),
     })
 
@@ -93,7 +95,7 @@ def test_intake_enforces_freeze_and_quota(client, settings):
 def test_intake_validation_errors(client):
     with patch("app.main.local_now", return_value=NOW):
         r = client.post("/api/jobs", json={"name": "X", "phone": "123", "address": "100 A Example Rd",
-                                           "service": "mowing", "scheduled_date": TOMORROW.isoformat()})
+                                           "service": "mowing", "lawn_sqft": 5000, "package": "standard", "scheduled_date": TOMORROW.isoformat()})
         assert r.status_code == 422
         r = client.post("/api/jobs", json={"name": "X", "phone": "2815550100", "address": "100 A Example Rd",
                                            "service": "pressure_washing", "scheduled_date": TOMORROW.isoformat()})

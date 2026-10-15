@@ -39,8 +39,8 @@ from .crew_routes import register_crew_routes
 from .models import (SERVICE_LABELS, SERVICE_MINUTES, order_label, AddressCheck, CompleteStopRequest, GeoPoint, JobCreated,
                      JobRequest, QuoteRequest, RouteView, Service, StopView)
 from .charity import describe as describe_charities, split_donation
-from .pricing import (ADD_ONS, DEFAULT_PACKAGE, DEFAULT_SIZE, LAWN_SIZES, PACKAGES, in_season, package_for_rate, quote,
-                      resolve_sqft, season_text)
+from .pricing import (ADD_ONS, MAX_SQFT, MIN_SQFT, PACKAGES, LawnSizeError, check_sqft, in_season, package_for_rate,
+                      quote, season_text)
 from .routing.matrix import haversine_m
 from .nightly import run_nightly
 from .notify import TwilioClient, booking_message, notify_next_customer, send_pay_link, send_text
@@ -250,15 +250,15 @@ def create_app(
             "zones": [{"key": z.key, "name": z.name, "mow_rate": z.mow_rate, "tax_rate": z.tax_rate,
                        "bbox": list(z.bbox), "boxes": [list(b) for b in z.boxes]}
                       for z in SERVICE_ZONES],
-            "lawn_sizes": [{"key": k, **v} for k, v in LAWN_SIZES.items()],
-            # Mowing packages: price = base trip fee + rate × sq ft; part of it goes to charity.
-            "packages": [{"key": k, "label": p["label"], "sqft_rate": float(p["rate"]),
-                          "charity_rate": float(p["giving"])} for k, p in PACKAGES.items()],
-            "default_package": DEFAULT_PACKAGE,
-            # Add-ons to a mow (fixed prices). Seasonal ones list the service dates they're offered.
-            "add_ons": [{"key": k, "label": a["label"], "price": float(a["price"]), "season": season_text(k),
-                         "season_range": a.get("season")} for k, a in ADD_ONS.items()],
-            "default_size": DEFAULT_SIZE,
+            # Mowing: base fee (per area) + lawn sq ft × the rate tier the customer picks. No default tier.
+            "packages": [{"key": k, "label": p["label"], "description": p["description"],
+                          "sqft_rate": float(p["rate"]), "charity_rate": float(p["giving"])}
+                         for k, p in PACKAGES.items()],
+            "lawn_sqft_limits": {"min": MIN_SQFT, "max": MAX_SQFT},
+            # Add-ons to a mow. price None = free quote request. Seasonal ones list their service dates.
+            "add_ons": [{"key": k, "label": a["label"], "price": float(a["price"]) if a["price"] is not None else None,
+                         "quote": bool(a.get("quote")), "season": season_text(k), "season_range": a.get("season")}
+                        for k, a in ADD_ONS.items()],
             "charities": describe_charities(settings),
             "business_name": settings.business_name,
             "card_payments": app.state.stripe is not None,
@@ -318,7 +318,11 @@ def create_app(
         if zone is None:
             return {"in_area": False, "message": outside_message()}
         add_ons = [k for k in body.add_ons if body.scheduled_date is None or in_season(k, body.scheduled_date)]
-        q = quote(zone, body.service, resolve_sqft(body.lawn_size, body.lawn_sqft), package=body.package, add_ons=add_ons)
+        try:
+            sqft = check_sqft(body.lawn_sqft) if body.service is Service.MOWING else None
+        except LawnSizeError as exc:
+            raise HTTPException(status_code=422, detail=str(exc))
+        q = quote(zone, body.service, sqft, package=body.package, add_ons=add_ons)
         return {"in_area": True, "zone_name": zone.name, "flat_fee": zone.mow_rate,
                 "service_label": order_label(body.service.value, list(q.add_ons)), **q.as_dict()}
 
@@ -333,6 +337,12 @@ def create_app(
         if body.service is not Service.MOWING:
             raise HTTPException(status_code=422, detail=(
                 "Bin cleaning and gutters are add-ons to a mowing visit. Book mowing and add them on."))
+        if body.package is None:
+            raise HTTPException(status_code=422, detail="Choose a rate: Standard, Plus or Premium.")
+        try:
+            lawn_sqft = check_sqft(body.lawn_sqft)
+        except LawnSizeError as exc:
+            raise HTTPException(status_code=422, detail=str(exc))
         for k in body.add_ons:
             if not in_season(k, body.scheduled_date):
                 raise HTTPException(status_code=422, detail=(
@@ -341,10 +351,9 @@ def create_app(
         zone = find_zone(geo.lat, geo.lng)
         if zone is None:
             raise HTTPException(status_code=422, detail=outside_message())
-        # No size given → priced as a typical lot; the crew confirms the real size on site.
-        q = quote(zone, body.service, resolve_sqft(body.lawn_size, body.lawn_sqft), package=body.package,
-                  add_ons=body.add_ons)
-        add_ons = [{**a, "price": float(a["price"])} for a in q.add_ons]
+        # The server's own price, from the customer's size, tier and add-ons. Nothing from the browser is trusted.
+        q = quote(zone, body.service, lawn_sqft, package=body.package, add_ons=body.add_ons)
+        add_ons = [{**a, "price": float(a["price"]) if a["price"] is not None else None} for a in q.add_ons]
         sqft = q.lawn_sqft
         price = float(q.subtotal) if q.subtotal is not None else None
         rate = float(q.sqft_rate) if q.sqft_rate is not None else None

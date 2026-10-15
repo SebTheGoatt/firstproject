@@ -71,7 +71,7 @@ class StripeClient:
             service_name = (f"{service_label}, {package_label} ({service_date}): generates "
                             f"${charity_amount:,.2f} ({charity_rate * 100:g}%) for VFW, NICU & youth programs")
         if subtotal is not None and tax is not None and abs(subtotal + tax - amount_due) < 0.005:
-            extras = [(f"Add-on: {a['label']}", float(a["price"])) for a in (add_ons or [])]
+            extras = [(f"Add-on: {a['label']}", float(a["price"])) for a in (add_ons or []) if a.get("price") is not None]
             lines.append((service_name, round(subtotal - sum(p for _, p in extras), 2)))
             lines.extend(extras)
             if tax > 0:
