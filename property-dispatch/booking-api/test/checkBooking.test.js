@@ -135,6 +135,7 @@ describe('validateCustomerLocation', () => {
     assert.match(zoneOf(30.3367, -95.0506), /Grand Oaks/);    // Spyglass Hill Dr (clubhouse)
     assert.match(zoneOf(30.3415, -95.0900), /Cleveland/);     // downtown Cleveland
     assert.match(zoneOf(30.2000, -95.1010), /Plum Grove/);    // Plum Grove (served from Cleveland)
+    assert.match(zoneOf(30.1794, -95.0732), /Colony Ridge/);   // Grand San Jacinto Dr, Colony Ridge
     assert.match(zoneOf(30.2330, -95.1610), /Splendora/);     // I-69 spine still Splendora
   });
 });

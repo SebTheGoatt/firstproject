@@ -74,6 +74,17 @@ SERVICE_ZONES: tuple[ServiceZone, ...] = (
         extra_boxes=((-95.1120, 30.1650, -95.0800, 30.2350),),
         mow_rate=FLAT_FEE,
     ),
+    ServiceZone(
+        key="COLONY_RIDGE",
+        name="Colony Ridge",
+        # Colony Ridge (Liberty County, east of Plum Grove off FM 1010 / FM 2100): Santa Fe
+        # (~30.161, -95.051), Grand San Jacinto (~30.179, -95.070), Montebello (~30.188, -95.073),
+        # the main Colony Ridge area (~30.187, -95.045), Camino Real (~30.201, -95.067) and
+        # Bella Vista (~30.256, -95.064). West edge just east of the Plum Grove box, so
+        # Rancho San Vicente (~30.232, -95.087), which sits in Plum Grove, stays in that zone.
+        bbox=(-95.0795, 30.1450, -95.0000, 30.2750),
+        mow_rate=FLAT_FEE,
+    ),
 )
 
 

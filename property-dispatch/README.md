@@ -223,7 +223,7 @@ date picker automatically starts at the earliest open day.
 booking gets "That day is fully booked."
 
 **Service zones.** `app/zones.py` defines geo-fenced bounding boxes, each with a
-flat mowing fee and a sales tax rate. A zone can have extra boxes: Plum Grove is
+flat mowing fee and a sales tax rate. Colony Ridge (Liberty County, east of Plum Grove) has its own zone. A zone can have extra boxes: Plum Grove is
 served from the Cleveland hub this way. After geocoding, an address outside every zone is turned away; inside
 one, the job stores its `zone_key` and (for mowing) the `quoted_price`. Boxes are
 `(min_lng, min_lat, max_lng, max_lat)`, and the app refuses to start if a box is
