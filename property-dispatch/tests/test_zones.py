@@ -71,7 +71,7 @@ def test_out_of_zone_address_is_turned_away(client, repo):
 
 def test_booking_info_lists_zones(client):
     zones = client.get("/api/booking-info").json()["zones"]
-    assert [z["mow_rate"] for z in zones] == [50.0, 50.0, 50.0, 50.0]  # one $50 minimum everywhere
+    assert [z["mow_rate"] for z in zones] == [50.0] * 5  # one $50 minimum everywhere
     assert all(len(z["bbox"]) == 4 for z in zones)
 
 

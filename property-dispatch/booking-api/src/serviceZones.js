@@ -37,6 +37,13 @@ export const SERVICE_ZONES = {
     // Plum Grove (~-95.10, 30.20), served from the Cleveland hub.
     extraBoxes: [[-95.1120, 30.1650, -95.0800, 30.2350]],
     targetRateMow: 50.00, // $50 minimum per mow in every area
+  },
+  COLONY_RIDGE: {
+    name: "Colony Ridge",
+    // Liberty County, east of Plum Grove: Santa Fe, Grand San Jacinto, Montebello,
+    // Camino Real, Bella Vista and the main Colony Ridge area.
+    boundingBox: [-95.0795, 30.1450, -95.0000, 30.2750],
+    targetRateMow: 50.00, // $50 minimum per mow in every area
   }
 };
 

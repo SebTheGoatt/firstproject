@@ -214,3 +214,23 @@ def test_crew_sees_add_ons_and_size_corrections_keep_them(client, repo, settings
     assert ok["payment"]["total"] == 124.49                        # ($100 mow + $15 bins) + 8.25% tax
     stop = client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]
     assert (stop["subtotal"], stop["charity_amount"]) == (115.0, 8.05)
+
+
+@pytest.mark.parametrize("lat, lng, section", [
+    (30.1614, -95.0514, "Santa Fe"),
+    (30.1788, -95.0697, "Grand San Jacinto"),
+    (30.1876, -95.0731, "Montebello"),
+    (30.1870, -95.0453, "Colony Ridge"),
+    (30.2011, -95.0670, "Camino Real"),
+    (30.2563, -95.0635, "Bella Vista"),
+    (30.1794, -95.0732, "1450 Grand San Jacinto Dr (Census geocoder)"),
+])
+def test_colony_ridge_sections_are_served(lat, lng, section):
+    z = find_zone(lat, lng)
+    assert z.key == "COLONY_RIDGE" and z.mow_rate == 50.0, section
+
+
+def test_plum_grove_and_cleveland_unchanged_by_colony_ridge():
+    assert find_zone(30.2147, -95.0949).key == "CLEVELAND_HUB"     # Plum Grove
+    assert find_zone(30.2323, -95.0871).key == "CLEVELAND_HUB"     # Rancho San Vicente (inside Plum Grove)
+    assert find_zone(30.3415, -95.0900).key == "CLEVELAND_HUB"     # downtown Cleveland
