@@ -94,7 +94,7 @@ def test_street_variants(address, expected):
 def test_booking_requires_a_house_number(client, address):
     with patch("app.main.local_now", return_value=NOW):
         r = client.post("/api/jobs", json={"name": "X", "phone": "2815550100", "address": address,
-                                           "service": "mowing", "scheduled_date": TOMORROW.isoformat()})
+                                           "service": "mowing", "lawn_sqft": 5000, "package": "standard", "scheduled_date": TOMORROW.isoformat()})
     assert r.status_code == 422
 
 
@@ -104,7 +104,7 @@ def test_crew_sees_and_navigates_to_the_typed_address(client, repo, settings):
     typed = "4726 Whispering Rock Ln, Spring, TX 77388"
     with patch("app.main.local_now", return_value=NOW):
         r = client.post("/api/jobs", json={"name": "Pat Doe", "phone": "2815550100", "address": "100 A " + typed[5:],
-                                           "service": "mowing", "scheduled_date": TOMORROW.isoformat()})
+                                           "service": "mowing", "lawn_sqft": 5000, "package": "standard", "scheduled_date": TOMORROW.isoformat()})
     assert r.status_code == 201
     run_nightly(repo, settings, TOMORROW)
     stop = client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]
@@ -142,7 +142,7 @@ def app_with(settings, repo, geocoder):
 
 def test_check_address_answers_without_saving(client, repo):
     r = client.post("/api/check-address", json={"address": "100 A Example Rd"}).json()
-    assert r["in_area"] is True and r["mow_rate"] == 50.0 and "$50.00 per visit" in r["message"]
+    assert r["in_area"] is True and r["mow_rate"] == 35.0 and "$35.00 per visit" in r["message"]
     r = client.post("/api/check-address", json={"address": "100 Old Town Rd"}).json()
     assert r["in_area"] is False and "outside our current service areas" in r["message"]
     assert repo.jobs == {} and repo.customers == {}
@@ -158,7 +158,7 @@ def test_google_point_upgrades_a_nearby_street_match(settings, repo):
     house = (30.2275, -95.2350)   # ~100 m from the street point
     with patch("app.main.local_now", return_value=NOW):
         r = c.post("/api/jobs", json={"name": "Pat", "phone": "2815550100", "address": "21480 Rustic Elm Dr, New Caney, TX 77372",
-                                      "service": "mowing", "scheduled_date": TOMORROW.isoformat(),
+                                      "service": "mowing", "lawn_sqft": 5000, "package": "standard", "scheduled_date": TOMORROW.isoformat(),
                                       "lat": house[0], "lng": house[1]})
     assert r.status_code == 201 and (r.json()["lat"], r.json()["lng"]) == house
 
@@ -167,7 +167,7 @@ def test_far_away_google_point_is_ignored(settings, repo):
     c = app_with(settings, repo, StreetOnlyGeocoder())
     with patch("app.main.local_now", return_value=NOW):
         r = c.post("/api/jobs", json={"name": "Pat", "phone": "2815550100", "address": "21480 Rustic Elm Dr, New Caney, TX 77372",
-                                      "service": "mowing", "scheduled_date": TOMORROW.isoformat(),
+                                      "service": "mowing", "lawn_sqft": 5000, "package": "standard", "scheduled_date": TOMORROW.isoformat(),
                                       "lat": 30.12, "lng": -95.35})   # ~13 km away, e.g. tampered to get Spring pricing
     assert r.status_code == 201 and (r.json()["lat"], r.json()["lng"]) == (30.2270, -95.2359)
 

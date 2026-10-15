@@ -38,15 +38,17 @@ def test_shares_add_up_to_100_percent_and_names_are_settings(settings):
 def test_booking_info_offers_the_packages_and_causes(client):
     info = client.get("/api/booking-info").json()
     assert [(p["key"], p["sqft_rate"], p["charity_rate"]) for p in info["packages"]] == [
-        ("standard", 0.009, 0.02), ("supporter", 0.01, 0.07), ("hero", 0.011, 0.12)]
-    assert info["default_package"] == "standard"
+        ("standard", 0.009, 0.02), ("supporter", 0.01, 0.07), ("hero", 0.012, 0.12)]
+    assert "default_package" not in info          # the customer must pick a rate; nothing is preselected
+    assert [p["label"] for p in info["packages"]] == ["Standard", "Plus", "Premium"]
+    assert info["lawn_sqft_limits"] == {"min": 100, "max": 87_120}
     assert [c["percent"] for c in info["charities"]] == [33, 33, 34]
 
 
 def test_a_package_off_the_menu_is_refused(client):
     with patch("app.main.local_now", return_value=NOW):
         r = client.post("/api/jobs", json={"name": "Pat Doe", "phone": "2815550100", "address": "100 A Example Rd",
-                                           "service": "mowing", "scheduled_date": TOMORROW.isoformat(),
+                                           "service": "mowing", "lawn_sqft": 5000, "package": "standard", "scheduled_date": TOMORROW.isoformat(),
                                            "lawn_size": "large", "package": "gold"})
     assert r.status_code == 422 and "supporter" in r.text
 
@@ -54,10 +56,10 @@ def test_a_package_off_the_menu_is_refused(client):
 def test_cash_donation_is_split_and_shown_to_the_customer(client, repo, settings):
     with patch("app.main.local_now", return_value=NOW):
         job = client.post("/api/jobs", json={"name": "Pat Doe", "phone": "2815550100", "address": "100 A Example Rd",
-                                             "service": "mowing", "scheduled_date": TOMORROW.isoformat()}).json()
+                                             "service": "mowing", "lawn_sqft": 5000, "package": "standard", "scheduled_date": TOMORROW.isoformat()}).json()
     run_nightly(repo, settings, TOMORROW)
     stop = client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]
-    client.post(f"/api/stops/{stop['stop_id']}/complete", headers=CREW, json={"cash_collected": 107.97})   # $97.97 + $10
+    client.post(f"/api/stops/{stop['stop_id']}/complete", headers=CREW, json={"cash_collected": 96.6})   # $86.60 + $10
     pay = client.get(f"/api/visit/{job['access_code'].replace('-', '')}").json()["payment"]
     assert pay["donation"] == 10.0
     assert [(c["key"], c["amount"]) for c in pay["donation_ledger"]] == [("vfw", 3.3), ("nicu", 3.3), ("at_risk_youth", 3.4)]
@@ -66,7 +68,7 @@ def test_cash_donation_is_split_and_shown_to_the_customer(client, repo, settings
 def test_donations_from_before_the_split_show_no_ledger(client, repo, settings):
     with patch("app.main.local_now", return_value=NOW):
         job = client.post("/api/jobs", json={"name": "Pat Doe", "phone": "2815550100", "address": "100 A Example Rd",
-                                             "service": "mowing", "scheduled_date": TOMORROW.isoformat()}).json()
+                                             "service": "mowing", "lawn_sqft": 5000, "package": "standard", "scheduled_date": TOMORROW.isoformat()}).json()
     repo.mark_paid(job["id"], method="cash", amount_paid=60.0, donation=5.87)   # recorded the old way, no split
     pay = client.get(f"/api/visit/{job['access_code'].replace('-', '')}").json()["payment"]
     assert pay["donation"] == 5.87 and pay["donation_ledger"] == []

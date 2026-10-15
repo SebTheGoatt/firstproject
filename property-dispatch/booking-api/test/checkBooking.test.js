@@ -44,9 +44,9 @@ const post = (body, raw = false) =>
 
 describe('POST /api/check-booking', () => {
   for (const [place, zoneName, rate] of [
-    ['Rayford', "Spring / Woodson's Reserve Corridor", 50],
-    ['Splendora', 'New Caney & Splendora High-Density Spine', 50],
-    ['Cleveland', 'Cleveland, Plum Grove & Grand Oaks Reserve', 50],
+    ['Rayford', "Spring / Woodson's Reserve Corridor", 35],
+    ['Splendora', 'New Caney & Splendora High-Density Spine', 35],
+    ['Cleveland', 'Cleveland, Plum Grove & Grand Oaks Reserve', 35],
   ]) {
     it(`in-zone (${place}) → 200, lead saved with $${rate}`, async () => {
       const { status, body } = await post({ address: `${place} Rd, TX 77386` });

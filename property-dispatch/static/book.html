@@ -26,7 +26,7 @@
   <main class="wrap">
     <header class="page-intro">
       <h1>Book a service</h1>
-      <p>Mowing in the Spring, TX area, with bin cleaning, gutters and holiday lighting as add-ons.</p>
+      <p>Calculate your mowing price, add any extras, and book your visit. You'll see the full itemized total before you book.</p>
       <details id="areas" class="hint" hidden>
         <summary>Where we service</summary>
         <ul id="area-list"></ul>
@@ -38,8 +38,45 @@
     <form id="intake" class="card" novalidate>
       <div id="err" class="alert alert-error" role="alert" hidden></div>
 
-      <section class="step">
-        <h2 class="step-title"><span>1</span>Where</h2>
+      <section class="step" aria-labelledby="step-size">
+        <h2 class="step-title" id="step-size"><span>1</span>Lawn mowing</h2>
+        <div class="field">
+          <label for="lawn-sqft">How large is your lawn?</label>
+          <div class="sqft-input"><input id="lawn-sqft" type="text" inputmode="numeric" autocomplete="off"
+            placeholder="Enter lawn square footage" aria-describedby="sqft-help sqft-error"><span>sq ft</span></div>
+          <p class="hint" id="sqft-help">Enter your estimated mowable lawn area in square feet.</p>
+          <p class="field-error" id="sqft-error" role="alert" hidden></p>
+        </div>
+      </section>
+
+      <section class="step" aria-labelledby="step-rate">
+        <h2 class="step-title" id="step-rate"><span>2</span>Choose your rate</h2>
+        <fieldset>
+          <legend class="visually-hidden">Rate per square foot</legend>
+          <div class="rates tiers" id="rates" role="radiogroup" aria-describedby="rate-error"></div>
+          <p class="field-error" id="rate-error" role="alert" hidden>Choose Standard, Plus or Premium to continue.</p>
+        </fieldset>
+        <div class="price-box estimate" id="estimate" aria-live="polite">
+          <h3 class="order-title">Lawn Mowing estimate</h3>
+          <dl class="price-lines" id="estimate-lines"></dl>
+          <div class="impact-box" id="impact-box" hidden>
+            <span class="impact-kicker">Your order generates</span>
+            <strong class="impact-amount" id="impact-amount"></strong>
+            <span class="impact-for">for local VFW, NICU &amp; at-risk youth programs</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="step" aria-labelledby="step-addons">
+        <h2 class="step-title" id="step-addons"><span>3</span>Add-ons <span class="optional">(optional)</span></h2>
+        <fieldset id="addon-fieldset">
+          <legend class="visually-hidden">Add-ons to your mowing visit</legend>
+          <div class="add-ons" id="add-ons"></div>
+        </fieldset>
+      </section>
+
+      <section class="step" aria-labelledby="step-where">
+        <h2 class="step-title" id="step-where"><span>4</span>Address &amp; day</h2>
         <div class="field">
           <label for="address">Service address</label>
           <div id="address-picker" hidden></div>
@@ -49,31 +86,6 @@
           <div class="hint" id="address-hint">House number, street, city and ZIP.</div>
           <div class="area-check" id="area-check" role="status" aria-live="polite" hidden></div>
         </div>
-      </section>
-
-      <section class="step">
-        <h2 class="step-title"><span>2</span>What</h2>
-        <div class="mow-included">
-          <strong>✓ Lawn mowing</strong>
-          <span>Every booking includes a mow. Add any extras below.</span>
-        </div>
-        <fieldset id="lawn-fieldset">
-          <legend>Lawn size</legend>
-          <div class="sizes" id="sizes"></div>
-          <div class="field exact-row">
-            <label for="lawn-sqft">Know your exact lawn size?</label>
-            <div class="sqft-input"><input id="lawn-sqft" type="number" inputmode="numeric" min="200" max="87120" step="100" placeholder="e.g. 5200"><span>sq ft</span></div>
-          </div>
-          <p class="hint">Not sure? Pick the closest size. Your crew confirms it on site, and the price only changes if it's different.</p>
-        </fieldset>
-        <fieldset id="addon-fieldset">
-          <legend>Add-ons <span class="optional">(optional, with your mow)</span></legend>
-          <div class="add-ons" id="add-ons"></div>
-        </fieldset>
-      </section>
-
-      <section class="step">
-        <h2 class="step-title"><span>3</span>When</h2>
         <div class="field">
           <label for="date">Service day</label>
           <input id="date" name="scheduled_date" type="date" required>
@@ -81,29 +93,18 @@
         </div>
       </section>
 
-      <section class="step">
-        <h2 class="step-title"><span>4</span>Your impact &amp; price</h2>
-        <fieldset id="rate-fieldset">
-          <legend>Select your impact level</legend>
-          <div class="rates packages" id="rates" role="radiogroup"></div>
-          <p class="hint">Same great service at every level: $50 per visit plus a per-sq-ft rate.
-            Higher impact levels cost a little more and give a bigger share of your price to the VFW, NICU families and at-risk youth.</p>
-        </fieldset>
+      <section class="step" aria-labelledby="step-review">
+        <h2 class="step-title" id="step-review"><span>5</span>Review your order</h2>
         <div class="price-box order-summary" id="price-box" aria-live="polite">
           <h3 class="order-title">Order summary</h3>
-          <p class="muted" id="price-empty">Enter your address to see your price.</p>
+          <p class="muted" id="price-empty">Add your lawn size, rate and address to see your final total.</p>
           <dl class="price-lines" id="price-lines" hidden></dl>
-          <div class="impact-box" id="impact-box" hidden>
-            <span class="impact-kicker">Your order generates</span>
-            <strong class="impact-amount" id="impact-amount"></strong>
-            <span class="impact-for">for local VFW, NICU &amp; at-risk youth programs</span>
-          </div>
           <p class="hint" id="price-note" hidden></p>
         </div>
       </section>
 
-      <section class="step">
-        <h2 class="step-title"><span>5</span>Pay your way</h2>
+      <section class="step" aria-labelledby="step-pay">
+        <h2 class="step-title" id="step-pay"><span>6</span>Pay your way</h2>
         <fieldset>
           <legend class="visually-hidden">Payment method</legend>
           <div class="pay-options">
@@ -119,8 +120,8 @@
         </fieldset>
       </section>
 
-      <section class="step">
-        <h2 class="step-title"><span>6</span>Your details</h2>
+      <section class="step" aria-labelledby="step-details">
+        <h2 class="step-title" id="step-details"><span>7</span>Your details</h2>
         <div class="field">
           <label for="name">Full name</label>
           <input id="name" name="name" type="text" autocomplete="name" required maxlength="120">
@@ -143,36 +144,49 @@
     const ok = document.getElementById("ok");
     const submit = document.getElementById("submit");
     const dateInput = document.getElementById("date");
+    const $ = (id) => document.getElementById(id);
 
     const money = (n) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
     const fmtDay = (iso) =>
       new Date(iso + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
-
-    // ---------- Address: instant "are you in our area?" check ----------
-    const addressInput = document.getElementById("address");
-    const latInput = document.getElementById("lat"), lngInput = document.getElementById("lng");
-    const areaBox = document.getElementById("area-check");
-    let checkSeq = 0;
-
-    // ---------- Live price: area check + price breakdown in one call ----------
-    const priceLines = document.getElementById("price-lines"), priceEmpty = document.getElementById("price-empty");
-    const priceNote = document.getElementById("price-note");
-    const sqftInput = document.getElementById("lawn-sqft");
-    let lawnSize = "medium", lastQuote = null, flatFee = 50, pkgKey = "standard", lastSqft = null;
-    let packages = [
-      { key: "standard", label: "Standard Tier", sqft_rate: 0.009, charity_rate: 0.02 },
-      { key: "supporter", label: "Community Supporter", sqft_rate: 0.01, charity_rate: 0.07 },
-      { key: "hero", label: "Impact Champion", sqft_rate: 0.011, charity_rate: 0.12 },
-    ];
-    const cent = (r) => `${(r * 100).toFixed(1)}¢`;
     const pct = (r) => `${(r * 100).toFixed(2).replace(/\.?0+$/, "")}%`;
-    const service = () => "mowing";   // every booking is a mow; bins, gutters and lights are add-ons
-    let addOnCatalog = [
-      { key: "bin_cleaning", label: "Bin cleaning", price: 15, season: null, season_range: null },
-      { key: "gutters", label: "Gutter cleaning", price: 20, season: null, season_range: null },
-      { key: "holiday_lights", label: "Holiday lighting hang-up", price: 30, season: "Oct 15 – Jan 15", season_range: [[10, 15], [1, 15]] },
+    const rateText = (r) => `$${r.toFixed(3)} / sq. ft.`;
+    const service = () => "mowing";   // every booking is a mow; bins and gutters are add-ons
+
+    // ---------- Pricing settings (from /api/booking-info; these are only fallbacks) ----------
+    let baseFee = 35, limits = { min: 100, max: 87120 };
+    let packages = [
+      { key: "standard", label: "Standard", sqft_rate: 0.009, charity_rate: 0.02, description: "Essential lawn maintenance at our most affordable rate." },
+      { key: "supporter", label: "Plus", sqft_rate: 0.01, charity_rate: 0.07, description: "A balanced option for dependable lawn care." },
+      { key: "hero", label: "Premium", sqft_rate: 0.012, charity_rate: 0.12, description: "Our highest service rate for customers who prefer the premium option." },
     ];
-    const chosenAddOns = new Set();
+    let addOnCatalog = [
+      { key: "bin_cleaning", label: "Bin cleaning", price: 15, quote: false, season: null, season_range: null },
+      { key: "gutters", label: "Gutter cleaning", price: 15, quote: false, season: null, season_range: null },
+      { key: "holiday_lights", label: "Holiday lighting quote", price: null, quote: true, season: "Oct 15 – Jan 15", season_range: [[10, 15], [1, 15]] },
+    ];
+
+    // ---------- Customer choices ----------
+    let sqft = null, pkgKey = null, lastQuote = null, sqftTouched = false;
+    const chosenAddOns = new Set(new URLSearchParams(location.search).getAll("addon"));
+    const sqftInput = $("lawn-sqft");
+
+    // Same rules as the server (app/pricing.py check_sqft); the server checks again on booking.
+    function checkSqft(raw) {
+      const v = String(raw ?? "").trim().replace(/,/g, "");
+      if (!v) return { error: "Enter your lawn size in square feet." };
+      if (!/^-?\d+(\.\d+)?$/.test(v)) return { error: "Lawn size must be a whole number of square feet." };
+      const n = Number(v);
+      if (n <= 0) return { error: "Lawn size must be greater than zero." };
+      if (!Number.isInteger(n)) return { error: "Lawn size must be a whole number of square feet." };
+      if (n < limits.min) return { error: `The smallest lawn we can book online is ${limits.min.toLocaleString()} sq ft.` };
+      if (n > limits.max) return { error: `Lawns over ${limits.max.toLocaleString()} sq ft (2 acres) are quoted in person.` };
+      return { value: n };
+    }
+    // Exact cents, half up, like the server's Decimal math: sq ft × rate in thousandths of a dollar.
+    const sizeChargeCents = (n, rate) => Math.floor((n * Math.round(rate * 1000) + 5) / 10);
+    const pkg = () => packages.find((p) => p.key === pkgKey) || null;
+
     function addOnInSeason(a, iso) {
       if (!a.season_range) return true;
       if (!iso) return false;
@@ -181,140 +195,175 @@
       return s > e ? md >= s || md <= e : md >= s && md <= e;
     }
     const pickedAddOns = () => addOnCatalog.filter((a) => chosenAddOns.has(a.key) && addOnInSeason(a, dateInput.value)).map((a) => a.key);
+
+    const row = (label, value, cls = "") => {
+      const d = document.createElement("div"); if (cls) d.className = cls;
+      const dt = document.createElement("dt"); dt.textContent = label;
+      const dd = document.createElement("dd"); dd.textContent = value;
+      d.append(dt, dd); return d;
+    };
+
+    // ---------- Step 1: lawn size ----------
+    function readSqft(showError) {
+      const r = checkSqft(sqftInput.value);
+      sqft = r.value ?? null;
+      const box = $("sqft-error");
+      const show = showError && r.error;
+      box.hidden = !show; box.textContent = show ? r.error : "";
+      sqftInput.setAttribute("aria-invalid", show ? "true" : "false");
+      return !r.error;
+    }
+
+    // ---------- Step 2: rate cards (nothing preselected) ----------
+    function renderRates() {
+      const box = $("rates");
+      box.replaceChildren(...packages.flatMap((pk) => {
+        const input = Object.assign(document.createElement("input"),
+          { type: "radio", name: "package_pick", id: `pkg-${pk.key}`, value: pk.key, checked: pk.key === pkgKey });
+        const label = document.createElement("label"); label.htmlFor = input.id;
+        const name = document.createElement("strong"); name.textContent = pk.label;
+        const rate = document.createElement("span"); rate.className = "tier-rate"; rate.textContent = rateText(pk.sqft_rate);
+        const desc = document.createElement("small"); desc.textContent = pk.description || "";
+        const est = document.createElement("em"); est.id = `est-${pk.key}`;
+        label.append(name, rate, desc, est);
+        input.addEventListener("change", () => {
+          pkgKey = pk.key; $("rate-error").hidden = true; renderEstimate(); updateServer();
+        });
+        return [input, label];
+      }));
+      updateRateCards();
+    }
+    // Each card shows what this lawn costs at that rate (text only, so focus stays put).
+    function updateRateCards() {
+      for (const pk of packages) {
+        const est = $(`est-${pk.key}`);
+        if (est) est.textContent = sqft ? `${money(baseFee + sizeChargeCents(sqft, pk.sqft_rate) / 100)} before tax` : "";
+      }
+    }
+
+    // Live estimate: updates instantly from the size and rate. Tax is shown once we know the
+    // address (it depends on the service area); until then it says "Calculated at checkout".
+    function renderEstimate() {
+      const lines = $("estimate-lines"), p = pkg();
+      const charge = sqft && p ? sizeChargeCents(sqft, p.sqft_rate) / 100 : null;
+      const subtotal = charge != null ? Math.round((baseFee + charge) * 100) / 100 : null;
+      const serverTax = lastQuote && lastQuote.in_area && lastQuote.package === pkgKey && lastQuote.lawn_sqft === sqft
+        && !(lastQuote.add_on_total > 0) ? lastQuote.tax : null;
+      lines.replaceChildren(
+        row("Base service fee", money(baseFee)),
+        row("Lawn size", sqft ? `${sqft.toLocaleString()} sq ft` : "Enter above"),
+        row("Selected rate", p ? `${p.label} · ${rateText(p.sqft_rate)}` : "Choose above"),
+        row("Lawn size charge", charge != null ? money(charge) : "—"),
+        row("Estimated subtotal", subtotal != null ? money(subtotal) : "—", "sub-strong"),
+        row("Sales tax", serverTax != null ? money(serverTax) : "Calculated at checkout"),
+        row("Estimated total", subtotal == null ? "—" : serverTax != null ? money(subtotal + serverTax) : `${money(subtotal)} + tax`, "total"));
+      const giving = subtotal != null ? Math.round(subtotal * p.charity_rate * 100) / 100 : 0;
+      $("impact-box").hidden = !(giving > 0);
+      $("impact-amount").textContent = money(giving);
+      updateRateCards();
+    }
+
+    // ---------- Step 3: add-ons ----------
     function renderAddOns() {
-      const box = document.getElementById("add-ons");
+      const box = $("add-ons");
       box.replaceChildren(...addOnCatalog.flatMap((a) => {
         const open = addOnInSeason(a, dateInput.value);
         const input = Object.assign(document.createElement("input"), { type: "checkbox", id: `addon-${a.key}`, value: a.key,
           checked: open && chosenAddOns.has(a.key), disabled: !open });
         const label = document.createElement("label"); label.htmlFor = input.id;
         const name = document.createElement("strong"); name.textContent = a.label;
-        const price = document.createElement("span"); price.textContent = `+${money(a.price)}`;
+        const price = document.createElement("span"); price.textContent = a.price == null ? "Free quote" : `+${money(a.price)}`;
         label.append(name, price);
-        if (a.season) {
-          const note = document.createElement("small");
-          note.textContent = open ? `Seasonal: ${a.season}` : `Available for ${a.season} visits`;
-          label.append(note);
-        }
-        input.addEventListener("change", () => { input.checked ? chosenAddOns.add(a.key) : chosenAddOns.delete(a.key); updateQuote(); });
+        const note = document.createElement("small");
+        note.textContent = a.quote ? (open ? `No charge. Seasonal: ${a.season}` : `Available for ${a.season} visits`)
+          : "Added to your mowing visit";
+        label.append(note);
+        input.addEventListener("change", () => {
+          input.checked ? chosenAddOns.add(a.key) : chosenAddOns.delete(a.key);   // a Set: never added twice
+          updateServer();
+        });
         return [input, label];
       }));
     }
 
-    function renderPrice(q) {
+    // ---------- Steps 4–5: area check and the server's itemized total ----------
+    const addressInput = $("address");
+    const latInput = $("lat"), lngInput = $("lng");
+    const areaBox = $("area-check");
+    const priceLines = $("price-lines"), priceEmpty = $("price-empty"), priceNote = $("price-note");
+    let checkSeq = 0;
+
+    function renderReview(q) {
       lastQuote = q;
-      if (!q || !q.in_area) {
+      renderEstimate();
+      if (!q || !q.in_area || q.total == null) {
         priceLines.hidden = true; priceNote.hidden = true; priceEmpty.hidden = false;
-        priceEmpty.textContent = q ? "We don't serve that address yet." : "Enter your address to see your price.";
+        priceEmpty.textContent = q && !q.in_area ? "We don't serve that address yet."
+          : "Add your lawn size, rate and address to see your final total.";
         return;
       }
       priceEmpty.hidden = true; priceLines.hidden = false; priceNote.hidden = false;
-      document.getElementById("impact-box").hidden = !(q.charity_amount > 0);
-      const row = (label, value, cls = "") => {
-        const d = document.createElement("div"); if (cls) d.className = cls;
-        const dt = document.createElement("dt"); dt.textContent = label;
-        const dd = document.createElement("dd"); dd.textContent = value;
-        d.append(dt, dd); return d;
-      };
-      if (q.total == null) {
-        priceLines.replaceChildren(row(q.service_label, "Priced on site"), row(`Texas sales tax (${pct(q.tax_rate)})`, "Added to the on-site price"));
-        priceNote.textContent = "Your crew takes a quick look and sets the price before starting. You'll see the total before you pay.";
-        return;
-      }
-      flatFee = q.base_fee ?? q.flat_fee ?? flatFee;
-      renderRates(q.lawn_sqft);
-      if (!q.package) {
-        priceLines.replaceChildren(row(q.service_label, money(q.subtotal)),
-          row(`Texas sales tax (${pct(q.tax_rate)})`, money(q.tax)), row("Total", money(q.total), "total"));
-        priceNote.hidden = true;
-        return;
-      }
-      const turf = Math.round((q.mow_price - q.base_fee) * 100) / 100;
+      const charge = Math.round((q.mow_price - q.base_fee) * 100) / 100;
       priceLines.replaceChildren(
-        row("Base setup / trip fee", money(q.base_fee)),
-        row(`Mowing care · ${q.lawn_sqft.toLocaleString()} sq ft × ${cent(q.sqft_rate)}`, money(turf)),
-        ...(q.add_ons || []).map((a) => row(`Add-on: ${a.label}`, money(a.price))),
-        row(`Texas sales tax (${pct(q.tax_rate)})`, money(q.tax)),
-        row("Total amount due", money(q.total), "total"));
-      document.getElementById("impact-amount").textContent = money(q.charity_amount);
-      priceNote.textContent = `${q.package_label}: ${Math.round(q.charity_rate * 100)}% of your price goes to charity. ` +
-        "It's included in your total, not added on. Your crew confirms the lawn size on site; the price only changes if it's different.";
+        row(`Lawn mowing · ${q.package_label} · ${q.lawn_sqft.toLocaleString()} sq ft`, ""),
+        row("Base service fee", money(q.base_fee), "sub"),
+        row(`Lawn size charge (${q.lawn_sqft.toLocaleString()} × ${rateText(q.sqft_rate)})`, money(charge), "sub"),
+        ...(q.add_ons || []).map((a) => row(a.price == null ? a.label : `Add-on: ${a.label}`, a.price == null ? "No charge" : money(a.price))),
+        row("Subtotal", money(q.subtotal), "sub-strong"),
+        row(`Sales tax (${pct(q.tax_rate)})`, money(q.tax)),
+        row("Total", money(q.total), "total"));
+      priceNote.textContent = (q.add_ons || []).some((a) => a.price == null)
+        ? "Holiday lighting is a free quote: the crew takes a look and you decide later. Nothing is charged for it."
+        : "Your crew confirms the lawn size on site; the price only changes if it's different.";
     }
 
-    // Packages: each card shows this lawn's price and how much of it goes to charity.
-    function renderRates(sqft) {
-      if (sqft) lastSqft = sqft;
-      sqft = sqft || lastSqft;
-      const box = document.getElementById("rates");
-      box.replaceChildren(...packages.flatMap((pk) => {
-        const input = Object.assign(document.createElement("input"), { type: "radio", name: "package_pick", id: `pkg-${pk.key}`, value: pk.key, checked: pk.key === pkgKey });
-        const label = document.createElement("label"); label.htmlFor = input.id;
-        const b = document.createElement("strong"); b.textContent = pk.label;
-        const r = document.createElement("small"); r.textContent = `${cent(pk.sqft_rate)} per sq ft`;
-        const price = sqft ? Math.round((flatFee + pk.sqft_rate * sqft) * 100) / 100 : null;
-        const p = document.createElement("span"); p.textContent = price != null ? `${money(price)} + tax` : "";
-        const g = document.createElement("em");
-        g.textContent = `${Math.round(pk.charity_rate * 100)}% to charity` + (price != null ? ` (${money(Math.round(price * pk.charity_rate * 100) / 100)})` : "");
-        label.append(b, r, p, g);
-        input.addEventListener("change", () => { pkgKey = pk.key; updateQuote(); });
-        return [input, label];
-      }));
-    }
-
-    async function updateQuote() {
+    async function updateServer() {
       const address = addressInput.value.trim();
-      if (!/^\s*\d+\s+\S+/.test(address) || address.length < 8) { areaBox.hidden = true; renderPrice(null); return; }
+      if (!/^\s*\d+\s+\S+/.test(address) || address.length < 8) { areaBox.hidden = true; renderReview(null); return; }
       const seq = ++checkSeq;
       areaBox.className = "area-check"; areaBox.textContent = "Checking your address…"; areaBox.hidden = false;
-      const payload = { address, service: service(), add_ons: pickedAddOns() };
-      if (dateInput.value) payload.scheduled_date = dateInput.value;
-      if (service() === "mowing") {
-        payload.package = pkgKey;
-        const exact = parseInt(sqftInput.value, 10);
-        if (exact >= 200) payload.lawn_sqft = exact; else payload.lawn_size = lawnSize;
-      }
-      if (addressInput.dataset.picked === address && latInput.value) { payload.lat = Number(latInput.value); payload.lng = Number(lngInput.value); }
+      const hint = addressInput.dataset.picked === address && latInput.value
+        ? { lat: Number(latInput.value), lng: Number(lngInput.value) } : {};
+      const priced = sqft && pkgKey;
+      const url = priced ? "/api/quote" : "/api/check-address";
+      const payload = priced
+        ? { address, service: service(), lawn_sqft: sqft, package: pkgKey, add_ons: pickedAddOns(),
+            scheduled_date: dateInput.value || undefined, ...hint }
+        : { address, ...hint };
       try {
-        const res = await fetch("/api/quote", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
         const body = await res.json().catch(() => ({}));
         if (seq !== checkSeq) return;  // a newer check started
         if (!res.ok) {
           areaBox.className = "area-check warn";
           areaBox.textContent = typeof body.detail === "string" ? body.detail : "Please check the address and include your ZIP.";
-          renderPrice(null);
+          renderReview(null);
           return;
         }
         areaBox.className = "area-check " + (body.in_area ? "ok" : "bad");
         areaBox.textContent = body.in_area ? `✓ Good news: you're in our ${body.zone_name} area.` : body.message;
-        renderPrice(body);
+        renderReview(priced ? body : (body.in_area ? null : { in_area: false }));
       } catch {
         if (seq === checkSeq) areaBox.hidden = true;  // offline: the booking itself will report it
       }
     }
-    const checkArea = updateQuote;
+    const checkArea = updateServer;
 
-    // Lawn size picker (mowing only)
-    function renderSizes(sizes) {
-      const box = document.getElementById("sizes");
-      box.replaceChildren(...sizes.flatMap((z) => {
-        const input = Object.assign(document.createElement("input"), { type: "radio", name: "lawn_size_pick", id: `size-${z.key}`, value: z.key, checked: z.key === lawnSize });
-        const label = document.createElement("label"); label.htmlFor = input.id;
-        const b = document.createElement("strong"); b.textContent = z.label;
-        const r = document.createElement("span"); r.textContent = z.range;
-        const ex = document.createElement("small"); ex.textContent = z.example;
-        label.append(b, r, ex);
-        input.addEventListener("change", () => { lawnSize = z.key; sqftInput.value = ""; updateQuote(); });
-        return [input, label];
-      }));
-    }
     let sqftTimer;
-    sqftInput.addEventListener("input", () => { clearTimeout(sqftTimer); sqftTimer = setTimeout(updateQuote, 500); });
-    dateInput.addEventListener("change", () => { renderAddOns(); updateQuote(); });
-
+    sqftInput.addEventListener("input", () => {
+      const valid = readSqft(sqftTouched);
+      renderEstimate();
+      clearTimeout(sqftTimer);
+      if (valid) sqftTimer = setTimeout(updateServer, 500); else renderReview(null);
+    });
+    sqftInput.addEventListener("blur", () => { if (sqftInput.value.trim()) { sqftTouched = true; readSqft(true); } });
+    dateInput.addEventListener("change", () => { renderAddOns(); updateServer(); });
     addressInput.addEventListener("change", () => {
       if (addressInput.dataset.picked !== addressInput.value) { latInput.value = lngInput.value = ""; }
       checkArea();
     });
+    renderRates();
+    renderEstimate();
 
     // ---------- Optional Google address dropdown (Places API (New)) ----------
     // Only loads when the owner sets GOOGLE_MAPS_BROWSER_KEY; otherwise customers type normally.
@@ -367,55 +416,60 @@
       dateInput.min = info.earliest_date;
       dateInput.max = info.latest_date;
       dateInput.value = info.earliest_date;
-      document.getElementById("date-hint").textContent =
+      $("date-hint").textContent =
         `Earliest available: ${fmtDay(info.earliest_date)}. Next-day bookings close at ${((info.freeze_hour + 11) % 12) + 1} ${info.freeze_hour < 12 ? "AM" : "PM"}.`;
-      const list = document.getElementById("area-list");
+      const list = $("area-list");
       for (const z of info.zones) {
         const li = document.createElement("li");
-        li.textContent = `${z.name}: mowing ${money(z.mow_rate)} per visit + sq ft rate + tax`;
+        li.textContent = z.name;
         list.append(li);
       }
-      document.getElementById("areas").hidden = !info.zones.length;
+      $("areas").hidden = !info.zones.length;
+      if (info.zones.length) baseFee = Math.min(...info.zones.map((z) => z.mow_rate));
+      if (info.lawn_sqft_limits) limits = info.lawn_sqft_limits;
       if (info.google_maps_key) setUpGoogleAutocomplete(info.google_maps_key);
-      if (info.lawn_sizes) renderSizes(info.lawn_sizes);
       if (info.add_ons) addOnCatalog = info.add_ons;
+      if (info.packages) { packages = info.packages; renderRates(); }
       renderAddOns();
-      if (info.packages) { packages = info.packages; pkgKey = info.default_package || pkgKey; renderRates(null); }
-      if (info.charities) document.getElementById("charity-list").textContent =
+      readSqft(sqftTouched);
+      renderEstimate();
+      if (info.charities) $("charity-list").textContent =
         info.charities.map((c) => `${c.name} (${c.percent}%)`).join(", ").replace(/, ([^,]*)$/, " and $1");
       if (info.card_payments) {
-        document.getElementById("pay-card").disabled = false;
-        document.getElementById("pay-card-note").textContent = "Pay securely now, or after the visit.";
+        $("pay-card").disabled = false;
+        $("pay-card-note").textContent = "Pay securely now, or after the visit.";
       }
-    }).catch(() => {});
+    }).catch(() => { renderAddOns(); });
 
-    function showError(msg) {
+    function showError(msg, focusEl) {
       err.textContent = msg;
       err.hidden = false;
-      err.scrollIntoView({ behavior: "smooth", block: "center" });
+      (focusEl || err).scrollIntoView({ behavior: "smooth", block: "center" });
+      focusEl?.focus?.({ preventScroll: true });
     }
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       err.hidden = true;
+      // The mowing calculator comes first: a real lawn size and an explicit rate choice.
+      sqftTouched = true;
+      if (!readSqft(true)) { showError($("sqft-error").textContent, sqftInput); return; }
+      if (!pkgKey) { $("rate-error").hidden = false; showError("Choose Standard, Plus or Premium to continue.", $("rates")); return; }
       if (!form.checkValidity()) { form.reportValidity(); return; }
       if (!addressInput.value.trim()) { showError("Please choose your address from the list."); return; }
 
       const data = Object.fromEntries(new FormData(form));
-      delete data.lawn_size_pick; delete data.package_pick;
+      delete data.package_pick;
       data.service = "mowing";
+      data.lawn_sqft = sqft;
+      data.package = pkgKey;
       data.add_ons = pickedAddOns();
-      if (data.service === "mowing") {
-        data.package = pkgKey;
-        const exact = parseInt(sqftInput.value, 10);
-        if (exact >= 200) data.lawn_sqft = exact; else data.lawn_size = lawnSize;
-      }
       if (addressInput.dataset.picked === addressInput.value && latInput.value) {
         data.lat = Number(latInput.value);
         data.lng = Number(lngInput.value);
       }
       submit.disabled = true;
-      submit.textContent = "Checking address…";
+      submit.textContent = "Booking…";
       try {
         const res = await fetch("/api/jobs", {
           method: "POST",
@@ -435,12 +489,28 @@
         h.textContent = `You're booked for ${fmtDay(body.scheduled_date)}.`;
         const p = document.createElement("div");
         p.textContent = `We'll text ${data.phone} when the crew is headed to ${body.formatted_address}.`;
-        const z = document.createElement("div");
-        z.textContent = body.total != null
-          ? `${money(body.subtotal)} + ${money(body.tax)} Texas sales tax = ${money(body.total)} total.` +
-            (body.charity_amount ? ` Your order generates ${money(body.charity_amount)} for local VFW, NICU & at-risk youth programs. Thank you!` : "")
-          : `${body.zone_name}. Your crew sets the price on site; Texas sales tax is added.`;
-        ok.append(h, p, z);
+        ok.append(h, p);
+        // Itemized confirmation: the server's own numbers, the same ones checkout charges.
+        if (body.total != null) {
+          const tier = packages.find((x) => x.key === body.package);
+          const dl = document.createElement("dl"); dl.className = "price-lines confirm-lines";
+          const charge = Math.round((body.subtotal - (body.add_on_total || 0) - baseFee) * 100) / 100;
+          dl.append(
+            row("Service", "Lawn mowing"),
+            row("Lawn size", `${body.lawn_sqft.toLocaleString()} sq ft`),
+            row("Selected rate", tier ? `${tier.label} · ${rateText(body.sqft_rate)}` : rateText(body.sqft_rate)),
+            row("Base service fee", money(baseFee)),
+            row("Lawn size charge", money(charge)),
+            ...(body.add_ons || []).map((a) => row(a.price == null ? a.label : `Add-on: ${a.label}`, a.price == null ? "No charge" : money(a.price))),
+            row(`Sales tax (${pct(body.tax_rate)})`, money(body.tax)),
+            row("Total", money(body.total), "total"));
+          ok.append(dl);
+          if (body.charity_amount) {
+            const g = document.createElement("div"); g.className = "hint";
+            g.textContent = `Your order generates ${money(body.charity_amount)} for local VFW, NICU & at-risk youth programs. Thank you!`;
+            ok.append(g);
+          }
+        }
         if (body.access_code) {
           const codeBox = document.createElement("div");
           codeBox.className = "code-box";
@@ -469,6 +539,7 @@
           ok.append(cash);
         }
         ok.hidden = false;
+        ok.scrollIntoView({ behavior: "smooth", block: "start" });
       } catch (ex) {
         showError(navigator.onLine === false || ex instanceof TypeError
           ? "You're offline. Check your connection and try again."

@@ -32,7 +32,7 @@ AddOn = Literal["bin_cleaning", "gutters", "holiday_lights"]
 
 
 def order_label(service: str, add_ons: list | None = None) -> str:
-    """'Mowing + Gutter cleaning + Holiday lighting hang-up' for a booking with add-ons."""
+    """'Mowing + Gutter cleaning + Holiday lighting quote' for a booking with add-ons."""
     parts = [SERVICE_LABELS[Service(service)]] + [a["label"] for a in (add_ons or [])]
     return " + ".join(parts)
 
@@ -61,10 +61,10 @@ class JobRequest(BaseModel):
     # Coordinates from the Google address dropdown, when the customer used it.
     lat: float | None = Field(default=None, ge=-90, le=90)
     lng: float | None = Field(default=None, ge=-180, le=180)
-    # Mowing: lawn size (a size from the picker, or an exact number). Crew confirms on site.
-    lawn_size: Literal["small", "medium", "large", "xl"] | None = None
-    lawn_sqft: int | None = Field(default=None, ge=100, le=200_000)
-    package: Package | None = None   # mowing package; none → Standard
+    # Mowing: the customer's lawn size in square feet and their chosen rate tier. Both are
+    # required and checked on the server (app/pricing.py); the price is always recalculated here.
+    lawn_sqft: int | None = None
+    package: Package | None = None   # standard | supporter (Plus) | hero (Premium)
     add_ons: list[AddOn] = Field(default_factory=list, max_length=3)
 
     @field_validator("name", "address")
@@ -237,8 +237,7 @@ class QuoteRequest(BaseModel):
     service: Service = Service.MOWING
     lat: float | None = Field(default=None, ge=-90, le=90)
     lng: float | None = Field(default=None, ge=-180, le=180)
-    lawn_size: Literal["small", "medium", "large", "xl"] | None = None
-    lawn_sqft: int | None = Field(default=None, ge=100, le=200_000)
+    lawn_sqft: int | None = None
     package: Package | None = None
     add_ons: list[AddOn] = Field(default_factory=list, max_length=3)
     scheduled_date: date | None = None   # seasonal add-ons depend on the day
