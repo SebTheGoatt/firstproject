@@ -43,7 +43,8 @@ from .pricing import (ADD_ONS, MAX_SQFT, MIN_SQFT, PACKAGES, LawnSizeError, chec
                       quote, season_text)
 from .routing.matrix import haversine_m
 from .nightly import run_nightly
-from .notify import TwilioClient, booking_message, notify_next_customer, send_pay_link, send_text
+from .notify import (TwilioClient, booking_message, day_words, notify_next_customer, send_pay_link, send_text,
+                     service_words)
 from .pay_routes import register_pay_routes
 from .visit_routes import format_code, new_access_code, register_visit_routes
 from .payments import StripeClient
@@ -374,13 +375,13 @@ def create_app(
             sqft_rate=rate, package=q.package,
             charity_rate=float(q.charity_rate) if q.charity_rate is not None else None,
             charity_amount=giving, giving_split=split_donation(giving) if giving else None,
-            add_ons=add_ons, add_on_total=float(q.add_on_total),
+            add_ons=add_ons, add_on_total=float(q.add_on_total), lang=body.lang,
         )
         base = site_url(settings, request)
         visit_url = f"{base}/visit/{access_code}"
         send_text(app.state.sms, body.phone, booking_message(
-            body.name.split()[0], settings, order_label(body.service.value, add_ons),
-            body.scheduled_date.strftime("%A, %b %-d"), format_code(access_code), visit_url))
+            body.name.split()[0], settings, service_words(body.service.value, add_ons, body.lang),
+            day_words(body.scheduled_date, body.lang), format_code(access_code), visit_url, lang=body.lang))
         # Show the customer the house-level match when we have one; otherwise echo
         # their own address back (a street-level match would drop their house number).
         shown = geo.formatted_address if geo.precision == "address" else body.address

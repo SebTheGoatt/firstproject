@@ -316,3 +316,9 @@ alter table jobs
     add column add_ons      jsonb not null default '[]' check (jsonb_typeof(add_ons) = 'array'),
     add column add_on_total numeric(8, 2) not null default 0 check (add_on_total >= 0);
 
+-- ===== migrations/20261024000000_customer_language.sql =====
+-- The language a customer booked in, so their texts (booking confirmation, "on the way",
+-- pay link) come in English or Spanish. Existing bookings stay English.
+alter table jobs
+    add column lang text not null default 'en' check (lang in ('en', 'es'));
+

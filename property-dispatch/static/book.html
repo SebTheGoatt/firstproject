@@ -12,6 +12,7 @@
   <meta name="apple-mobile-web-app-title" content="Book Service">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="stylesheet" href="/static/styles.css?v={{V}}">
+  <script src="/static/i18n.js?v={{V}}"></script>
 </head>
 <body class="site">
   <header class="site-header">
@@ -464,6 +465,7 @@
       data.lawn_sqft = sqft;
       data.package = pkgKey;
       data.add_ons = pickedAddOns();
+      data.lang = window.I18N?.lang === "es" ? "es" : "en";   // their texts come in this language
       if (addressInput.dataset.picked === addressInput.value && latInput.value) {
         data.lat = Number(latInput.value);
         data.lng = Number(lngInput.value);

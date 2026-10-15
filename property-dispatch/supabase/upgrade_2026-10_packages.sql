@@ -1,12 +1,12 @@
 -- =====================================================================
 --  M&A Lawn Care — database upgrade (Oct 2026)
 --  Access codes + before/after photos, pricing + Texas sales tax,
---  donation split, mowing packages with charity giving, and add-ons.
+--  donation split, mowing packages with charity giving, add-ons, and customer language.
 --
 --  HOW TO RUN: Supabase → SQL Editor → New query → paste ALL of this → Run.
 --  Safe to run more than once: anything already added is skipped.
 --  All-or-nothing: if any step fails, nothing is changed.
---  (Same as migrations 20261019 through 20261023.)
+--  (Same as migrations 20261019 through 20261024.)
 -- =====================================================================
 begin;
 
@@ -61,15 +61,19 @@ alter table jobs
     add column if not exists add_ons      jsonb not null default '[]' check (jsonb_typeof(add_ons) = 'array'),
     add column if not exists add_on_total numeric(8, 2) not null default 0 check (add_on_total >= 0);
 
+-- ---------- 6. Customer language (English / Spanish texts) ----------
+alter table jobs
+    add column if not exists lang text not null default 'en' check (lang in ('en', 'es'));
+
 commit;
 
 -- Tell the API about the new columns right away.
 notify pgrst, 'reload schema';
 
--- Quick check: should show 14 rows (13 new columns + the job_photos table).
+-- Quick check: should show 15 rows (14 new columns + the job_photos table).
 select column_name from information_schema.columns
  where table_name = 'jobs' and column_name in ('access_code', 'lawn_sqft', 'subtotal', 'tax_rate', 'tax_amount',
        'sqft_rate', 'donation_split', 'package', 'charity_rate', 'charity_amount', 'giving_split',
-       'add_ons', 'add_on_total')
+       'add_ons', 'add_on_total', 'lang')
 union all
 select 'job_photos table' from information_schema.tables where table_name = 'job_photos';

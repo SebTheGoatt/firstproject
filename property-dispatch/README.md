@@ -203,6 +203,18 @@ At booking, customers choose **Cash to the crew** or **Card in the app**.
    Copy its **Signing secret** into `STRIPE_WEBHOOK_SECRET`.
 4. Set `PUBLIC_BASE_URL` to your site's address.
 
+## En español (Spanish)
+
+The customer pages (home, booking, pay, visit) are available in Spanish. `static/i18n.js` translates
+the page in the browser and picks the language in this order: `?lang=es` in the link, the visitor's
+last choice, then their phone or browser language. A **Español / English** button in the header
+switches at any time. Dates, error messages from the server and prices are shown in Spanish too.
+
+The language is saved on the booking (`jobs.lang`, migration 20261024), so the booking confirmation,
+"crew is on the way" and payment-link texts go out in the customer's language. The crew app stays
+in English. To add or fix a phrase, edit the `ES` dictionary (exact text) or `PATTERNS` (text with
+names, dates or amounts) in `static/i18n.js`. A native speaker should review the wording before launch.
+
 ## Crew app: personal sign-in, profiles, portfolios
 
 - **Sign-in:** `/crew` shows "Who's working today?" with each crew member's photo. They tap
@@ -283,7 +295,7 @@ Without Twilio credentials the "next customer" text is logged instead of sent.
    "Invalid API key", use the legacy `service_role` key from the same page instead.
 4. **Already set up (through 20261018)?** Open `supabase/upgrade_2026-10_packages.sql`, copy **all of its
    text** (not the file name), paste it into a new SQL Editor query and click **Run**. It adds
-   migrations 20261019 to 20261023 at once, is safe to run twice, and ends with a check that lists 14 rows.
+   migrations 20261019 to 20261024 at once, is safe to run twice, and ends with a check that lists 15 rows.
 5. Otherwise, run only the migrations you haven't run yet, once each and in order:
    open each new file in `supabase/migrations/` (for example
    `20261019000000_access_codes_and_job_photos.sql`, then

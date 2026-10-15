@@ -222,6 +222,7 @@ html { scroll-behavior: smooth; }
 .site-nav a { color: var(--muted); text-decoration: none; font-weight: 500; padding: 8px 12px; border-radius: 8px; white-space: nowrap; }
 .site-nav a:hover { color: var(--text); background: var(--brand-soft); }
 .header-cta { flex: none; }
+.lang-switch { flex: none; min-height: 40px; padding: 8px 12px; font-size: 0.9rem; font-weight: 600; }
 .mobile-nav { display: none; }
 @media (max-width: 760px) { .site-nav { display: none; } }   /* pages without the section strip */
 @media (max-width: 900px) {
