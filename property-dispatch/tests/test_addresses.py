@@ -193,3 +193,41 @@ def test_booking_info_exposes_maps_key_only_when_set(client, settings, repo):
     settings.google_maps_browser_key = "AIza-test"
     c = TestClient(create_app(settings, repo=repo, sms=None))
     assert c.get("/api/booking-info").json()["google_maps_key"] == "AIza-test"
+
+
+# ---------- Rural road spellings (Colony Ridge "Road ####") ----------
+COLONY_HIT = {"result": {"addressMatches": [{
+    "coordinates": {"x": -95.054958810404, "y": 30.201455212281},
+    "matchedAddress": "686 RD 5039, CLEVELAND, TX, 77327",
+}]}}
+
+
+@pytest.mark.parametrize("typed", ["686 County Road 5039, Cleveland, TX 77327", "686 CR 5039, Cleveland, TX 77327",
+                                   "686 Co. Rd. 5039, Cleveland, TX 77327", "686 Road 5039, Cleveland, TX 77327"])
+def test_county_road_spellings_find_the_house(settings, typed):
+    census_queries = []
+
+    def handler(req):
+        if req.url.host == "geocoding.geo.census.gov":
+            census_queries.append(req.url.params["address"])
+            # The Census only knows the official name.
+            return httpx.Response(200, json=COLONY_HIT if "Road 5039" in req.url.params["address"]
+                                  and "County" not in req.url.params["address"] else CENSUS_MISS)
+        return httpx.Response(200, json=[])
+
+    geo = geocoder(settings, handler).geocode(typed)
+    assert geo.precision == "address" and geo.formatted_address == "686 Rd 5039, Cleveland, TX 77327"
+    assert find_zone(geo.lat, geo.lng).key == "COLONY_RIDGE"
+    assert len(census_queries) <= 2
+
+
+def test_street_match_in_another_city_and_zip_is_not_trusted(settings):
+    def handler(req):
+        if req.url.host == "geocoding.geo.census.gov":
+            return httpx.Response(200, json=CENSUS_MISS)
+        # OSM's best guess is a "County Road" in Polk County, far from Cleveland 77327.
+        return httpx.Response(200, json=[{"lat": "30.5585", "lon": "-94.8822", "addresstype": "road",
+                                          "display_name": "County Road, Polk County, Texas, 77335, United States"}])
+
+    with pytest.raises(GeocodingError):
+        geocoder(settings, handler).geocode("686 County Road 5039, Cleveland, TX 77327")

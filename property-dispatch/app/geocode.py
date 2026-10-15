@@ -8,6 +8,12 @@ Lookup order (first hit wins):
      Brand-new subdivisions often aren't in the Census data yet, and
      OSM rarely has house numbers, so these find the street instead.
 
+Rural roads are written many ways ("Road 5039", "County Road 5039", "CR 5039",
+"Rd 5039"; Colony Ridge's official names are "Road ####"), so each lookup also
+tries the other spellings. A street-level match is only trusted if it's in the
+city or ZIP the customer typed, so "County Road" in another county can't
+answer for an address in Cleveland 77327.
+
 Nominatim policy: max 1 request/second and an identifying User-Agent, so
 those calls are serialized with a lock + minimum spacing.
 """
@@ -36,6 +42,33 @@ class _ServiceDown(Exception):
 
 HOUSE_NUMBER = re.compile(r"^\s*\d+[A-Za-z]?\s+")
 STATE_ZIP = re.compile(r"\b([A-Za-z]{2})\.?,?\s+(\d{5})(?:-\d{4})?\s*$")
+
+
+NUMBERED_ROAD = re.compile(r"\b(?:county\s+road|co\.?\s*rd\.?|c\.?\s?r\.?|road|rd\.?)\s*#?\s*(\d{1,5})\b", re.IGNORECASE)
+
+
+def road_spellings(address: str) -> list[str]:
+    """'686 County Road 5039, Cleveland, TX' → the same address as 'Road 5039', 'County Road 5039', 'CR 5039'."""
+    m = NUMBERED_ROAD.search(address)
+    if not m:
+        return []
+    out, seen = [], {address.strip().lower()}
+    for form in ("Road {}", "County Road {}", "CR {}"):
+        v = address[:m.start()] + form.format(m.group(1)) + address[m.end():]
+        if v.strip().lower() not in seen:
+            seen.add(v.strip().lower())
+            out.append(v)
+    return out
+
+
+def typed_place(address: str) -> tuple[str | None, str | None]:
+    """The city and ZIP the customer typed, e.g. ('cleveland', '77327')."""
+    m = STATE_ZIP.search(address)
+    if not m:
+        return None, None
+    parts = [p.strip() for p in address[:m.start()].split(",") if p.strip()]
+    city = parts[-1].lower() if len(parts) >= 2 else None
+    return city, m.group(2)
 
 
 def street_variants(address: str) -> list[str]:
@@ -123,8 +156,22 @@ class AddressGeocoder:
 
     # --- public -------------------------------------------------------
     def geocode(self, address: str) -> GeoPoint:
-        attempts = [lambda: self._census(address), lambda: self._nominatim(address, "address")]
-        attempts += [lambda v=v: self._nominatim(v, "street") for v in street_variants(address)]
+        spellings = [address, *road_spellings(address)]
+        attempts = [lambda a=a: self._census(a) for a in spellings]                  # exact house, any spelling
+        # OSM allows 1 request/second, so it only gets the typed address and one other spelling.
+        osm = spellings[:2]
+        attempts += [lambda a=a: self._nominatim(a, "address") for a in osm]
+        attempts += [lambda v=v: self._nominatim(v, "street") for a in osm for v in street_variants(a)]
+        city, zip_ = typed_place(address)
+
+        def plausible(hit: GeoPoint) -> bool:
+            """A street-level match must be in the city or ZIP the customer typed (when we can tell)."""
+            if hit.precision == "address" or not (city or zip_):
+                return True
+            where = hit.formatted_address.lower()
+            if not re.search(r"\d{5}", where) and "," not in where:
+                return True   # nothing to compare against
+            return bool((zip_ and zip_ in where) or (city and city in where))
 
         answered = 0
         for attempt in attempts:
@@ -133,7 +180,7 @@ class AddressGeocoder:
             except _ServiceDown:
                 continue
             answered += 1
-            if hit is not None:
+            if hit is not None and plausible(hit):
                 return hit
 
         if answered == 0:
