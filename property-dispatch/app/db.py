@@ -29,7 +29,7 @@ PORTFOLIO_FIELDS = ("id", "member_id", "job_id", "service", "caption", "created_
 PAYMENT_FIELDS = ("payment_method", "payment_status", "amount_due", "donation", "amount_paid", "pay_token",
                   "donation_split")
 PRICE_FIELDS = ("subtotal", "tax_rate", "tax_amount", "lawn_sqft", "zone_key", "sqft_rate",
-                "package", "charity_rate", "charity_amount", "giving_split", "add_ons", "add_on_total")
+                "package", "charity_rate", "charity_amount", "giving_split", "add_ons", "add_on_total", "lang")
 
 
 def _now_iso() -> str:
@@ -50,6 +50,7 @@ def _price(j: dict) -> dict:
             "charity_amount": _money(j.get("charity_amount")), "giving_split": j.get("giving_split") or None,
             "add_ons": [{**a, "price": _money(a.get("price"))} for a in (j.get("add_ons") or [])],
             "add_on_total": _money(j.get("add_on_total")) or 0.0,
+            "lang": j.get("lang") or "en",   # the customer's language, for their texts
             "donation_split": j.get("donation_split") or None}
 
 
@@ -95,7 +96,7 @@ class Repository(Protocol):
                    sqft_rate: float | None = None, package: str | None = None,
                    charity_rate: float | None = None, charity_amount: float | None = None,
                    giving_split: dict | None = None, add_ons: list | None = None,
-                   add_on_total: float | None = None) -> dict: ...
+                   add_on_total: float | None = None, lang: str = "en") -> dict: ...
     def list_routable_jobs(self, day: date) -> list[Job]: ...
     def save_route(self, *, day: date, start: tuple[float, float], end: tuple[float, float],
                    total_distance_m: int, total_duration_s: int, matrix_source: str,
@@ -198,7 +199,7 @@ class SupabaseRepository:
                    zone_key, quoted_price, payment_method="cash", pay_token=None, access_code=None,
                    amount_due=None, lawn_sqft=None, subtotal=None, tax_rate=None, tax_amount=None,
                    sqft_rate=None, package=None, charity_rate=None, charity_amount=None,
-                   giving_split=None, add_ons=None, add_on_total=None) -> dict:
+                   giving_split=None, add_ons=None, add_on_total=None, lang="en") -> dict:
         cust = (
             self.sb.table("customers")
             .upsert({"name": name, "phone": phone}, on_conflict="phone").execute()
@@ -218,7 +219,7 @@ class SupabaseRepository:
             "lawn_sqft": lawn_sqft, "subtotal": subtotal, "tax_rate": tax_rate, "tax_amount": tax_amount,
             "sqft_rate": sqft_rate, "package": package, "charity_rate": charity_rate,
             "charity_amount": charity_amount, "giving_split": giving_split or None,
-            "add_ons": add_ons or [], "add_on_total": add_on_total or 0,
+            "add_ons": add_ons or [], "add_on_total": add_on_total or 0, "lang": lang,
             "payment_method": payment_method,
             "pay_token": pay_token,
             "access_code": access_code,
@@ -409,7 +410,7 @@ class SupabaseRepository:
     # ---------- Owner dashboard + customer visit ----------
     JOB_COLS = ("id, address, service, status, zone_key, scheduled_date, created_at, payment_method, payment_status,"
                 " amount_due, amount_paid, donation, access_code, pay_token, subtotal, tax_rate, tax_amount, lawn_sqft,"
-                " sqft_rate, donation_split, package, charity_rate, charity_amount, giving_split, add_ons, add_on_total")
+                " sqft_rate, donation_split, package, charity_rate, charity_amount, giving_split, add_ons, add_on_total, lang")
 
     @staticmethod
     def _one(v):
@@ -486,7 +487,7 @@ class MemoryRepository:
                    zone_key, quoted_price, payment_method="cash", pay_token=None, access_code=None,
                    amount_due=None, lawn_sqft=None, subtotal=None, tax_rate=None, tax_amount=None,
                    sqft_rate=None, package=None, charity_rate=None, charity_amount=None,
-                   giving_split=None, add_ons=None, add_on_total=None) -> dict:
+                   giving_split=None, add_ons=None, add_on_total=None, lang="en") -> dict:
         with self._lock:
             cust = next((c for c in self.customers.values() if c["phone"] == phone), None)
             if cust is None:
@@ -504,7 +505,7 @@ class MemoryRepository:
                 "lawn_sqft": lawn_sqft, "subtotal": subtotal, "tax_rate": tax_rate, "tax_amount": tax_amount,
                 "sqft_rate": sqft_rate, "donation_split": None, "package": package,
                 "charity_rate": charity_rate, "charity_amount": charity_amount, "giving_split": giving_split or None,
-                "add_ons": add_ons or [], "add_on_total": add_on_total or 0,
+                "add_ons": add_ons or [], "add_on_total": add_on_total or 0, "lang": lang,
                 "donation": 0.0, "amount_paid": None, "paid_at": None, "pay_token": pay_token,
                 "access_code": access_code,
                 "stripe_session_id": None,

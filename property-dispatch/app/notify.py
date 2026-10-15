@@ -28,10 +28,40 @@ class TwilioClient:
         return resp.json()["sid"]
 
 
+# Texts go out in the language the customer booked in ("en" or "es").
+ES_LABELS = {"Mowing": "corte de césped", "Bin Cleaning": "limpieza de botes", "Gutters": "canaletas",
+             "Bin cleaning": "limpieza de botes de basura", "Gutter cleaning": "limpieza de canaletas",
+             "Holiday lighting quote": "cotización de luces navideñas"}
+ES_DAYS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+ES_MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+
+
+def service_words(service: str, add_ons: list | None, lang: str) -> str:
+    label = order_label(service, add_ons)
+    if lang != "es":
+        return label.lower()
+    return " + ".join(ES_LABELS.get(part, part.lower()) for part in label.split(" + "))
+
+
+def day_words(day, lang: str) -> str:
+    """'Friday, Oct 16' or 'viernes 16 de oct'."""
+    if lang == "es":
+        return f"{ES_DAYS[day.weekday()]} {day.day} de {ES_MONTHS[day.month - 1]}"
+    return day.strftime("%A, %b %-d")
+
+
 def next_customer_message(stop: dict, settings: Settings, crew_name: str | None = None) -> str:
     first = stop["customer_name"].split()[0]
-    service = order_label(stop["service"], stop.get("add_ons")).lower()
+    lang = stop.get("lang") or "en"
+    service = service_words(stop["service"], stop.get("add_ons"), lang)
     minutes = max(5, round(stop["leg_duration_s"] / 60))
+    if lang == "es":
+        who = f"{crew_name.split()[0]} de {settings.business_name}" if crew_name else settings.business_name
+        return (
+            f"Hola {first}, te saluda {who}. Acabamos de terminar el trabajo anterior y vamos en camino "
+            f"para tu servicio de {service}; llegamos en unos {minutes} minutos. "
+            f"Responde STOP para no recibir más mensajes."
+        )
     who = f"{crew_name.split()[0]} from {settings.business_name}" if crew_name else settings.business_name
     return (
         f"Hi {first}, this is {who}. We just finished the previous job "
@@ -41,7 +71,13 @@ def next_customer_message(stop: dict, settings: Settings, crew_name: str | None 
 
 
 def booking_message(first_name: str, settings: Settings, service_label: str, day_label: str,
-                    code: str, visit_url: str) -> str:
+                    code: str, visit_url: str, lang: str = "en") -> str:
+    if lang == "es":
+        return (
+            f"Hola {first_name}, tu cita con {settings.business_name} quedó reservada: {service_label} el {day_label}. "
+            f"Tu código de acceso es {code}. Sigue tu visita y mira tus fotos de antes y después: {visit_url} . "
+            f"Responde STOP para no recibir más mensajes."
+        )
     return (
         f"Hi {first_name}, you're booked with {settings.business_name} for {service_label.lower()} on {day_label}. "
         f"Your access code is {code}. Track your visit and see your before & after photos: {visit_url} . "
@@ -62,7 +98,14 @@ def send_text(sms: TwilioClient | None, to: str, body: str) -> dict:
 
 def pay_link_message(stop: dict, settings: Settings, pay_url: str) -> str:
     first = stop["customer_name"].split()[0]
-    service = order_label(stop["service"], stop.get("add_ons")).lower()
+    lang = stop.get("lang") or "en"
+    service = service_words(stop["service"], stop.get("add_ons"), lang)
+    if lang == "es":
+        return (
+            f"Hola {first}, terminamos tu servicio de {service}. ¡Gracias por elegir a {settings.business_name}! "
+            f"Puedes pagar de forma segura aquí: {pay_url} . No se necesita propina. Las donaciones son bienvenidas y van para "
+            f"VFW, familias de NICU y jóvenes en riesgo. Responde STOP para no recibir más mensajes."
+        )
     return (
         f"Hi {first}, your {service} is done. Thanks for choosing {settings.business_name}! "
         f"You can pay securely here: {pay_url} . No tip necessary. Donations are welcome and go to "

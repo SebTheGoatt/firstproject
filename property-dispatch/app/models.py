@@ -65,6 +65,7 @@ class JobRequest(BaseModel):
     # required and checked on the server (app/pricing.py); the price is always recalculated here.
     lawn_sqft: int | None = None
     package: Package | None = None   # standard | supporter (Plus) | hero (Premium)
+    lang: Literal["en", "es"] = "en"  # the customer's language, for their texts
     add_ons: list[AddOn] = Field(default_factory=list, max_length=3)
 
     @field_validator("name", "address")
