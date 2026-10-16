@@ -8,6 +8,10 @@ THEN, TO RUN THE MOCK WEEK (every agent does its job, each day, on your local mo
     python semper_green_site.py --seed-mock-week    fills the next week with FAKE bookings (names start with MOCK)
     python semper_green_site.py --run-week          the agents work the week; writes mock_week_report.md with a scorecard
 
+SEE IT INSIDE STARNET (agents at their desks, reports in COMMS, routines in the list):
+    python semper_green_site.py --starnet           writes starnet_routines.md and prints two messages to paste to The Beyonder
+    python semper_green_site.py --mock-day 1        the orders for practice day 1, which the Beyonder hands to each agent
+
 TO DELEGATE FOR REAL (in StarNet):
     python semper_green_site.py --playbook          writes semper_green_playbook.md: each agent's instructions + schedule
     python semper_green_site.py --seed-mock-week    fills the next week with FAKE bookings (names start with MOCK)
@@ -201,6 +205,9 @@ def briefing(site: "SemperGreenSite", expected: dict | None = None, as_of: date 
     for d in outlook["days"]:
         lines.append(f"  {_day_label(d['date'])}: {d['bookings']} booking{'s' if d['bookings'] != 1 else ''}"
                      f" of {d['quota']} possible, ${d['expected']:,.2f} expected")
+    total_b = sum(d["bookings"] for d in outlook["days"])
+    total_m = round(sum(d["expected"] for d in outlook["days"]), 2)
+    lines.append(f"  Week total: {total_b} booking{'s' if total_b != 1 else ''}, ${total_m:,.2f} expected")
     lock = (manifest["facts"].get("schedule") or {}).get("route_locks_at_hour", 17)
     try:
         today = as_of or date.fromisoformat(health["now"][:10])  # the business's own "today", not this computer's
@@ -432,7 +439,7 @@ STEPS: 1) Run the briefing. 2) Look at "Next 7 days".
 OUTPUT:
   BUSY DAYS: <days with 20 or more bookings, or "none">
   QUIET DAYS: <days with fewer than 3 bookings, or "none">
-  EXPECTED THIS WEEK: <add up only the dollar amounts shown; if unsure write "see briefing">
+  EXPECTED THIS WEEK: <copy the dollar amount from the "Week total" line exactly. Never add numbers yourself.>
 Pass QUIET DAYS to the Marketer.
 
 ## Marketer: runs every 3 days
@@ -709,6 +716,63 @@ def run_week(site, days: int = 7, start: date | None = None, model: str | None =
     return 0
 
 
+# --- Doing it inside StarNet (so it shows up in the crew panel, COMMS and the routines list) --------
+#   python semper_green_site.py --starnet          writes starnet_routines.md and prints two messages to paste to The Beyonder
+#   python semper_green_site.py --mock-day 1       the orders for practice day 1 (the Beyonder hands them to the agents)
+#   python semper_green_site.py --brief --as-of 2026-10-17 --clock "6:30 AM"     one agent's briefing for a practice day
+
+def _flag(args: list, name: str) -> str | None:
+    return args[args.index(name) + 1] if name in args and args.index(name) + 1 < len(args) else None
+
+
+def mock_day_orders(day_number: int, start: date, folder: str) -> str:
+    """The orders for one practice day, in clock order, ready for The Beyonder to hand to the agents."""
+    day = start + timedelta(days=day_number - 1)
+    lines = [f"MOCK DAY {day_number}: {_day_label(day.isoformat())} (practice). In the folder {folder}.",
+             "Give each agent its order below, one at a time, in this order. Wait for each report before the next one.", ""]
+    for hour, minute, label, agent, request in day_jobs(day_number - 1, day):
+        lines.append(f"{label}  {agent}")
+        lines.append(f'  Run: python semper_green_site.py --brief --as-of {day.isoformat()} --clock "{label}"')
+        lines.append(f"  Then do your job exactly as written in your section of semper_green_playbook.md.")
+        if agent == "Engineer":
+            lines.append("  Also run: python semper_green_site.py --sync")
+        if agent == "Marketer":
+            lines.append("  Use Recon Radar's QUIET DAYS from today.")
+        if agent == "The Beyonder":
+            lines.append("  Use today's reports from the other agents. Reply to the owner with your report and nothing else.")
+        if request:
+            lines.append(f"  {request}")
+        lines.append("")
+    lines.append("These are practice orders. Nothing is sent to customers and nothing on the website changes.")
+    return "\n".join(lines)
+
+
+def starnet_messages(folder: str) -> tuple:
+    """Two short messages to paste to The Beyonder in StarNet's COMMS panel."""
+    setup = (f"Commander's order. Read the file {folder}\\semper_green_playbook.md. Create one scheduled routine for each "
+             "agent listed in the schedule at the bottom of that file: Overseer 6:30 AM and 5:30 PM, Recon Radar 7:00 AM, "
+             "Dispatcher 5:15 PM, Marketer and Beyonder every 3 days, Sales Deck weekly, Engineer on Mondays. "
+             f'Each routine\'s prompt is exactly: "In the folder {folder}, run python semper_green_site.py --brief, then do '
+             'your job exactly as written in your section of semper_green_playbook.md, in the exact output format. If '
+             'something needs the owner, write a line starting with NEEDS OWNER." Send every report to The Beyonder. '
+             "Create nothing else. Do not change the website and do not deploy anything.")
+    practice = (f"Commander's order. Run practice day 1. In the folder {folder}, run python semper_green_site.py --mock-day 1. "
+                "Give each agent its order from that list, one at a time, in order, and wait for each report. Then give me "
+                "one short summary with every NEEDS OWNER line. This is practice only: do not change the website, do not "
+                "deploy, and do not contact any customer.")
+    return setup, practice
+
+
+def write_starnet_files(folder: str, path: str | None = None) -> str:
+    setup, practice = starnet_messages(folder)
+    path = path or "starnet_routines.md"
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("# Paste these to The Beyonder in StarNet (COMMS), one at a time\n\n"
+                "## 1. Set up the daily routines (once)\n\n" + setup + "\n\n"
+                "## 2. Run a practice day (repeat with --mock-day 2, 3, ... 7)\n\n" + practice + "\n")
+    return path
+
+
 # ---------------------------------------------------------------------------------------------
 # "Are we on the same page?"  StarNet's copy of what it believes, compared with what the site says.
 # ---------------------------------------------------------------------------------------------
@@ -966,6 +1030,19 @@ def ask_owner(tool: str, args: dict) -> bool:
 
 if __name__ == "__main__":
     args = sys.argv[1:]
+    if args[:1] == ["--starnet"]:                    # paste-in messages so StarNet's own agents do all of this
+        folder = str(Path(__file__).resolve().parent)
+        setup, practice = starnet_messages(folder)
+        print(f"Wrote {write_starnet_files(folder)}.  Paste these to The Beyonder in StarNet's COMMS panel, one at a time:\n")
+        print("--- 1. SET UP THE DAILY ROUTINES (once) " + "-" * 20 + f"\n{setup}\n")
+        print("--- 2. RUN A PRACTICE DAY (then --mock-day 2, 3 ...) " + "-" * 8 + f"\n{practice}")
+        sys.exit(0)
+    if args[:1] == ["--mock-day"]:                   # the orders for one practice day
+        number = next((int(a) for a in args[1:] if a.isdigit()), 1)
+        start = _flag(args, "--start")
+        start = date.fromisoformat(start) if start else date.fromisoformat(SemperGreenSite().health()["now"][:10]) + timedelta(days=1)
+        print(mock_day_orders(number, start, str(Path(__file__).resolve().parent)))
+        sys.exit(0)
     if args[:1] == ["--run-week"]:                   # every agent does its job, each day of the week, on the local model
         nums = [a for a in args[1:] if a.isdigit()]
         start = next((date.fromisoformat(a) for a in args[1:] if re.fullmatch(r"\d{4}-\d{2}-\d{2}", a)), None)
@@ -985,8 +1062,12 @@ if __name__ == "__main__":
         sys.exit(setup())
     site = SemperGreenSite()
     if args[:1] == ["--brief"]:                      # a plain-English briefing, saved to a file agents can read
-        print(briefing(site, load_expectations()))
-        print(f"\n(Saved to {write_briefing(site)})")
+        practice = _flag(args, "--as-of")                # --as-of 2026-10-17 --clock "6:30 AM": a practice day (not saved)
+        if practice:
+            print(briefing(site, load_expectations(), as_of=date.fromisoformat(practice), clock=_flag(args, "--clock")))
+        else:
+            print(briefing(site, load_expectations()))
+            print(f"\n(Saved to {write_briefing(site)})")
     elif args[:1] == ["--sync"]:                     # compare StarNet with the site; exit 1 if they disagree
         report = compare(site.manifest(), load_expectations(args[1] if len(args) > 1 else None))
         print(format_report(report))

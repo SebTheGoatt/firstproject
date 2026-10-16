@@ -20,6 +20,18 @@ Small local models (a 9B GGUF coder model, for example) often can't call tools. 
 `semper_green_briefing.txt`, and `ask()` automatically hands such a model the briefing instead of tools. To use the same
 model for `ask()` that StarNet's agents use: `$env:SEMPER_MODEL = "hf.co/mradermacher/Qwopus3-5-9B-Coder-Flash-i1-GGUF:Q4_K_M"`.
 
+## Inside StarNet (agents at their desks, reports in COMMS)
+```powershell
+python semper_green_site.py --starnet           # writes starnet_routines.md and prints two messages for The Beyonder
+python semper_green_site.py --mock-day 1        # the orders for practice day 1 (the Beyonder hands them to each agent)
+```
+Paste message 1 into StarNet's COMMS panel to The Beyonder: it reads the playbook from your folder and creates the
+scheduled routines for every agent. Paste message 2 to run practice day 1 through StarNet's own agents; repeat with
+`--mock-day 2`, `3`... Each agent runs `python semper_green_site.py --brief --as-of <day> --clock "<time>"` (a practice-day
+briefing that is not saved over the real one) and then does its job from the playbook. Everything shows up in StarNet,
+because StarNet's own agents do the work. `--run-week` below does the same on a plain model call outside StarNet, for a
+quick scorecard.
+
 ## Run the mock week (every agent does its job)
 ```powershell
 python semper_green_site.py --seed-mock-week     # once: a week of FAKE bookings (type yes)
