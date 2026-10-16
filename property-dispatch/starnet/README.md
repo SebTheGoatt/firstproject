@@ -21,16 +21,22 @@ Small local models (a 9B GGUF coder model, for example) often can't call tools. 
 model for `ask()` that StarNet's agents use: `$env:SEMPER_MODEL = "hf.co/mradermacher/Qwopus3-5-9B-Coder-Flash-i1-GGUF:Q4_K_M"`.
 
 ## Inside StarNet (agents at their desks, reports in COMMS)
+
+StarNet's agents work in **their own project folder** and can't see `C:\Users\<you>`. A small model is also shaky at running
+commands. So everything goes *into StarNet's workspace*, and each agent only has to **read one file** (its rules + a fresh
+briefing). To find the workspace folder: click the **folder** button next to any file an agent saved, or ask The Beyonder
+"what is your working folder?".
+
 ```powershell
-python semper_green_site.py --starnet           # writes starnet_routines.md and prints two messages for The Beyonder
-python semper_green_site.py --mock-day 1        # the orders for practice day 1 (the Beyonder hands them to each agent)
+python semper_green_site.py --starnet --folder "<StarNet's workspace folder>"   # copies the script + playbook there, writes agents/*.md, prints the message for The Beyonder
+python semper_green_site.py --watch --folder "<same folder>"                    # keeps every agent's briefing fresh; leave this window open
+python semper_green_site.py --mock-day 1 --folder "<same folder>"               # writes practice day 1 (one file per job) and prints the orders to paste
 ```
-Paste message 1 into StarNet's COMMS panel to The Beyonder: it reads the playbook from your folder and creates the
-scheduled routines for every agent. Paste message 2 to run practice day 1 through StarNet's own agents; repeat with
-`--mock-day 2`, `3`... Each agent runs `python semper_green_site.py --brief --as-of <day> --clock "<time>"` (a practice-day
-briefing that is not saved over the real one) and then does its job from the playbook. Everything shows up in StarNet,
-because StarNet's own agents do the work. `--run-week` below does the same on a plain model call outside StarNet, for a
-quick scorecard.
+Paste the `--starnet` message to The Beyonder once: it creates the scheduled routine for each agent ("Read the file
+`<folder>\agents\the-overseer.md` and do exactly what it says"). For a practice day, paste what `--mock-day` prints; repeat
+with `--mock-day 2`, `3`... Everything shows up in StarNet because StarNet's own agents do the work. Each practice-day file
+carries the briefing "as of" that job's time and is never saved over the real one. `--run-week` below does the same on a plain
+model call outside StarNet, for a quick scorecard.
 
 ## Run the mock week (every agent does its job)
 ```powershell
