@@ -20,6 +20,7 @@ import hashlib
 import hmac
 import html
 import logging
+import os
 import secrets
 from datetime import date, timedelta
 from pathlib import Path
@@ -216,7 +217,7 @@ def create_app(
     register_live_routes(app, settings, crew_auth)   # owner-only live station: /api/track, /api/live/stats (dashboard lives in the crew app's owner tab)
     register_pay_routes(app, settings, app.state.stripe)
     register_visit_routes(app, settings, crew_auth)
-    register_agent_api(app, settings)   # scoped, audited keys for StarNet agents (off unless AGENT_KEY_READ / AGENT_KEY_OPS are set)
+    register_agent_api(app, settings, build={"static_version": version, "commit": os.environ.get("RENDER_GIT_COMMIT", "")[:7]})   # scoped, audited keys for StarNet agents (off unless AGENT_KEY_READ / AGENT_KEY_OPS are set)
     register_agent_routes(app, settings, crew_auth)   # owner-only Ollama dispatch assistant (off unless OLLAMA_BASE_URL is set)
 
     @app.get("/push-setup", include_in_schema=False)

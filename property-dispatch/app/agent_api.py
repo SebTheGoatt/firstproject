@@ -10,6 +10,7 @@ Endpoints (header  X-Agent-Key: <key>):
     GET  /api/agent/day/{date}                 counts, money totals, route status, bookings without names/phones/codes
     GET  /api/agent/outlook?days=7
     GET  /api/agent/audit                      the last 100 things any agent did
+    GET  /api/agent/manifest                   the site's facts, features and settings status, for StarNet to compare
     POST /api/agent/routes/{date}/build        (ops key only)
 
 What agents can never do here: see customer names, phone numbers or access codes, see payment details beyond totals,
@@ -26,6 +27,7 @@ from datetime import date, timedelta
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 
 from . import push
+from .agent_manifest import build_manifest
 from .booking import local_now
 from .config import Settings
 from .models import order_label
@@ -35,6 +37,26 @@ log = logging.getLogger("agent_api")
 
 RATE_LIMIT = 120          # calls per minute per key
 AUDIT_SIZE = 200
+
+
+API_VERSION = 1
+CLIENT_MIN_VERSION = 1       # the oldest StarNet client file this site still works with
+
+# One list of everything agents can do. StarNet's client uses the same tool names; /api/agent/manifest publishes this.
+ENDPOINTS = [
+    {"tool": "site_health", "method": "GET", "path": "/api/agent/health", "scope": "read", "needs_approval": False,
+     "does": "Is the site up, and which features are on"},
+    {"tool": "day_summary", "method": "GET", "path": "/api/agent/day/{date}", "scope": "read", "needs_approval": False,
+     "does": "One day's bookings, totals and route status, without names or phone numbers"},
+    {"tool": "week_outlook", "method": "GET", "path": "/api/agent/outlook", "scope": "read", "needs_approval": False,
+     "does": "Bookings and expected revenue for the coming days"},
+    {"tool": "audit_log", "method": "GET", "path": "/api/agent/audit", "scope": "read", "needs_approval": False,
+     "does": "The last things any agent did"},
+    {"tool": "sync_check", "method": "GET", "path": "/api/agent/manifest", "scope": "read", "needs_approval": False,
+     "does": "What the site is, its facts and settings, for comparing with StarNet"},
+    {"tool": "build_route", "method": "POST", "path": "/api/agent/routes/{date}/build", "scope": "ops",
+     "needs_approval": True, "does": "Build or rebuild a day's driving route (changes the crew's schedule)"},
+]
 
 
 class Gate:
@@ -83,7 +105,7 @@ class Gate:
         return dependency
 
 
-def register_agent_api(app: FastAPI, settings: Settings):
+def register_agent_api(app: FastAPI, settings: Settings, build: dict | None = None):
     gate = Gate(settings)
     read, ops = Depends(gate.require("read")), Depends(gate.require("ops"))
 
@@ -143,6 +165,10 @@ def register_agent_api(app: FastAPI, settings: Settings):
             out.append({"date": d, "bookings": len(day_rows), "quota": settings.daily_job_quota,
                         "expected": round(sum(float(x["amount_due"] or 0) for x in day_rows), 2)})
         return {"days": out}
+
+    @app.get("/api/agent/manifest")
+    def manifest(role: str = read, request: Request = None):
+        return build_manifest(settings, request.app.state, ENDPOINTS, build or {}, CLIENT_MIN_VERSION, API_VERSION)
 
     @app.get("/api/agent/audit")
     def audit(role: str = read):
