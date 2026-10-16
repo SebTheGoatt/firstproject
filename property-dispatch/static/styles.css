@@ -1,7 +1,7 @@
 :root {
-  --bg: #f4f6f3;
+  --bg: #ffffff;
   --surface: #ffffff;
-  --text: #1b2420;
+  --text: #000000;
   --muted: #5f6b65;
   --border: #dde3de;
   --brand: #2f7d4f;
@@ -15,34 +15,18 @@
   --radius: 14px;
   --accent: var(--brand);  /* a crew member's chosen color overrides this */
   --shadow: 0 1px 2px rgb(0 0 0 / 0.05), 0 4px 16px rgb(0 0 0 / 0.05);
-  color-scheme: light dark;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #111613;
-    --surface: #1a211d;
-    --text: #e7ece9;
-    --muted: #9aa7a0;
-    --border: #2c3631;
-    --brand: #4caf50;
-    --brand-ink: #0d1a12;
-    --brand-soft: #1f3327;
-    --danger: #f2a49d;
-    --danger-soft: #3a1f1d;
-    --done: #6c7771;
-    --warn-soft: #3a3016;
-    --warn: #f3d27a;
-    --shadow: none;
-  }
+  color-scheme: light;
 }
 
 * { box-sizing: border-box; }
 
+body, main, .wrap {
+  background: #ffffff;
+  color: #000000;
+}
+
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--text);
   font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -181,7 +165,6 @@ details.hint ul { margin: 6px 0 0; padding-left: 20px; }
   --section-y: 64px;
   --gutter: 20px;
 }
-@media (prefers-color-scheme: dark) { :root { --brand-deep: #0b3d2e; --fresh: #a7d129; } }
 @media (min-width: 900px) { :root { --gutter: 32px; } }
 @media (max-width: 680px) { :root { --section-y: 44px; --gutter: 16px; } }
 
@@ -611,7 +594,7 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
 .area-check.ok { background: var(--brand-soft); color: var(--text); font-weight: 600; }
 .area-check.bad { background: var(--danger-soft); color: var(--danger); }
 .area-check.warn { background: var(--warn-soft); color: var(--warn); }
-#address-picker gmp-place-autocomplete, #address-autocomplete { width: 100%; display: block; color-scheme: light dark; }
+#address-picker gmp-place-autocomplete, #address-autocomplete { width: 100%; display: block; color-scheme: light; }
 
 /* ---------- Customer visit page ---------- */
 .visit-title { margin: 0 0 6px; font-size: 1.6rem; letter-spacing: -0.01em; }
