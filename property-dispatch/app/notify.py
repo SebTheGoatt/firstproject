@@ -48,7 +48,8 @@ def day_words(day, lang: str) -> str:
     """'Friday, Oct 16' or 'viernes 16 de oct'."""
     if lang == "es":
         return f"{ES_DAYS[day.weekday()]} {day.day} de {ES_MONTHS[day.month - 1]}"
-    return day.strftime("%A, %b %-d")
+    # ``%-d`` is not supported by Windows' strftime. Build the unpadded date explicitly.
+    return f"{day.strftime('%A, %b')} {day.day}"
 
 
 def next_customer_message(stop: dict, settings: Settings, crew_name: str | None = None) -> str:

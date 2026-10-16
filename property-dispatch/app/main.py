@@ -172,7 +172,8 @@ def create_app(
     version = static_version()
 
     def render(name: str) -> str:
-        text = (STATIC_DIR / name).read_text()
+        # Static pages are UTF-8 regardless of the host process locale (Windows hosts default to a legacy code page).
+        text = (STATIC_DIR / name).read_text(encoding="utf-8")
         return text.replace("{{BUSINESS_NAME}}", html.escape(settings.business_name)).replace("{{V}}", version)
 
     def page(name: str) -> HTMLResponse:
@@ -227,7 +228,7 @@ def create_app(
     @app.get("/sw.js", include_in_schema=False)
     def service_worker():
         # Served from the root so its scope covers the whole site.
-        body = (STATIC_DIR / "sw.js").read_text().replace("__VERSION__", version)
+        body = (STATIC_DIR / "sw.js").read_text(encoding="utf-8").replace("__VERSION__", version)
         return Response(body, media_type="application/javascript", headers={"Cache-Control": "no-cache"})
 
     @app.get("/manifest.webmanifest", include_in_schema=False)
