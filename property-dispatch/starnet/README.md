@@ -1,5 +1,27 @@
 # StarNet ↔ Semper Green site
 
+## The short version (PowerShell only)
+
+```powershell
+irm https://raw.githubusercontent.com/SebTheGoatt/firstproject/claude/veteran-gibill-platform-NAd4k/property-dispatch/starnet/semper_green_site.py -OutFile semper_green_site.py
+$env:RENDER_API_KEY = "paste your Render API key"
+python semper_green_site.py --connect
+```
+That makes StarNet's private key, puts it in Render, deploys the site, waits for it, and connects StarNet. When it
+finishes it prints a plain-English briefing and saves it to `semper_green_briefing.txt`: agents can just read that file.
+
+The Render API key is made once at Render → Account Settings → API Keys. It can do anything on your Render account, so
+use it for this and then **delete it in Render**. It lives only in that PowerShell window; nothing saves or prints it.
+
+Prefer no API key? `python semper_green_site.py --setup` makes the key and copies one line for you to paste into Render's
+Environment page; run it again after Render deploys.
+
+Day to day: `python semper_green_site.py --brief` (a fresh briefing) and `--sync` (is StarNet still on the same page?).
+
+---
+
+(Details for the curious, and for wiring agents that use tools, follow.)
+
 `semper_green_site.py` is the one file StarNet needs. It lets your agents look at the site and, with your approval,
 build a day's route. Python 3.9+, no installs.
 
