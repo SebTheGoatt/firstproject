@@ -5,3 +5,4 @@ httpx==0.28.1
 pydantic==2.14.1
 pydantic-settings==2.16.0
 supabase==2.32.0
+pywebpush==2.0.3

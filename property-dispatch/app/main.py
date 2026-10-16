@@ -29,7 +29,7 @@ from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Res
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import deeplinks
+from . import deeplinks, push
 from .booking import BookingRejected, earliest_bookable_day, local_now, next_service_day, validate_booking
 from .config import Settings, get_settings, site_url
 from .db import Repository, make_repository
@@ -210,6 +210,14 @@ def create_app(
     crew_auth = register_crew_routes(app, settings)
     register_pay_routes(app, settings, app.state.stripe)
     register_visit_routes(app, settings, crew_auth)
+
+    @app.get("/push-setup", include_in_schema=False)
+    def push_setup_page():
+        # Makes the notification key pair inside the owner's browser; nothing is sent anywhere.
+        resp = page("push-setup.html")
+        resp.headers["Referrer-Policy"] = "no-referrer"
+        resp.headers["X-Robots-Tag"] = "noindex"
+        return resp
 
     @app.get("/sw.js", include_in_schema=False)
     def service_worker():
@@ -445,6 +453,8 @@ def create_app(
                            total=float(new_price.total), lawn_sqft=new_price.lawn_sqft,
                            charity_amount=giving, giving_split=split_donation(giving) if giving else None)
         stop, newly = repo.complete_stop(stop_id, member_id)
+        if newly:
+            push.notify_job(repo, settings, stop["job_id"], "done")
 
         payment = {"status": stop["payment_status"], "total": due}
         if cash is not None and stop["payment_status"] == "unpaid":

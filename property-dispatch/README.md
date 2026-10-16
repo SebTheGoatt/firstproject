@@ -206,6 +206,18 @@ At booking, customers choose **Cash to the crew** or **Card in the app**.
    Copy its **Signing secret** into `STRIPE_WEBHOOK_SECRET`.
 4. Set `PUBLIC_BASE_URL` to your site's address.
 
+## Visit notifications (optional)
+
+On their visit page, customers can tap **Get updates on this phone**. They then get a notification when
+the crew is on the way and when the visit is done, in their language, and nothing else. A phone is saved
+against that one booking (`push_subscriptions`, migration 20261025) and forgotten if the customer turns
+notifications off. iPhones only allow this from the Home Screen app, and the page says so.
+
+To turn it on: open `/push-setup` on your site, tap **Make my keys** (they are made in your browser and
+never leave it), put them in Render as `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` (optionally
+`VAPID_SUBJECT`, a `mailto:` address; it defaults to `PUBLIC_BASE_URL`), and deploy. Without the keys
+the button simply doesn't appear. There is deliberately no public "send a push" endpoint.
+
 ## En español (Spanish)
 
 The customer pages (home, booking, pay, visit) are available in Spanish. `static/i18n.js` translates

@@ -136,6 +136,11 @@ class Repository(Protocol):
     def add_job_photo(self, job_id: str, member_id: str | None, kind: str, photo: str) -> dict: ...
     def list_job_photos(self, job_id: str) -> list[dict]: ...
     def job_photo(self, photo_id: str) -> dict | None: ...
+    # Push notification subscriptions (one per phone/browser that opted in on a visit page)
+    def save_push_subscription(self, job_id: str, endpoint: str, p256dh: str, auth: str,
+                               lang: str, visit_path: str) -> None: ...
+    def list_push_subscriptions(self, job_id: str) -> list[dict]: ...
+    def delete_push_subscription(self, endpoint: str) -> None: ...
 
 
 # ======================================================================
@@ -465,6 +470,18 @@ class SupabaseRepository:
         rows = self.sb.table("job_photos").select("id, job_id, photo").eq("id", photo_id).limit(1).execute().data
         return rows[0] if rows else None
 
+    def save_push_subscription(self, job_id, endpoint, p256dh, auth, lang, visit_path) -> None:
+        self.sb.table("push_subscriptions").upsert(
+            {"job_id": job_id, "endpoint": endpoint, "p256dh": p256dh, "auth": auth, "lang": lang,
+             "visit_path": visit_path}, on_conflict="endpoint").execute()
+
+    def list_push_subscriptions(self, job_id: str) -> list[dict]:
+        return (self.sb.table("push_subscriptions").select("endpoint, p256dh, auth, lang, visit_path")
+                .eq("job_id", job_id).execute().data)
+
+    def delete_push_subscription(self, endpoint: str) -> None:
+        self.sb.table("push_subscriptions").delete().eq("endpoint", endpoint).execute()
+
 
 # ======================================================================
 #  In-memory (local demo + tests)
@@ -479,6 +496,7 @@ class MemoryRepository:
         self.crew: dict[str, dict] = {}
         self.portfolio: dict[str, dict] = {}
         self.job_photos: dict[str, dict] = {}
+        self.push_subs: dict[str, dict] = {}     # endpoint → subscription
 
     def count_active_jobs(self, day: date) -> int:
         return sum(1 for j in self.jobs.values() if j["scheduled_date"] == day and j["status"] in ACTIVE_STATUSES)
@@ -755,6 +773,16 @@ class MemoryRepository:
     def job_photo(self, photo_id: str) -> dict | None:
         p = self.job_photos.get(photo_id)
         return {k: p[k] for k in ("id", "job_id", "photo")} if p else None
+
+    def save_push_subscription(self, job_id, endpoint, p256dh, auth, lang, visit_path) -> None:
+        self.push_subs[endpoint] = {"job_id": job_id, "endpoint": endpoint, "p256dh": p256dh, "auth": auth,
+                                    "lang": lang, "visit_path": visit_path}
+
+    def list_push_subscriptions(self, job_id: str) -> list[dict]:
+        return [dict(s) for s in self.push_subs.values() if s["job_id"] == job_id]
+
+    def delete_push_subscription(self, endpoint: str) -> None:
+        self.push_subs.pop(endpoint, None)
 
 
 def make_repository(settings: Any) -> Repository:

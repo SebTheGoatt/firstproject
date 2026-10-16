@@ -5,6 +5,7 @@ from datetime import datetime
 
 import httpx
 
+from . import push
 from .config import Settings
 from .db import Repository
 from .models import SERVICE_LABELS, Service, order_label
@@ -136,6 +137,7 @@ def notify_next_customer(
     if not repo.claim_notification(nxt["stop_id"]):
         return {"notified": False, "reason": "already_notified", "stop_id": nxt["stop_id"]}
 
+    push.notify_job(repo, settings, nxt["job_id"], "on_the_way")   # phones that opted in on their visit page
     body = next_customer_message(nxt, settings, completed_stop.get("completed_by_name"))
     if sms is None:
         log.info("Twilio not configured; would text %s: %s", nxt["phone"], body)

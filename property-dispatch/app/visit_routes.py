@@ -55,6 +55,18 @@ class JobPhotoBody(BaseModel):
     photo: str = Field(max_length=1_000_000)
 
 
+class PushKeys(BaseModel):
+    p256dh: str = Field(min_length=20, max_length=200, pattern=r"^[A-Za-z0-9_\-=+/]+$")
+    auth: str = Field(min_length=8, max_length=100, pattern=r"^[A-Za-z0-9_\-=+/]+$")
+
+
+class PushSubscriptionBody(BaseModel):
+    """What the browser gives us from pushManager.subscribe(), plus the visitor's language."""
+    endpoint: str = Field(min_length=20, max_length=1000, pattern=r"^https://")
+    keys: PushKeys
+    lang: Literal["en", "es"] = "en"
+
+
 class Throttle:
     """Per-IP request budget, to make guessing access codes impractical."""
 
@@ -128,6 +140,26 @@ def register_visit_routes(app: FastAPI, settings: Settings, crew_auth):
             "photos": [{"id": p["id"], "kind": p["kind"], "created_at": p["created_at"],
                         "url": f"/media/visit/{p['id']}?code={code}"} for p in v["photos"]],
         }
+
+    @app.get("/api/push-config")
+    def push_config():
+        """The public key phones need to subscribe; null while notifications are turned off."""
+        return {"public_key": settings.vapid_public_key if settings.push_enabled else None}
+
+    @app.post("/api/visit/{raw_code}/push", status_code=204)
+    def save_push(raw_code: str, body: PushSubscriptionBody, request: Request, r=Depends(repo)):
+        """This phone wants "on the way" and "done" updates for this one booking (needs its access code)."""
+        if not visit_throttle.allow(request.client.host if request.client else "unknown"):
+            raise HTTPException(status_code=429, detail="Too many tries. Please wait a few minutes.")
+        if not settings.push_enabled:
+            raise HTTPException(status_code=503, detail="Notifications aren't turned on yet.")
+        code = normalize_code(raw_code)
+        v = r.get_visit(code) if code else None
+        if v is None:
+            raise HTTPException(status_code=404, detail="We couldn't find that code.")
+        r.save_push_subscription(v["job_id"], body.endpoint, body.keys.p256dh, body.keys.auth, body.lang,
+                                 f"/visit/{code}")
+        return Response(status_code=204)
 
     @app.get("/media/visit/{photo_id}", include_in_schema=False)
     def visit_photo(photo_id: str, code: str = "", r=Depends(repo)):

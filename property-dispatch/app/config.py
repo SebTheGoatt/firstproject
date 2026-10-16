@@ -55,6 +55,12 @@ class Settings(BaseSettings):
     # Used in texts sent outside a web request (e.g. the completion webhook).
     public_base_url: str = ""
 
+    # --- Push notifications (leave blank to turn them off) --------------
+    # Make a key pair at /push-setup; both values go only in Render's environment.
+    vapid_public_key: str = ""
+    vapid_private_key: str = ""
+    vapid_subject: str = ""      # "mailto:you@example.com"; defaults to PUBLIC_BASE_URL
+
     # --- Donations: split 33% / 33% / 34% (see app/charity.py) ----------
     # Rename to the specific VFW post, hospital NICU and youth program you give to.
     charity_vfw_name: str = "Veterans of Foreign Wars (VFW)"
@@ -69,6 +75,10 @@ class Settings(BaseSettings):
     crew_access_token: str = "change-me"   # crew dashboard + complete API
     webhook_secret: str = "change-me"      # external webhook callers
     cron_secret: str = "change-me"         # HTTP-triggered nightly run
+
+    @property
+    def push_enabled(self) -> bool:
+        return bool(self.vapid_public_key and self.vapid_private_key and (self.vapid_subject or self.public_base_url))
 
     @property
     def tz(self) -> ZoneInfo:
