@@ -20,6 +20,19 @@ Small local models (a 9B GGUF coder model, for example) often can't call tools. 
 `semper_green_briefing.txt`, and `ask()` automatically hands such a model the briefing instead of tools. To use the same
 model for `ask()` that StarNet's agents use: `$env:SEMPER_MODEL = "hf.co/mradermacher/Qwopus3-5-9B-Coder-Flash-i1-GGUF:Q4_K_M"`.
 
+## Run the mock week (every agent does its job)
+```powershell
+python semper_green_site.py --seed-mock-week     # once: a week of FAKE bookings (type yes)
+python semper_green_site.py --run-week           # the agents work all 7 days on your local model
+python semper_green_site.py --run-week 2         # or just the first 2 days
+notepad mock_week_report.md                      # what every agent said, and the scorecard
+```
+It uses the one model Ollama has (or `$env:SEMPER_MODEL = "<name>"`). Each agent gets the shared rules plus its own section,
+the briefing "as of" that practice day, and the other agents' reports where its job needs them (Marketer gets Recon Radar's,
+the Beyonder gets everyone's). Every answer is scored: did it use its required format, and did it use only dollar amounts that
+were really in the briefing? A small model's habit of inventing numbers shows up on the scorecard. The report is written as
+it goes, so you can read it while it runs. Nothing is sent to anyone and nothing on the site changes.
+
 ## Delegating to the agents
 ```powershell
 python semper_green_site.py --playbook          # writes semper_green_playbook.md: every agent's instructions + daily schedule
