@@ -139,6 +139,7 @@
   </main>
 
   <script src="/static/site.js?v={{V}}"></script>
+  <script src="/static/push.js?v={{V}}"></script>
   <script>
     const form = document.getElementById("intake");
     const err = document.getElementById("err");
@@ -523,6 +524,17 @@
           const link = document.createElement("a"); link.className = "btn"; link.href = body.visit_url; link.textContent = "View my visit";
           codeBox.append(label, code, note, link);
           ok.append(codeBox);
+
+          // Nudge: one tap to hear when the crew is on the way. Only shows if this phone/browser can do it.
+          const nudge = document.createElement("div"); nudge.className = "push-box push-nudge"; nudge.hidden = true;
+          const nudgeTitle = document.createElement("strong"); nudgeTitle.textContent = "Want a heads-up when we're on the way?";
+          const nudgeBtn = document.createElement("button"); nudgeBtn.type = "button"; nudgeBtn.className = "btn btn-outline";
+          nudgeBtn.textContent = "Get updates on this phone";
+          const nudgeNote = document.createElement("p"); nudgeNote.className = "muted small";
+          nudgeNote.textContent = "We'll notify you when the crew is on the way and when your visit is done. Nothing else.";
+          nudge.append(nudgeTitle, nudgeBtn, nudgeNote);
+          ok.append(nudge);
+          window.SGPush?.setup(body.access_code, { box: nudge, btn: nudgeBtn, note: nudgeNote });
         }
         if (body.pay_url) {
           const pay = document.createElement("a");

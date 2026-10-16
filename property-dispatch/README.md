@@ -208,7 +208,7 @@ At booking, customers choose **Cash to the crew** or **Card in the app**.
 
 ## Visit notifications (optional)
 
-On their visit page, customers can tap **Get updates on this phone**. They then get a notification when
+Right after booking (and on their visit page), customers can tap **Get updates on this phone**. They then get a notification when
 the crew is on the way and when the visit is done, in their language, and nothing else. A phone is saved
 against that one booking (`push_subscriptions`, migration 20261025) and forgotten if the customer turns
 notifications off. iPhones only allow this from the Home Screen app, and the page says so.

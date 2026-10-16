@@ -152,3 +152,11 @@ def test_on_my_way_still_updates_the_visit_page_for_customers_without_notificati
     r = client.post(f"/api/stops/{stop['stop_id']}/on-the-way", headers=CREW).json()
     assert r["notified"] is False and r["pushed"] == 0 and r["reason"] == "no_subscribers"
     assert client.get(f"/api/visit/{job['access_code']}").json()["on_the_way_at"]   # the page shows it live
+
+
+def test_booking_and_visit_pages_load_the_shared_opt_in_script(client):
+    for path in ("/book", "/visit"):
+        assert "/static/push.js" in client.get(path).text
+    assert "SGPush" in client.get("/static/push.js").text
+    book_page = client.get("/book").text
+    assert "Want a heads-up when we're on the way?" in book_page and "SGPush?.setup" in book_page
