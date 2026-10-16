@@ -104,3 +104,58 @@ def test_ask_runs_the_tool_loop_against_ollama(site):
 
 def test_ask_is_kind_when_ollama_is_off(site):
     assert "Is Ollama running" in sg.ask(site("read-key-123"), "hi", ollama_url="http://127.0.0.1:9")
+
+
+class NoToolsOllama(http.server.BaseHTTPRequestHandler):
+    """Like many small GGUF coder models: refuses the tools list, answers fine without it."""
+    seen: list = []
+
+    def do_POST(self):
+        body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+        NoToolsOllama.seen.append(body)
+        if "tools" in body:
+            out, code = json.dumps({"error": "registry.ollama.ai/library/some-model does not support tools"}).encode(), 400
+        else:
+            out, code = json.dumps({"message": {"role": "assistant", "content": "All good. Two bookings tomorrow."}}).encode(), 200
+        self.send_response(code); self.send_header("Content-Length", str(len(out))); self.end_headers(); self.wfile.write(out)
+
+    def log_message(self, *a):
+        pass
+
+
+def test_a_model_without_tool_support_gets_the_briefing_instead(site, client, repo, settings):
+    day_with_bookings(client, repo, settings)
+    NoToolsOllama.seen = []
+    srv = http.server.HTTPServer(("127.0.0.1", 0), NoToolsOllama)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        with patch("app.agent_api.local_now", return_value=NOW):
+            answer = sg.ask(site("read-key-123"), "How does tomorrow look?", model="hf.co/some/Small-Coder:Q4_K_M",
+                            ollama_url=f"http://127.0.0.1:{srv.server_port}")
+    finally:
+        srv.shutdown()
+    assert answer == "All good. Two bookings tomorrow."
+    with_tools, without = NoToolsOllama.seen
+    assert "tools" in with_tools and "tools" not in without
+    assert without["model"] == "hf.co/some/Small-Coder:Q4_K_M"
+    prompt = without["messages"][-1]["content"]
+    assert "SEMPER GREEN LAWN CARE BRIEFING" in prompt and "How does tomorrow look?" in prompt
+    assert "Customer A" not in prompt and "555" not in prompt                     # still no personal details
+
+
+def test_model_errors_are_explained_not_blamed_on_ollama_being_off(site):
+    class Broken(http.server.BaseHTTPRequestHandler):
+        def do_POST(self):
+            self.rfile.read(int(self.headers["Content-Length"]))
+            out = json.dumps({"error": "model 'nope' not found"}).encode()
+            self.send_response(404); self.send_header("Content-Length", str(len(out))); self.end_headers(); self.wfile.write(out)
+
+        def log_message(self, *a):
+            pass
+    srv = http.server.HTTPServer(("127.0.0.1", 0), Broken)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        answer = sg.ask(site("read-key-123"), "hi", model="nope", ollama_url=f"http://127.0.0.1:{srv.server_port}")
+    finally:
+        srv.shutdown()
+    assert "Ollama said 404" in answer and "not found" in answer and "Is Ollama running" not in answer
