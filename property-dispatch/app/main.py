@@ -34,6 +34,7 @@ from .booking import BookingRejected, earliest_bookable_day, local_now, next_ser
 from .config import Settings, get_settings, site_url
 from .db import Repository, make_repository
 from .geocode import GeocodingError, GeocoderUnavailable, NominatimGeocoder
+from .agent import register_agent_routes
 from .live_feed import record_booking, register_live_routes
 from .crew_auth import CrewIdentity
 from .crew_routes import register_crew_routes
@@ -213,6 +214,7 @@ def create_app(
     register_live_routes(app, settings, crew_auth)   # owner-only live station: /api/track, /api/live/stats (dashboard lives in the crew app's owner tab)
     register_pay_routes(app, settings, app.state.stripe)
     register_visit_routes(app, settings, crew_auth)
+    register_agent_routes(app, settings, crew_auth)   # owner-only Ollama dispatch assistant (off unless OLLAMA_BASE_URL is set)
 
     @app.get("/push-setup", include_in_schema=False)
     def push_setup_page():

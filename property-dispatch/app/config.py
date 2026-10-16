@@ -61,6 +61,12 @@ class Settings(BaseSettings):
     vapid_private_key: str = ""
     vapid_subject: str = ""      # "mailto:you@example.com"; defaults to PUBLIC_BASE_URL
 
+    # --- Dispatch assistant (Ollama; leave OLLAMA_BASE_URL blank to turn it off) -----
+    ollama_base_url: str = ""          # e.g. http://localhost:11434/v1, your tunnel + /v1, or https://ollama.com/v1
+    ollama_model: str = "qwen2.5:14b"
+    ollama_api_key: str = ""           # only for Ollama's cloud; keep it in Render, never in code
+    ollama_timeout_s: float = 90.0
+
     # --- Donations: split 33% / 33% / 34% (see app/charity.py) ----------
     # Rename to the specific VFW post, hospital NICU and youth program you give to.
     charity_vfw_name: str = "Veterans of Foreign Wars (VFW)"
@@ -75,6 +81,10 @@ class Settings(BaseSettings):
     crew_access_token: str = "change-me"   # crew dashboard + complete API
     webhook_secret: str = "change-me"      # external webhook callers
     cron_secret: str = "change-me"         # HTTP-triggered nightly run
+
+    @property
+    def agent_enabled(self) -> bool:
+        return bool(self.ollama_base_url)
 
     @property
     def push_enabled(self) -> bool:

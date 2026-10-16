@@ -223,6 +223,18 @@ never leave it), put them in Render as `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY
 `VAPID_SUBJECT`, a `mailto:` address; it defaults to `PUBLIC_BASE_URL`), and deploy. Without the keys
 the button simply doesn't appear. There is deliberately no public "send a push" endpoint.
 
+## Dispatch assistant (Ollama, optional)
+
+`POST /api/owner/dispatch-assistant/{date}` (owner sign-in only) asks an Ollama model to review a day's
+bookings and route: special equipment, anything risky, a crew checklist. It is off until `OLLAMA_BASE_URL`
+is set. The route solver still decides the stop order (it uses real driving distances); the model only
+reviews and explains. Only addresses, services, lawn sizes and the route order are sent, never names,
+phones, access codes or payment details, and every answer includes the exact `data_sent`.
+
+Settings (Render → Environment): `OLLAMA_BASE_URL` (ends in `/v1`), `OLLAMA_MODEL` (default `qwen2.5:14b`),
+`OLLAMA_API_KEY` (only for Ollama's cloud, `https://ollama.com/v1`). Render can't reach `localhost`: use
+Ollama's cloud, or a tunnel to your own computer (and protect the tunnel; Ollama itself has no password).
+
 ## En español (Spanish)
 
 The customer pages (home, booking, pay, visit) are available in Spanish. `static/i18n.js` translates
