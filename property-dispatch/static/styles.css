@@ -762,3 +762,7 @@ label.check input { width: 18px; height: 18px; }
 #price-note { margin-top: 8px; }
 .finish-total { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
 .finish-total:empty { display: none; }
+
+/* "Get updates on this phone" on the visit page */
+.push-box { margin-top: 12px; display: grid; gap: 6px; justify-items: start; }
+.push-box .muted { margin: 0; }

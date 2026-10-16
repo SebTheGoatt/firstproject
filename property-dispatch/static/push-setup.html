@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Notification keys | {{BUSINESS_NAME}}</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="stylesheet" href="/static/styles.css?v={{V}}">
+</head>
+<body class="site">
+  <main class="site-wrap" style="max-width:720px;padding-block:32px">
+    <h1>Set up visit notifications</h1>
+    <p class="muted">This makes a private key pair <strong>inside your browser</strong>. Nothing is sent or saved anywhere, so you're the only one who ever sees it.</p>
+    <ol>
+      <li>Tap <strong>Make my keys</strong>.</li>
+      <li>In <strong>Render → your service → Environment</strong>, add two variables, copying each value with its Copy button:
+        <code>VAPID_PUBLIC_KEY</code> and <code>VAPID_PRIVATE_KEY</code>. Save, then <strong>Manual Deploy</strong>.</li>
+      <li>Close this page. Don't paste the private key into any chat, text or email.</li>
+    </ol>
+    <button class="btn btn-primary" type="button" id="make">Make my keys</button>
+    <div id="out" hidden style="margin-top:24px">
+      <h2 class="card-title">VAPID_PUBLIC_KEY</h2>
+      <p><code id="pub" style="word-break:break-all"></code></p>
+      <button class="btn btn-outline" type="button" data-copy="pub">Copy public key</button>
+      <h2 class="card-title" style="margin-top:24px">VAPID_PRIVATE_KEY (keep secret)</h2>
+      <p><code id="priv" style="word-break:break-all"></code></p>
+      <button class="btn btn-outline" type="button" data-copy="priv">Copy private key</button>
+      <p class="muted small" id="copied" role="status"></p>
+      <p class="muted small">Made new keys by mistake? Only the pair you saved in Render counts. If you ever replace it, customers just tap "Get updates" again.</p>
+    </div>
+  </main>
+  <script>
+    const b64url = (bytes) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    document.getElementById("make").addEventListener("click", async () => {
+      const pair = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+      document.getElementById("pub").textContent = b64url(new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey)));
+      document.getElementById("priv").textContent = (await crypto.subtle.exportKey("jwk", pair.privateKey)).d;
+      document.getElementById("out").hidden = false;
+    });
+    document.querySelectorAll("[data-copy]").forEach((b) => b.addEventListener("click", async () => {
+      const id = b.dataset.copy;
+      try { await navigator.clipboard.writeText(document.getElementById(id).textContent);
+            document.getElementById("copied").textContent = (id === "pub" ? "Public" : "Private") + " key copied."; }
+      catch { document.getElementById("copied").textContent = "Press and hold the key to select and copy it."; }
+    }));
+  </script>
+</body>
+</html>
