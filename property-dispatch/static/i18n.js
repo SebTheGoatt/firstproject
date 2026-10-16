@@ -36,6 +36,7 @@
     "Veteran-owned · Spring, TX": "De un veterano · Spring, TX",
     "Clean lawns. Stronger communities.": "Jardines limpios. Comunidades más fuertes.",
     "Get updates on this phone": "Recibir avisos en este teléfono",
+    "All done! Your before & after photos and receipt are below.": "¡Listo! Tus fotos de antes y después y tu recibo están abajo.",
     "We'll notify you when the crew is on the way and when your visit is done. Nothing else.": "Te avisaremos cuando el equipo vaya en camino y cuando termine tu visita. Nada más.",
     "On iPhone, tap Share, then Add to Home Screen, and open the app from there to get visit updates.": "En iPhone, toca Compartir, luego Agregar a pantalla de inicio y abre la app desde ahí para recibir avisos de tu visita.",
     "No problem. You can still check this page anytime.": "No hay problema. Puedes revisar esta página cuando quieras.",

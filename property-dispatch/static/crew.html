@@ -486,7 +486,7 @@
             } catch (err) { toast(err instanceof TypeError ? "No signal. Try the photo again in coverage." : err.message); }
             beforeIn.value = "";
           });
-          // "On my way": tells this customer now (push + text). Finishing a job does it for the next stop,
+          // "On my way": tells this customer now (app/browser notification + their visit page). Finishing a job does it for the next stop,
           // so this is mainly for the first stop of the day.
           const wayBtn = el("button", { class: "btn btn-way", type: "button" }, s.notified_at ? "Customer notified ✓" : "On my way");
           wayBtn.disabled = !!s.notified_at;
@@ -494,14 +494,11 @@
             wayBtn.disabled = true;
             try {
               const r = await api(`/api/stops/${s.stop_id}/on-the-way`, { method: "POST" });
-              const sent = r.notified || r.pushed;
-              toast(sent ? `${s.customer_name.split(" ")[0]} knows you're on the way.`
+              const first = s.customer_name.split(" ")[0];
+              toast(r.pushed ? `${first} got a notification: you're on the way.`
                 : r.reason === "already_notified" ? "They were already told."
-                : r.reason === "twilio_disabled" ? "Texting isn't set up yet. They only see it if they turned on visit updates."
-                : "Couldn't reach them. Try again in coverage.");
-              if (sent || r.reason === "already_notified") wayBtn.textContent = "Customer notified ✓";
-              else if (r.reason === "twilio_disabled") wayBtn.textContent = "Marked on my way ✓";   // recorded; nobody could be reached
-              else wayBtn.disabled = false;
+                : `Marked on your way. ${first}'s visit page shows it, but they haven't turned on phone alerts.`);
+              wayBtn.textContent = r.pushed || r.reason === "already_notified" ? "Customer notified ✓" : "Marked on my way ✓";
             } catch (err) {
               wayBtn.disabled = false;
               toast(err instanceof TypeError ? "No signal. Tap again when you're back in coverage." : err.message);

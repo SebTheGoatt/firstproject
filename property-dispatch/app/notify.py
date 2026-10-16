@@ -127,13 +127,17 @@ def send_pay_link(settings: Settings, stop: dict, pay_url: str, sms: TwilioClien
 
 
 def notify_stop(repo: Repository, settings: Settings, stop: dict, sms: TwilioClient | None,
-                crew_name: str | None = None) -> dict:
-    """Tell one customer the crew is on the way: a push to phones that opted in, plus a text.
-    Never sends twice for one stop."""
+                crew_name: str | None = None, text: bool = True) -> dict:
+    """Tell one customer the crew is on the way: an app/browser notification to phones that opted in
+    and, unless text=False, a text message. Also marks the stop "on the way" so the customer's visit
+    page shows it. Never sends twice for one stop."""
     if not repo.claim_notification(stop["stop_id"]):
         return {"notified": False, "pushed": 0, "reason": "already_notified", "stop_id": stop["stop_id"]}
 
     pushed = push.notify_job(repo, settings, stop["job_id"], "on_the_way")
+    if not text:     # notifications only
+        return {"notified": pushed > 0, "pushed": pushed, "stop_id": stop["stop_id"],
+                "reason": None if pushed else "no_subscribers"}
     body = next_customer_message(stop, settings, crew_name)
     if sms is None:
         log.info("Twilio not configured; would text %s: %s", stop["phone"], body)

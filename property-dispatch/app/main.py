@@ -485,16 +485,16 @@ def create_app(
 
     @app.post("/api/stops/{stop_id}/on-the-way")
     def on_the_way(stop_id: str, who: CrewIdentity = Depends(crew_auth), repo: Repository = Depends(get_repo)):
-        """The crew taps "On my way": the customer gets a push (if they opted in) and a text.
-        Completing a job does this automatically for the next stop; this covers the first stop of the day
-        and anyone you head to out of order."""
+        """The crew taps "On my way": the customer gets an app/browser notification (if they turned on visit
+        updates) and their visit page shows it. No text message. Completing a job notifies the next stop
+        automatically; this covers the first stop of the day."""
         stop = repo.get_stop(stop_id)
         if stop is None:
             raise HTTPException(status_code=404, detail="Stop not found.")
         if stop["completed_at"] is not None:
             raise HTTPException(status_code=409, detail="That job is already done.")
         member = repo.get_crew(who.member_id) if who.member_id else None
-        return notify_stop(repo, settings, stop, app.state.sms, member["display_name"] if member else None)
+        return notify_stop(repo, settings, stop, None, member["display_name"] if member else None, text=False)
 
     class CompletionHook(BaseModel):
         stop_id: str | None = None

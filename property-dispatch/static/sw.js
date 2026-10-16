@@ -84,6 +84,8 @@ self.addEventListener("push", (event) => {
     body: data.body || "Tap to open Semper Green Lawn Care.",
     icon: "/static/icons/icon-192.png",
     vibrate: [200, 100, 200],
+    tag: "visit-update",          // a newer update replaces the old one instead of stacking
+    renotify: true,               // ...but still buzzes, so "done" is not silent after "on the way"
     data: { url: data.url || "/" },
     actions: [
       { action: "open", title: data.action || "Open" },
