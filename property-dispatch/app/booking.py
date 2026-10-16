@@ -40,7 +40,7 @@ def validate_booking(day: date, now: datetime, active_jobs_that_day: int, settin
     if is_frozen(day, now, settings.freeze_hour):
         first = earliest_bookable_day(now, settings.freeze_hour)
         raise BookingRejected(
-            f"That day's route is already locked. The earliest available day is {first:%A, %b %-d}."
+            f"That day's route is already locked. The earliest available day is {first.strftime('%A, %b')} {first.day}."
         )
     if day > now.date() + timedelta(days=settings.booking_horizon_days):
         raise BookingRejected(f"Please book within the next {settings.booking_horizon_days} days.")
