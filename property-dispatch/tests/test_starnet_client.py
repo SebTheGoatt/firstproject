@@ -19,16 +19,17 @@ from .test_api_flow import CREW, NOW, TOMORROW, book  # noqa: E402
 def site(client, repo, settings, monkeypatch):
     settings.agent_key_read, settings.agent_key_ops = "read-key-123", "ops-key-456"
 
-    def make(key):
-        s = sg.SemperGreenSite(base_url="http://localhost:8000", key=key)
+    def make(key, ops=False):
+        s = sg.SemperGreenSite(base_url="http://localhost:8000", key=key, ops=ops)
 
         def call(method, path):          # route the client's HTTP calls through the test app
             r = client.request(method, path, headers={"X-Agent-Key": key})
             if r.status_code >= 400:
-                raise sg.SiteError(f"The site said {r.status_code}: {r.json().get('detail', '')}")
+                raise sg.SiteError(f"The site said {r.status_code}: {r.json().get('detail', '')}", status=r.status_code)
             return r.json()
         monkeypatch.setattr(s, "_call", call)
         return s
+    monkeypatch.setattr(sg, "read_ops_key", lambda: "")        # this computer has no ops key unless a test makes one
     return make
 
 
@@ -57,15 +58,15 @@ def test_look_tools_work_and_dates_are_checked(site, client, repo, settings):
     assert "Unknown tool" in json.loads(sg.run_tool(s, "delete_everything", {}))["error"]
 
 
-def test_actions_need_approval_and_the_right_key(site, client, repo, settings):
+def test_route_building_needs_the_ops_key_and_no_longer_asks_for_approval(site, client, repo, settings):
     with patch("app.main.local_now", return_value=NOW), patch("app.agent_api.local_now", return_value=NOW):
         assert book(client, "A", "0100").status_code == 201
-        ops, read = site("ops-key-456"), site("read-key-123")
+        ops, read = site("ops-key-456", ops=True), site("read-key-123")
         day = {"day": TOMORROW.isoformat()}
-        assert "refused" in json.loads(sg.run_tool(ops, "build_route", day))              # nobody approved: refused
-        assert "refused" in json.loads(sg.run_tool(ops, "build_route", day, approve=lambda t, a: False))
-        assert "ops key" in json.loads(sg.run_tool(read, "build_route", day, approve=lambda t, a: True))["error"]
-        assert json.loads(sg.run_tool(ops, "build_route", day, approve=lambda t, a: True))["built"] is True
+        assert "No ops key yet" in json.loads(sg.run_tool(read, "build_route", day))["error"]     # a read-only computer can't
+        assert sg.NEEDS_APPROVAL == set()                                                          # the owner delegated it
+        assert json.loads(sg.run_tool(ops, "build_route", day))["built"] is True
+        assert json.loads(sg.run_tool(ops, "build_route", {"day": "tomorrow"}))["error"].startswith("Dates look like")
 
 
 class FakeOllama(http.server.BaseHTTPRequestHandler):

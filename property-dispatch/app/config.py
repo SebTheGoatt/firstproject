@@ -70,7 +70,8 @@ class Settings(BaseSettings):
 
     # --- AI agent access (StarNet): leave blank to keep it off. See app/agent_api.py ---
     agent_key_read: str = ""     # can look only
-    agent_key_ops: str = ""      # can look, and build a day's route
+    agent_key_ops: str = ""      # can look, build a day's route, and trigger the "on the way" message
+    agent_actions_paused: bool = False   # AGENT_ACTIONS_PAUSED=true: the owner's off-switch for everything agents can DO
 
     # --- Donations: split 33% / 33% / 34% (see app/charity.py) ----------
     # Rename to the specific VFW post, hospital NICU and youth program you give to.

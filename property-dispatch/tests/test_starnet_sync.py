@@ -111,9 +111,11 @@ def test_it_notices_when_the_site_changes_a_price_or_a_feature(client, on, manif
 
 def test_a_safety_mismatch_is_critical_not_just_different(manifest):
     m = manifest()
-    report = sg.compare(m, None, needs_approval=set())                  # a StarNet that forgot the approval step
-    assert not report["in_sync"] and any(c.startswith("SAFETY") and "build_route" in c for c in report["critical"])
-    stricter = sg.compare(m, None, needs_approval=sg.NEEDS_APPROVAL | {"day_summary"})
+    assert sg.compare(m, None)["in_sync"] is True                       # today no action needs per-call approval
+    strict = {**m, "endpoints": [{**e, "needs_approval": e["tool"] == "notify_on_the_way"} for e in m["endpoints"]]}
+    report = sg.compare(strict, None, needs_approval=set())             # a StarNet that would run it without asking
+    assert not report["in_sync"] and any(c.startswith("SAFETY") and "notify_on_the_way" in c for c in report["critical"])
+    stricter = sg.compare(m, None, needs_approval={"day_summary"})
     assert stricter["in_sync"] and any("stricter" in n for n in stricter["notes"])
 
 
