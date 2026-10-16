@@ -4,7 +4,11 @@ THE EASIEST WAY (PowerShell only, no websites to click through):
     $env:RENDER_API_KEY = "<a Render API key>"          (made once at Render > Account Settings > API Keys)
     python semper_green_site.py --connect               makes the key, puts it in Render, deploys, and connects StarNet
 
-THEN, TO DELEGATE:
+THEN, TO RUN THE MOCK WEEK (every agent does its job, each day, on your local model):
+    python semper_green_site.py --seed-mock-week    fills the next week with FAKE bookings (names start with MOCK)
+    python semper_green_site.py --run-week          the agents work the week; writes mock_week_report.md with a scorecard
+
+TO DELEGATE FOR REAL (in StarNet):
     python semper_green_site.py --playbook          writes semper_green_playbook.md: each agent's instructions + schedule
     python semper_green_site.py --seed-mock-week    fills the next week with FAKE bookings (names start with MOCK)
     python semper_green_site.py --mock-cleanup      shows the one line that removes them again
@@ -65,6 +69,16 @@ class SemperGreenSite:
             raise SiteError("No key yet. Run:  python semper_green_site.py --setup")
 
     def _call(self, method: str, path: str) -> dict:
+        for attempt in range(4):                       # the site limits calls per minute: wait and try again, politely
+            try:
+                return self._call_once(method, path)
+            except SiteError as exc:
+                if exc.status != 429 or attempt == 3:
+                    raise
+                import time
+                time.sleep(6)
+
+    def _call_once(self, method: str, path: str) -> dict:
         req = urllib.request.Request(self.base_url + path, method=method, data=b"" if method == "POST" else None,
                                      headers={"X-Agent-Key": self._key, "Accept": "application/json"})
         try:
@@ -152,13 +166,34 @@ def _day_label(iso: str) -> str:
     return f"{d.strftime('%a %b')} {d.day}"          # no %-d: that code doesn't work on Windows
 
 
-def briefing(site: "SemperGreenSite", expected: dict | None = None) -> str:
-    """A plain-English picture of the site right now, for the owner or any agent to read."""
-    health, manifest, outlook = site.health(), site.manifest(), site.outlook(7)
+def briefing(site: "SemperGreenSite", expected: dict | None = None, as_of: date | None = None,
+             clock: str | None = None, cache: dict | None = None) -> str:
+    """A plain-English picture of the site, for the owner or any agent to read.
+
+    as_of=<a date> is for the mock week: it shows the site as if that day were today (the bookings are real; the
+    "today" is practice)."""
+    def fetch(key, call):                               # the mock week asks for the same things many times: ask once
+        if cache is None:
+            return call()
+        if key not in cache:
+            cache[key] = call()
+        return cache[key]
+    health, manifest = fetch("health", site.health), fetch("manifest", site.manifest)
     f = manifest["features"]
     onoff = lambda v: "ON" if v else "off"
     now = datetime.now()
-    lines = [f"SEMPER GREEN LAWN CARE BRIEFING  ({now.strftime('%a %b')} {now.day}, {now.strftime('%I:%M %p').lstrip('0')})", "",
+    if as_of is None:
+        outlook = site.outlook(7)
+        title = f"{now.strftime('%a %b')} {now.day}, {now.strftime('%I:%M %p').lstrip('0')}"
+    else:
+        quota = (manifest["facts"].get("schedule") or {}).get("daily_job_quota", 25)
+        outlook = {"days": []}
+        for i in range(7):
+            day = as_of + timedelta(days=i)
+            t = fetch(("day", day), lambda: site.day(day.isoformat()))["totals"]
+            outlook["days"].append({"date": day.isoformat(), "bookings": t["bookings"], "quota": quota, "expected": t["expected"]})
+        title = f"{_day_label(as_of.isoformat())}, {clock or '6:30 AM'}, practice day"
+    lines = [f"SEMPER GREEN LAWN CARE BRIEFING  ({title})", "",
              f"Site: healthy.   Card payments: {onoff(f['card_payments'])}"
              + (f" ({manifest['stripe_mode']} mode)" if manifest.get("stripe_mode") else "")
              + f".   Visit notifications: {onoff(f['visit_notifications'])}.   Texting: {onoff(f['texting'])}.", "",
@@ -168,10 +203,10 @@ def briefing(site: "SemperGreenSite", expected: dict | None = None) -> str:
                      f" of {d['quota']} possible, ${d['expected']:,.2f} expected")
     lock = (manifest["facts"].get("schedule") or {}).get("route_locks_at_hour", 17)
     try:
-        today = date.fromisoformat(health["now"][:10])          # the business's own "today", not this computer's
+        today = as_of or date.fromisoformat(health["now"][:10])  # the business's own "today", not this computer's
         extra = []
         for label, day in (("Today", today), ("Tomorrow", today + timedelta(days=1))):
-            d = site.day(day.isoformat())
+            d = fetch(("day", day), lambda: site.day(day.isoformat()))
             t, r = d["totals"], d["route"]
             if r["built"]:
                 route = (f"Route: BUILT ({r['stops']} stops, {r['finished']} finished"
@@ -524,6 +559,156 @@ def seed_mock_week(base_url: str | None = None, per_day: int = 5, out=print, con
     return 0 if made else 1
 
 
+# --- running the jobs: each agent does its job, day by day, on your local model --------------------
+#   python semper_green_site.py --run-week          all 7 days (a day takes a few minutes on a 9B model)
+#   python semper_green_site.py --run-week 2        just the first 2 days
+# Writes mock_week_report.md as it goes: what every agent said, and a scorecard at the end.
+
+REPORT_FILE = os.environ.get("SEMPER_REPORT_FILE", "mock_week_report.md")
+SHARED_SECTIONS = ("The business in four lines (everyone knows this)", "Rules for EVERY agent")
+FORMAT_MARKERS = {
+    "The Overseer": ["TODAY:", "TOMORROW:", "PROBLEMS:", "NEEDS OWNER:"],
+    "Recon Radar": ["BUSY DAYS:", "QUIET DAYS:", "EXPECTED THIS WEEK:"],
+    "The Beyonder": ["WEEK SO FAR:", "GOING WELL:", "WATCH:", "NEEDS OWNER:"],
+}
+DISPATCHER_STARTS = ("ROUTE OK", "NEEDS OWNER", "NO JOBS TOMORROW")
+MONEY = re.compile(r"\$\s?\d[\d,]*(?:\.\d+)?")
+
+
+def playbook_sections() -> dict:
+    """The playbook split by heading: {'The Overseer': '## The Overseer: runs ...\n...', ...}"""
+    out = {}
+    for part in re.split(r"^## ", PLAYBOOK, flags=re.M)[1:]:
+        title, _, body = part.partition("\n")
+        out[title.split(":")[0].strip()] = f"## {title}\n{body.strip()}"
+    return out
+
+
+def day_jobs(day_index: int, day: date) -> list:
+    """Who works when on this day: [(hour, minute, 'time label', agent, request or None)], in clock order."""
+    jobs = [(6, 30, "6:30 AM", "The Overseer", None), (7, 0, "7:00 AM", "Recon Radar", None),
+            (17, 15, "5:15 PM", "The Dispatcher", None), (17, 30, "5:30 PM", "The Overseer", None)]
+    if day_index % 3 == 0:                                            # every 3 days
+        jobs += [(9, 0, "9:00 AM", "Marketer", None), (18, 0, "6:00 PM", "The Beyonder", None)]
+    if day_index == 2:                                                # weekly
+        jobs.append((10, 0, "10:00 AM", "The Sales Deck", None))
+    if day_index == 1:                                                # only when the owner asks: show it once
+        jobs.append((11, 0, "11:00 AM", "The Comms Officer",
+                     "The owner asks: write a short text telling a customer their visit is tomorrow."))
+    if day.weekday() == 0:                                            # Mondays
+        jobs.append((8, 0, "8:00 AM", "Engineer", None))
+    return sorted(jobs)
+
+
+def check_output(agent: str, text: str, allowed_text: str) -> tuple:
+    """(format_ok or None if the agent has no fixed format, [dollar amounts that appear nowhere in what it was given])"""
+    if agent == "The Dispatcher":
+        format_ok = text.strip().upper().startswith(DISPATCHER_STARTS)
+    elif agent in FORMAT_MARKERS:
+        format_ok = all(m in text for m in FORMAT_MARKERS[agent])
+    else:
+        format_ok = None
+    known = {m.replace(" ", "").replace(",", "") for m in MONEY.findall(allowed_text)}
+    invented = sorted({m for m in MONEY.findall(text) if m.replace(" ", "").replace(",", "") not in known})
+    return format_ok, invented
+
+
+def pick_model(ollama_url: str, models: list | None = None) -> tuple:
+    """(model name or None, message). Uses SEMPER_MODEL, else the only model Ollama has."""
+    if os.environ.get("SEMPER_MODEL"):
+        return os.environ["SEMPER_MODEL"], ""
+    try:
+        if models is None:
+            with urllib.request.urlopen(ollama_url.rstrip("/") + "/api/tags", timeout=15) as resp:
+                models = [m["name"] for m in json.loads(resp.read().decode("utf-8")).get("models", [])]
+    except (urllib.error.URLError, OSError, ValueError, KeyError):
+        return None, "I couldn't reach Ollama. Is it running?"
+    if len(models) == 1:
+        return models[0], ""
+    if not models:
+        return None, "Ollama has no models yet."
+    return None, ("Ollama has several models. Tell me which one the agents use:\n"
+                  + "\n".join(f"    {m}" for m in models) + '\n  then run:  $env:SEMPER_MODEL = "<that name>"')
+
+
+def run_week(site, days: int = 7, start: date | None = None, model: str | None = None,
+             ollama_url: str = "http://localhost:11434", out=print, chat=None, report_path: str | None = None,
+             expected: dict | None = None) -> int:
+    """Every agent does its job for each day of the week, using the local model. Scores them as it goes."""
+    import time
+    chat = chat or _chat
+    report_path = report_path or REPORT_FILE
+    if model is None:
+        model, problem = pick_model(ollama_url)
+        if model is None:
+            out(problem); return 1
+    days = max(1, min(int(days), 14))
+    health = site.health()
+    start = start or (date.fromisoformat(health["now"][:10]) + timedelta(days=1))
+    expected = expected if expected is not None else load_expectations()
+    sync_text = format_report(compare(site.manifest(), expected))
+    sections = playbook_sections()
+    latest: dict = {}
+    score: dict = {}
+    cache: dict = {}
+    f = open(report_path, "w", encoding="utf-8")
+    f.write(f"# Mock week report\n\nModel: `{model}`   Days: {days} starting {_day_label(start.isoformat())}\n\n"
+            "Each answer is checked two ways: did the agent use its required format, and did it use only dollar amounts "
+            "that were really in the briefing? (Invented numbers are the thing to watch with a small model.)\n")
+    out(f"Running the mock week with {model}: {days} day(s), about {len(day_jobs(0, start))} jobs a day. Report: {report_path}")
+    failures = 0
+    for i in range(days):
+        day = start + timedelta(days=i)
+        f.write(f"\n## Day {i + 1}: {_day_label(day.isoformat())}\n")
+        for hour, minute, label, agent, request in day_jobs(i, day):
+            clock = label
+            text_briefing = briefing(site, expected, as_of=day, clock=clock, cache=cache)
+            notes = {"Marketer": ["Recon Radar"], "The Beyonder": ["The Overseer", "The Dispatcher", "Recon Radar", "Marketer", "Engineer"]}.get(agent, [])
+            extra = [f"{a} said:\n{latest[a]}" for a in notes if a in latest]
+            if agent == "Engineer":
+                extra.append(f"Result of --sync:\n{sync_text}")
+            user = f"Here is the briefing:\n\n{text_briefing}\n" + ("\n" + "\n\n".join(extra) + "\n" if extra else "") \
+                + "\n" + (request or "Do your job now, in your exact output format.")
+            system = "\n\n".join([sections[s] for s in SHARED_SECTIONS] + [sections[agent]])
+            began = time.time()
+            try:
+                reply = chat(ollama_url, {"model": model, "stream": False, "options": {"temperature": 0.2, "num_ctx": 8192},
+                                          "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]})
+                text = (reply.get("content") or "").strip() or "(no answer)"
+            except ModelProblem as exc:
+                failures += 1
+                text = f"(the model failed: {exc})"
+            format_ok, invented = check_output(agent, text, text_briefing + "\n" + sections[agent] + "\n" + "\n".join(extra))
+            if text.startswith("(the model failed"):
+                format_ok, invented = None, []
+            latest[agent] = text
+            s = score.setdefault(agent, {"runs": 0, "format_ok": 0, "format_checked": 0, "invented": 0, "failed": 0})
+            s["runs"] += 1
+            s["failed"] += text.startswith("(the model failed")
+            if format_ok is not None:
+                s["format_checked"] += 1
+                s["format_ok"] += bool(format_ok)
+            s["invented"] += len(invented)
+            marks = ("" if format_ok is None else (" ✓ format" if format_ok else " ✗ FORMAT")) + \
+                    (f" ✗ NUMBERS NOT IN BRIEFING: {', '.join(invented)}" if invented else (" ✓ numbers" if MONEY.search(text) else ""))
+            f.write(f"\n### {label}  {agent}{marks}\n\n{text}\n")
+            f.flush()
+            out(f"  day {i + 1}  {label:>8}  {agent:<17}{marks.strip() or ''}  ({time.time() - began:.0f}s)")
+            if failures >= 3 and not any(v["runs"] - v["failed"] for v in score.values()):
+                out("The model keeps failing. Stopping. " + text); f.close(); return 1
+    f.write("\n## Scorecard\n\n| Agent | Runs | Followed format | Invented numbers | Model failures |\n|---|---|---|---|---|\n")
+    out("\nScorecard:")
+    for agent in [a for a in ("The Overseer", "Recon Radar", "The Dispatcher", "Marketer", "The Sales Deck", "The Comms Officer", "Engineer", "The Beyonder") if a in score]:
+        s = score[agent]
+        fmt = f"{s['format_ok']}/{s['format_checked']}" if s["format_checked"] else "n/a"
+        f.write(f"| {agent} | {s['runs']} | {fmt} | {s['invented']} | {s['failed']} |\n")
+        out(f"  {agent:<17} runs {s['runs']:<3} format {fmt:<6} invented numbers {s['invented']}")
+    f.write("\nRead the report top to bottom: the NEEDS OWNER lines are the things you would have been asked to decide.\n")
+    f.close()
+    out(f"\nDone. Open {report_path} to read what every agent said.")
+    return 0
+
+
 # ---------------------------------------------------------------------------------------------
 # "Are we on the same page?"  StarNet's copy of what it believes, compared with what the site says.
 # ---------------------------------------------------------------------------------------------
@@ -781,6 +966,10 @@ def ask_owner(tool: str, args: dict) -> bool:
 
 if __name__ == "__main__":
     args = sys.argv[1:]
+    if args[:1] == ["--run-week"]:                   # every agent does its job, each day of the week, on the local model
+        nums = [a for a in args[1:] if a.isdigit()]
+        start = next((date.fromisoformat(a) for a in args[1:] if re.fullmatch(r"\d{4}-\d{2}-\d{2}", a)), None)
+        sys.exit(run_week(SemperGreenSite(), days=int(nums[0]) if nums else 7, start=start))
     if args[:1] == ["--playbook"]:                   # standing instructions + schedule for every agent
         print(f"Wrote {write_playbook()}: paste each agent's block into that agent's instructions.")
         sys.exit(0)
