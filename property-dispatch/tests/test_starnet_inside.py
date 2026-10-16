@@ -152,4 +152,4 @@ def test_without_a_folder_the_commands_explain_how_to_find_starnets_workspace():
         r = subprocess.run([sys.executable, str(Path(sg.__file__)), flag], capture_output=True, text=True,
                            env={"PATH": "", "SEMPER_AGENT_KEY": "k" * 40, "SEMPER_SITE_URL": "http://localhost:1", "HOME": "/tmp"})
         assert r.returncode == 1, (flag, r.stderr)
-        assert "can't see this one" in r.stdout and "'folder' button" in r.stdout and "--folder" in r.stdout
+        assert "can't see this one" in r.stdout and "--go" in r.stdout and "--folder" in r.stdout

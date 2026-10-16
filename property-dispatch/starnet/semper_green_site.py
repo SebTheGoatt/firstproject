@@ -4,6 +4,10 @@ THE EASIEST WAY (PowerShell only, no websites to click through):
     $env:RENDER_API_KEY = "<a Render API key>"          (made once at Render > Account Settings > API Keys)
     python semper_green_site.py --connect               makes the key, puts it in Render, deploys, and connects StarNet
 
+AFTER YOU ARE CONNECTED, ONE COMMAND SETS UP STARNET (it finds StarNet's folder itself):
+    python semper_green_site.py --go                run it, paste the one message it copies to The Beyonder, leave the window open
+    python semper_green_site.py --mock-day 1        practice day 1: copies the orders for you to paste (then 2, 3 ...)
+
 THEN, TO RUN THE MOCK WEEK (every agent does its job, each day, on your local model):
     python semper_green_site.py --seed-mock-week    fills the next week with FAKE bookings (names start with MOCK)
     python semper_green_site.py --run-week          the agents work the week; writes mock_week_report.md with a scorecard
@@ -889,6 +893,118 @@ def install_to_workspace(folder: str) -> list:
     return [str(script), write_playbook(str(Path(folder) / "semper_green_playbook.md"))]
 
 
+# --- One command: python semper_green_site.py --go ---------------------------------------------------
+# Finds StarNet's workspace folder by itself (and remembers it), sets everything up there, copies the one message for The
+# Beyonder to the clipboard, then keeps every agent's briefing fresh. Leave the window open.
+
+WORKSPACE_FILE = Path(os.environ.get("SEMPER_WORKSPACE_FILE") or Path.home() / ".semper_green_workspace")
+STARNET_MARKER_FILES = ("meta-ad-desk-plan.md",)          # files StarNet's agents are known to save in their workspace
+SKIP_DIRS = {"node_modules", ".git", "__pycache__", "Temp", "Windows", "Program Files", "Program Files (x86)", "$Recycle.Bin",
+             "site-packages", ".cache", "Cache", "Code Cache", "GPUCache"}
+
+
+def saved_folder() -> str | None:
+    try:
+        value = WORKSPACE_FILE.read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    return value if value and Path(value).is_dir() else None
+
+
+def save_folder(folder: str) -> None:
+    WORKSPACE_FILE.write_text(folder + "\n", encoding="utf-8")
+
+
+def find_starnet_workspaces(roots: list | None = None, seconds: float = 25.0, max_depth: int = 7) -> list:
+    """Look for StarNet's workspace: folders holding files its agents saved, or folders named like StarNet.
+    Returns [(folder, why)], strongest first. Skips junk folders and gives up after `seconds`."""
+    import time
+    deadline = time.time() + seconds
+    roots = roots or [str(Path.home())]
+    strong, weak = [], []
+    for root in roots:
+        base_depth = Path(root).parts.__len__()
+        for current, dirs, files in os.walk(root):
+            if time.time() > deadline:
+                break
+            dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not d.startswith("$")]
+            if len(Path(current).parts) - base_depth >= max_depth:
+                dirs[:] = []
+            if any(m in files for m in STARNET_MARKER_FILES) and current not in [c for c, _ in strong]:
+                strong.append((current, "has files the StarNet agents saved"))
+            if "starnet" in Path(current).name.lower() and current not in [c for c, _ in weak]:
+                weak.append((current, "named like StarNet"))
+    seen, out = set(), []
+    for item in strong + weak:
+        if item[0] not in seen:
+            seen.add(item[0])
+            out.append(item)
+    return out
+
+
+def choose_workspace(candidates: list, ask=input, out=print) -> str | None:
+    """Pick the folder: confirm the only candidate, choose from a short list, or let the owner paste one.
+    A folder holding files the agents saved is a much better guess than one that is merely named like StarNet."""
+    strong = [c for c in candidates if c[1].startswith("has files")]
+    candidates = strong or candidates
+    if len(candidates) == 1:
+        folder, why = candidates[0]
+        out(f"Found StarNet's workspace: {folder}  ({why})")
+        if ask("Use this folder? [Y/n] ").strip().lower() in ("", "y", "yes"):
+            return folder
+    elif candidates:
+        out("I found a few places that could be StarNet's workspace:")
+        shown = candidates[:6]
+        for i, (folder, why) in enumerate(shown, 1):
+            out(f"  {i}. {folder}   ({why})")
+        choice = ask("Type the number of the right one, or press Enter to paste a folder yourself: ").strip()
+        if choice.isdigit() and 1 <= int(choice) <= len(shown):
+            return shown[int(choice) - 1][0]
+    else:
+        out("I couldn't find StarNet's workspace on my own.")
+    for _ in range(3):
+        typed = ask("Paste StarNet's workspace folder (click the 'folder' button next to any file an agent saved): ").strip().strip('"')
+        if typed and Path(typed).is_dir():
+            return typed
+        out("That folder doesn't exist. Try again.")
+    return None
+
+
+def deliver(text: str, out=print, what: str = "the message") -> None:
+    """Copy text to the clipboard (so it's one paste), and show it in case copying isn't possible."""
+    if copy_to_clipboard(text):
+        out(f"\n✅ I copied {what} to your clipboard. Paste it to The Beyonder in StarNet (Ctrl+V, Enter).")
+    out(f"\n{text}\n")
+
+
+def go(site, out=print, ask=input, find=None, rounds: int | None = None, sleep=None, minutes: float = 10.0) -> int:
+    """Everything, in one command."""
+    try:
+        site.health()
+    except SiteError as exc:
+        out(f"StarNet isn't connected to the website yet ({exc}).\nRun  python semper_green_site.py --setup  first, then this again.")
+        return 1
+    folder = saved_folder()
+    if folder:
+        out(f"Using StarNet's workspace: {folder}")
+    else:
+        out("Looking for StarNet's workspace (up to 25 seconds)...")
+        folder = choose_workspace((find or find_starnet_workspaces)(), ask=ask, out=out)
+        if not folder:
+            out("No folder, so I stopped. When you have it, run:  python semper_green_site.py --go")
+            return 1
+        save_folder(folder)
+    install_to_workspace(folder)
+    count = len(write_agent_files(site, folder))
+    setup_message, _ = starnet_messages(folder)
+    write_starnet_files(folder, join_path(folder, "starnet_routines.md"))
+    out(f"\nDone: the script, the playbook and {count} agent files are inside StarNet's workspace.")
+    deliver(setup_message, out, "the message for The Beyonder")
+    out("Leave this window open: it keeps every agent's briefing fresh every "
+        f"{minutes:g} minutes. (Close it any time; run --go again to continue.)")
+    return watch(site, folder, minutes, out=out, sleep=sleep, rounds=rounds)
+
+
 # ---------------------------------------------------------------------------------------------
 # "Are we on the same page?"  StarNet's copy of what it believes, compared with what the site says.
 # ---------------------------------------------------------------------------------------------
@@ -1145,12 +1261,19 @@ def ask_owner(tool: str, args: dict) -> bool:
 
 
 if __name__ == "__main__":
+    def _friendly(exc_type, exc, tb):                 # a problem is one plain sentence, never a wall of Python
+        if issubclass(exc_type, (SiteError, RenderError, ModelProblem)):
+            print(exc)
+        else:
+            sys.__excepthook__(exc_type, exc, tb)
+    sys.excepthook = _friendly
     args = sys.argv[1:]
-    folder = _flag(args, "--folder")
+    if args[:1] == ["--go"]:                         # the one command: find StarNet's folder, set up, copy the message, keep fresh
+        sys.exit(go(SemperGreenSite()))
+    folder = _flag(args, "--folder") or saved_folder()
     if args[:1] in (["--starnet"], ["--mock-day"], ["--refresh"], ["--watch"]) and not folder:
         print("StarNet's agents work in their own project folder and can't see this one.\n"
-              "Find StarNet's workspace folder: click the 'folder' button next to any file an agent saved, or ask The Beyonder\n"
-              "'what is your working folder?'. Then run this again with:  --folder \"<that folder>\"")
+              "Run   python semper_green_site.py --go   and I'll find it for you (or add  --folder \"<StarNet's workspace folder>\").")
         sys.exit(1)
     if args[:1] == ["--starnet"]:                    # put everything inside StarNet's workspace + paste-in messages
         site = SemperGreenSite()
@@ -1174,7 +1297,7 @@ if __name__ == "__main__":
         start = _flag(args, "--start")
         start = date.fromisoformat(start) if start else date.fromisoformat(site.health()["now"][:10]) + timedelta(days=1)
         files = write_mock_day_files(site, folder, number, start)
-        print(starnet_messages(folder)[1] + "\n\n" + mock_day_orders(number, start, folder, files))
+        deliver(starnet_messages(folder)[1] + "\n\n" + mock_day_orders(number, start, folder, files), what=f"practice day {number}")
         sys.exit(0)
     if args[:1] == ["--run-week"]:                   # every agent does its job, each day of the week, on the local model
         nums = [a for a in args[1:] if a.isdigit()]

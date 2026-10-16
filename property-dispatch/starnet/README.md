@@ -1,68 +1,23 @@
 # StarNet ↔ Semper Green site
 
-## The short version (PowerShell only)
+## The short version
 
+**Once** (connects StarNet to the website; needs a Render API key in `$env:RENDER_API_KEY`, made at Render > Account Settings > API Keys):
 ```powershell
-irm https://raw.githubusercontent.com/SebTheGoatt/firstproject/claude/veteran-gibill-platform-NAd4k/property-dispatch/starnet/semper_green_site.py -OutFile semper_green_site.py
-$env:RENDER_API_KEY = "paste your Render API key"
+irm https://raw.githubusercontent.com/SebTheGoatt/firstproject/<latest>/property-dispatch/starnet/semper_green_site.py -OutFile semper_green_site.py
 python semper_green_site.py --connect
 ```
-That makes StarNet's private key, puts it in Render, deploys the site, waits for it, and connects StarNet. When it
-finishes it prints a plain-English briefing and saves it to `semper_green_briefing.txt`: agents can just read that file.
-
-The Render API key is made once at Render → Account Settings → API Keys. It can do anything on your Render account, so
-use it for this and then **delete it in Render**. It lives only in that PowerShell window; nothing saves or prints it.
-
-Prefer no API key? `python semper_green_site.py --setup` makes the key and copies one line for you to paste into Render's
-Environment page; run it again after Render deploys.
-
-Small local models (a 9B GGUF coder model, for example) often can't call tools. That's fine: agents just read
-`semper_green_briefing.txt`, and `ask()` automatically hands such a model the briefing instead of tools. To use the same
-model for `ask()` that StarNet's agents use: `$env:SEMPER_MODEL = "hf.co/mradermacher/Qwopus3-5-9B-Coder-Flash-i1-GGUF:Q4_K_M"`.
-
-## Inside StarNet (agents at their desks, reports in COMMS)
-
-StarNet's agents work in **their own project folder** and can't see `C:\Users\<you>`. A small model is also shaky at running
-commands. So everything goes *into StarNet's workspace*, and each agent only has to **read one file** (its rules + a fresh
-briefing). To find the workspace folder: click the **folder** button next to any file an agent saved, or ask The Beyonder
-"what is your working folder?".
-
+**Then** (sets StarNet up; finds its workspace folder by itself and remembers it):
 ```powershell
-python semper_green_site.py --starnet --folder "<StarNet's workspace folder>"   # copies the script + playbook there, writes agents/*.md, prints the message for The Beyonder
-python semper_green_site.py --watch --folder "<same folder>"                    # keeps every agent's briefing fresh; leave this window open
-python semper_green_site.py --mock-day 1 --folder "<same folder>"               # writes practice day 1 (one file per job) and prints the orders to paste
+python semper_green_site.py --go
 ```
-Paste the `--starnet` message to The Beyonder once: it creates the scheduled routine for each agent ("Read the file
-`<folder>\agents\the-overseer.md` and do exactly what it says"). For a practice day, paste what `--mock-day` prints; repeat
-with `--mock-day 2`, `3`... Everything shows up in StarNet because StarNet's own agents do the work. Each practice-day file
-carries the briefing "as of" that job's time and is never saved over the real one. `--run-week` below does the same on a plain
-model call outside StarNet, for a quick scorecard.
+It copies one message to your clipboard. Paste it to The Beyonder in StarNet. Leave the window open: it keeps every agent's
+briefing fresh. That is the whole setup.
 
-## Run the mock week (every agent does its job)
-```powershell
-python semper_green_site.py --seed-mock-week     # once: a week of FAKE bookings (type yes)
-python semper_green_site.py --run-week           # the agents work all 7 days on your local model
-python semper_green_site.py --run-week 2         # or just the first 2 days
-notepad mock_week_report.md                      # what every agent said, and the scorecard
-```
-It uses the one model Ollama has (or `$env:SEMPER_MODEL = "<name>"`). Each agent gets the shared rules plus its own section,
-the briefing "as of" that practice day, and the other agents' reports where its job needs them (Marketer gets Recon Radar's,
-the Beyonder gets everyone's). Every answer is scored: did it use its required format, and did it use only dollar amounts that
-were really in the briefing? A small model's habit of inventing numbers shows up on the scorecard. The report is written as
-it goes, so you can read it while it runs. Nothing is sent to anyone and nothing on the site changes.
+Practice day: `python semper_green_site.py --mock-day 1` copies that day's orders; paste them to The Beyonder (then `2`, `3`...).
 
-## Delegating to the agents
-```powershell
-python semper_green_site.py --playbook          # writes semper_green_playbook.md: every agent's instructions + daily schedule
-python semper_green_site.py --seed-mock-week    # asks first, then fills the next week with FAKE bookings (names start with MOCK)
-python semper_green_site.py --mock-cleanup      # prints the one SQL line that removes every MOCK booking again
-```
-The playbook is written for a small local model: short numbered steps, exact commands, a fixed output format, and one
-escape hatch (`NEEDS OWNER:`) so an agent never guesses. Agents only ever run `--brief` and `--sync`.
-Mock bookings use the same public booking form customers use. They are unpaid, cash-mostly and carry fictional 555 phone
-numbers; remove them before turning on texting or reading real sales numbers.
-
-Day to day: `python semper_green_site.py --brief` (a fresh briefing) and `--sync` (is StarNet still on the same page?).
+The Render API key can do anything on your Render account: use it for `--connect`, then **delete it in Render**.
+Prefer no API key? `python semper_green_site.py --setup` makes the key and copies one line for Render's Environment page.
 
 ---
 
