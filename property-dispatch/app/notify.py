@@ -5,6 +5,7 @@ from datetime import datetime
 
 import httpx
 
+from . import push
 from .config import Settings
 from .db import Repository
 from .models import SERVICE_LABELS, Service, order_label
@@ -47,8 +48,7 @@ def day_words(day, lang: str) -> str:
     """'Friday, Oct 16' or 'viernes 16 de oct'."""
     if lang == "es":
         return f"{ES_DAYS[day.weekday()]} {day.day} de {ES_MONTHS[day.month - 1]}"
-    # ``%-d`` is not supported by Windows' strftime implementation. Build the
-    # unpadded date explicitly so confirmation texts work on every host.
+    # ``%-d`` is not supported by Windows' strftime. Build the unpadded date explicitly.
     return f"{day.strftime('%A, %b')} {day.day}"
 
 
@@ -127,27 +127,41 @@ def send_pay_link(settings: Settings, stop: dict, pay_url: str, sms: TwilioClien
         return {"sent": False, "reason": "send_failed"}
 
 
+def notify_stop(repo: Repository, settings: Settings, stop: dict, sms: TwilioClient | None,
+                crew_name: str | None = None, text: bool = True) -> dict:
+    """Tell one customer the crew is on the way: an app/browser notification to phones that opted in
+    and, unless text=False, a text message. Also marks the stop "on the way" so the customer's visit
+    page shows it. Never sends twice for one stop."""
+    if not repo.claim_notification(stop["stop_id"]):
+        return {"notified": False, "pushed": 0, "reason": "already_notified", "stop_id": stop["stop_id"]}
+
+    pushed = push.notify_job(repo, settings, stop["job_id"], "on_the_way")
+    if not text:     # notifications only
+        return {"notified": pushed > 0, "pushed": pushed, "stop_id": stop["stop_id"],
+                "reason": None if pushed else "no_subscribers"}
+    body = next_customer_message(stop, settings, crew_name)
+    if sms is None:
+        log.info("Twilio not configured; would text %s: %s", stop["phone"], body)
+        return {"notified": False, "pushed": pushed, "reason": "twilio_disabled", "stop_id": stop["stop_id"],
+                "preview": body}
+
+    try:
+        sid = sms.send_sms(stop["phone"], body)
+    except httpx.HTTPError as exc:
+        if not pushed:
+            repo.release_notification(stop["stop_id"])  # nothing reached them: allow a retry
+        log.error("Twilio send failed for stop %s: %s", stop["stop_id"], exc)
+        return {"notified": False, "pushed": pushed, "reason": "send_failed", "stop_id": stop["stop_id"]}
+
+    return {"notified": True, "pushed": pushed, "stop_id": stop["stop_id"], "message_sid": sid,
+            "sent_at": datetime.now().isoformat()}
+
+
 def notify_next_customer(
     repo: Repository, settings: Settings, completed_stop: dict, sms: TwilioClient | None
 ) -> dict:
-    """Text the next unfinished stop on the route. Never sends twice for one stop."""
+    """Notify the next unfinished stop on the route. Never sends twice for one stop."""
     nxt = repo.next_open_stop(completed_stop["route_id"], completed_stop["sequence"])
     if nxt is None:
-        return {"notified": False, "reason": "route_complete"}
-
-    if not repo.claim_notification(nxt["stop_id"]):
-        return {"notified": False, "reason": "already_notified", "stop_id": nxt["stop_id"]}
-
-    body = next_customer_message(nxt, settings, completed_stop.get("completed_by_name"))
-    if sms is None:
-        log.info("Twilio not configured; would text %s: %s", nxt["phone"], body)
-        return {"notified": False, "reason": "twilio_disabled", "stop_id": nxt["stop_id"], "preview": body}
-
-    try:
-        sid = sms.send_sms(nxt["phone"], body)
-    except httpx.HTTPError as exc:
-        repo.release_notification(nxt["stop_id"])  # allow a retry
-        log.error("Twilio send failed for stop %s: %s", nxt["stop_id"], exc)
-        return {"notified": False, "reason": "send_failed", "stop_id": nxt["stop_id"]}
-
-    return {"notified": True, "stop_id": nxt["stop_id"], "message_sid": sid, "sent_at": datetime.now().isoformat()}
+        return {"notified": False, "pushed": 0, "reason": "route_complete"}
+    return notify_stop(repo, settings, nxt, sms, completed_stop.get("completed_by_name"))

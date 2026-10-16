@@ -59,5 +59,5 @@ def test_customer_pages_load_the_translations(client):
     for path in ("/", "/book", "/visit", "/pay/some-token-value-123456"):
         assert "/static/i18n.js?v=" in client.get(path).text, path
     assert "/static/i18n.js" not in client.get("/crew").text          # the crew app stays in English
-    js = (Path(__file__).parent.parent / "static" / "i18n.js").read_text()
+    js = (Path(__file__).parent.parent / "static" / "i18n.js").read_text(encoding="utf-8")
     assert "Reservar un servicio" in js and "Calcular mi precio" in js
