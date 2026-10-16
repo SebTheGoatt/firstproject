@@ -47,14 +47,15 @@ def test_mock_day_orders_list_every_job_in_clock_order_with_a_practice_briefing_
     assert "The Comms Officer" in sg.mock_day_orders(2, date(2026, 10, 17), FOLDER) and "write a short text" in sg.mock_day_orders(2, date(2026, 10, 17), FOLDER)
 
 
-def test_the_messages_for_the_beyonder_are_safe_short_and_name_the_folder(tmp_path):
+def test_the_messages_for_the_beyonder_are_safe_short_and_name_the_workspace_files(tmp_path):
     setup, practice = sg.starnet_messages(FOLDER)
-    for m in (setup, practice):
-        assert FOLDER in m and "semper_green_site.py" in m and len(m) < 1600
-        assert "Do not change the website" in m or "do not change the website" in m
-        assert "deploy" in m.lower() and "customer" in m.lower() or "Create nothing else" in m
-    assert "Overseer 6:30 AM and 5:30 PM" in setup and "Dispatcher 5:15 PM" in setup and "Engineer on Mondays" in setup
-    assert "--brief" in setup and "NEEDS OWNER" in setup and "--mock-day 1" in practice
+    assert FOLDER + "\\agents\\" in setup and len(setup) < 1700 and len(practice) < 900
+    for slug in ("the-overseer", "recon-radar", "the-dispatcher", "marketer", "the-sales-deck", "the-comms-officer",
+                 "engineer", "the-beyonder"):
+        assert slug in setup
+    assert "Read the file" in setup and "Do not change the website and do not deploy anything" in setup
+    assert "--brief" not in setup                          # agents only read a file; nobody has to run a command
+    assert "do not deploy" in practice and "do not contact any customer" in practice and "NEEDS OWNER" in practice
     path = sg.write_starnet_files(FOLDER, str(tmp_path / "routines.md"))
     saved = Path(path).read_text(encoding="utf-8")
     assert setup in saved and practice in saved and "Paste these to The Beyonder" in saved
@@ -74,3 +75,81 @@ def test_flags_are_read_from_the_command_line():
     args = ["--brief", "--as-of", "2026-10-17", "--clock", "6:30 AM"]
     assert sg._flag(args, "--as-of") == "2026-10-17" and sg._flag(args, "--clock") == "6:30 AM"
     assert sg._flag(["--brief"], "--as-of") is None and sg._flag(["--brief", "--as-of"], "--as-of") is None
+
+
+# ---------- files inside StarNet's workspace ----------
+
+def make_site(box, client, settings):
+    with patch("app.main.local_now", return_value=NOW):
+        assert book(client, "A", "0100").status_code == 201
+        assert book(client, "B", "0101").status_code == 201
+    settings.agent_key_read = "k" * 40
+    sg.KEY_FILE.write_text("k" * 40)
+    return sg.SemperGreenSite()
+
+
+def test_each_agent_gets_one_file_with_its_rules_and_a_fresh_briefing(box, client, settings, tmp_path):
+    site = make_site(box, client, settings)
+    with patch("app.agent_api.local_now", return_value=NOW):
+        paths = sg.write_agent_files(site, str(tmp_path), expected={})
+    assert sorted(Path(p).name for p in paths) == sorted(f"{sg.slug(a)}.md" for a in sg.AGENT_NAMES) and len(paths) == 8
+    overseer = (tmp_path / "agents" / "the-overseer.md").read_text(encoding="utf-8")
+    assert "## Rules for EVERY agent" in overseer and "## The Overseer:" in overseer and "## The briefing" in overseer
+    assert "SEMPER GREEN LAWN CARE BRIEFING" in overseer and "Week total: 2 bookings" in overseer
+    assert "## Marketer:" not in overseer and "## The Dispatcher:" not in overseer           # only its own job
+    assert overseer.rstrip().endswith("Reply with the report and nothing else.")
+    assert "Result of --sync:" in (tmp_path / "agents" / "engineer.md").read_text(encoding="utf-8")
+    assert "Recon Radar's latest report" in (tmp_path / "agents" / "marketer.md").read_text(encoding="utf-8")
+    assert "Wait for the owner" in (tmp_path / "agents" / "the-comms-officer.md").read_text(encoding="utf-8")
+    everything = " ".join(Path(p).read_text(encoding="utf-8") for p in paths)
+    for private in ("Customer A", "Customer B", "555", "100 A Example", "k" * 20):
+        assert private not in everything
+
+
+def test_a_practice_day_writes_a_file_per_job_with_the_briefing_as_of_that_time(box, client, settings, tmp_path):
+    site = make_site(box, client, settings)
+    files = sg.write_mock_day_files(site, str(tmp_path), 1, date(2026, 10, 14), expected={})
+    assert [(label, agent) for label, agent, _ in files] == [
+        ("6:30 AM", "The Overseer"), ("7:00 AM", "Recon Radar"), ("9:00 AM", "Marketer"),
+        ("5:15 PM", "The Dispatcher"), ("5:30 PM", "The Overseer"), ("6:00 PM", "The Beyonder")]
+    assert [Path(p).name for _, _, p in files] == ["0630-the-overseer.md", "0700-recon-radar.md", "0900-marketer.md",
+                                                   "1715-the-dispatcher.md", "1730-the-overseer.md", "1800-the-beyonder.md"]
+    assert all(Path(p).parent.name == "day1" and Path(p).parent.parent.name == "mock" for _, _, p in files)
+    evening = Path(files[4][2]).read_text(encoding="utf-8")
+    assert "(Wed Oct 14, 5:30 PM, practice day)" in evening and "Tomorrow (Thu Oct 15): 2 booking(s)" in evening
+    orders = sg.mock_day_orders(1, date(2026, 10, 14), str(tmp_path), files)
+    lines = [l for l in orders.splitlines() if "Read the file" in l]
+    assert len(lines) == 6 and lines[0].startswith("6:30 AM  The Overseer: Read the file ") and lines[0].endswith("Reply in the exact format.")
+    assert "0630-the-overseer.md" in lines[0] and "Nothing is sent to customers" in orders
+
+
+def test_watch_keeps_the_files_fresh_and_survives_a_bad_moment(box, client, settings, tmp_path, monkeypatch):
+    site = make_site(box, client, settings)
+    out, slept = [], []
+    assert sg.watch(site, str(tmp_path), minutes=5, out=out.append, sleep=slept.append, rounds=2) == 0
+    assert slept == [300] and sum("refreshed 8 agent files" in l for l in out) == 2
+    monkeypatch.setattr(sg, "write_agent_files", lambda *a, **k: (_ for _ in ()).throw(sg.SiteError("Couldn't reach the site.")))
+    out.clear()
+    sg.watch(site, str(tmp_path), minutes=1, out=out.append, sleep=lambda s: None, rounds=1)
+    assert "couldn't refresh" in out[0] and "trying again" in out[0]
+
+
+def test_the_script_and_playbook_are_copied_into_the_workspace(tmp_path):
+    placed = sg.install_to_workspace(str(tmp_path / "workspace"))
+    assert Path(placed[0]).name == "semper_green_site.py" and "def run_week" in Path(placed[0]).read_text(encoding="utf-8")
+    assert "## The Overseer:" in Path(placed[1]).read_text(encoding="utf-8")
+
+
+def test_paths_use_the_folders_own_slashes():
+    assert sg.join_path(r"C:\Users\Raymu\ws", "agents") == r"C:\Users\Raymu\ws\agents"
+    assert sg.join_path(r"C:\Users\Raymu\ws\\", "agents", "x.md") == r"C:\Users\Raymu\ws\agents\x.md"
+    assert sg.join_path("/home/me/ws/", "agents") == "/home/me/ws/agents"
+
+
+def test_without_a_folder_the_commands_explain_how_to_find_starnets_workspace():
+    import subprocess
+    for flag in ("--starnet", "--mock-day", "--watch", "--refresh"):
+        r = subprocess.run([sys.executable, str(Path(sg.__file__)), flag], capture_output=True, text=True,
+                           env={"PATH": "", "SEMPER_AGENT_KEY": "k" * 40, "SEMPER_SITE_URL": "http://localhost:1", "HOME": "/tmp"})
+        assert r.returncode == 1, (flag, r.stderr)
+        assert "can't see this one" in r.stdout and "'folder' button" in r.stdout and "--folder" in r.stdout

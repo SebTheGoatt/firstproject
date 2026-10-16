@@ -9,8 +9,10 @@ THEN, TO RUN THE MOCK WEEK (every agent does its job, each day, on your local mo
     python semper_green_site.py --run-week          the agents work the week; writes mock_week_report.md with a scorecard
 
 SEE IT INSIDE STARNET (agents at their desks, reports in COMMS, routines in the list):
-    python semper_green_site.py --starnet           writes starnet_routines.md and prints two messages to paste to The Beyonder
-    python semper_green_site.py --mock-day 1        the orders for practice day 1, which the Beyonder hands to each agent
+    python semper_green_site.py --starnet --folder "<StarNet's workspace folder>"
+                                                    puts everything where StarNet's agents can see it; prints the message for The Beyonder
+    python semper_green_site.py --watch --folder "<folder>"      keeps each agent's briefing fresh (leave the window open)
+    python semper_green_site.py --mock-day 1 --folder "<folder>" writes practice day 1 and prints the orders to paste
 
 TO DELEGATE FOR REAL (in StarNet):
     python semper_green_site.py --playbook          writes semper_green_playbook.md: each agent's instructions + schedule
@@ -725,9 +727,17 @@ def _flag(args: list, name: str) -> str | None:
     return args[args.index(name) + 1] if name in args and args.index(name) + 1 < len(args) else None
 
 
-def mock_day_orders(day_number: int, start: date, folder: str) -> str:
-    """The orders for one practice day, in clock order, ready for The Beyonder to hand to the agents."""
+def mock_day_orders(day_number: int, start: date, folder: str, files: list | None = None) -> str:
+    """The orders for one practice day, in clock order, ready for The Beyonder to hand to the agents.
+
+    With `files` (from write_mock_day_files) each order is one line: read this file and do what it says."""
     day = start + timedelta(days=day_number - 1)
+    if files:
+        lines = [f"MOCK DAY {day_number}: {_day_label(day.isoformat())} (practice). Orders, in clock order:", ""]
+        for label, agent, path in files:
+            lines.append(f"{label}  {agent}: Read the file {path} and do exactly what it says. Reply in the exact format.")
+        lines += ["", "These are practice orders. Nothing is sent to customers and nothing on the website changes."]
+        return "\n".join(lines)
     lines = [f"MOCK DAY {day_number}: {_day_label(day.isoformat())} (practice). In the folder {folder}.",
              "Give each agent its order below, one at a time, in this order. Wait for each report before the next one.", ""]
     for hour, minute, label, agent, request in day_jobs(day_number - 1, day):
@@ -748,18 +758,18 @@ def mock_day_orders(day_number: int, start: date, folder: str) -> str:
 
 
 def starnet_messages(folder: str) -> tuple:
-    """Two short messages to paste to The Beyonder in StarNet's COMMS panel."""
-    setup = (f"Commander's order. Read the file {folder}\\semper_green_playbook.md. Create one scheduled routine for each "
-             "agent listed in the schedule at the bottom of that file: Overseer 6:30 AM and 5:30 PM, Recon Radar 7:00 AM, "
-             "Dispatcher 5:15 PM, Marketer and Beyonder every 3 days, Sales Deck weekly, Engineer on Mondays. "
-             f'Each routine\'s prompt is exactly: "In the folder {folder}, run python semper_green_site.py --brief, then do '
-             'your job exactly as written in your section of semper_green_playbook.md, in the exact output format. If '
-             'something needs the owner, write a line starting with NEEDS OWNER." Send every report to The Beyonder. '
-             "Create nothing else. Do not change the website and do not deploy anything.")
-    practice = (f"Commander's order. Run practice day 1. In the folder {folder}, run python semper_green_site.py --mock-day 1. "
-                "Give each agent its order from that list, one at a time, in order, and wait for each report. Then give me "
-                "one short summary with every NEEDS OWNER line. This is practice only: do not change the website, do not "
-                "deploy, and do not contact any customer.")
+    """Two short messages for The Beyonder in StarNet's COMMS panel: set up the routines, and start a practice day."""
+    agents_dir = join_path(folder, "agents")
+    setup = ("Commander's order. Create one scheduled routine for each agent, at these times: Overseer 6:30 AM and 5:30 PM, "
+             "Recon Radar 7:00 AM, Dispatcher 5:15 PM, Marketer and Beyonder every 3 days, Sales Deck weekly, Engineer on Mondays. "
+             f'Each routine\'s prompt is exactly: "Read the file {agents_dir}<slash><agent>.md and do exactly what it says. Reply in '
+             'the exact format." where <agent> is that agent\'s name in lowercase with dashes: the-overseer, recon-radar, '
+             "the-dispatcher, marketer, the-sales-deck, the-comms-officer, engineer, the-beyonder. Send every report to The Beyonder. "
+             "Create nothing else. Do not change the website and do not deploy anything.").replace(
+        "<slash>", "\\" if "\\" in agents_dir else "/")
+    practice = ("Commander's order. I am starting a practice day. Below are the orders, one per agent, in clock order. Give each "
+                "agent its order, one at a time, and wait for each report. Then give me one short summary with every NEEDS OWNER "
+                "line. Practice only: do not change the website, do not deploy, and do not contact any customer.")
     return setup, practice
 
 
@@ -771,6 +781,112 @@ def write_starnet_files(folder: str, path: str | None = None) -> str:
                 "## 1. Set up the daily routines (once)\n\n" + setup + "\n\n"
                 "## 2. Run a practice day (repeat with --mock-day 2, 3, ... 7)\n\n" + practice + "\n")
     return path
+
+
+# --- Files inside StarNet's own workspace -----------------------------------------------------------
+# StarNet's agents work in their own project folder, and a small model is shaky at running commands. So instead each agent
+# gets ONE file to read: its rules + a fresh briefing. Keep them fresh with --watch.
+#   python semper_green_site.py --starnet --folder "<StarNet workspace folder>"
+#   python semper_green_site.py --watch --folder "<StarNet workspace folder>"      (leave this window open)
+
+import shutil
+
+AGENT_NAMES = ("The Overseer", "Recon Radar", "The Dispatcher", "Marketer", "The Sales Deck", "The Comms Officer",
+               "Engineer", "The Beyonder")
+
+
+def slug(agent: str) -> str:
+    return agent.lower().replace(" ", "-")
+
+
+def join_path(folder: str, *parts: str) -> str:
+    """Join with the folder's own kind of slash (a Windows folder gets backslashes)."""
+    sep = "\\" if ("\\" in folder or re.match(r"^[A-Za-z]:", folder)) else "/"
+    return sep.join([folder.rstrip("\\/")] + list(parts))
+
+
+def agent_prompt(agent: str, briefing_text: str, extra: list | None = None, request: str | None = None) -> str:
+    """Everything one agent needs in one file: the shared rules, its own section, the briefing, then the order."""
+    sections = playbook_sections()
+    parts = [sections[s] for s in SHARED_SECTIONS] + [sections[agent], "## The briefing\n\n" + briefing_text]
+    if extra:
+        parts.append("## Also useful\n\n" + "\n\n".join(extra))
+    parts.append("## Your order\n\n" + (request or "Do your job now, using only the briefing above, in your exact output format. "
+                                         "Reply with the report and nothing else."))
+    return "\n\n".join(parts) + "\n"
+
+
+def _extras(agent: str, site, expected) -> list:
+    if agent == "Engineer":
+        return [f"Result of --sync:\n{format_report(compare(site.manifest(), expected))}"]
+    if agent == "Marketer":
+        return ["Use QUIET DAYS from Recon Radar's latest report in this chat."]
+    if agent == "The Beyonder":
+        return ["Use the latest reports from the Overseer, Dispatcher, Recon Radar, Marketer and Engineer in this chat."]
+    if agent == "The Comms Officer":
+        return ["Wait for the owner to ask for a draft. The briefing is only background."]
+    return []
+
+
+def write_agent_files(site, folder: str, expected: dict | None = None) -> list:
+    """Write agents/<slug>.md for every agent with the live briefing. Returns the paths."""
+    import os as _os
+    expected = expected if expected is not None else load_expectations()
+    target = Path(folder) / "agents"
+    target.mkdir(parents=True, exist_ok=True)
+    text = briefing(site, expected, cache={})
+    paths = []
+    for agent in AGENT_NAMES:
+        path = target / f"{slug(agent)}.md"
+        path.write_text(agent_prompt(agent, text, _extras(agent, site, expected)), encoding="utf-8")
+        paths.append(str(path))
+    return paths
+
+
+def write_mock_day_files(site, folder: str, day_number: int, start: date, expected: dict | None = None,
+                         cache: dict | None = None) -> list:
+    """Write one file per job for a practice day, each with the briefing as of that job's time. Returns [(label, agent, path)]."""
+    expected = expected if expected is not None else load_expectations()
+    day = start + timedelta(days=day_number - 1)
+    target = Path(folder) / "mock" / f"day{day_number}"
+    target.mkdir(parents=True, exist_ok=True)
+    cache = {} if cache is None else cache
+    out = []
+    for hour, minute, label, agent, request in day_jobs(day_number - 1, day):
+        text = briefing(site, expected, as_of=day, clock=label, cache=cache)
+        path = target / f"{hour:02d}{minute:02d}-{slug(agent)}.md"
+        path.write_text(agent_prompt(agent, text, _extras(agent, site, expected), request), encoding="utf-8")
+        out.append((label, agent, str(path)))
+    return out
+
+
+def watch(site, folder: str, minutes: float = 10, out=print, sleep=None, rounds: int | None = None) -> int:
+    """Keep every agent's file fresh. Leave it running; Ctrl+C stops it."""
+    import time
+    sleep = sleep or time.sleep
+    n = 0
+    try:
+        while rounds is None or n < rounds:
+            try:
+                paths = write_agent_files(site, folder)
+                out(f"{time.strftime('%I:%M %p').lstrip('0')}  refreshed {len(paths)} agent files in {join_path(folder, 'agents')}")
+            except SiteError as exc:
+                out(f"{time.strftime('%I:%M %p').lstrip('0')}  couldn't refresh ({exc}); trying again next time")
+            n += 1
+            if rounds is None or n < rounds:
+                sleep(minutes * 60)
+    except KeyboardInterrupt:
+        out("Stopped.")
+    return 0
+
+
+def install_to_workspace(folder: str) -> list:
+    """Put the script and the playbook inside StarNet's workspace so its agents can see them."""
+    Path(folder).mkdir(parents=True, exist_ok=True)
+    script = Path(folder) / "semper_green_site.py"
+    if Path(__file__).resolve() != script.resolve():
+        shutil.copy(__file__, script)
+    return [str(script), write_playbook(str(Path(folder) / "semper_green_playbook.md"))]
 
 
 # ---------------------------------------------------------------------------------------------
@@ -1030,18 +1146,35 @@ def ask_owner(tool: str, args: dict) -> bool:
 
 if __name__ == "__main__":
     args = sys.argv[1:]
-    if args[:1] == ["--starnet"]:                    # paste-in messages so StarNet's own agents do all of this
-        folder = str(Path(__file__).resolve().parent)
+    folder = _flag(args, "--folder")
+    if args[:1] in (["--starnet"], ["--mock-day"], ["--refresh"], ["--watch"]) and not folder:
+        print("StarNet's agents work in their own project folder and can't see this one.\n"
+              "Find StarNet's workspace folder: click the 'folder' button next to any file an agent saved, or ask The Beyonder\n"
+              "'what is your working folder?'. Then run this again with:  --folder \"<that folder>\"")
+        sys.exit(1)
+    if args[:1] == ["--starnet"]:                    # put everything inside StarNet's workspace + paste-in messages
+        site = SemperGreenSite()
+        installed = install_to_workspace(folder)
+        files = write_agent_files(site, folder)
         setup, practice = starnet_messages(folder)
-        print(f"Wrote {write_starnet_files(folder)}.  Paste these to The Beyonder in StarNet's COMMS panel, one at a time:\n")
-        print("--- 1. SET UP THE DAILY ROUTINES (once) " + "-" * 20 + f"\n{setup}\n")
-        print("--- 2. RUN A PRACTICE DAY (then --mock-day 2, 3 ...) " + "-" * 8 + f"\n{practice}")
+        write_starnet_files(folder, join_path(folder, "starnet_routines.md"))
+        print(f"Put the script and playbook in {folder} and wrote {len(files)} agent files in {join_path(folder, 'agents')}.\n"
+              "Keep them fresh: run  python semper_green_site.py --watch --folder \"" + folder + "\"  and leave that window open.\n\n"
+              "Paste this to The Beyonder in StarNet's COMMS panel:\n\n" + setup)
         sys.exit(0)
-    if args[:1] == ["--mock-day"]:                   # the orders for one practice day
+    if args[:1] == ["--refresh"]:                    # refresh the agents' files once
+        print(f"Refreshed {len(write_agent_files(SemperGreenSite(), folder))} files in {join_path(folder, 'agents')}.")
+        sys.exit(0)
+    if args[:1] == ["--watch"]:                      # keep the agents' files fresh until you close the window
+        minutes = next((float(a) for a in args[1:] if re.fullmatch(r"\d+(\.\d+)?", a)), 10.0)
+        sys.exit(watch(SemperGreenSite(), folder, minutes))
+    if args[:1] == ["--mock-day"]:                   # write one practice day's files and print the orders for The Beyonder
         number = next((int(a) for a in args[1:] if a.isdigit()), 1)
+        site = SemperGreenSite()
         start = _flag(args, "--start")
-        start = date.fromisoformat(start) if start else date.fromisoformat(SemperGreenSite().health()["now"][:10]) + timedelta(days=1)
-        print(mock_day_orders(number, start, str(Path(__file__).resolve().parent)))
+        start = date.fromisoformat(start) if start else date.fromisoformat(site.health()["now"][:10]) + timedelta(days=1)
+        files = write_mock_day_files(site, folder, number, start)
+        print(starnet_messages(folder)[1] + "\n\n" + mock_day_orders(number, start, folder, files))
         sys.exit(0)
     if args[:1] == ["--run-week"]:                   # every agent does its job, each day of the week, on the local model
         nums = [a for a in args[1:] if a.isdigit()]
