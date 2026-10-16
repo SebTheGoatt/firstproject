@@ -29,12 +29,11 @@ from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Res
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import deeplinks, push
+from . import deeplinks
 from .booking import BookingRejected, earliest_bookable_day, local_now, next_service_day, validate_booking
 from .config import Settings, get_settings, site_url
 from .db import Repository, make_repository
-from .geocode import GeocodingError, GeocoderUnavailable, NominatimGeocoder
-from .live_feed import record_booking, register_live_routes
+from .geocode import GeocoderUnavailable, GeocodingError, NominatimGeocoder
 from .crew_auth import CrewIdentity
 from .crew_routes import register_crew_routes
 from .models import (SERVICE_LABELS, SERVICE_MINUTES, order_label, AddressCheck, CompleteStopRequest, GeoPoint, JobCreated,
@@ -44,7 +43,7 @@ from .pricing import (ADD_ONS, MAX_SQFT, MIN_SQFT, PACKAGES, LawnSizeError, chec
                       quote, season_text)
 from .routing.matrix import haversine_m
 from .nightly import run_nightly
-from .notify import (TwilioClient, booking_message, day_words, notify_next_customer, notify_stop, send_pay_link, send_text,
+from .notify import (TwilioClient, booking_message, day_words, notify_next_customer, send_pay_link, send_text,
                      service_words)
 from .pay_routes import register_pay_routes
 from .visit_routes import format_code, new_access_code, register_visit_routes
@@ -117,7 +116,6 @@ def build_route_view(route: dict, settings: Settings) -> RouteView:
             add_ons=s.get("add_ons") or [], add_on_total=s.get("add_on_total") or 0.0,
             eta=s["eta"], leg_distance_m=s["leg_distance_m"], leg_duration_s=s["leg_duration_s"],
             completed_at=s["completed_at"], completed_by_name=s.get("completed_by_name"),
-            notified_at=s.get("notified_at"),
             payment_method=s.get("payment_method") or "cash", payment_status=s.get("payment_status") or "unpaid",
             amount_due=s.get("amount_due"), amount_paid=s.get("amount_paid"), donation=s.get("donation") or 0.0,
             subtotal=s.get("subtotal"), tax_rate=s.get("tax_rate"), tax_amount=s.get("tax_amount"),
@@ -171,7 +169,10 @@ def create_app(
     version = static_version()
 
     def render(name: str) -> str:
-        text = (STATIC_DIR / name).read_text()
+        # Static pages are UTF-8 regardless of the host process locale.
+        # Without this, pages containing customer-facing accents can fail on
+        # Windows hosts that default to a legacy code page.
+        text = (STATIC_DIR / name).read_text(encoding="utf-8")
         return text.replace("{{BUSINESS_NAME}}", html.escape(settings.business_name)).replace("{{V}}", version)
 
     def page(name: str) -> HTMLResponse:
@@ -210,17 +211,8 @@ def create_app(
         return resp
 
     crew_auth = register_crew_routes(app, settings)
-    register_live_routes(app, settings, crew_auth)   # owner-only live station: /api/track, /api/live/stats (dashboard lives in the crew app's owner tab)
     register_pay_routes(app, settings, app.state.stripe)
     register_visit_routes(app, settings, crew_auth)
-
-    @app.get("/push-setup", include_in_schema=False)
-    def push_setup_page():
-        # Makes the notification key pair inside the owner's browser; nothing is sent anywhere.
-        resp = page("push-setup.html")
-        resp.headers["Referrer-Policy"] = "no-referrer"
-        resp.headers["X-Robots-Tag"] = "noindex"
-        return resp
 
     @app.get("/sw.js", include_in_schema=False)
     def service_worker():
@@ -388,7 +380,6 @@ def create_app(
             charity_amount=giving, giving_split=split_donation(giving) if giving else None,
             add_ons=add_ons, add_on_total=float(q.add_on_total), lang=body.lang,
         )
-        record_booking(job_id=str(job["id"]))   # the only booking counter (idempotent per job)
         base = site_url(settings, request)
         visit_url = f"{base}/visit/{access_code}"
         send_text(app.state.sms, body.phone, booking_message(
@@ -457,82 +448,57 @@ def create_app(
                            total=float(new_price.total), lawn_sqft=new_price.lawn_sqft,
                            charity_amount=giving, giving_split=split_donation(giving) if giving else None)
         stop, newly = repo.complete_stop(stop_id, member_id)
-        if newly:
-            push.notify_job(repo, settings, stop["job_id"], "done")
 
-        payment = {"status": stop["payment_status"], "total": due}
-        if cash is not None and stop["payment_status"] == "unpaid":
-            donation = round(cash - due, 2)
-            split = split_donation(donation)
-            repo.mark_paid(stop["job_id"], method="cash", amount_paid=cash, donation=donation, donation_split=split)
-            payment = {"status": "paid", "method": "cash", "amount_paid": cash, "donation": donation,
-                       "donation_split": split, "total": due}
-        elif (newly and stop["payment_method"] == "card" and stop["payment_status"] == "unpaid"
-              and stop["pay_token"] and stop["amount_due"] is not None and base_url):
-            # Card customers who haven't paid yet get their private pay link when the job is done.
-            payment["pay_link"] = send_pay_link(settings, stop, f"{base_url}/pay/{stop['pay_token']}", app.state.sms)
+        payment = {"status": stop["payment_status"], "method": stop["payment_method"],
+                   "amount_due": stop.get("amount_due"), "amount_paid": stop.get("amount_paid"),
+                   "donation": stop.get("donation") or 0.0}
+        if cash is not None:
+            payment = repo.record_cash_payment(before["job_id"], cash)
+            stop = repo.get_stop(stop_id) or stop
+        if not newly:
+            return {"ok": True, "already_completed": True, "payment": payment}
 
-        notification = notify_next_customer(repo, settings, stop, app.state.sms) if newly else {
-            "notified": False, "reason": "already_completed"}
-        return {"stop_id": stop_id, "completed_at": stop["completed_at"], "notification": notification,
-                "payment": payment}
+        if stop["payment_method"] == "card" and stop["payment_status"] == "unpaid" and due is not None:
+            token = stop["pay_token"]
+            base = base_url.rstrip("/")
+            payment["pay_url"] = f"{base}/pay/{token}" if base else f"/pay/{token}"
+            payment["payment_link"] = send_pay_link(settings, stop, payment["pay_url"], app.state.sms)
+        notification = notify_next_customer(repo, settings, stop, app.state.sms)
+        return {"ok": True, "already_completed": False, "notification": notification, "payment": payment}
 
     @app.post("/api/stops/{stop_id}/complete")
     def complete_stop(stop_id: str, request: Request, body: CompleteStopRequest | None = None,
                       who: CrewIdentity = Depends(crew_auth), repo: Repository = Depends(get_repo)):
-        return _complete(stop_id, repo, member_id=who.member_id, body=body,
-                         base_url=site_url(settings, request))
-
-    @app.post("/api/stops/{stop_id}/on-the-way")
-    def on_the_way(stop_id: str, who: CrewIdentity = Depends(crew_auth), repo: Repository = Depends(get_repo)):
-        """The crew taps "On my way": the customer gets an app/browser notification (if they turned on visit
-        updates) and their visit page shows it. No text message. Completing a job notifies the next stop
-        automatically; this covers the first stop of the day."""
-        stop = repo.get_stop(stop_id)
-        if stop is None:
-            raise HTTPException(status_code=404, detail="Stop not found.")
-        if stop["completed_at"] is not None:
-            raise HTTPException(status_code=409, detail="That job is already done.")
-        member = repo.get_crew(who.member_id) if who.member_id else None
-        return notify_stop(repo, settings, stop, None, member["display_name"] if member else None, text=False)
-
-    class CompletionHook(BaseModel):
-        stop_id: str | None = None
-        job_id: str | None = None
-        record: dict | None = None  # Supabase Database Webhook payload shape
+        name = None
+        if who.member_id:
+            m = repo.get_crew(who.member_id)
+            name = m["display_name"] if m else None
+        return _complete(stop_id, repo, member_id=who.member_id, body=body, base_url=site_url(settings, request))
 
     @app.post("/webhooks/job-completed")
     def job_completed_webhook(
-        body: CompletionHook,
+        body: dict, request: Request, x_webhook_secret: str | None = Header(default=None),
         repo: Repository = Depends(get_repo),
-        x_webhook_secret: str | None = Header(default=None),
     ):
         _check_secret(x_webhook_secret, settings.webhook_secret)
-        # A Database Webhook fires on every UPDATE to jobs (including the
-        # nightly freeze), so only act when the row is actually completed.
-        if body.record is not None and body.record.get("status") != "completed":
-            return {"ignored": True, "reason": "status is not completed"}
-        stop_id = body.stop_id
-        job_id = body.job_id or (body.record or {}).get("id")
-        if stop_id is None and job_id:
-            stop_id = repo.stop_id_for_job(job_id)
-        if stop_id is None:
-            raise HTTPException(status_code=404, detail="No route stop for that job")
-        return _complete(stop_id, repo, base_url=settings.public_base_url)
+        stop_id = body.get("stop_id")
+        if not isinstance(stop_id, str):
+            raise HTTPException(status_code=422, detail="stop_id is required")
+        return _complete(stop_id, repo, body=CompleteStopRequest(), base_url=site_url(settings, request))
 
     # ---------- Nightly (HTTP trigger) --------------------------------
     @app.post("/internal/nightly")
     def nightly(
-        day: date | None = None,
-        repo: Repository = Depends(get_repo),
         x_cron_secret: str | None = Header(default=None),
+        repo: Repository = Depends(get_repo),
     ):
         _check_secret(x_cron_secret, settings.cron_secret)
-        return run_nightly(repo, settings, day or next_service_day(local_now(settings)))
+        now = local_now(settings)
+        if now.hour < settings.freeze_hour:
+            return {"ran": False, "reason": "before_cutoff", "now": now.isoformat()}
+        day = next_service_day(now)
+        if repo.get_route(day) is not None:
+            return {"ran": False, "reason": "already_built", "route_date": day.isoformat()}
+        return {"ran": True, **run_nightly(repo, settings, day)}
 
     return app
-
-
-def get_app() -> FastAPI:
-    """uvicorn factory entry point: `uvicorn app.main:get_app --factory`."""
-    return create_app()
