@@ -20,6 +20,17 @@ Small local models (a 9B GGUF coder model, for example) often can't call tools. 
 `semper_green_briefing.txt`, and `ask()` automatically hands such a model the briefing instead of tools. To use the same
 model for `ask()` that StarNet's agents use: `$env:SEMPER_MODEL = "hf.co/mradermacher/Qwopus3-5-9B-Coder-Flash-i1-GGUF:Q4_K_M"`.
 
+## Delegating to the agents
+```powershell
+python semper_green_site.py --playbook          # writes semper_green_playbook.md: every agent's instructions + daily schedule
+python semper_green_site.py --seed-mock-week    # asks first, then fills the next week with FAKE bookings (names start with MOCK)
+python semper_green_site.py --mock-cleanup      # prints the one SQL line that removes every MOCK booking again
+```
+The playbook is written for a small local model: short numbered steps, exact commands, a fixed output format, and one
+escape hatch (`NEEDS OWNER:`) so an agent never guesses. Agents only ever run `--brief` and `--sync`.
+Mock bookings use the same public booking form customers use. They are unpaid, cash-mostly and carry fictional 555 phone
+numbers; remove them before turning on texting or reading real sales numbers.
+
 Day to day: `python semper_green_site.py --brief` (a fresh briefing) and `--sync` (is StarNet still on the same page?).
 
 ---
