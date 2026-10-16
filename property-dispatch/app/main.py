@@ -33,7 +33,8 @@ from . import deeplinks, push
 from .booking import BookingRejected, earliest_bookable_day, local_now, next_service_day, validate_booking
 from .config import Settings, get_settings, site_url
 from .db import Repository, make_repository
-from .geocode import GeocoderUnavailable, GeocodingError, NominatimGeocoder
+from .geocode import GeocodingError, GeocoderUnavailable, NominatimGeocoder
+from .live_feed import record_booking, register_live_routes
 from .crew_auth import CrewIdentity
 from .crew_routes import register_crew_routes
 from .models import (SERVICE_LABELS, SERVICE_MINUTES, order_label, AddressCheck, CompleteStopRequest, GeoPoint, JobCreated,
@@ -208,6 +209,7 @@ def create_app(
         return resp
 
     crew_auth = register_crew_routes(app, settings)
+    register_live_routes(app, settings, crew_auth)   # owner-only live station: /api/track, /api/live/stats (dashboard lives in the crew app's owner tab)
     register_pay_routes(app, settings, app.state.stripe)
     register_visit_routes(app, settings, crew_auth)
 
@@ -385,6 +387,7 @@ def create_app(
             charity_amount=giving, giving_split=split_donation(giving) if giving else None,
             add_ons=add_ons, add_on_total=float(q.add_on_total), lang=body.lang,
         )
+        record_booking(job_id=str(job["id"]))   # the only booking counter (idempotent per job)
         base = site_url(settings, request)
         visit_url = f"{base}/visit/{access_code}"
         send_text(app.state.sms, body.phone, booking_message(
