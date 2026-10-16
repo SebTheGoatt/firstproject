@@ -5,6 +5,7 @@
 Works with any Ollama endpoint that speaks the OpenAI-style API:
     OLLAMA_BASE_URL=http://localhost:11434/v1        Ollama on the same computer as the app (local dev)
     OLLAMA_BASE_URL=https://<your-tunnel>/v1         your own computer, reached through a tunnel
+                                                     (protect it, and set OLLAMA_BASIC_AUTH=user:password)
     OLLAMA_BASE_URL=https://ollama.com/v1            Ollama's cloud (also set OLLAMA_API_KEY in Render)
 
 Rules this module keeps:
@@ -71,7 +72,11 @@ def build_payload(jobs: list[dict], route: dict | None) -> dict:
 def call_model(settings: Settings, user_content: str, transport: httpx.BaseTransport | None = None) -> str:
     """One chat completion against the configured Ollama endpoint (OpenAI-compatible API)."""
     headers = {"Content-Type": "application/json", "ngrok-skip-browser-warning": "true"}
-    if settings.ollama_api_key:
+    auth = None
+    if settings.ollama_basic_auth and ":" in settings.ollama_basic_auth:       # tunnel with a username + password
+        user, _, password = settings.ollama_basic_auth.partition(":")
+        auth = httpx.BasicAuth(user, password)
+    elif settings.ollama_api_key:                                              # Ollama's cloud
         headers["Authorization"] = f"Bearer {settings.ollama_api_key}"
     body = {
         "model": settings.ollama_model,
@@ -79,7 +84,7 @@ def call_model(settings: Settings, user_content: str, transport: httpx.BaseTrans
         "stream": False,
     }
     with httpx.Client(timeout=settings.ollama_timeout_s, transport=transport) as client:
-        r = client.post(settings.ollama_base_url.rstrip("/") + "/chat/completions", json=body, headers=headers)
+        r = client.post(settings.ollama_base_url.rstrip("/") + "/chat/completions", json=body, headers=headers, auth=auth)
         r.raise_for_status()
         return r.json()["choices"][0]["message"]["content"]
 

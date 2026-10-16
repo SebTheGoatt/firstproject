@@ -91,3 +91,12 @@ def test_an_unreachable_or_broken_assistant_is_a_clean_502(client, repo, setting
 
     client.app.state.agent_transport = httpx.MockTransport(lambda req: httpx.Response(200, json={"oops": 1}))
     assert client.post(URL, headers=CREW).status_code == 502
+
+
+def test_tunnel_password_is_sent_as_basic_auth(client, repo, settings, on):
+    make_day(client, repo, settings)
+    seen = []
+    client.app.state.agent_transport = answer_with("ok", seen)
+    settings.ollama_basic_auth = "sg-agent:s3cret"
+    assert client.post(URL, headers=CREW).status_code == 200
+    assert seen[0].headers["authorization"] == "Basic c2ctYWdlbnQ6czNjcmV0"       # sg-agent:s3cret

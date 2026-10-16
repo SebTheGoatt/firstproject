@@ -65,6 +65,7 @@ class Settings(BaseSettings):
     ollama_base_url: str = ""          # e.g. http://localhost:11434/v1, your tunnel + /v1, or https://ollama.com/v1
     ollama_model: str = "qwen2.5:14b"
     ollama_api_key: str = ""           # only for Ollama's cloud; keep it in Render, never in code
+    ollama_basic_auth: str = ""        # "user:password" for a password-protected tunnel to your own computer
     ollama_timeout_s: float = 90.0
 
     # --- Donations: split 33% / 33% / 34% (see app/charity.py) ----------

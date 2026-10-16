@@ -232,7 +232,7 @@ reviews and explains. Only addresses, services, lawn sizes and the route order a
 phones, access codes or payment details, and every answer includes the exact `data_sent`.
 
 Settings (Render → Environment): `OLLAMA_BASE_URL` (ends in `/v1`), `OLLAMA_MODEL` (default `qwen2.5:14b`),
-`OLLAMA_API_KEY` (only for Ollama's cloud, `https://ollama.com/v1`). Render can't reach `localhost`: use
+`OLLAMA_API_KEY` (only for Ollama's cloud, `https://ollama.com/v1`), `OLLAMA_BASIC_AUTH` (`user:password` for a password-protected tunnel to your own computer). Render can't reach `localhost`: use
 Ollama's cloud, or a tunnel to your own computer (and protect the tunnel; Ollama itself has no password).
 
 ## En español (Spanish)
