@@ -1,18 +1,19 @@
-"""Semper Green Lawn Care: site tools for StarNet agents.
+"""Semper Green Lawn Care: connect StarNet to the website. One file, Python 3.9+, nothing to install.
 
-Drop this single file into StarNet OS. It needs nothing but Python 3.9+ (no installs).
+THE EASIEST WAY (PowerShell only, no websites to click through):
+    $env:RENDER_API_KEY = "<a Render API key>"          (made once at Render > Account Settings > API Keys)
+    python semper_green_site.py --connect               makes the key, puts it in Render, deploys, and connects StarNet
 
-    import os
+THE OTHER WAY:
+    python semper_green_site.py --setup     run it, paste the ONE line it copies for you into Render, run it again
+    python semper_green_site.py --brief     a plain-English briefing; also saved to semper_green_briefing.txt
+
+Agents can simply read semper_green_briefing.txt, or run --brief. Everything below is for agents that use tools:
+
     from semper_green_site import SemperGreenSite, ask
-
-    site = SemperGreenSite()                      # reads SEMPER_SITE_URL and SEMPER_AGENT_KEY from the environment
-    print(site.health())
-    # Same page check:  python semper_green_site.py --sync      (compare)   |   --accept   (adopt the site's settings)
+    site = SemperGreenSite()                      # finds the key --setup saved; the site address is built in
     print(ask(site, "How does tomorrow look?"))   # a local Ollama model uses the tools below
-
-Set these on the StarNet computer (never in code, never in a repo, never in chat):
-    SEMPER_SITE_URL   = https://property-dispatch.onrender.com
-    SEMPER_AGENT_KEY  = the AGENT_KEY_READ or AGENT_KEY_OPS value you set in Render
+    # Same-page check:  --sync (compare)   |   --accept (adopt the site's current settings)
 
 What agents can do: look at site health, a day's numbers, the week ahead, and the audit log.
 With the ops key and YOUR approval they can also build a day's route. They cannot see customer names, phone numbers
@@ -24,29 +25,39 @@ from __future__ import annotations
 import json
 import os
 import re
+import secrets
+import subprocess
+import sys
 import urllib.error
 import urllib.request
-from datetime import date
+from datetime import date, datetime
+from pathlib import Path
 
 CLIENT_VERSION = 1      # the site refuses to be "in sync" with a client older than its min_client_version
 DEFAULT_SITE = "https://property-dispatch.onrender.com"
+KEY_FILE = Path(os.environ.get("SEMPER_KEY_FILE") or Path.home() / ".semper_green_agent_key")
+BRIEF_FILE = os.environ.get("SEMPER_BRIEF_FILE", "semper_green_briefing.txt")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 class SiteError(Exception):
-    """A readable problem talking to the site (never contains the key)."""
+    """A readable problem talking to the site (never contains the key). `status` is the HTTP code, if there was one."""
+
+    def __init__(self, message: str, status: int | None = None):
+        super().__init__(message)
+        self.status = status
 
 
 class SemperGreenSite:
     def __init__(self, base_url: str | None = None, key: str | None = None, timeout: float = 25.0):
         self.base_url = (base_url or os.environ.get("SEMPER_SITE_URL") or DEFAULT_SITE).rstrip("/")
-        self._key = key or os.environ.get("SEMPER_AGENT_KEY") or ""
+        self._key = key or os.environ.get("SEMPER_AGENT_KEY") or read_key_file()
         self.timeout = timeout
         local = self.base_url.startswith(("http://localhost", "http://127.0.0.1"))
         if not (self.base_url.startswith("https://") or local):
             raise SiteError("SEMPER_SITE_URL must start with https:// so the key is never sent in the clear.")
         if not self._key:
-            raise SiteError("Set SEMPER_AGENT_KEY (the key from Render's Environment page).")
+            raise SiteError("No key yet. Run:  python semper_green_site.py --setup")
 
     def _call(self, method: str, path: str) -> dict:
         req = urllib.request.Request(self.base_url + path, method=method, data=b"" if method == "POST" else None,
@@ -59,7 +70,7 @@ class SemperGreenSite:
                 detail = json.loads(exc.read().decode("utf-8")).get("detail", "")
             except Exception:
                 detail = ""
-            raise SiteError(f"The site said {exc.code}: {detail or exc.reason}") from None
+            raise SiteError(f"The site said {exc.code}: {detail or exc.reason}", status=exc.code) from None
         except (urllib.error.URLError, TimeoutError, OSError):
             raise SiteError("Couldn't reach the site. It may be waking up (free hosting); try again in a minute.") from None
 
@@ -94,6 +105,219 @@ class SemperGreenSite:
     # --- acting (ops key only; the site refuses anything else) ---------------------------------
     def build_route(self, day: str) -> dict:
         return self._call("POST", f"/api/agent/routes/{self._day(day)}/build")
+
+
+# ---------------------------------------------------------------------------------------------
+# The simple way in:  python semper_green_site.py --setup      (run it, paste one line into Render, run it again)
+#                     python semper_green_site.py --brief      (a plain-English briefing your agents can just read)
+# ---------------------------------------------------------------------------------------------
+
+def read_key_file() -> str:
+    try:
+        return KEY_FILE.read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+
+
+def new_key() -> str:
+    """Make StarNet's private key and save it on this computer (only you can read the file)."""
+    key = secrets.token_urlsafe(32)
+    KEY_FILE.write_text(key + "\n", encoding="utf-8")
+    try:
+        os.chmod(KEY_FILE, 0o600)                   # Windows ignores this; the file sits in your own user folder
+    except OSError:
+        pass
+    return key
+
+
+def copy_to_clipboard(text: str) -> bool:
+    """Put text on the clipboard (Windows, Mac or Linux). False if there's no way to."""
+    for cmd in (["clip"], ["pbcopy"], ["wl-copy"], ["xclip", "-selection", "clipboard"], ["xsel", "-b", "-i"]):
+        try:
+            subprocess.run(cmd, input=text.encode("utf-8"), check=True, timeout=10,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return True
+        except (OSError, subprocess.SubprocessError):
+            continue
+    return False
+
+
+def _day_label(iso: str) -> str:
+    d = date.fromisoformat(iso)
+    return f"{d.strftime('%a %b')} {d.day}"          # no %-d: that code doesn't work on Windows
+
+
+def briefing(site: "SemperGreenSite", expected: dict | None = None) -> str:
+    """A plain-English picture of the site right now, for the owner or any agent to read."""
+    health, manifest, outlook = site.health(), site.manifest(), site.outlook(7)
+    f = manifest["features"]
+    onoff = lambda v: "ON" if v else "off"
+    now = datetime.now()
+    lines = [f"SEMPER GREEN LAWN CARE BRIEFING  ({now.strftime('%a %b')} {now.day}, {now.strftime('%I:%M %p').lstrip('0')})", "",
+             f"Site: healthy.   Card payments: {onoff(f['card_payments'])}"
+             + (f" ({manifest['stripe_mode']} mode)" if manifest.get("stripe_mode") else "")
+             + f".   Visit notifications: {onoff(f['visit_notifications'])}.   Texting: {onoff(f['texting'])}.", "",
+             "Next 7 days:"]
+    for d in outlook["days"]:
+        lines.append(f"  {_day_label(d['date'])}: {d['bookings']} booking{'s' if d['bookings'] != 1 else ''}"
+                     f" of {d['quota']} possible, ${d['expected']:,.2f} expected")
+    report = compare(manifest, expected)
+    lines += ["", "Same page as StarNet: " + ("yes." if report["in_sync"] else "NO, see below.")]
+    for key in ("critical", "differences"):
+        lines += [f"  - {item}" for item in report[key]]
+    lines += ["", "Still to set up on the website:" if report["attention"] else "Nothing left to set up on the website."]
+    lines += [f"  - {item}" for item in report["attention"]]
+    lines += ["", "Rules for agents: you can look, but you can't see customer names or phones, change prices, refund, or "
+              "deploy. Anything that changes the crew's schedule needs the owner's approval."]
+    return "\n".join(lines)
+
+
+def write_briefing(site: "SemperGreenSite", path: str | None = None) -> str:
+    path = path or BRIEF_FILE
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(briefing(site, load_expectations()) + "\n")
+    return path
+
+
+def setup(base_url: str | None = None, out=print) -> int:
+    """Get StarNet connected with as little as possible. Safe to run again and again.
+
+    First run:  makes a private key on this computer and copies ONE line to the clipboard for Render.
+    After that: checks the connection, saves the site's settings as StarNet's, and writes the briefing."""
+    key = os.environ.get("SEMPER_AGENT_KEY") or read_key_file()
+    if not key:
+        key = new_key()
+        line = f"AGENT_KEY_READ={key}"
+        if copy_to_clipboard(line):
+            shown = f"AGENT_KEY_READ={key[:4]}…{key[-4:]}   (copied; nothing to type)"
+        else:
+            shown = line + "\n(couldn't copy it automatically: select that line and copy it yourself)"
+        out("Step 1 done: I made StarNet's private key and saved it on this computer.")
+        out(f"\nNow, in Render: Environment, add this ONE line, then Save, rebuild, and deploy:\n\n    {shown}\n")
+        out("When Render finishes deploying, run this same command again:  python semper_green_site.py --setup")
+        out("(Or skip Render's website entirely: python semper_green_site.py --connect, see the README.)")
+        return 0
+
+    try:
+        site = SemperGreenSite(base_url=base_url, key=key)
+        site.health()
+    except SiteError as exc:
+        if exc.status == 503:
+            out("The site is up but doesn't have the key yet. In Render, add the line and press Save, rebuild, and deploy.")
+        elif exc.status == 401:
+            line = f"AGENT_KEY_READ={key}"
+            copied = copy_to_clipboard(line)
+            out("The site's key doesn't match this computer's key. " + ("I copied the right line again: paste it into "
+                "Render, replacing the old AGENT_KEY_READ, then Save, rebuild, and deploy." if copied else
+                "Replace AGENT_KEY_READ in Render with the value in " + str(KEY_FILE)))
+        elif exc.status == 404:
+            out("The site is still on the old version. In Render, press Manual Deploy and wait for it to finish.")
+        else:
+            out(f"{exc}")
+        return 1
+
+    manifest = site.manifest()
+    if load_expectations() is None:
+        save_expectations(manifest)
+    path = write_briefing(site)
+    out("✅ All set. StarNet is connected to the website.\n")
+    out(briefing(site, load_expectations()))
+    out(f"\n(Saved to {path}: your agents can just read that file, or run:  python semper_green_site.py --brief)")
+    return 0
+
+
+# ---------------------------------------------------------------------------------------------
+# Even simpler: do the Render side from PowerShell too.   python semper_green_site.py --connect
+# Needs ONE thing: a Render API key in $env:RENDER_API_KEY (Render: Account Settings, API Keys; make it, use it, delete it).
+# ---------------------------------------------------------------------------------------------
+
+RENDER_API = "https://api.render.com/v1"
+RENDER_DONE = {"live"}
+RENDER_FAILED = {"build_failed", "update_failed", "pre_deploy_failed", "canceled", "deactivated"}
+
+
+class RenderError(Exception):
+    """A readable problem talking to Render (never contains the API key)."""
+
+
+def render_api(method: str, path: str, key: str, body: dict | None = None, timeout: float = 40.0):
+    req = urllib.request.Request(RENDER_API + path, method=method, headers={
+        "Authorization": f"Bearer {key}", "Accept": "application/json", "Content-Type": "application/json"},
+        data=None if body is None else json.dumps(body).encode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            raw = resp.read()
+            return json.loads(raw.decode("utf-8")) if raw else {}
+    except urllib.error.HTTPError as exc:
+        if exc.code in (401, 403):
+            raise RenderError("Render didn't accept that API key. Make a new one at Account Settings, API Keys.") from None
+        raise RenderError(f"Render said {exc.code} for {method} {path.split('?')[0]}.") from None
+    except (urllib.error.URLError, TimeoutError, OSError):
+        raise RenderError("Couldn't reach Render. Check the internet connection and try again.") from None
+
+
+def find_service(render, key: str, site_url: str) -> dict:
+    """Find the website's service on Render by its address (or RENDER_SERVICE_ID)."""
+    wanted = os.environ.get("RENDER_SERVICE_ID")
+    items = render("GET", "/services?limit=100", key)
+    services = [i.get("service", i) for i in (items if isinstance(items, list) else [])]
+    for svc in services:
+        if wanted and svc.get("id") == wanted:
+            return svc
+        if not wanted and (svc.get("serviceDetails") or {}).get("url", "").rstrip("/") == site_url.rstrip("/"):
+            return svc
+    names = ", ".join(sorted(str(s.get("name")) for s in services)) or "none"
+    raise RenderError(f"I couldn't tell which Render service is the website (services on this account: {names}). "
+                      "Set RENDER_SERVICE_ID to the one that is (its id starts with srv-).")
+
+
+def connect(base_url: str | None = None, out=print, render=None, wait_s: float = 900, poll_s: float = 10,
+            sleep=None) -> int:
+    """Create the key, put it in Render, deploy, wait, then connect StarNet. All from here."""
+    import time
+    render = render or render_api
+    sleep = sleep or time.sleep
+    base = (base_url or os.environ.get("SEMPER_SITE_URL") or DEFAULT_SITE).rstrip("/")
+    rkey = os.environ.get("RENDER_API_KEY", "").strip()
+    if not rkey:
+        out("One thing first: a Render API key. Render, Account Settings, API Keys, Create. Then in PowerShell:\n\n"
+            '    $env:RENDER_API_KEY = "paste it here"\n\nand run this again. (Delete the key in Render when we are done.)')
+        return 1
+    key = os.environ.get("SEMPER_AGENT_KEY") or read_key_file() or new_key()
+    try:
+        svc = find_service(render, rkey, base)
+        out(f"Found the website on Render ({svc.get('name')}).")
+        render("PUT", f"/services/{svc['id']}/env-vars/AGENT_KEY_READ", rkey, {"value": key})
+        out("Put StarNet's key in Render.")
+        deploy = render("POST", f"/services/{svc['id']}/deploys", rkey, {"clearCache": "do_not_clear"})
+        out("Started a deploy. This takes a few minutes…")
+        waited, status = 0.0, ""
+        while waited <= wait_s:
+            status = (render("GET", f"/services/{svc['id']}/deploys/{deploy['id']}", rkey) or {}).get("status", "")
+            if status in RENDER_DONE:
+                break
+            if status in RENDER_FAILED:
+                out(f"The deploy didn't finish ({status}). Look at the Render logs, or tell Claude Code what you see.")
+                return 1
+            sleep(poll_s)
+            waited += poll_s
+        else:
+            out("Still deploying after a while. When Render says Live, run:  python semper_green_site.py --setup")
+            return 1
+    except RenderError as exc:
+        out(str(exc))
+        return 1
+
+    out("Deployed. Connecting StarNet…")
+    for attempt in range(6):                                  # the site needs a moment after Render says Live
+        lines: list = []
+        code = setup(base_url=base, out=lines.append)
+        if code == 0 or attempt == 5:
+            for line in lines:
+                out(line)
+            return code
+        sleep(poll_s)
+    return 1
 
 
 # ---------------------------------------------------------------------------------------------
@@ -315,10 +539,16 @@ def ask_owner(tool: str, args: dict) -> bool:
 
 
 if __name__ == "__main__":
-    import sys
     args = sys.argv[1:]
+    if args[:1] == ["--connect"]:                    # the easiest way: key, Render, deploy and connect, all from here
+        sys.exit(connect())
+    if args[:1] == ["--setup"]:                      # run, paste one line into Render, run again
+        sys.exit(setup())
     site = SemperGreenSite()
-    if args[:1] == ["--sync"]:                       # compare StarNet with the site; exit 1 if they disagree
+    if args[:1] == ["--brief"]:                      # a plain-English briefing, saved to a file agents can read
+        print(briefing(site, load_expectations()))
+        print(f"\n(Saved to {write_briefing(site)})")
+    elif args[:1] == ["--sync"]:                     # compare StarNet with the site; exit 1 if they disagree
         report = compare(site.manifest(), load_expectations(args[1] if len(args) > 1 else None))
         print(format_report(report))
         sys.exit(0 if report["in_sync"] else 1)
