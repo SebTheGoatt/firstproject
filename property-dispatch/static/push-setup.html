@@ -18,6 +18,7 @@
         <code>VAPID_PUBLIC_KEY</code> and <code>VAPID_PRIVATE_KEY</code>. Save, then <strong>Manual Deploy</strong>.</li>
       <li>Close this page. Don't paste the private key into any chat, text or email.</li>
     </ol>
+    <p id="status" class="alert" role="status">Checking the keys that are in Render right now…</p>
     <button class="btn btn-primary" type="button" id="make">Make my keys</button>
     <div id="out" hidden style="margin-top:24px">
       <h2 class="card-title">VAPID_PUBLIC_KEY</h2>
@@ -31,6 +32,17 @@
     </div>
   </main>
   <script>
+    fetch("/api/push-config").then((r) => r.json()).then((c) => {
+      const el = document.getElementById("status");
+      const msg = {
+        ok: "✅ The keys in Render are a matching pair. Notifications are ready.",
+        off: "Notifications are off: the two keys aren't in Render yet. Make them below.",
+        key_mismatch: "⚠️ The two keys in Render DON'T match (they came from different clicks). Make ONE new pair below and put both in Render.",
+        key_invalid: "⚠️ The private key in Render isn't valid. Make a new pair below and put both in Render.",
+      };
+      el.textContent = msg[c.status] || "Couldn't check the keys right now.";
+      el.className = "alert " + (c.status === "ok" ? "alert-ok" : "alert-error");
+    }).catch(() => { document.getElementById("status").hidden = true; });
     const b64url = (bytes) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
     document.getElementById("make").addEventListener("click", async () => {
       const pair = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);

@@ -20,6 +20,7 @@ import hashlib
 import hmac
 import html
 import logging
+import os
 import secrets
 from datetime import date, timedelta
 from pathlib import Path
@@ -216,7 +217,7 @@ def create_app(
     register_live_routes(app, settings, crew_auth)   # owner-only live station: /api/track, /api/live/stats (dashboard lives in the crew app's owner tab)
     register_pay_routes(app, settings, app.state.stripe)
     register_visit_routes(app, settings, crew_auth)
-    register_agent_api(app, settings)   # scoped, audited keys for StarNet agents (off unless AGENT_KEY_READ / AGENT_KEY_OPS are set)
+    register_agent_api(app, settings, build={"static_version": version, "commit": os.environ.get("RENDER_GIT_COMMIT", "")[:7]})   # scoped, audited keys for StarNet agents (off unless AGENT_KEY_READ / AGENT_KEY_OPS are set)
     register_agent_routes(app, settings, crew_auth)   # owner-only Ollama dispatch assistant (off unless OLLAMA_BASE_URL is set)
 
     @app.get("/push-setup", include_in_schema=False)
@@ -462,8 +463,7 @@ def create_app(
                            total=float(new_price.total), lawn_sqft=new_price.lawn_sqft,
                            charity_amount=giving, giving_split=split_donation(giving) if giving else None)
         stop, newly = repo.complete_stop(stop_id, member_id)
-        if newly:
-            push.notify_job(repo, settings, stop["job_id"], "done")
+        done_push = push.send_to_job(repo, settings, stop["job_id"], "done") if newly else None
 
         payment = {"status": stop["payment_status"], "total": due}
         if cash is not None and stop["payment_status"] == "unpaid":
@@ -479,8 +479,11 @@ def create_app(
 
         notification = notify_next_customer(repo, settings, stop, app.state.sms) if newly else {
             "notified": False, "reason": "already_completed"}
-        return {"stop_id": stop_id, "completed_at": stop["completed_at"], "notification": notification,
-                "payment": payment}
+        out = {"stop_id": stop_id, "completed_at": stop["completed_at"], "notification": notification,
+               "payment": payment}
+        if done_push and done_push["failed"] and not done_push["sent"]:    # tell the crew why the customer wasn't pinged
+            out["done_notification_problem"] = push.PROBLEMS.get(done_push["problem"], "")
+        return out
 
     @app.post("/api/stops/{stop_id}/complete")
     def complete_stop(stop_id: str, request: Request, body: CompleteStopRequest | None = None,

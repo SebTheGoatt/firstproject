@@ -37,11 +37,13 @@ def test_off_until_keys_are_set_and_bad_keys_are_refused(client, settings):
     assert client.get("/api/agent/health", headers=OPS).status_code == 401       # ops key not configured yet
 
 
-def test_health_reports_features_not_secrets(client, on):
+def test_health_reports_features_not_secrets(client, settings, on):
     out = client.get("/api/agent/health", headers=READ).json()
     assert out["business"] == "Semper Green Lawn Care" and set(out["features"]) == {
-        "card_payments", "texting", "visit_notifications", "dispatch_assistant"}
-    assert "key" not in str(out).replace("your_access", "")
+        "card_payments", "texting", "visit_notifications", "notification_keys", "dispatch_assistant"}
+    text = str(out)
+    for secret in ("read-key-123", "ops-key-456", settings.vapid_private_key, settings.crew_access_token):
+        assert not secret or secret not in text
 
 
 def test_day_summary_has_no_personal_details_and_addresses_only_for_ops(client, repo, settings, on):
