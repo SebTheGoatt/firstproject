@@ -18,15 +18,23 @@ SUB = {"endpoint": ENDPOINT, "keys": {"p256dh": "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry
                                        "auth": "tBHItJI5svbpez7KI4CCXg"}}
 
 
+def make_pair() -> tuple[str, str]:
+    """A real matching (public, private) key pair, like /push-setup makes."""
+    from cryptography.hazmat.primitives import serialization
+    key = ec.generate_private_key(ec.SECP256R1())
+    d = key.private_numbers().private_value
+    public = key.public_key().public_bytes(serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)
+    b64 = lambda raw: base64.urlsafe_b64encode(raw).decode().rstrip("=")
+    return b64(public), b64(d.to_bytes(32, "big"))
+
+
 def make_key() -> str:
-    d = ec.generate_private_key(ec.SECP256R1()).private_numbers().private_value
-    return base64.urlsafe_b64encode(d.to_bytes(32, "big")).decode().rstrip("=")
+    return make_pair()[1]
 
 
 @pytest.fixture
 def on(settings):
-    settings.vapid_public_key = "BPublicKeyPlaceholderPublicKeyPlaceholderPublicKeyPlaceholderPublicKeyPlaceholder"
-    settings.vapid_private_key = make_key()
+    settings.vapid_public_key, settings.vapid_private_key = make_pair()
     settings.vapid_subject = "mailto:owner@example.com"
     return settings
 
@@ -43,12 +51,12 @@ def subscribe(client, job, **extra):
 
 
 def test_push_is_off_until_keys_are_set(client, settings):
-    assert client.get("/api/push-config").json() == {"public_key": None}
+    assert client.get("/api/push-config").json() == {"public_key": None, "status": "off"}
     job = make_job(client)
     assert subscribe(client, job).status_code == 503
-    settings.vapid_public_key, settings.vapid_private_key = "BKey" * 20, make_key()
+    settings.vapid_public_key, settings.vapid_private_key = make_pair()
     settings.public_base_url = "https://example.com"
-    assert client.get("/api/push-config").json()["public_key"] == "BKey" * 20
+    assert client.get("/api/push-config").json()["public_key"] == settings.vapid_public_key
 
 
 def test_subscribing_needs_the_right_code_and_a_real_subscription(client, repo, on):
@@ -160,3 +168,87 @@ def test_booking_and_visit_pages_load_the_shared_opt_in_script(client):
     assert "SGPush" in client.get("/static/push.js").text
     book_page = client.get("/book").text
     assert "Want a heads-up when we're on the way?" in book_page and "SGPush?.setup" in book_page
+
+
+def _fail_with(status):
+    class Resp:
+        status_code = status
+    return WebPushException("nope", response=Resp() if status else None)
+
+
+@pytest.mark.parametrize("status, problem", [(403, "key_mismatch"), (401, "key_mismatch"), (500, "service_busy"),
+                                             (None, "service_busy"), (400, "rejected")])
+def test_a_failed_push_says_why_and_can_be_retried(client, repo, settings, on, status, problem):
+    job = make_job(client)
+    subscribe(client, job)
+    run_nightly(repo, settings, TOMORROW)
+    stop = client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]
+    url = f"/api/stops/{stop['stop_id']}/on-the-way"
+    with patch("app.push.webpush", side_effect=_fail_with(status)):
+        r = client.post(url, headers=CREW).json()
+    assert r["reason"] == "push_failed" and r["problem"] == problem and r["detail"] == push.PROBLEMS[problem]
+    assert r["pushed"] == 0 and r["notified"] is False
+    assert len(repo.list_push_subscriptions(job["id"])) == 1                      # a hiccup keeps the sign-up
+    with patch("app.push.webpush", side_effect=lambda **kw: None):                # after fixing the cause, tap again
+        again = client.post(url, headers=CREW).json()
+    assert again["pushed"] == 1 and again["reason"] is None
+
+
+def test_an_expired_phone_is_forgotten_and_explained(client, repo, settings, on):
+    job = make_job(client)
+    subscribe(client, job)
+    run_nightly(repo, settings, TOMORROW)
+    stop = client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]
+    with patch("app.push.webpush", side_effect=_fail_with(410)):
+        r = client.post(f"/api/stops/{stop['stop_id']}/on-the-way", headers=CREW).json()
+    assert r["problem"] == "phone_gone" and repo.list_push_subscriptions(job["id"]) == []
+
+
+def test_a_broken_private_key_is_reported_not_hidden(client, repo, settings, on):
+    settings.vapid_private_key = "this-is-not-a-key"
+    job = make_job(client)
+    subscribe(client, job)
+    run_nightly(repo, settings, TOMORROW)
+    stop = client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]
+    r = client.post(f"/api/stops/{stop['stop_id']}/on-the-way", headers=CREW).json()
+    assert r["reason"] == "push_failed" and r["problem"] == "key_invalid"
+
+
+def test_finishing_a_job_reports_a_failed_done_alert_to_the_crew(client, repo, settings, on):
+    job = make_job(client)
+    subscribe(client, job)
+    run_nightly(repo, settings, TOMORROW)
+    stop = client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]
+    with patch("app.push.webpush", side_effect=_fail_with(403)):
+        done = client.post(f"/api/stops/{stop['stop_id']}/complete", headers=CREW)
+    assert done.status_code == 200 and done.json()["done_notification_problem"] == push.PROBLEMS["key_mismatch"]
+
+
+def test_mismatched_keys_are_caught_before_anyone_signs_up(client, repo, settings, on):
+    good = client.get("/api/push-config").json()
+    assert good["status"] == "ok" and good["public_key"] == settings.vapid_public_key
+    settings.vapid_private_key = make_key()                       # a private key from a different pair
+    bad = client.get("/api/push-config").json()
+    assert bad == {"public_key": None, "status": "key_mismatch"}  # the button stays hidden: it couldn't work
+    settings.vapid_private_key = "not-a-key"
+    assert client.get("/api/push-config").json()["status"] == "key_invalid"
+    settings.vapid_private_key = ""
+    assert client.get("/api/push-config").json() == {"public_key": None, "status": "off"}
+
+
+def test_the_crew_sees_a_key_mismatch_instead_of_silence(client, repo, settings, on):
+    job = make_day = make_job(client)
+    subscribe(client, job)                                        # signed up while the keys still matched
+    settings.vapid_private_key = make_key()                       # ...then the pair got mixed up in Render
+    run_nightly(repo, settings, TOMORROW)
+    stop = client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]
+    with patch("app.push.webpush") as wp:
+        r = client.post(f"/api/stops/{stop['stop_id']}/on-the-way", headers=CREW).json()
+    wp.assert_not_called()
+    assert r["reason"] == "push_failed" and r["problem"] == "key_mismatch"
+
+
+def test_the_agent_health_report_includes_the_key_status(client, settings, on):
+    settings.agent_key_read = "read-key-123"
+    out = client.get("/api/agent/health", headers={"X-Agent-Key": "read-key-123"}).json()
+    assert out["features"]["notification_keys"] == "ok" and out["features"]["visit_notifications"] is True

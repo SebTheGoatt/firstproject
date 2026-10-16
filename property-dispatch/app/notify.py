@@ -135,8 +135,13 @@ def notify_stop(repo: Repository, settings: Settings, stop: dict, sms: TwilioCli
     if not repo.claim_notification(stop["stop_id"]):
         return {"notified": False, "pushed": 0, "reason": "already_notified", "stop_id": stop["stop_id"]}
 
-    pushed = push.notify_job(repo, settings, stop["job_id"], "on_the_way")
+    report = push.send_to_job(repo, settings, stop["job_id"], "on_the_way")
+    pushed = report["sent"]
     if not text:     # notifications only
+        if not pushed and report["failed"]:
+            repo.release_notification(stop["stop_id"])        # nobody was reached because of a problem: allow a retry
+            return {"notified": False, "pushed": 0, "stop_id": stop["stop_id"], "reason": "push_failed",
+                    "problem": report["problem"], "detail": push.PROBLEMS.get(report["problem"], "")}
         return {"notified": pushed > 0, "pushed": pushed, "stop_id": stop["stop_id"],
                 "reason": None if pushed else "no_subscribers"}
     body = next_customer_message(stop, settings, crew_name)

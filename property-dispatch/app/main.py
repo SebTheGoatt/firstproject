@@ -462,8 +462,7 @@ def create_app(
                            total=float(new_price.total), lawn_sqft=new_price.lawn_sqft,
                            charity_amount=giving, giving_split=split_donation(giving) if giving else None)
         stop, newly = repo.complete_stop(stop_id, member_id)
-        if newly:
-            push.notify_job(repo, settings, stop["job_id"], "done")
+        done_push = push.send_to_job(repo, settings, stop["job_id"], "done") if newly else None
 
         payment = {"status": stop["payment_status"], "total": due}
         if cash is not None and stop["payment_status"] == "unpaid":
@@ -479,8 +478,11 @@ def create_app(
 
         notification = notify_next_customer(repo, settings, stop, app.state.sms) if newly else {
             "notified": False, "reason": "already_completed"}
-        return {"stop_id": stop_id, "completed_at": stop["completed_at"], "notification": notification,
-                "payment": payment}
+        out = {"stop_id": stop_id, "completed_at": stop["completed_at"], "notification": notification,
+               "payment": payment}
+        if done_push and done_push["failed"] and not done_push["sent"]:    # tell the crew why the customer wasn't pinged
+            out["done_notification_problem"] = push.PROBLEMS.get(done_push["problem"], "")
+        return out
 
     @app.post("/api/stops/{stop_id}/complete")
     def complete_stop(stop_id: str, request: Request, body: CompleteStopRequest | None = None,

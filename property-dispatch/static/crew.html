@@ -495,9 +495,15 @@
             try {
               const r = await api(`/api/stops/${s.stop_id}/on-the-way`, { method: "POST" });
               const first = s.customer_name.split(" ")[0];
+              if (r.reason === "push_failed") {
+                // Say what's wrong so it can be fixed, and let the crew tap again.
+                toast(`Couldn't notify ${first}. ${r.detail || "The notification didn't go through."}`);
+                wayBtn.disabled = false;
+                return;
+              }
               toast(r.pushed ? `${first} got a notification: you're on the way.`
                 : r.reason === "already_notified" ? "They were already told."
-                : `Marked on your way. ${first}'s visit page shows it, but they haven't turned on phone alerts.`);
+                : `Marked on your way. ${first} hasn't turned on phone alerts, but their visit page shows it.`);
               wayBtn.textContent = r.pushed || r.reason === "already_notified" ? "Customer notified ✓" : "Marked on my way ✓";
             } catch (err) {
               wayBtn.disabled = false;
@@ -612,7 +618,7 @@
           const pay = res.payment || {};
           const bits = [pay.status === "paid" && pay.method === "cash" ? `Cash ${money(pay.amount_paid)} recorded${pay.donation > 0 ? ` (${money(pay.donation)} donation)` : ""}.` : null,
             n.notified || n.pushed ? "Next customer notified." : n.reason === "route_complete" ? "Last stop of the day. Nice work!" : null];
-          toast(["Job done!", ...bits].filter(Boolean).join(" "));
+          toast(["Job done!", ...bits, res.done_notification_problem ? `Couldn't send the "all done" alert. ${res.done_notification_problem}` : null].filter(Boolean).join(" "));
           await Promise.all([loadRoute(), refreshMe()]);
         } catch (err) {
           toast(err instanceof TypeError ? "No signal. Tap again when you're back in coverage." : err.message);

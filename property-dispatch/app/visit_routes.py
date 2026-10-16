@@ -14,6 +14,7 @@ Owner:
     POST /api/owner/routes/{date}/build    build (or rebuild) that day's route now
 """
 
+import logging
 import re
 import secrets
 from datetime import date, timedelta
@@ -22,6 +23,7 @@ from typing import Literal
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
+from . import push
 from .booking import local_now
 from .charity import describe as describe_charities, ledger
 from .pricing import PACKAGES
@@ -144,7 +146,11 @@ def register_visit_routes(app: FastAPI, settings: Settings, crew_auth):
     @app.get("/api/push-config")
     def push_config():
         """The public key phones need to subscribe; null while notifications are turned off."""
-        return {"public_key": settings.vapid_public_key if settings.push_enabled else None}
+        status = push.keys_status(settings)
+        if status not in ("off", "ok"):
+            logging.getLogger("push").error("Notification keys problem (%s): fix VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY in Render", status)
+        # The public key is only handed out when it matches the private key, so no one signs up for alerts that can't arrive.
+        return {"public_key": settings.vapid_public_key if status == "ok" else None, "status": status}
 
     @app.post("/api/visit/{raw_code}/push", status_code=204)
     def save_push(raw_code: str, body: PushSubscriptionBody, request: Request, r=Depends(repo)):

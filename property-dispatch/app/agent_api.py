@@ -25,6 +25,7 @@ from datetime import date, timedelta
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 
+from . import push
 from .booking import local_now
 from .config import Settings
 from .models import order_label
@@ -94,7 +95,8 @@ def register_agent_api(app: FastAPI, settings: Settings):
         s = request.app.state
         return {"ok": True, "now": local_now(settings).isoformat(), "business": settings.business_name,
                 "features": {"card_payments": s.stripe is not None, "texting": s.sms is not None,
-                             "visit_notifications": settings.push_enabled, "dispatch_assistant": settings.agent_enabled},
+                             "visit_notifications": push.keys_status(settings) == "ok",
+                             "notification_keys": push.keys_status(settings), "dispatch_assistant": settings.agent_enabled},
                 "your_access": role}
 
     @app.get("/api/agent/day/{day}")
