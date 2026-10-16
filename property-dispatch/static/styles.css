@@ -768,3 +768,6 @@ label.check input { width: 18px; height: 18px; }
 .push-box .muted { margin: 0; }
 
 .actions .btn-way { grid-column: 1 / -1; }
+
+/* The "heads-up when we're on the way" nudge on the booking confirmation */
+.push-nudge { margin-top: 14px; padding: 14px; border: 1px dashed var(--brand); border-radius: var(--radius); background: var(--surface); width: 100%; }
