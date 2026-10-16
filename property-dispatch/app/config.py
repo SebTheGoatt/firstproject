@@ -68,6 +68,10 @@ class Settings(BaseSettings):
     ollama_basic_auth: str = ""        # "user:password" for a password-protected tunnel to your own computer
     ollama_timeout_s: float = 90.0
 
+    # --- AI agent access (StarNet): leave blank to keep it off. See app/agent_api.py ---
+    agent_key_read: str = ""     # can look only
+    agent_key_ops: str = ""      # can look, and build a day's route
+
     # --- Donations: split 33% / 33% / 34% (see app/charity.py) ----------
     # Rename to the specific VFW post, hospital NICU and youth program you give to.
     charity_vfw_name: str = "Veterans of Foreign Wars (VFW)"

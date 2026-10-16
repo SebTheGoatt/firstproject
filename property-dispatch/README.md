@@ -235,6 +235,12 @@ Settings (Render → Environment): `OLLAMA_BASE_URL` (ends in `/v1`), `OLLAMA_MO
 `OLLAMA_API_KEY` (only for Ollama's cloud, `https://ollama.com/v1`), `OLLAMA_BASIC_AUTH` (`user:password` for a password-protected tunnel to your own computer). Render can't reach `localhost`: use
 Ollama's cloud, or a tunnel to your own computer (and protect the tunnel; Ollama itself has no password).
 
+## StarNet agent access (optional)
+
+`AGENT_KEY_READ` and `AGENT_KEY_OPS` (Render → Environment) give your own AI agents a limited, revocable way in at
+`/api/agent/*`: site health, a day's numbers without names or phone numbers, the week ahead, an audit log, and (ops
+key only) building a day's route. Agents never get the owner code. Setup and the StarNet client are in `starnet/`.
+
 ## En español (Spanish)
 
 The customer pages (home, booking, pay, visit) are available in Spanish. `static/i18n.js` translates
