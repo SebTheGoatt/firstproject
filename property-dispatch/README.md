@@ -213,6 +213,11 @@ the crew is on the way and when the visit is done, in their language, and nothin
 against that one booking (`push_subscriptions`, migration 20261025) and forgotten if the customer turns
 notifications off. iPhones only allow this from the Home Screen app, and the page says so.
 
+The crew app has an **On my way** button on every open stop (it also happens automatically for the next
+stop when you finish a job). It sends app/browser notifications only, never a text, and it marks the visit
+page "on the way". A visit page that is open also checks for news every minute, so customers who never
+turned on notifications still see "on the way" and "done" appear by themselves.
+
 To turn it on: open `/push-setup` on your site, tap **Make my keys** (they are made in your browser and
 never leave it), put them in Render as `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` (optionally
 `VAPID_SUBJECT`, a `mailto:` address; it defaults to `PUBLIC_BASE_URL`), and deploy. Without the keys

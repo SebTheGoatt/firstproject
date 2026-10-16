@@ -486,11 +486,29 @@
             } catch (err) { toast(err instanceof TypeError ? "No signal. Try the photo again in coverage." : err.message); }
             beforeIn.value = "";
           });
+          // "On my way": tells this customer now (app/browser notification + their visit page). Finishing a job does it for the next stop,
+          // so this is mainly for the first stop of the day.
+          const wayBtn = el("button", { class: "btn btn-way", type: "button" }, s.notified_at ? "Customer notified ✓" : "On my way");
+          wayBtn.disabled = !!s.notified_at;
+          wayBtn.addEventListener("click", async () => {
+            wayBtn.disabled = true;
+            try {
+              const r = await api(`/api/stops/${s.stop_id}/on-the-way`, { method: "POST" });
+              const first = s.customer_name.split(" ")[0];
+              toast(r.pushed ? `${first} got a notification: you're on the way.`
+                : r.reason === "already_notified" ? "They were already told."
+                : `Marked on your way. ${first}'s visit page shows it, but they haven't turned on phone alerts.`);
+              wayBtn.textContent = r.pushed || r.reason === "already_notified" ? "Customer notified ✓" : "Marked on my way ✓";
+            } catch (err) {
+              wayBtn.disabled = false;
+              toast(err instanceof TypeError ? "No signal. Tap again when you're back in coverage." : err.message);
+            }
+          });
           item.append(el("div", { class: "actions" },
             el("a", { class: "btn", href: s.apple_maps_url, target: "_blank", rel: "noopener" }, "Apple Maps"),
             el("a", { class: "btn", href: s.google_maps_url, target: "_blank", rel: "noopener" }, "Google Maps"),
             el("label", { class: "btn btn-before", for: beforeIn.id }, "Before photo"), beforeIn,
-            completeBtn));
+            wayBtn, completeBtn));
         }
         list.append(item);
       }
@@ -593,7 +611,7 @@
           const n = res.notification || {};
           const pay = res.payment || {};
           const bits = [pay.status === "paid" && pay.method === "cash" ? `Cash ${money(pay.amount_paid)} recorded${pay.donation > 0 ? ` (${money(pay.donation)} donation)` : ""}.` : null,
-            n.notified ? "Next customer texted." : n.reason === "route_complete" ? "Last stop of the day. Nice work!" : null];
+            n.notified || n.pushed ? "Next customer notified." : n.reason === "route_complete" ? "Last stop of the day. Nice work!" : null];
           toast(["Job done!", ...bits].filter(Boolean).join(" "));
           await Promise.all([loadRoute(), refreshMe()]);
         } catch (err) {

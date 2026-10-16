@@ -46,6 +46,7 @@
         <h1 class="visit-title" id="v-hello"></h1>
         <p class="muted" id="v-what"></p>
         <ol class="timeline" id="v-timeline"></ol>
+        <div class="alert alert-ok" id="v-live" role="status" aria-live="polite" hidden></div>
         <p class="visit-eta" id="v-eta" hidden></p>
         <div class="push-box" id="v-push" hidden>
           <button class="btn btn-outline" type="button" id="push-btn">Get updates on this phone</button>
@@ -106,6 +107,33 @@
       if (location.pathname !== `/visit/${code}`) history.replaceState(null, "", `/visit/${code}`);
       render(body);
       setupPush(code);
+      watchVisit(code, body);
+    }
+
+    // While this page is open it checks for news once a minute, so "on the way" and "done" show up
+    // on their own (no refresh, and no notification permission needed).
+    let watching = null;
+    function watchVisit(code, first) {
+      clearInterval(watching);
+      let last = { onTheWay: !!first.on_the_way_at, status: first.status };
+      if (first.status === "completed" || first.status === "cancelled") return;
+      const started = Date.now();
+      watching = setInterval(async () => {
+        if (document.hidden) return;
+        if (Date.now() - started > 4 * 3600 * 1000) { clearInterval(watching); return; }
+        try {
+          const res = await fetch(`/api/visit/${encodeURIComponent(code)}`);
+          if (!res.ok) return;
+          const v = await res.json();
+          const onTheWay = !!v.on_the_way_at;
+          const msg = v.status === "completed" && last.status !== "completed" ? "All done! Your before & after photos and receipt are below."
+            : onTheWay && !last.onTheWay ? "Your crew is on the way!" : null;
+          if (v.status !== last.status || onTheWay !== last.onTheWay) render(v);
+          if (msg) { const live = $("v-live"); live.textContent = msg; live.hidden = false; live.scrollIntoView({ block: "nearest" }); }
+          last = { onTheWay, status: v.status };
+          if (v.status === "completed" || v.status === "cancelled") clearInterval(watching);
+        } catch { /* offline: try again next minute */ }
+      }, 60000);
     }
 
     // "Get updates on this phone": asks permission only when tapped, then saves this phone for this booking.

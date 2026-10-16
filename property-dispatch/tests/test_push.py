@@ -116,3 +116,39 @@ def test_setup_page_and_visit_page_have_the_pieces(client):
     page = client.get("/push-setup")
     assert page.status_code == 200 and "VAPID_PRIVATE_KEY" in page.text and "noindex" in page.headers["x-robots-tag"]
     assert "push-btn" in client.get("/visit").text
+
+
+def test_on_my_way_button_sends_a_notification_not_a_text(client, repo, settings, on, sms):
+    job = make_job(client)
+    subscribe(client, job, lang="es")
+    texts_before = len(sms.sent)
+    run_nightly(repo, settings, TOMORROW)
+    stop = client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]
+    assert stop["notified_at"] is None
+    url = f"/api/stops/{stop['stop_id']}/on-the-way"
+    assert client.post(url).status_code == 401                      # crew only
+
+    sent = []
+    with patch("app.push.webpush", side_effect=lambda **kw: sent.append(kw)):
+        r = client.post(url, headers=CREW).json()
+        again = client.post(url, headers=CREW).json()
+    assert r["notified"] is True and r["pushed"] == 1 and len(sent) == 1
+    payload = json.loads(sent[0]["data"])
+    assert payload["body"] == push.MESSAGES["on_the_way"]["es"] and payload["action"] == "Ver mi visita"
+    assert len(sms.sent) == texts_before                            # the button never sends a text message
+    assert again["reason"] == "already_notified" and len(sent) == 1   # never twice
+    assert client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]["notified_at"]
+    assert client.get(f"/api/visit/{job['access_code']}").json()["on_the_way_at"]
+
+    client.post(f"/api/stops/{stop['stop_id']}/complete", headers=CREW)
+    assert client.post(url, headers=CREW).status_code == 409        # already done
+    assert client.post("/api/stops/nope/on-the-way", headers=CREW).status_code == 404
+
+
+def test_on_my_way_still_updates_the_visit_page_for_customers_without_notifications(client, repo, settings, sms):
+    job = make_job(client)                                          # never opted in, push keys not even set
+    run_nightly(repo, settings, TOMORROW)
+    stop = client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]
+    r = client.post(f"/api/stops/{stop['stop_id']}/on-the-way", headers=CREW).json()
+    assert r["notified"] is False and r["pushed"] == 0 and r["reason"] == "no_subscribers"
+    assert client.get(f"/api/visit/{job['access_code']}").json()["on_the_way_at"]   # the page shows it live

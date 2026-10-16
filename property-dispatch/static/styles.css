@@ -766,3 +766,5 @@ label.check input { width: 18px; height: 18px; }
 /* "Get updates on this phone" on the visit page */
 .push-box { margin-top: 12px; display: grid; gap: 6px; justify-items: start; }
 .push-box .muted { margin: 0; }
+
+.actions .btn-way { grid-column: 1 / -1; }

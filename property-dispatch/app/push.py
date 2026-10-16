@@ -29,6 +29,9 @@ MESSAGES = {
 }
 
 
+ACTION = {"en": "View my visit", "es": "Ver mi visita"}
+
+
 def _vapid(private_key: str) -> Vapid:
     """Accepts the 32-byte private key from /push-setup (base64url) or a standard PEM/DER key."""
     key = private_key.strip()
@@ -58,7 +61,8 @@ def notify_job(repo, settings: Settings, job_id: str, kind: str) -> int:
     sent = 0
     for sub in subs:
         lang = sub["lang"] if sub["lang"] in ("en", "es") else "en"
-        payload = json.dumps({"title": settings.business_name, "body": MESSAGES[kind][lang], "url": sub["visit_path"]})
+        payload = json.dumps({"title": settings.business_name, "body": MESSAGES[kind][lang], "url": sub["visit_path"],
+                              "action": ACTION[lang]})
         try:
             webpush(subscription_info={"endpoint": sub["endpoint"], "keys": {"p256dh": sub["p256dh"], "auth": sub["auth"]}},
                     data=payload, vapid_private_key=vapid,
@@ -67,6 +71,7 @@ def notify_job(repo, settings: Settings, job_id: str, kind: str) -> int:
         except WebPushException as exc:
             status = getattr(exc.response, "status_code", None)
             if status in (404, 410):             # the customer turned notifications off or removed the app
+                log.info("Push address for job %s is gone (HTTP %s); forgetting it", job_id, status)
                 repo.delete_push_subscription(sub["endpoint"])
             else:
                 log.warning("Push to job %s failed: %s", job_id, exc)
