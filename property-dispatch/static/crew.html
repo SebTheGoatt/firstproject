@@ -12,6 +12,29 @@
   <meta name="apple-mobile-web-app-title" content="Crew Route">
   <link rel="manifest" href="/crew.webmanifest">
   <link rel="stylesheet" href="/static/styles.css?v={{V}}">
+  <style>
+    /* Live Station (owner dashboard tab) */
+    .live-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 14px 0; }
+    .live-stat { text-align: center; padding: 14px 10px; background: var(--surface, #fff); border: 1px solid rgba(0,0,0,.08); border-radius: 12px; }
+    .live-stat .num { font-size: 1.9rem; font-weight: 700; line-height: 1.1; }
+    .live-stat .lbl { color: var(--muted, #5b6b62); font-size: .78rem; margin-top: 3px; }
+    .live-cols { display: grid; grid-template-columns: 1.2fr 1fr; gap: 18px; }
+    @media (max-width: 760px) { .live-cols { grid-template-columns: 1fr; } }
+    .ls-row { display: grid; grid-template-columns: 130px 1fr 44px; align-items: center; gap: 8px; margin: 6px 0; }
+    .ls-row .flabel { font-size: .82rem; }
+    .ls-bar { background: rgba(0,0,0,.08); border-radius: 6px; height: 14px; overflow: hidden; }
+    .ls-fill { background: var(--accent, #2f7d4f); height: 100%; border-radius: 6px; min-width: 2px; }
+    .ls-row .fcount { font-size: .8rem; text-align: right; font-variant-numeric: tabular-nums; }
+    .ls-drop { display: flex; justify-content: space-between; padding: 6px 2px; border-bottom: 1px solid rgba(0,0,0,.06); font-size: .85rem; }
+    .ls-feed { list-style: none; margin: 0; padding: 0; max-height: 300px; overflow-y: auto; }
+    .ls-feed li { display: flex; gap: 10px; padding: 6px 2px; border-bottom: 1px solid rgba(0,0,0,.06); font-size: .85rem; align-items: baseline; }
+    .ls-time { color: var(--muted, #7c8a82); white-space: nowrap; font-size: .75rem; font-variant-numeric: tabular-nums; }
+    .ls-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; align-self: center; }
+    .k-visit { background: #2b6cb0; } .k-step { background: #b7791f; }
+    .k-booked { background: #2f7d4f; } .k-exit { background: #c05621; }
+    .ls-note { font-size: .74rem; color: var(--muted, #5b6b62); margin-top: 10px; }
+    .live-station h4 { margin: 14px 0 6px; font-size: .95rem; }
+  </style>
 </head>
 <body class="crew-body">
 
@@ -92,6 +115,33 @@
         <div class="card route-card" id="route-card"></div>
         <h3 class="list-title" id="jobs-title">Bookings</h3>
         <ul class="job-list" id="job-list"></ul>
+
+        <!-- Live Station: owner-only live feed (visitors, bookings, click-offs) -->
+        <div class="live-station" id="live-station">
+          <div class="topbar">
+            <h4 style="margin:0">Live Station</h4>
+            <span id="ls-note" class="ls-note" style="margin-top:0">updates every few seconds</span>
+          </div>
+          <div class="live-grid">
+            <div class="live-stat"><div class="num" id="ls-online">–</div><div class="lbl">Online now</div></div>
+            <div class="live-stat"><div class="num" id="ls-visits">–</div><div class="lbl">Visits today</div></div>
+            <div class="live-stat"><div class="num" id="ls-bookings">–</div><div class="lbl">Booked today</div></div>
+            <div class="live-stat"><div class="num" id="ls-exits">–</div><div class="lbl">Left site (est.)</div></div>
+          </div>
+          <div class="live-cols">
+            <div>
+              <h4>Booking funnel today</h4>
+              <div id="ls-funnel"></div>
+              <h4>Where they left (estimated)</h4>
+              <div id="ls-dropoff"></div>
+            </div>
+            <div>
+              <h4>Live activity</h4>
+              <ul class="ls-feed" id="ls-feed"></ul>
+            </div>
+          </div>
+          <p class="ls-note">Pseudonymous activity only — no names, phones, or addresses. Departures are estimated. Day rolls over at midnight Central.</p>
+        </div>
       </section>
 
       <!-- -------- Today -------- -->
@@ -792,6 +842,110 @@
     $("dash-refresh").addEventListener("click", loadDash);
 
     if (token) start(); else showSignin();
+  </script>
+  <script>
+    // Live Station — owner dashboard tab. Rides on the crew sign-in token;
+    // polls only while the owner is signed in and the Dashboard tab is open.
+    (() => {
+      "use strict";
+      const $ = (id) => document.getElementById(id);
+      const LS = { online: "ls-online", visits: "ls-visits", bookings: "ls-bookings", exits: "ls-exits",
+                  funnel: "ls-funnel", dropoff: "ls-dropoff", feed: "ls-feed", note: "ls-note" };
+
+      function node(tag, cls, text) {
+        const n = document.createElement(tag);
+        if (cls) n.className = cls;
+        if (text != null) n.textContent = text;   // textContent only — never innerHTML
+        return n;
+      }
+
+      function clearPanel(note) {
+        $(LS.online).textContent = "–";
+        $(LS.visits).textContent = "–";
+        $(LS.bookings).textContent = "–";
+        $(LS.exits).textContent = "–";
+        $(LS.funnel).replaceChildren();
+        $(LS.dropoff).replaceChildren();
+        $(LS.feed).replaceChildren();
+        if (note) $(LS.note).textContent = note;
+      }
+
+      async function poll() {
+        // Poll only while signed in (sign-in view hidden) and the Dashboard tab
+        // is visible — that tab only exists for the owner. Any other state
+        // (signed out, member view, another tab) clears owner data.
+        const signin = document.getElementById("signin");
+        const tab = document.getElementById("tab-dash");
+        if (!signin || !tab) return;
+        if (signin.hidden === false || tab.hidden) { clearPanel(); return; }
+        let tok = "";
+        try { tok = localStorage.getItem("crewToken") || ""; } catch {}
+        if (!tok) { clearPanel(); return; }
+
+        let res;
+        try {
+          res = await fetch("/api/live/stats", { headers: { "X-Crew-Token": tok } });
+        } catch { return; }                       // transient network error: try next tick
+        if (res.status === 401) { clearPanel("Sign in again to see the live feed."); return; }
+        if (res.status === 403) { clearPanel("Owner access only."); return; }
+        if (!res.ok) return;
+        const d = await res.json();
+        // Final check AFTER parsing: if the user signed out or switched
+        // accounts while the request was in flight, drop the response and
+        // clear the panel instead of rendering it.
+        let tokNow = "";
+        try { tokNow = localStorage.getItem("crewToken") || ""; } catch {}
+        if (tokNow !== tok || signin.hidden === false) { clearPanel(); return; }
+
+        $(LS.online).textContent = d.online;
+        $(LS.visits).textContent = d.today.visits ?? 0;
+        $(LS.bookings).textContent = d.today.bookings ?? 0;
+        $(LS.exits).textContent = d.today.exits ?? 0;
+
+        const max = Math.max(1, ...d.funnel.map((f) => f.count));
+        $(LS.funnel).replaceChildren(...d.funnel.map((f) => {
+          const row = node("div", "ls-row");
+          row.append(node("div", "flabel", f.label));
+          const bar = node("div", "ls-bar");
+          const fill = node("div", "ls-fill");
+          fill.style.width = Math.round((f.count / max) * 100) + "%";
+          bar.append(fill);
+          row.append(bar, node("div", "fcount", String(f.count)));
+          return row;
+        }));
+
+        const drops = Object.entries(d.drop_off || {}).sort((a, b) => b[1] - a[1]);
+        $(LS.dropoff).replaceChildren(...(drops.length ? drops.map(([k, v]) => {
+          const row = node("div", "ls-drop");
+          row.append(node("span", null, k), node("b", null, String(v)));
+          return row;
+        }) : [node("p", "ls-note", "No departures recorded yet today.")]));
+
+        const names = { visit: "browsing", step: "booking" };   // exit/booked rows carry their own text
+        $(LS.feed).replaceChildren(...(d.recent || []).map((r) => {
+          const li = document.createElement("li");
+          li.append(node("span", "ls-dot k-" + r.kind));
+          li.append(node("span", "ls-time", new Date(r.ts * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" })));
+          const text = node("div");
+          const label = names[r.kind];
+          if (label) text.append(node("b", null, label), " ");
+          text.append(r.text);
+          if (r.dwell_ms) text.append(node("span", "ls-note", " · after " + Math.round(r.dwell_ms / 1000) + "s"));
+          li.append(text);
+          return li;
+        }));
+      }
+
+      // Clear the panel the moment the app switches to the sign-in view —
+      // not just on the next poll tick.
+      new MutationObserver(() => {
+        const signin = document.getElementById("signin");
+        if (signin && signin.hidden === false) clearPanel();
+      }).observe(document.getElementById("signin"), { attributes: true, attributeFilter: ["hidden"] });
+
+      setInterval(poll, 5000);
+      poll();
+    })();
   </script>
 </body>
 </html>
