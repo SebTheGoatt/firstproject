@@ -155,6 +155,7 @@ class StopView(BaseModel):
     leg_duration_s: int
     completed_at: datetime | None
     completed_by_name: str | None = None
+    notified_at: datetime | None = None   # when the customer was told the crew is on the way
     google_maps_url: str
     apple_maps_url: str
     payment_method: Literal["cash", "card"] = "cash"

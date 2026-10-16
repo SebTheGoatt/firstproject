@@ -44,7 +44,7 @@ from .pricing import (ADD_ONS, MAX_SQFT, MIN_SQFT, PACKAGES, LawnSizeError, chec
                       quote, season_text)
 from .routing.matrix import haversine_m
 from .nightly import run_nightly
-from .notify import (TwilioClient, booking_message, day_words, notify_next_customer, send_pay_link, send_text,
+from .notify import (TwilioClient, booking_message, day_words, notify_next_customer, notify_stop, send_pay_link, send_text,
                      service_words)
 from .pay_routes import register_pay_routes
 from .visit_routes import format_code, new_access_code, register_visit_routes
@@ -117,6 +117,7 @@ def build_route_view(route: dict, settings: Settings) -> RouteView:
             add_ons=s.get("add_ons") or [], add_on_total=s.get("add_on_total") or 0.0,
             eta=s["eta"], leg_distance_m=s["leg_distance_m"], leg_duration_s=s["leg_duration_s"],
             completed_at=s["completed_at"], completed_by_name=s.get("completed_by_name"),
+            notified_at=s.get("notified_at"),
             payment_method=s.get("payment_method") or "cash", payment_status=s.get("payment_status") or "unpaid",
             amount_due=s.get("amount_due"), amount_paid=s.get("amount_paid"), donation=s.get("donation") or 0.0,
             subtotal=s.get("subtotal"), tax_rate=s.get("tax_rate"), tax_amount=s.get("tax_amount"),
@@ -481,6 +482,19 @@ def create_app(
                       who: CrewIdentity = Depends(crew_auth), repo: Repository = Depends(get_repo)):
         return _complete(stop_id, repo, member_id=who.member_id, body=body,
                          base_url=site_url(settings, request))
+
+    @app.post("/api/stops/{stop_id}/on-the-way")
+    def on_the_way(stop_id: str, who: CrewIdentity = Depends(crew_auth), repo: Repository = Depends(get_repo)):
+        """The crew taps "On my way": the customer gets a push (if they opted in) and a text.
+        Completing a job does this automatically for the next stop; this covers the first stop of the day
+        and anyone you head to out of order."""
+        stop = repo.get_stop(stop_id)
+        if stop is None:
+            raise HTTPException(status_code=404, detail="Stop not found.")
+        if stop["completed_at"] is not None:
+            raise HTTPException(status_code=409, detail="That job is already done.")
+        member = repo.get_crew(who.member_id) if who.member_id else None
+        return notify_stop(repo, settings, stop, app.state.sms, member["display_name"] if member else None)
 
     class CompletionHook(BaseModel):
         stop_id: str | None = None

@@ -70,7 +70,7 @@ self.addEventListener("fetch", (event) => {
 });
 
 // ---------- Push notifications ----------
-// The server sends JSON like {"title": "...", "body": "...", "url": "/book"}.
+// The server sends JSON like {"title": "...", "body": "...", "url": "/visit/CODE", "action": "View my visit"}.
 
 self.addEventListener("push", (event) => {
   if (!event.data) return;
@@ -81,25 +81,25 @@ self.addEventListener("push", (event) => {
     data = { body: event.data.text() };
   }
   const options = {
-    body: data.body || "Tap to book your next clean cut!",
+    body: data.body || "Tap to open Semper Green Lawn Care.",
     icon: "/static/icons/icon-192.png",
     vibrate: [200, 100, 200],
     data: { url: data.url || "/" },
     actions: [
-      { action: "book", title: "Book Service Now" },
+      { action: "open", title: data.action || "Open" },
       { action: "close", title: "Dismiss" },
     ],
   };
   event.waitUntil(self.registration.showNotification(data.title || "Semper Green Lawn Care", options));
 });
 
-// Tapping the notification (or its Book button) opens the app, reusing an open window if there is one.
+// Tapping the notification (or its "View my visit" button) opens that page, reusing an open window if there is one.
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   if (event.action === "close") return;
 
   // Only ever open pages on this site, whatever the message says.
-  let target = new URL(event.action === "book" ? "/book" : event.notification.data?.url || "/", self.location.origin);
+  let target = new URL(event.notification.data?.url || "/", self.location.origin);
   if (target.origin !== self.location.origin) target = new URL("/", self.location.origin);
 
   event.waitUntil(
