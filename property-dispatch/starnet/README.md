@@ -16,6 +16,10 @@ use it for this and then **delete it in Render**. It lives only in that PowerShe
 Prefer no API key? `python semper_green_site.py --setup` makes the key and copies one line for you to paste into Render's
 Environment page; run it again after Render deploys.
 
+Small local models (a 9B GGUF coder model, for example) often can't call tools. That's fine: agents just read
+`semper_green_briefing.txt`, and `ask()` automatically hands such a model the briefing instead of tools. To use the same
+model for `ask()` that StarNet's agents use: `$env:SEMPER_MODEL = "hf.co/mradermacher/Qwopus3-5-9B-Coder-Flash-i1-GGUF:Q4_K_M"`.
+
 Day to day: `python semper_green_site.py --brief` (a fresh briefing) and `--sync` (is StarNet still on the same page?).
 
 ---

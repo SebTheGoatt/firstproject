@@ -509,19 +509,56 @@ def run_tool(site: SemperGreenSite, name: str, args: dict, approve=deny_by_defau
         return json.dumps({"error": str(exc)})
 
 
-def ask(site: SemperGreenSite, question: str, model: str = "qwen2.5:14b", approve=deny_by_default,
+DEFAULT_MODEL = os.environ.get("SEMPER_MODEL") or "qwen2.5:14b"      # set SEMPER_MODEL to the model StarNet's agents use
+
+
+class ModelProblem(Exception):
+    """The local model said no, in words the owner can act on."""
+
+
+def _chat(ollama_url: str, body: dict) -> dict:
+    req = urllib.request.Request(ollama_url.rstrip("/") + "/api/chat", data=json.dumps(body).encode(),
+                                 headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=300) as resp:
+            return json.loads(resp.read().decode("utf-8"))["message"]
+    except urllib.error.HTTPError as exc:                       # the model answered, but with an error
+        detail = exc.read().decode("utf-8", "replace")[:300]
+        if exc.code == 400 and "tools" in detail.lower():
+            raise ModelProblem("no_tools") from None
+        raise ModelProblem(f"Ollama said {exc.code}: {detail or exc.reason}") from None
+    except (urllib.error.URLError, OSError):
+        raise ModelProblem("I couldn't reach the local model. Is Ollama running?") from None
+    except (KeyError, ValueError):
+        raise ModelProblem("The local model sent back something I couldn't read.") from None
+
+
+def ask(site: SemperGreenSite, question: str, model: str | None = None, approve=deny_by_default,
         ollama_url: str = "http://localhost:11434", max_steps: int = 6) -> str:
-    """Ask a local Ollama model a question about the site; it may call the tools above."""
+    """Ask a local Ollama model a question about the site.
+
+    A model that supports tool calling can use the tools above. Many small local models (a lot of GGUF coder models)
+    don't: then this quietly gives the model the plain-English briefing instead, which needs no tool calling at all."""
+    model = model or DEFAULT_MODEL
     messages = [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": question}]
+    use_tools = True
     for _ in range(max_steps):
-        body = json.dumps({"model": model, "messages": messages, "tools": TOOLS, "stream": False}).encode()
-        req = urllib.request.Request(ollama_url.rstrip("/") + "/api/chat", data=body,
-                                     headers={"Content-Type": "application/json"})
+        body = {"model": model, "messages": messages, "stream": False}
+        if use_tools:
+            body["tools"] = TOOLS
         try:
-            with urllib.request.urlopen(req, timeout=300) as resp:
-                message = json.loads(resp.read().decode("utf-8"))["message"]
-        except (urllib.error.URLError, OSError, KeyError, ValueError):
-            return "I couldn't reach the local model. Is Ollama running?"
+            message = _chat(ollama_url, body)
+        except ModelProblem as exc:
+            if str(exc) != "no_tools":
+                return str(exc)
+            use_tools = False                                   # this model can't call tools: hand it the briefing instead
+            try:
+                text = briefing(site, load_expectations())
+            except SiteError as site_exc:
+                return f"I couldn't get the site briefing: {site_exc}"
+            messages = [{"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": f"Here is the current briefing from the website:\n\n{text}\n\nQuestion: {question}"}]
+            continue
         messages.append(message)
         calls = message.get("tool_calls") or []
         if not calls:
