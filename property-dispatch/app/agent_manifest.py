@@ -92,6 +92,7 @@ def build_manifest(settings: Settings, state, endpoints: list[dict], build: dict
         "dispatch_assistant": settings.agent_enabled,
         "agent_read_key": bool(settings.agent_key_read),
         "agent_ops_key": bool(settings.agent_key_ops),
+        "agent_actions_paused": bool(settings.agent_actions_paused),
     }
     config = [{"name": n, "group": g, "level": lvl, "turns_on": why, "status": _status(settings, n)}
               for n, g, lvl, why in SETTINGS_CHECKLIST]

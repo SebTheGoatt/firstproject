@@ -38,7 +38,7 @@ def test_mock_day_orders_list_every_job_in_clock_order_with_a_practice_briefing_
     text = sg.mock_day_orders(1, date(2026, 10, 17), FOLDER)
     assert text.startswith("MOCK DAY 1: Sat Oct 17 (practice). In the folder C:\\Users\\Raymu.")
     order = [line.split("  ", 1)[1] for line in text.splitlines() if line[:1].isdigit() and "  " in line]
-    assert order == ["The Overseer", "Recon Radar", "Marketer", "The Dispatcher", "The Overseer", "The Beyonder"]
+    assert order == ["The Overseer", "The Dispatcher", "Recon Radar", "Marketer", "The Dispatcher", "The Overseer", "The Beyonder"]
     assert '--brief --as-of 2026-10-17 --clock "6:30 AM"' in text and '--clock "5:15 PM"' in text
     assert "Use Recon Radar's QUIET DAYS" in text and "Reply to the owner with your report and nothing else" in text
     assert "Nothing is sent to customers and nothing on the website changes" in text
@@ -68,7 +68,7 @@ def test_every_schedule_line_in_the_setup_message_matches_the_jobs_the_runner_us
         times.setdefault(j[3], []).append(j[2])
     assert times["The Overseer"] == ["6:30 AM", "5:30 PM"] and "Overseer 6:30 AM and 5:30 PM" in setup
     assert times["Recon Radar"] == ["7:00 AM"] and "Recon Radar 7:00 AM" in setup
-    assert times["The Dispatcher"] == ["5:15 PM"] and "Dispatcher 5:15 PM" in setup
+    assert times["The Dispatcher"] == ["6:45 AM", "5:15 PM"] and "Dispatcher 6:45 AM and 5:15 PM" in setup
 
 
 def test_flags_are_read_from_the_command_line():
@@ -110,16 +110,17 @@ def test_a_practice_day_writes_a_file_per_job_with_the_briefing_as_of_that_time(
     site = make_site(box, client, settings)
     files = sg.write_mock_day_files(site, str(tmp_path), 1, date(2026, 10, 14), expected={})
     assert [(label, agent) for label, agent, _ in files] == [
-        ("6:30 AM", "The Overseer"), ("7:00 AM", "Recon Radar"), ("9:00 AM", "Marketer"),
+        ("6:30 AM", "The Overseer"), ("6:45 AM", "The Dispatcher"), ("7:00 AM", "Recon Radar"), ("9:00 AM", "Marketer"),
         ("5:15 PM", "The Dispatcher"), ("5:30 PM", "The Overseer"), ("6:00 PM", "The Beyonder")]
-    assert [Path(p).name for _, _, p in files] == ["0630-the-overseer.md", "0700-recon-radar.md", "0900-marketer.md",
-                                                   "1715-the-dispatcher.md", "1730-the-overseer.md", "1800-the-beyonder.md"]
+    assert [Path(p).name for _, _, p in files] == ["0630-the-overseer.md", "0645-the-dispatcher.md", "0700-recon-radar.md",
+                                                   "0900-marketer.md", "1715-the-dispatcher.md", "1730-the-overseer.md",
+                                                   "1800-the-beyonder.md"]
     assert all(Path(p).parent.name == "day1" and Path(p).parent.parent.name == "mock" for _, _, p in files)
-    evening = Path(files[4][2]).read_text(encoding="utf-8")
+    evening = Path(files[5][2]).read_text(encoding="utf-8")
     assert "(Wed Oct 14, 5:30 PM, practice day)" in evening and "Tomorrow (Thu Oct 15): 2 booking(s)" in evening
     orders = sg.mock_day_orders(1, date(2026, 10, 14), str(tmp_path), files)
     lines = [l for l in orders.splitlines() if "Read the file" in l]
-    assert len(lines) == 6 and lines[0].startswith("6:30 AM  The Overseer: Read the file ") and lines[0].endswith("Reply in the exact format.")
+    assert len(lines) == 7 and lines[0].startswith("6:30 AM  The Overseer: Read the file ") and lines[0].endswith("Reply in the exact format.")
     assert "0630-the-overseer.md" in lines[0] and "Nothing is sent to customers" in orders
 
 

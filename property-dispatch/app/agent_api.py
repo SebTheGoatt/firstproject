@@ -12,6 +12,7 @@ Endpoints (header  X-Agent-Key: <key>):
     GET  /api/agent/audit                      the last 100 things any agent did
     GET  /api/agent/manifest                   the site's facts, features and settings status, for StarNet to compare
     POST /api/agent/routes/{date}/build        (ops key only)
+    POST /api/agent/routes/{date}/stops/{n}/on-the-way   (ops key only) the site tells that customer the crew is on the way
 
 What agents can never do here: see customer names, phone numbers or access codes, see payment details beyond totals,
 refund or change prices, change settings or keys, delete anything, or deploy. Street addresses are only returned to
@@ -32,6 +33,7 @@ from .booking import local_now
 from .config import Settings
 from .models import order_label
 from .nightly import run_nightly
+from .notify import notify_stop
 
 log = logging.getLogger("agent_api")
 
@@ -39,8 +41,19 @@ RATE_LIMIT = 120          # calls per minute per key
 AUDIT_SIZE = 200
 
 
-API_VERSION = 1
-CLIENT_MIN_VERSION = 1       # the oldest StarNet client file this site still works with
+API_VERSION = 2
+CLIENT_MIN_VERSION = 2
+QUIET_BEFORE, QUIET_AFTER = 6, 20      # customers are never notified before 6 AM or after 8 PM
+EARLY_MINUTES = 30                     # ...nor more than 30 minutes before the crew is due
+
+
+def _as_dt(value, settings):
+    """A stop's arrival time as an aware datetime (it may arrive as text or already parsed)."""
+    if value is None:
+        return None
+    from datetime import datetime
+    dt = datetime.fromisoformat(value) if isinstance(value, str) else value
+    return dt if dt.tzinfo else dt.replace(tzinfo=settings.tz)       # the oldest StarNet client file this site still works with
 
 # One list of everything agents can do. StarNet's client uses the same tool names; /api/agent/manifest publishes this.
 ENDPOINTS = [
@@ -55,7 +68,10 @@ ENDPOINTS = [
     {"tool": "sync_check", "method": "GET", "path": "/api/agent/manifest", "scope": "read", "needs_approval": False,
      "does": "What the site is, its facts and settings, for comparing with StarNet"},
     {"tool": "build_route", "method": "POST", "path": "/api/agent/routes/{date}/build", "scope": "ops",
-     "needs_approval": True, "does": "Build or rebuild a day's driving route (changes the crew's schedule)"},
+     "needs_approval": False, "does": "Build or rebuild a day's driving route (the owner delegated this; it is reversible)"},
+    {"tool": "notify_on_the_way", "method": "POST", "path": "/api/agent/routes/{date}/stops/{sequence}/on-the-way",
+     "scope": "ops", "needs_approval": False,
+     "does": "Tell the next customer the crew is on the way (the website writes and sends the message itself)"},
 ]
 
 
@@ -174,8 +190,42 @@ def register_agent_api(app: FastAPI, settings: Settings, build: dict | None = No
     def audit(role: str = read):
         return {"entries": list(gate.audit)[-100:], "rate_limit_per_minute": RATE_LIMIT}
 
+    def not_paused():
+        if settings.agent_actions_paused:
+            raise HTTPException(status_code=403, detail="Agent actions are paused by the owner (AGENT_ACTIONS_PAUSED).")
+
+    @app.post("/api/agent/routes/{day}/stops/{sequence}/on-the-way")
+    def notify_stop_on_the_way(day: date, sequence: int, role: str = ops, request: Request = None):
+        """The site tells the next customer the crew is on the way. Agents trigger it; they never write the
+        message and never see the phone number. Guarded so it can only be true:
+        today's visit, the next unfinished stop, close to its arrival time, and not in quiet hours."""
+        not_paused()
+        r = repo(request)
+        now = local_now(settings)
+        if day != now.date():
+            raise HTTPException(status_code=409, detail="Customers are only told 'on the way' on the day of their visit.")
+        if not (QUIET_BEFORE <= now.hour < QUIET_AFTER):
+            raise HTTPException(status_code=409, detail="Quiet hours: customers aren't notified before 6 AM or after 8 PM.")
+        route = r.get_route(day)
+        stop = next((s for s in (route["stops"] if route else []) if s["sequence"] == sequence), None)
+        if stop is None:
+            raise HTTPException(status_code=404, detail="There is no such stop on that day's route.")
+        if stop["completed_at"]:
+            raise HTTPException(status_code=409, detail="That job is already done.")
+        if sequence != min(s["sequence"] for s in route["stops"] if not s["completed_at"]):
+            raise HTTPException(status_code=409, detail="That isn't the next stop on the route.")
+        eta = _as_dt(stop.get("eta"), settings)
+        if eta is not None and now < eta - timedelta(minutes=EARLY_MINUTES):
+            raise HTTPException(status_code=409, detail=f"Too early: the crew isn't due there until about "
+                                f"{eta.strftime('%I:%M %p').lstrip('0')}. Try again within {EARLY_MINUTES} minutes of that.")
+        result = notify_stop(r, settings, r.get_stop(stop["stop_id"]), request.app.state.sms, None, text=True)
+        # Only safe facts go back to the agent: never the message text, the name or the phone number.
+        return {"notified": bool(result.get("notified") or result.get("pushed")), "texted": bool(result.get("notified")),
+                "pushed": result.get("pushed", 0), "reason": result.get("reason")}
+
     @app.post("/api/agent/routes/{day}/build")
     def build_route(day: date, role: str = ops, request: Request = None):
+        not_paused()
         r = repo(request)
         if day < local_now(settings).date():
             raise HTTPException(status_code=409, detail="That day has already passed.")

@@ -14,10 +14,10 @@ from .test_api_flow import NOW, TOMORROW, book  # noqa: E402
 from .test_starnet_setup import box  # noqa: E402,F401  (the fake StarNet computer)
 
 GOOD = {
-    "The Overseer": "TODAY: 0 bookings\nTOMORROW: 2 bookings, route NOT BUILT\nPROBLEMS: none\nNEEDS OWNER: nothing",
+    "The Overseer": "TODAY: 0 bookings\nTOMORROW: 2 bookings, route NOT BUILT\nPROBLEMS: none\nSECURITY: all clear\nNEEDS OWNER: nothing",
     "Recon Radar": "BUSY DAYS: none\nQUIET DAYS: Sun Oct 18\nEXPECTED THIS WEEK: see briefing",
     "The Dispatcher": "NEEDS OWNER: build tomorrow's route (2 bookings).",
-    "The Beyonder": "WEEK SO FAR: fine\nGOING WELL: bookings\nWATCH: routes\nNEEDS OWNER: nothing",
+    "The Beyonder": "WEEK SO FAR: fine\nGOING WELL: bookings\nWATCH: routes\nSECURITY: all clear\nNEEDS OWNER: nothing",
 }
 
 
@@ -49,8 +49,9 @@ def fake_chat(calls, answers=GOOD, default="Done."):
 
 def test_who_works_when():
     sat = sg.day_jobs(0, date(2026, 10, 17))
-    assert [(j[2], j[3]) for j in sat] == [("6:30 AM", "The Overseer"), ("7:00 AM", "Recon Radar"), ("9:00 AM", "Marketer"),
-                                          ("5:15 PM", "The Dispatcher"), ("5:30 PM", "The Overseer"), ("6:00 PM", "The Beyonder")]
+    assert [(j[2], j[3]) for j in sat] == [("6:30 AM", "The Overseer"), ("6:45 AM", "The Dispatcher"), ("7:00 AM", "Recon Radar"),
+                                          ("9:00 AM", "Marketer"), ("5:15 PM", "The Dispatcher"), ("5:30 PM", "The Overseer"),
+                                          ("6:00 PM", "The Beyonder")]
     assert any(j[3] == "Engineer" for j in sg.day_jobs(2, date(2026, 10, 19)))          # a Monday
     assert not any(j[3] == "Engineer" for j in sg.day_jobs(3, date(2026, 10, 20)))
     assert any(j[3] == "The Sales Deck" for j in sg.day_jobs(2, date(2026, 10, 19)))
@@ -71,12 +72,13 @@ def test_the_week_runs_every_job_writes_the_report_and_scores_it(week):
     path = str(week.dir / "report.md")
     assert sg.run_week(week.site, days=7, start=date(2026, 10, 17), model="small-model", chat=fake_chat(calls),
                        out=out.append, report_path=path, expected={}) == 0
-    assert len(calls) == 37                                   # 28 daily + 6 (Marketer+Beyonder x3) + Sales Deck + Comms + Engineer
+    assert len(calls) == 44                                   # 35 daily + 6 (Marketer+Beyonder x3) + Sales Deck + Comms + Engineer
     assert all(c["model"] == "small-model" and c["stream"] is False and "tools" not in c for c in calls)
     report = Path(path).read_text(encoding="utf-8")
     assert "## Day 1: Sat Oct 17" in report and "## Day 7: Fri Oct 23" in report and "## Scorecard" in report
     assert "### 5:15 PM  The Dispatcher ✓ format" in report
     assert "| The Overseer | 14 | 14/14 | 0 | 0 |" in report and "| The Beyonder | 3 | 3/3 | 0 | 0 |" in report
+    assert "| The Dispatcher | 14 | 14/14 | 0 | 0 |" in report
     system = calls[0]["messages"][0]["content"]
     assert "Rules for EVERY agent" in system and "## The Overseer:" in system and "## Marketer:" not in system
     assert "practice day" in calls[0]["messages"][1]["content"]

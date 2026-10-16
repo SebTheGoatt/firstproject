@@ -1,5 +1,32 @@
 # StarNet ↔ Semper Green site
 
+## What the agents do for the business
+
+- **Promote:** the Marketer and Sales Deck write ads and pitches that fill quiet days. They never spend money: the owner pays and posts.
+- **Plan the routes:** the Dispatcher builds tomorrow's route after 5 PM and today's if it is missing.
+- **Keep customers informed:** at 6:45 AM the Dispatcher asks the website to tell customer 1 the crew is on the way. After that the
+  website tells each next customer by itself when the crew finishes the job before. The website writes and sends the message (app
+  notification, and a text message once Twilio is set up); agents never see a phone number or write customer text.
+- **Watch security:** every agent has a security duty (the Overseer reads the briefing's "Security watch"; Recon Radar flags unusual
+  spikes; the Engineer flags key or setting problems; the Marketer and Comms Officer never include secrets or ask for payment).
+- **Owner keeps:** money, the website's look, and every price.
+
+The website refuses an "on the way" unless it is today, the next unfinished stop, within 30 minutes of its arrival time, and
+between 6 AM and 8 PM. Every call is logged (`/api/agent/audit`). **Off switch:** set `AGENT_ACTIONS_PAUSED=true` in Render and
+agents can only look. Practice days never run anything: agents write `WOULD RUN: <command>`.
+
+Text messages need Twilio (a number, and US carrier registration called A2P 10DLC) set in Render as `TWILIO_ACCOUNT_SID`,
+`TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`. Until then the app notification and the visit page do the work.
+
+## Turn on the actions (once)
+
+```powershell
+$env:RENDER_API_KEY = "paste your Render API key"
+python semper_green_site.py --connect --ops      # also makes the narrow ops key, puts it in Render, redeploys
+python semper_green_site.py --go                 # asks before putting the ops key in StarNet's workspace for the Dispatcher
+```
+Delete the Render API key afterwards. The ops key can only build routes and trigger "on the way"; it cannot see customers or money.
+
 ## The short version
 
 **Once** (connects StarNet to the website; needs a Render API key in `$env:RENDER_API_KEY`, made at Render > Account Settings > API Keys):

@@ -239,7 +239,8 @@ Ollama's cloud, or a tunnel to your own computer (and protect the tunnel; Ollama
 
 `AGENT_KEY_READ` and `AGENT_KEY_OPS` (Render → Environment) give your own AI agents a limited, revocable way in at
 `/api/agent/*`: site health, a day's numbers without names or phone numbers, the week ahead, an audit log, and (ops
-key only) building a day's route. Agents never get the owner code. Setup and the StarNet client are in `starnet/`. `GET /api/agent/manifest` plus `python starnet/semper_green_site.py --sync` compares StarNet with the site (prices, areas, features, settings still to fix) so both stay on the same page.
+key only) building a day's route and asking the site to tell the next customer the crew is on the way (the site writes the
+message; guarded to today, the next stop, near its arrival time, outside quiet hours). `AGENT_ACTIONS_PAUSED=true` is the off switch. Agents never get the owner code. Setup and the StarNet client are in `starnet/`. `GET /api/agent/manifest` plus `python starnet/semper_green_site.py --sync` compares StarNet with the site (prices, areas, features, settings still to fix) so both stay on the same page.
 
 ## En español (Spanish)
 

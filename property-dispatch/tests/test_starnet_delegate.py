@@ -58,10 +58,11 @@ def test_the_playbook_covers_every_agent_and_only_uses_commands_that_exist(tmp_p
                   "The Sales Deck", "The Comms Officer"):
         assert f"## {agent}" in text
     for command in re.findall(r"python semper_green_site\.py (--[a-z-]+)", text):
-        assert command in ("--brief", "--sync"), command           # agents only ever run these two
-    assert "NEEDS OWNER" in text and "never" in text.lower() and "Texting is off" in text
-    for secret_word in ("sk_", "whsec_", "AGENT_KEY", "RENDER_API_KEY", "password"):
-        assert secret_word not in text
+        assert command in ("--brief", "--sync", "--build-route", "--notify"), command    # the only commands agents run
+    assert "NEEDS OWNER" in text and "never" in text.lower()
+    assert "the website writes and sends the \"on the way\" message" in text and "SECURITY" in text
+    for secret_pattern in ("sk_", "whsec_", "AGENT_KEY", "RENDER_API_KEY", "rnd_", "X-Agent-Key"):
+        assert secret_pattern not in text                          # no real keys or key settings in the instructions
 
 
 def test_the_playbook_lines_match_what_the_briefing_actually_prints():
