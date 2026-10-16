@@ -4,6 +4,7 @@
 //   /static/*    cache first (URLs carry ?v=<version>, so new deploys bust it)
 //   Crew route   network first; the last good copy is kept for offline viewing
 //   Other API    always network (bookings and completions must reach the server)
+//   Push         shows a notification when the server sends one; tapping it opens the site
 //
 // __VERSION__ is replaced by the server with a hash of the static files.
 
@@ -66,4 +67,46 @@ self.addEventListener("fetch", (event) => {
   } else if (request.mode === "navigate") {
     event.respondWith(networkFirst(request, SHELL));
   }
+});
+
+// ---------- Push notifications ----------
+// The server sends JSON like {"title": "...", "body": "...", "url": "/book"}.
+
+self.addEventListener("push", (event) => {
+  if (!event.data) return;
+  let data = {};
+  try {
+    data = event.data.json();
+  } catch {
+    data = { body: event.data.text() };
+  }
+  const options = {
+    body: data.body || "Tap to book your next clean cut!",
+    icon: "/static/icons/icon-192.png",
+    vibrate: [200, 100, 200],
+    data: { url: data.url || "/" },
+    actions: [
+      { action: "book", title: "Book Service Now" },
+      { action: "close", title: "Dismiss" },
+    ],
+  };
+  event.waitUntil(self.registration.showNotification(data.title || "Semper Green Lawn Care", options));
+});
+
+// Tapping the notification (or its Book button) opens the app, reusing an open window if there is one.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  if (event.action === "close") return;
+
+  // Only ever open pages on this site, whatever the message says.
+  let target = new URL(event.action === "book" ? "/book" : event.notification.data?.url || "/", self.location.origin);
+  if (target.origin !== self.location.origin) target = new URL("/", self.location.origin);
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
+      const open = windows.find((w) => w.url === target.href && "focus" in w);
+      if (open) return open.focus();
+      return self.clients.openWindow(target.href);
+    }),
+  );
 });
