@@ -1,4 +1,4 @@
-# Kids Coloring Book Business: Original Characters, $0 Startup
+# Inky & Me Coloring Club: Business Plan ($0 Startup)
 
 Built for: a solo founder, 10+ hrs/week, no audience, faceless marketing,
 AI-assisted art, a laptop and a phone.
@@ -18,11 +18,17 @@ AI-assisted art, a laptop and a phone.
 
 ## 2. The product
 
-**Brand (placeholder, rename freely):** *Wiggle Wood Coloring Club*
+**Brand:** *Inky & Me Coloring Club*. Tagline: **"We color together."**
 
-**Characters (original; designed by you, so keep a character sheet):**
+The name borrows the spirit of an unlikely buddy duo (a goofy blob sidekick
+and the kid who's his partner) without using any protected name. Before you
+commit, check the handle on each platform and search the USPTO trademark
+database (tmsearch.uspto.gov) for "Inky" in children's books.
+
+**Characters (original; keep a character sheet for each):**
 | Character | Hook | Kid appeal |
 |---|---|---|
+| **Inky** (mascot, on every product) | A round, friendly blob buddy with big eyes and a wobbly grin. "Inky can be any color you like!" | Dead simple to color; the kid is the "Me" |
 | Pip the Pup + family | Cozy family adventures at home and the park | Relatable, like family-cartoon shows |
 | Captain Bubbles & the Reef Crew | Goofy sea creatures with a boat | Silly humor, ocean pages |
 | The Clubhouse Critters | Friends who solve a tiny problem each page | Counting, shapes, letters (educational) |
@@ -33,7 +39,7 @@ sweet spot, and it fits your own 2-year-old as a built-in tester.
 **Product ladder (this is how it reaches $4k):**
 | Tier | Price | What it is |
 |---|---|---|
-| Free lead magnet | $0 | 5-page sampler PDF in exchange for an email |
+| Free lead magnet | $0 | 5-page sampler PDF in exchange for an email (built: `product/sampler.pdf`) |
 | Mini pack | $4.99 | 25 pages, one theme (a Pip's Day pack, a Reef Crew pack, etc.) |
 | Mega bundle | $14.99 | 150+ pages, every theme |
 | Coloring Club | $7/mo | New pages every week, a monthly activity pack, and a printable certificate |
@@ -62,7 +68,7 @@ double down on.
 | Sell digital files | Gumroad or Payhip (free plan) | 0 upfront; they take a cut per sale |
 | Print books | Amazon KDP | 0 upfront; royalty per sale |
 | Email list | MailerLite or Kit (free tier) | $0 under the subscriber cap |
-| Landing page | GitHub Pages (this repo) | $0 |
+| Landing page | `site/index.html`, hosted free on GitHub Pages or Netlify Drop | $0 |
 | Page layout / PDFs | Canva free, or Google Slides to PDF | $0 |
 | Art | Free AI image tools + your cleanup (see `AI_ART_PLAYBOOK.md`) | $0 |
 | Social | Pinterest, TikTok, Reels, YouTube Shorts | $0 |
@@ -140,12 +146,12 @@ library working together.
 
 ## 9. First 7 actions (do these this week)
 
-1. Pick the brand name and check the handle on Pinterest, TikTok and
-   Instagram.
+1. Check that `inkyandme` (or a close variant) is free on Pinterest, TikTok,
+   Instagram, YouTube and Gumroad, and grab them all.
 2. Open free accounts: Gumroad or Payhip, MailerLite, Pinterest Business, KDP.
 3. Finalize the 3 characters using the prompts in the playbook.
 4. Create the 5-page sampler and your first 25-page pack.
-5. Upload both and write your first product listing.
-6. Post your first 10 pins.
-7. Come back to me with the results, and I'll write the email sequence,
-   pin copy and video scripts.
+5. Upload both using the copy in `product/listings.md`.
+6. Post your first 10 pins from `marketing/pinterest-pins.md`.
+7. Load the welcome emails (`marketing/email-sequence.md`) and start the
+   video calendar (`marketing/video-scripts.md`).

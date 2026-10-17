@@ -17,6 +17,14 @@
 ## Character sheets
 Write each character once and paste the same description into every prompt.
 
+> **Inky**: a round, friendly blob creature shaped like a gumdrop, with a
+> wavy, drippy bottom edge, two stubby rounded arms, big oval eyes with
+> round pupils, one raised eyebrow, and a wide open grin with a small
+> tongue. No legs, no hair, no clothes. Thick outlines.
+>
+> The reference drawing of Inky is in `product/build-sampler.mjs` and every
+> page of `product/sampler.pdf`. Match AI pages to it, or trace over it.
+
 > **Pip the Pup**: a round, friendly puppy with big floppy ears, a tiny
 > round nose, a short tail and a small scarf. Simple shapes, thick outlines.
 
