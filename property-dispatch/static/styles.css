@@ -772,3 +772,6 @@ label.check input { width: 18px; height: 18px; }
 .route-mode { margin-bottom: 12px; min-height: 52px; font-size: 1.02rem; font-weight: 700; }
 .price-lines .fee-note { display: block; margin-top: 3px; font-size: 0.78rem; font-weight: 400; line-height: 1.4; color: var(--muted); }
 .per-visit-note { margin: 8px 0 0; font-weight: 600; }
+.auto-size { color: var(--brand); font-weight: 600; }
+.verify-badge { display: inline-block; margin: 0 4px 4px 0; padding: 2px 10px; border-radius: 999px; background: var(--brand-soft);
+  color: var(--brand); font-weight: 700; font-size: 0.8rem; }

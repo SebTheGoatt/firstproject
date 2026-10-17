@@ -45,7 +45,7 @@
           <label for="lawn-sqft">How large is your lawn?</label>
           <div class="sqft-input"><input id="lawn-sqft" type="text" inputmode="numeric" autocomplete="off"
             placeholder="Enter lawn square footage" aria-describedby="sqft-help sqft-error"><span>sq ft</span></div>
-          <p class="hint" id="sqft-help">Enter your estimated mowable lawn area in square feet.</p>
+          <p class="hint" id="sqft-help">Enter your mowable lawn area in square feet. Not sure? Skip it: we'll estimate it from your address in step 4.</p>
           <p class="field-error" id="sqft-error" role="alert" hidden></p>
         </div>
       </section>
@@ -188,6 +188,19 @@
     // Operational Target is pre-selected (the server says which one in booking-info); the customer can change it.
     let sqft = null, pkgKey = "supporter", lastQuote = null, sqftTouched = false;
     let assurances = { liability_coverage: null, background_checked: false };
+    // Lawn size filled in from the address (an estimate for the area), until the customer types their own.
+    let sqftAuto = null;   // { sqft, basis, sample, zone_name, address }
+    const SQFT_HELP = "Enter your mowable lawn area in square feet. Not sure? Skip it: we'll estimate it from your address in step 4.";
+    const estimated = () => sqftAuto && sqft === sqftAuto.sqft;
+    function applyEstimate(est, address) {
+      sqftAuto = { ...est, address };
+      sqftInput.value = String(est.sqft);
+      readSqft(false); updateRateCards(); renderEstimate();
+      $("sqft-help").textContent = est.basis === "recent"
+        ? `Estimated from ${est.sample} lawns we've measured in ${est.zone_name}. Change it if you know your size; the crew confirms it on site.`
+        : `Estimated from a typical lot in ${est.zone_name}. Change it if you know your size; the crew confirms it on site.`;
+      $("sqft-help").classList.add("auto-size");
+    }
     const chosenAddOns = new Set(new URLSearchParams(location.search).getAll("addon"));
     const sqftInput = $("lawn-sqft");
 
@@ -277,7 +290,7 @@
         && !(lastQuote.add_on_total > 0) ? lastQuote.tax : null;
       lines.replaceChildren(
         baseRow(money(baseFee)),
-        row("Lawn size", sqft ? `${sqft.toLocaleString()} sq ft` : "Enter above"),
+        row("Lawn size", sqft ? `${sqft.toLocaleString()} sq ft${estimated() ? " (estimated)" : ""}` : "Enter above or add your address"),
         row("Selected rate", p ? `${p.label} · ${rateText(p.sqft_rate)}` : "Choose above"),
         row("Lawn size charge", charge != null ? money(charge) : "—"),
         row("Estimated subtotal", subtotal != null ? money(subtotal) : "—", "sub-strong"),
@@ -331,16 +344,19 @@
       priceEmpty.hidden = true; priceLines.hidden = false; priceNote.hidden = false;
       const charge = Math.round((q.mow_price - q.base_fee) * 100) / 100;
       priceLines.replaceChildren(
-        row(`Lawn mowing · ${q.package_label} · ${q.lawn_sqft.toLocaleString()} sq ft`, ""),
+        row(`Lawn mowing · ${q.package_label} · ${q.lawn_sqft.toLocaleString()} sq ft${estimated() ? " (estimated)" : ""}`, ""),
         baseRow(money(q.base_fee), "sub"),
         row(`Lawn size charge (${q.lawn_sqft.toLocaleString()} × ${rateText(q.sqft_rate)})`, money(charge), "sub"),
         ...(q.add_ons || []).map((a) => row(a.price == null ? a.label : `Add-on: ${a.label}`, a.price == null ? "No charge" : money(a.price))),
         row("Subtotal", money(q.subtotal), "sub-strong"),
         row(`Sales tax (${pct(q.tax_rate)})`, money(q.tax)),
         row("Total", money(q.total), "total"));
-      priceNote.textContent = (q.add_ons || []).some((a) => a.price == null)
+      priceNote.replaceChildren();
+      if (estimated()) priceNote.append(Object.assign(document.createElement("span"),
+        { className: "verify-badge", textContent: "✓ Address verified · lawn size estimated" }), " ");
+      priceNote.append((q.add_ons || []).some((a) => a.price == null)
         ? "Holiday lighting is a free quote: the crew takes a look and you decide later. Nothing is charged for it."
-        : "Your crew confirms the lawn size on site; the price only changes if it's different.";
+        : "Your crew confirms the lawn size on site; the price only changes if it's different.");
     }
 
     async function updateServer() {
@@ -350,7 +366,9 @@
       areaBox.className = "area-check"; areaBox.textContent = "Checking your address…"; areaBox.hidden = false;
       const hint = addressInput.dataset.picked === address && latInput.value
         ? { lat: Number(latInput.value), lng: Number(lngInput.value) } : {};
-      const priced = sqft && pkgKey;
+      // A new address while the size is still our estimate: check it first so the estimate follows the address.
+      const reestimate = sqftAuto && estimated() && sqftAuto.address !== address;
+      const priced = sqft && pkgKey && !reestimate;
       const url = priced ? "/api/quote" : "/api/check-address";
       const payload = priced
         ? { address, service: service(), lawn_sqft: sqft, package: pkgKey, add_ons: pickedAddOns(),
@@ -368,6 +386,11 @@
         }
         areaBox.className = "area-check " + (body.in_area ? "ok" : "bad");
         areaBox.textContent = body.in_area ? `✓ Good news: you're in our ${body.zone_name} area.` : body.message;
+        // No lawn size yet (or still our estimate)? Fill in the estimate for this area and get the real price.
+        if (!priced && body.in_area && body.lawn_estimate && (!sqftInput.value.trim() || reestimate)) {
+          applyEstimate(body.lawn_estimate, address);
+          return updateServer();
+        }
         renderReview(priced ? body : (body.in_area ? null : { in_area: false }));
       } catch {
         if (seq === checkSeq) areaBox.hidden = true;  // offline: the booking itself will report it
@@ -377,6 +400,7 @@
 
     let sqftTimer;
     sqftInput.addEventListener("input", () => {
+      if (sqftAuto) { sqftAuto = null; $("sqft-help").textContent = SQFT_HELP; $("sqft-help").classList.remove("auto-size"); }
       const valid = readSqft(sqftTouched);
       renderEstimate();
       clearTimeout(sqftTimer);
