@@ -21,6 +21,7 @@ from datetime import date, datetime, timezone
 from typing import Any, Protocol
 
 from .models import GeoPoint, Job, Service
+from .pricing import scope_of
 
 ACTIVE_STATUSES = ("pending", "scheduled")
 CREW_PUBLIC_FIELDS = ("id", "slug", "display_name", "role_title", "bio", "years_experience", "specialties",
@@ -310,10 +311,11 @@ class SupabaseRepository:
         self.sb.table("routes").update({"optimized_at": _now_iso()}).eq("id", route_id).execute()
 
     def recent_lawn_sizes(self, zone_key: str, limit: int = 50) -> list[int]:
-        """Crew-confirmed lawn sizes of finished jobs in an area, newest first (for the booking estimate)."""
-        rows = (self.sb.table("jobs").select("lawn_sqft").eq("zone_key", zone_key).eq("status", "completed")
-                .not_.is_("lawn_sqft", "null").order("completed_at", desc=True).limit(limit).execute().data)
-        return [r["lawn_sqft"] for r in rows]
+        """Crew-measured lawn sizes of finished jobs in an area, newest first (for the booking estimate).
+        Price-locked bookings (yard / full property) are left out: their size was set at booking, not measured."""
+        rows = (self.sb.table("jobs").select("lawn_sqft, add_ons").eq("zone_key", zone_key).eq("status", "completed")
+                .not_.is_("lawn_sqft", "null").order("completed_at", desc=True).limit(limit * 2).execute().data)
+        return [r["lawn_sqft"] for r in rows if not scope_of(r.get("add_ons"))][:limit]
 
     def set_stop_note(self, stop_id: str, note: str | None) -> None:
         # Needs supabase/migrations/20261026000000_crew_notes.sql (route_stops.crew_note).
@@ -650,7 +652,8 @@ class MemoryRepository:
             self.routes[route_id]["optimized_at"] = _now_iso()
 
     def recent_lawn_sizes(self, zone_key: str, limit: int = 50) -> list[int]:
-        done = [j for j in self.jobs.values() if j.get("zone_key") == zone_key and j["status"] == "completed" and j.get("lawn_sqft")]
+        done = [j for j in self.jobs.values() if j.get("zone_key") == zone_key and j["status"] == "completed" and j.get("lawn_sqft")
+                and not scope_of(j.get("add_ons"))]
         done.sort(key=lambda j: str(j.get("completed_at") or ""), reverse=True)
         return [j["lawn_sqft"] for j in done[:limit]]
 

@@ -10,7 +10,7 @@ from unittest.mock import patch
 def test_check_address_returns_a_typical_estimate_for_a_new_area(client):
     r = client.post("/api/check-address", json={"address": "100 A Example Rd"}).json()
     assert r["in_area"] is True
-    assert r["lawn_estimate"] == {"sqft": 4500, "basis": "typical", "sample": 0, "zone_name": r["zone_name"]}
+    assert r["lawn_estimate"] == {"sqft": 4500, "full_sqft": 8000, "basis": "typical", "sample": 0, "zone_name": r["zone_name"]}
 
 
 def test_outside_the_area_has_no_estimate(client):
@@ -27,7 +27,7 @@ def test_estimate_uses_crew_confirmed_lawns_once_there_are_enough(repo):
 
     assert estimate_lawn(Repo([3000] * (MIN_SAMPLE - 1)), zone)["basis"] == "typical"
     e = estimate_lawn(Repo([3000, 3150, 6200, 3400, 2900]), zone)
-    assert e == {"sqft": 3200, "basis": "recent", "sample": 5, "zone_name": zone.name}       # median 3150 → nearest 100
+    assert e == {"sqft": 3200, "full_sqft": zone.full_property_sqft, "basis": "recent", "sample": 5, "zone_name": zone.name}
 
     class Broken:
         def recent_lawn_sizes(self, *a): raise RuntimeError("db down")
@@ -45,3 +45,68 @@ def test_memory_repo_reads_only_finished_jobs_in_the_zone(client, repo, settings
     repo.complete_stop(stop["stop_id"])
     assert repo.recent_lawn_sizes("SPRING_LUXURY_LOOP") == [5000]                             # the size from the booking
     assert repo.recent_lawn_sizes("KLEIN_CORE") == []
+
+
+
+# ---------- Yard only / Full property: server-set size, locked price ----------
+from app.zones import SERVICE_ZONES  # noqa: E402
+
+CREW = {"X-Crew-Token": "crew"}
+
+
+def scoped_booking(client, scope, lawn_sqft=None, letter="A", suffix="0400", method="cash"):
+    body = {"name": f"Customer {letter}", "phone": f"(281) 555-{suffix}", "address": f"100 {letter} Example Rd",
+            "service": "mowing", "package": "supporter", "scheduled_date": TOMORROW.isoformat(),
+            "add_ons": [scope], "payment_method": method}
+    if lawn_sqft is not None:
+        body["lawn_sqft"] = lawn_sqft
+    with patch("app.main.local_now", return_value=NOW):
+        return client.post("/api/jobs", json=body)
+
+
+def test_every_area_has_sensible_yard_and_full_sizes():
+    for z in SERVICE_ZONES:
+        assert 1000 <= z.yard_sqft < z.full_property_sqft <= 87_120
+    cleveland = zone_by_key("CLEVELAND_HUB")
+    assert cleveland.full_property_sqft == 14_500 and zone_by_key("COLONY_RIDGE").full_property_sqft == 14_500
+
+
+def test_quote_prices_the_area_size_not_the_browsers_number(client):
+    q = client.post("/api/quote", json={"address": "100 A Example Rd", "service": "mowing", "package": "supporter",
+                                         "lawn_sqft": 200, "add_ons": ["scope_full"]}).json()
+    assert q["lawn_sqft"] == 8000 and q["subtotal"] == 115.0 and q["total"] == round(115 * 1.0825, 2)   # $35 + 8,000 × $0.010
+    q = client.post("/api/quote", json={"address": "100 A Example Rd", "service": "mowing", "package": "supporter",
+                                         "add_ons": ["scope_yard"]}).json()
+    assert q["lawn_sqft"] == 4500 and q["total"] == 86.6
+
+
+def test_booking_with_full_property_is_sized_by_the_server(client, repo):
+    r = scoped_booking(client, "scope_full", lawn_sqft=500)
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["lawn_sqft"] == 8000 and body["subtotal"] == 115.0
+    assert [a["key"] for a in body["add_ons"]] == ["scope_full"] and body["add_on_total"] == 0
+
+
+def test_choosing_both_areas_is_refused(client):
+    r = client.post("/api/quote", json={"address": "100 A Example Rd", "service": "mowing", "package": "supporter",
+                                         "add_ons": ["scope_yard", "scope_full"]})
+    assert r.status_code == 422
+
+
+def test_locked_bookings_are_not_re_priced_on_site(client, repo, settings):
+    from app.nightly import run_nightly
+    assert scoped_booking(client, "scope_yard").status_code == 201
+    run_nightly(repo, settings, TOMORROW)
+    stop = client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]
+    assert stop["service_label"] == "Mowing + Yard only"                       # the crew sees what was booked
+    r = client.post(f"/api/stops/{stop['stop_id']}/complete", json={"lawn_sqft": 12000, "cash_collected": 86.60}, headers=CREW)
+    assert r.status_code == 200, r.text
+    assert r.json()["payment"]["total"] == 86.6                                 # locked: still the booked price
+    assert repo.get_stop(stop["stop_id"])["lawn_sqft"] == 4500
+
+
+def test_scope_choices_are_not_offered_as_add_on_checkboxes(client):
+    info = client.get("/api/booking-info").json()
+    scopes = [a["key"] for a in info["add_ons"] if a["scope"]]
+    assert scopes == ["scope_yard", "scope_full"]

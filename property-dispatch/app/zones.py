@@ -26,6 +26,10 @@ class ServiceZone:
     mow_rate: float                           # mowing base trip fee per visit, USD (+ rate × sq ft)
     extra_boxes: tuple[Box, ...] = field(default=())
     tax_rate: float = DEFAULT_TAX_RATE
+    # Lawn sizes the booking form prices when the customer picks what to mow (see app/lawn_estimate.py).
+    # Starting points: adjust per area as real jobs come in.
+    yard_sqft: int = 4_500             # "Yard only": the main / fenced yard
+    full_property_sqft: int = 8_000    # "Full property": the whole lot minus the house
 
     @property
     def boxes(self) -> tuple[Box, ...]:
@@ -61,6 +65,7 @@ SERVICE_ZONES: tuple[ServiceZone, ...] = (
         # East edge at -95.115 so Plum Grove (~-95.109 to -95.087) belongs to Cleveland.
         bbox=(-95.2600, 30.1850, -95.1150, 30.2950),
         mow_rate=FLAT_FEE,
+        full_property_sqft=10_000,
     ),
     ServiceZone(
         key="CLEVELAND_HUB",
@@ -73,6 +78,7 @@ SERVICE_ZONES: tuple[ServiceZone, ...] = (
         # with the Cleveland sector.
         extra_boxes=((-95.1120, 30.1650, -95.0800, 30.2350),),
         mow_rate=FLAT_FEE,
+        full_property_sqft=14_500,     # e.g. 686 Road 5039: ~19,166 sq ft lot minus the house
     ),
     ServiceZone(
         key="COLONY_RIDGE",
@@ -84,6 +90,7 @@ SERVICE_ZONES: tuple[ServiceZone, ...] = (
         # Rancho San Vicente (~30.232, -95.087), which sits in Plum Grove, stays in that zone.
         bbox=(-95.0795, 30.1450, -95.0000, 30.2750),
         mow_rate=FLAT_FEE,
+        full_property_sqft=14_500,
     ),
 )
 
