@@ -42,6 +42,7 @@ It copies one message to your clipboard. Paste it to The Beyonder in StarNet. Le
 briefing fresh. That is the whole setup.
 
 Practice day: `python semper_green_site.py --mock-day 1` copies that day's orders; paste them to The Beyonder (then `2`, `3`...).
+New Caney practice week: `python semper_green_site.py --seed-mock-week --area new-caney` (fake bookings Mon–Sat the week after the first mock week), then `--run-week 6 2026-10-26`.
 
 The Render API key can do anything on your Render account: use it for `--connect`, then **delete it in Render**.
 Prefer no API key? `python semper_green_site.py --setup` makes the key and copies one line for Render's Environment page.
