@@ -50,7 +50,7 @@ def test_manifest_needs_the_agent_key_and_holds_no_secrets(client, on, manifest)
 def test_manifest_facts_match_the_pricing_code(manifest):
     f = manifest()["facts"]
     assert f["pricing"]["base_fee"] == 35.0 and f["pricing"]["sqft_limits"] == {"min": 100, "max": 87120}
-    assert f["pricing"]["packages"]["supporter"] == {"label": "Plus", "rate_per_sqft": 0.01, "giving": 0.07}
+    assert f["pricing"]["packages"]["supporter"] == {"label": "Operational Target", "rate_per_sqft": 0.01, "giving": 0.07}
     assert f["pricing"]["add_ons"]["holiday_lights"]["quote_only"] is True and f["pricing"]["add_ons"]["gutters"]["price"] == 15.0
     assert "COLONY_RIDGE" in f["areas"] and f["areas"]["COLONY_RIDGE"]["tax_rate"] == 0.0825
     assert sum(f["giving_split"].values()) == pytest.approx(1.0)

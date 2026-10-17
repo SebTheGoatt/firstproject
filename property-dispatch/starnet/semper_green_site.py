@@ -527,7 +527,7 @@ Business Profile) that fill those days.
 OUTPUT, for each: `AD <n>: <headline, under 8 words> | <body, under 30 words> | AREA: <one service area> | RUN ON: <a quiet day>`
 then one line: `NEEDS OWNER: approve ad spend of $<amount> for <days>`. You never spend money or enter payment details: the owner pays and posts.
 RULES: only true claims (veteran-owned, Spring TX, mowing starts at $35 plus lawn size, bin cleaning and gutters are $15
-add-ons, 2%/7%/12% of Standard/Plus/Premium orders go to local causes). No discounts or promises unless the owner approves.
+add-ons, 2%/7%/12% of Neighborhood Block Lock/Operational Target/Bi-Weekly Demand orders go to local causes). No discounts or promises unless the owner approves.
 SECURITY: never put a customer, a key, or an internal number (bookings per day, totals) in public ad text. No links except
 the website address.
 

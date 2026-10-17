@@ -38,7 +38,8 @@ def test_mowing_is_35_base_plus_sqft_times_chosen_rate(sqft, package, subtotal, 
 def test_tier_rates_and_names():
     rates = {k: quote(SPRING, Service.MOWING, 1_000, package=k) for k in ("standard", "supporter", "hero")}
     assert {k: (q.sqft_rate, q.as_dict()["package_label"]) for k, q in rates.items()} == {
-        "standard": (Decimal("0.009"), "Standard"), "supporter": (Decimal("0.010"), "Plus"), "hero": (Decimal("0.012"), "Premium")}
+        "standard": (Decimal("0.009"), "Neighborhood Block Lock"), "supporter": (Decimal("0.010"), "Operational Target"),
+        "hero": (Decimal("0.012"), "Bi-Weekly Demand")}
 
 
 def test_no_lawn_size_is_never_guessed():
@@ -105,7 +106,7 @@ def test_live_quote_endpoint(client):
                                         "package": "supporter"}).json()
     assert (r["in_area"], r["subtotal"], r["tax"], r["total"], r["charity_amount"], r["business_net"]) == \
         (True, 85.0, 7.01, 92.01, 5.95, 79.05)
-    assert (r["package_label"], r["sqft_rate"], r["base_fee"], r["mow_price"]) == ("Plus", 0.01, 35.0, 85.0)
+    assert (r["package_label"], r["sqft_rate"], r["base_fee"], r["mow_price"]) == ("Operational Target", 0.01, 35.0, 85.0)
     for bad in ({"package": "gold", "lawn_sqft": 5_000}, {"package": "standard", "lawn_sqft": 0},
                 {"package": "standard", "lawn_sqft": -10}, {"package": "standard", "lawn_sqft": "abc"},
                 {"package": "standard"}):
@@ -288,8 +289,40 @@ def test_stripe_charges_exactly_the_booked_total_and_never_the_free_quote(client
     StripeClient(settings, httpx.Client(transport=httpx.MockTransport(handler))).create_checkout(
         job_id=b["id"], service_label="Mowing", service_date=b["scheduled_date"], amount_due=b["total"], donation=0,
         success_url="https://x/ok", cancel_url="https://x/no", subtotal=b["subtotal"], tax=b["tax"],
-        tax_rate=b["tax_rate"], add_ons=b["add_ons"], package_label="Plus", charity_rate=0.07, charity_amount=b["charity_amount"])
+        tax_rate=b["tax_rate"], add_ons=b["add_ons"], package_label="Operational Target", charity_rate=0.07, charity_amount=b["charity_amount"])
     lines = [int(v) for k, v in sent.items() if k.endswith("[unit_amount]")]
     names = [v for k, v in sent.items() if k.endswith("[product_data][name]")]
     assert sum(lines) == 10825 and lines == [8500, 1500, 825]
     assert not any("Holiday" in n for n in names)
+
+
+# ---------- Per-visit formula, tier names, base-fee note facts, no subscriptions ----------
+@pytest.mark.parametrize("package, rate", [("hero", "0.012"), ("supporter", "0.010"), ("standard", "0.009")])
+@pytest.mark.parametrize("sqft", [2500, 4500, 8000, 12500])
+def test_total_is_base_plus_sqft_times_multiplier_plus_texas_tax(package, rate, sqft):
+    zone = zone_by_key("SPRING_LUXURY_LOOP")
+    q = quote(zone, Service.MOWING, sqft, package=package)
+    subtotal = (Decimal("35.00") + sqft * Decimal(rate)).quantize(Decimal("0.01"))
+    tax = (subtotal * Decimal("0.0825")).quantize(Decimal("0.01"), rounding="ROUND_HALF_UP")
+    assert (q.subtotal, q.tax, q.total) == (subtotal, tax, subtotal + tax)
+
+
+def test_tiers_are_named_and_operational_target_is_featured(client):
+    info = client.get("/api/booking-info").json()
+    assert [(p["label"], p["sqft_rate"]) for p in info["packages"]] == [
+        ("Neighborhood Block Lock", 0.009), ("Operational Target", 0.01), ("Bi-Weekly Demand", 0.012)]
+    assert info["featured_package"] == "supporter"
+
+
+def test_base_fee_note_claims_nothing_the_owner_has_not_confirmed(client, settings):
+    assert client.get("/api/booking-info").json()["assurances"] == {"liability_coverage": None, "background_checked": False}
+    settings.liability_coverage, settings.crew_background_checked = "$2M", True
+    assert client.get("/api/booking-info").json()["assurances"] == {"liability_coverage": "$2M", "background_checked": True}
+
+
+def test_card_checkout_is_one_time_per_visit_never_a_subscription():
+    from pathlib import Path
+    src = Path(__file__).resolve().parents[1].joinpath("app", "payments.py").read_text(encoding="utf-8")
+    assert '"mode": "payment"' in src
+    for word in ('"subscription"', "recurring", "interval"):
+        assert word not in src

@@ -40,7 +40,7 @@ def test_booking_info_offers_the_packages_and_causes(client):
     assert [(p["key"], p["sqft_rate"], p["charity_rate"]) for p in info["packages"]] == [
         ("standard", 0.009, 0.02), ("supporter", 0.01, 0.07), ("hero", 0.012, 0.12)]
     assert "default_package" not in info          # the customer must pick a rate; nothing is preselected
-    assert [p["label"] for p in info["packages"]] == ["Standard", "Plus", "Premium"]
+    assert [p["label"] for p in info["packages"]] == ["Neighborhood Block Lock", "Operational Target", "Bi-Weekly Demand"]
     assert info["lawn_sqft_limits"] == {"min": 100, "max": 87_120}
     assert [c["percent"] for c in info["charities"]] == [33, 33, 34]
 

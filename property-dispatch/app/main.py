@@ -43,7 +43,7 @@ from .crew_routes import register_crew_routes
 from .models import (SERVICE_LABELS, SERVICE_MINUTES, order_label, AddressCheck, CompleteStopRequest, GeoPoint, JobCreated,
                      JobRequest, OptimizeRouteRequest, QuoteRequest, RouteView, Service, StopNote, StopView)
 from .charity import describe as describe_charities, split_donation
-from .pricing import (ADD_ONS, MAX_SQFT, MIN_SQFT, PACKAGES, LawnSizeError, check_sqft, in_season, package_for_rate,
+from .pricing import (ADD_ONS, FEATURED_PACKAGE, MAX_SQFT, MIN_SQFT, PACKAGES, LawnSizeError, check_sqft, in_season, package_for_rate,
                       quote, season_text)
 from .routing.matrix import haversine_m
 from .nightly import run_nightly
@@ -280,11 +280,15 @@ def create_app(
             "zones": [{"key": z.key, "name": z.name, "mow_rate": z.mow_rate, "tax_rate": z.tax_rate,
                        "bbox": list(z.bbox), "boxes": [list(b) for b in z.boxes]}
                       for z in SERVICE_ZONES],
-            # Mowing: base fee (per area) + lawn sq ft × the rate tier the customer picks. No default tier.
+            # Mowing: base fee (per area) + lawn sq ft × the rate tier the customer picks (form pre-selects the featured one).
             "packages": [{"key": k, "label": p["label"], "description": p["description"],
                           "sqft_rate": float(p["rate"]), "charity_rate": float(p["giving"])}
                          for k, p in PACKAGES.items()],
+            "featured_package": FEATURED_PACKAGE,
             "lawn_sqft_limits": {"min": MIN_SQFT, "max": MAX_SQFT},
+            # Owner-confirmed facts for the base-fee note; nothing is claimed unless it's set in Render.
+            "assurances": {"liability_coverage": settings.liability_coverage.strip() or None,
+                           "background_checked": settings.crew_background_checked},
             # Add-ons to a mow. price None = free quote request. Seasonal ones list their service dates.
             "add_ons": [{"key": k, "label": a["label"], "price": float(a["price"]) if a["price"] is not None else None,
                          "quote": bool(a.get("quote")), "season": season_text(k), "season_range": a.get("season")}
@@ -368,7 +372,7 @@ def create_app(
             raise HTTPException(status_code=422, detail=(
                 "Bin cleaning and gutters are add-ons to a mowing visit. Book mowing and add them on."))
         if body.package is None:
-            raise HTTPException(status_code=422, detail="Choose a rate: Standard, Plus or Premium.")
+            raise HTTPException(status_code=422, detail="Choose a rate: Neighborhood Block Lock, Operational Target or Bi-Weekly Demand.")
         try:
             lawn_sqft = check_sqft(body.lawn_sqft)
         except LawnSizeError as exc:

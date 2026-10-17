@@ -539,7 +539,7 @@
       // The customer's package: $base + rate × sq ft, and a share of the price to charity.
       const PKG = { standard: [0.009, 0.02], supporter: [0.01, 0.07], hero: [0.012, 0.12] };
       const [perSqft, giving] = PKG[s.package] || (s.sqft_rate ? [s.sqft_rate, s.charity_rate || 0] : PKG.standard);
-      const pkgName = { standard: "Standard", supporter: "Plus", hero: "Premium" }[s.package] || "Standard";
+      const pkgName = { standard: "Neighborhood Block Lock", supporter: "Operational Target", hero: "Bi-Weekly Demand" }[s.package] || "Neighborhood Block Lock";
       const donationLine = el("p", { class: "hint donation-line", hidden: true });
       let cashEdited = false;
       cashIn?.addEventListener("input", () => { cashEdited = true; });

@@ -770,3 +770,5 @@ label.check input { width: 18px; height: 18px; }
 .rates.tiers label.featured { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand), var(--shadow); position: relative; }
 .rates.tiers .tier-badge { justify-self: start; padding: 2px 8px; border-radius: 999px; background: var(--brand); color: var(--brand-ink); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; }
 .route-mode { margin-bottom: 12px; min-height: 52px; font-size: 1.02rem; font-weight: 700; }
+.price-lines .fee-note { display: block; margin-top: 3px; font-size: 0.78rem; font-weight: 400; line-height: 1.4; color: var(--muted); }
+.per-visit-note { margin: 8px 0 0; font-weight: 600; }
