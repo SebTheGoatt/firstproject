@@ -43,12 +43,12 @@ from .crew_routes import register_crew_routes
 from .models import (SERVICE_LABELS, SERVICE_MINUTES, order_label, AddressCheck, CompleteStopRequest, GeoPoint, JobCreated,
                      JobRequest, OptimizeRouteRequest, QuoteRequest, RouteView, Service, StopNote, StopView)
 from .charity import describe as describe_charities, split_donation
-from .pricing import (ADD_ONS, FEATURED_PACKAGE, MAX_SQFT, MIN_SQFT, PACKAGES, LawnSizeError, check_sqft, in_season, package_for_rate,
+from .pricing import (ADD_ONS, FEATURED_PACKAGE, scope_of, MAX_SQFT, MIN_SQFT, PACKAGES, LawnSizeError, check_sqft, in_season, package_for_rate,
                       quote, season_text)
 from .routing.matrix import haversine_m
 from .nightly import run_nightly
 from .dispatch import reoptimize_remaining
-from .lawn_estimate import estimate_lawn
+from .lawn_estimate import estimate_lawn, scope_sqft
 from .directions import DirectionsUnavailable, get_directions
 from .notify import (TwilioClient, booking_message, day_words, notify_next_customer, notify_stop, send_pay_link, send_text,
                      service_words)
@@ -292,7 +292,8 @@ def create_app(
                            "background_checked": settings.crew_background_checked},
             # Add-ons to a mow. price None = free quote request. Seasonal ones list their service dates.
             "add_ons": [{"key": k, "label": a["label"], "price": float(a["price"]) if a["price"] is not None else None,
-                         "quote": bool(a.get("quote")), "season": season_text(k), "season_range": a.get("season")}
+                         "quote": bool(a.get("quote")), "season": season_text(k), "season_range": a.get("season"),
+                         "scope": bool(a.get("scope"))}
                         for k, a in ADD_ONS.items()],
             "charities": describe_charities(settings),
             "business_name": settings.business_name,
@@ -345,8 +346,13 @@ def create_app(
             "lawn_estimate": estimate_lawn(repo, zone) if zone else None,
         }
 
+    def scoped_sqft(add_ons, zone, client_sqft, repo):
+        """Yard / full property bookings: the server sets the size for the area (the browser's number is ignored)."""
+        scope = scope_of(add_ons)
+        return scope_sqft(repo, zone, scope) if scope else client_sqft
+
     @app.post("/api/quote")
-    def price_quote(body: QuoteRequest, request: Request):
+    def price_quote(body: QuoteRequest, request: Request, repo: Repository = Depends(get_repo)):
         """Live price while the customer fills in the form. Saves nothing."""
         if not check_limiter.allow(request.client.host if request.client else "unknown"):
             raise HTTPException(status_code=429, detail="Too many checks. Please wait a few minutes.")
@@ -356,10 +362,11 @@ def create_app(
             return {"in_area": False, "message": outside_message()}
         add_ons = [k for k in body.add_ons if body.scheduled_date is None or in_season(k, body.scheduled_date)]
         try:
-            sqft = check_sqft(body.lawn_sqft) if body.service is Service.MOWING else None
-        except LawnSizeError as exc:
+            sqft = (check_sqft(scoped_sqft(add_ons, zone, body.lawn_sqft, repo))
+                    if body.service is Service.MOWING else None)
+            q = quote(zone, body.service, sqft, package=body.package, add_ons=add_ons)
+        except (LawnSizeError, ValueError) as exc:
             raise HTTPException(status_code=422, detail=str(exc))
-        q = quote(zone, body.service, sqft, package=body.package, add_ons=add_ons)
         return {"in_area": True, "zone_name": zone.name, "flat_fee": zone.mow_rate,
                 "service_label": order_label(body.service.value, list(q.add_ons)), **q.as_dict()}
 
@@ -376,10 +383,11 @@ def create_app(
                 "Bin cleaning and gutters are add-ons to a mowing visit. Book mowing and add them on."))
         if body.package is None:
             raise HTTPException(status_code=422, detail="Choose a rate: Neighborhood Block Lock, Operational Target or Bi-Weekly Demand.")
-        try:
-            lawn_sqft = check_sqft(body.lawn_sqft)
-        except LawnSizeError as exc:
-            raise HTTPException(status_code=422, detail=str(exc))
+        if not scope_of(body.add_ons):          # yard / full property: the size comes from the address below
+            try:
+                check_sqft(body.lawn_sqft)
+            except LawnSizeError as exc:
+                raise HTTPException(status_code=422, detail=str(exc))
         for k in body.add_ons:
             if not in_season(k, body.scheduled_date):
                 raise HTTPException(status_code=422, detail=(
@@ -388,8 +396,12 @@ def create_app(
         zone = find_zone(geo.lat, geo.lng)
         if zone is None:
             raise HTTPException(status_code=422, detail=outside_message())
-        # The server's own price, from the customer's size, tier and add-ons. Nothing from the browser is trusted.
-        q = quote(zone, body.service, lawn_sqft, package=body.package, add_ons=body.add_ons)
+        # The server's own price, from the size (set here for yard / full property), tier and add-ons.
+        try:
+            lawn_sqft = check_sqft(scoped_sqft(body.add_ons, zone, body.lawn_sqft, repo))
+            q = quote(zone, body.service, lawn_sqft, package=body.package, add_ons=body.add_ons)
+        except (LawnSizeError, ValueError) as exc:
+            raise HTTPException(status_code=422, detail=str(exc))
         add_ons = [{**a, "price": float(a["price"]) if a["price"] is not None else None} for a in q.add_ons]
         sqft = q.lawn_sqft
         price = float(q.subtotal) if q.subtotal is not None else None
@@ -457,7 +469,9 @@ def create_app(
         new_price = None
         on_site = body.price if body.price is not None else body.amount_due
         if unpaid and zone is not None:
-            if before["service"] == Service.MOWING.value and body.lawn_sqft and body.lawn_sqft != before.get("lawn_sqft"):
+            # Yard / full property bookings are price-locked: the crew mows the area booked, no re-measuring.
+            if (before["service"] == Service.MOWING.value and body.lawn_sqft and body.lawn_sqft != before.get("lawn_sqft")
+                    and not scope_of(before.get("add_ons"))):
                 # Same package the customer chose at booking.
                 new_price = quote(zone, Service.MOWING, body.lawn_sqft,
                                   package=before.get("package") or package_for_rate(before.get("sqft_rate")),

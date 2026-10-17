@@ -105,8 +105,8 @@
       if (hasBreakdown) {
         $("tax-row").before(...extras.map((a) => {
           const d = document.createElement("div"); d.className = "addon-row";
-          d.append(Object.assign(document.createElement("dt"), { textContent: a.price == null ? a.label : `Add-on: ${a.label}` }),
-                   Object.assign(document.createElement("dd"), { textContent: a.price == null ? "No charge" : money(a.price) }));
+          d.append(Object.assign(document.createElement("dt"), { textContent: a.scope ? `Area mowed: ${a.label}` : a.price == null ? a.label : `Add-on: ${a.label}` }),
+                   Object.assign(document.createElement("dd"), { textContent: a.scope ? "Included" : a.price == null ? "No charge" : money(a.price) }));
           return d;
         }));
       }

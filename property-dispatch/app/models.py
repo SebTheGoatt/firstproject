@@ -28,7 +28,7 @@ SERVICE_LABELS: dict[Service, str] = {
 }
 
 # Add-ons to a mowing visit (prices and minutes in app/pricing.py).
-AddOn = Literal["bin_cleaning", "gutters", "holiday_lights"]
+AddOn = Literal["bin_cleaning", "gutters", "holiday_lights", "scope_yard", "scope_full"]
 
 
 def order_label(service: str, add_ons: list | None = None) -> str:
@@ -66,7 +66,7 @@ class JobRequest(BaseModel):
     lawn_sqft: int | None = None
     package: Package | None = None   # standard | supporter (Plus) | hero (Premium)
     lang: Literal["en", "es"] = "en"  # the customer's language, for their texts
-    add_ons: list[AddOn] = Field(default_factory=list, max_length=3)
+    add_ons: list[AddOn] = Field(default_factory=list, max_length=4)
 
     @field_validator("name", "address")
     @classmethod
@@ -253,5 +253,5 @@ class QuoteRequest(BaseModel):
     lng: float | None = Field(default=None, ge=-180, le=180)
     lawn_sqft: int | None = None
     package: Package | None = None
-    add_ons: list[AddOn] = Field(default_factory=list, max_length=3)
+    add_ons: list[AddOn] = Field(default_factory=list, max_length=4)
     scheduled_date: date | None = None   # seasonal add-ons depend on the day

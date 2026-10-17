@@ -531,7 +531,9 @@
       const rate = s.tax_rate ?? 0.0825;
       const needsPrice = unpaid && !isMow && s.amount_due == null;
       const isCash = s.payment_method === "cash" && unpaid;
-      const sqftIn = unpaid && isMow ? el("input", { type: "number", inputmode: "numeric", min: 200, max: 87120, value: s.lawn_sqft ?? "", placeholder: "e.g. 5200", id: `fs-${s.stop_id}` }) : null;
+      // Yard only / Full property bookings are price-locked: mow the area booked, no re-measuring.
+      const locked = (s.add_ons || []).find((a) => a.scope || String(a.key || "").startsWith("scope_"));
+      const sqftIn = unpaid && isMow && !locked ? el("input", { type: "number", inputmode: "numeric", min: 200, max: 87120, value: s.lawn_sqft ?? "", placeholder: "e.g. 5200", id: `fs-${s.stop_id}` }) : null;
       const priceIn = needsPrice ? el("input", { type: "text", inputmode: "decimal", placeholder: "e.g. 120", id: `fp-${s.stop_id}` }) : null;
       const cashIn = isCash ? el("input", { type: "text", inputmode: "decimal", value: s.amount_due ?? "", id: `fc-${s.stop_id}` }) : null;
       const totalLine = el("p", { class: "finish-total" });
@@ -581,6 +583,7 @@
       const panel = el("form", { class: "finish" },
         el("strong", {}, `Finishing stop ${s.sequence}: ${s.customer_name}`),
         sqftIn ? el("div", { class: "field" }, el("label", { for: sqftIn.id }, `Lawn size (sq ft): confirm or correct · ${pkgName}, ${(perSqft * 100).toFixed(1)}¢/sq ft`), sqftIn) : null,
+        locked ? el("p", { class: "hint" }, `Price locked: ${locked.label} (${(s.lawn_sqft || 0).toLocaleString()} sq ft) · ${pkgName}. Mow the area booked.`) : null,
         needsPrice ? el("div", { class: "field" }, el("label", { for: priceIn.id }, "Price before tax ($)"), priceIn) : null,
         totalLine,
         isCash ? el("div", { class: "field" }, el("label", { for: cashIn.id }, "Cash collected ($)"), cashIn,

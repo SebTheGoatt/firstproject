@@ -59,7 +59,18 @@ ADD_ONS: dict[str, dict] = {
     # Quote only: no price, nothing charged. The crew sees the request on the stop.
     "holiday_lights": {"label": "Holiday lighting quote",    "price": None, "quote": True, "minutes": 10,
                        "season": ((10, 15), (1, 15))},
+    # What to mow (pick one). No charge of their own: they set the lawn size the server prices, and they
+    # lock the price (the crew mows the area booked; no on-site re-measuring). They show on the crew's stop.
+    "scope_yard":     {"label": "Yard only",                 "price": Decimal("0.00"), "minutes": 0, "scope": True},
+    "scope_full":     {"label": "Full property",             "price": Decimal("0.00"), "minutes": 30, "scope": True},
 }
+SCOPES = tuple(k for k, a in ADD_ONS.items() if a.get("scope"))
+
+
+def scope_of(add_ons) -> str | None:
+    """The booking's 'what to mow' choice, from add-on keys or stored add-on dicts."""
+    keys = [a["key"] if isinstance(a, dict) else a for a in (add_ons or [])]
+    return next((k for k in keys if k in SCOPES), None)
 
 
 def in_season(key: str, day) -> bool:
@@ -157,7 +168,10 @@ def priced_add_ons(keys) -> tuple:
     unknown = chosen - ADD_ONS.keys()
     if unknown:
         raise ValueError(f"Unknown add-on: {', '.join(sorted(unknown))}")
-    return tuple({"key": k, "label": a["label"], "price": a["price"], **({"quote": True} if a.get("quote") else {})}
+    if len(chosen & set(SCOPES)) > 1:
+        raise ValueError("Choose one: yard only or full property.")
+    return tuple({"key": k, "label": a["label"], "price": a["price"], **({"quote": True} if a.get("quote") else {}),
+                  **({"scope": True} if a.get("scope") else {})}
                  for k, a in ADD_ONS.items() if k in chosen)
 
 

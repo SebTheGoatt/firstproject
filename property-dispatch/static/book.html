@@ -55,8 +55,17 @@
           <span class="size-label">Your lawn</span>
           <strong id="size-value">Pick your address to size your lawn</strong>
           <span class="size-basis" id="size-basis"></span>
-          <button type="button" class="size-edit-btn" id="size-edit-btn" hidden>Know your exact size? Edit</button>
         </div>
+        <!-- What to mow: sets the size the server prices, and locks the price. -->
+        <fieldset class="scope-pick" id="scope-pick" hidden>
+          <legend>Property Infrastructure Configuration:</legend>
+          <input type="radio" name="scope" id="scope-yard" value="scope_yard" checked>
+          <label for="scope-yard"><strong>Standard Managed Footprint</strong>
+            <span id="scope-yard-size">Main or fenced yard only</span></label>
+          <input type="radio" name="scope" id="scope-full" value="scope_full">
+          <label for="scope-full"><strong>Full Estate Scope</strong>
+            <span id="scope-full-size">The whole property, minus the house</span></label>
+        </fieldset>
         <div class="field" id="size-edit" hidden>
           <label for="lawn-sqft">Your lawn size</label>
           <div class="sqft-input"><input id="lawn-sqft" type="text" inputmode="numeric" autocomplete="off"
@@ -195,23 +204,26 @@
     // Operational Target is pre-selected (the server says which one in booking-info); the customer can change it.
     let sqft = null, pkgKey = "supporter", lastQuote = null, sqftTouched = false;
     let assurances = { liability_coverage: null, background_checked: false };
-    // Lawn size filled in from the address (an estimate for the area), until the customer types their own.
-    let sqftAuto = null;   // { sqft, basis, sample, zone_name, address }
-    // The size read-out under the address: the estimate for the area, or the customer's own number.
+    // Lawn size comes from the address and the customer's "what to mow" choice; the server sets the same size.
+    let sqftAuto = null;   // { sqft (yard), full_sqft, basis, sample, zone_name, address }
+    let scope = "scope_yard";
+    const SCOPE_LABEL = { scope_yard: "Yard only", scope_full: "Full property" };
+    const LOCKED = "✓ Price locked. You pay this total for the area you chose. No surprise changes on site.";
+    const scopeSize = () => sqftAuto ? (scope === "scope_full" ? sqftAuto.full_sqft : sqftAuto.sqft) : null;
+    const estimated = () => !!sqftAuto && sqft === scopeSize();
+    const lockedScope = (q) => (q && q.add_ons || []).find((a) => a.scope) || null;   // the server's own record of the choice
     function renderSize() {
       const value = $("size-value"), basis = $("size-basis");
-      $("size-edit-btn").hidden = !$("size-edit").hidden || (!sqft && !sqftAuto);
-      if (!sqft) { value.textContent = "Pick your address to size your lawn"; basis.textContent = ""; return; }
-      value.textContent = `${sqft.toLocaleString()} sq ft`;
-      basis.textContent = !estimated() ? "Your size. The crew confirms it on site."
-        : sqftAuto.basis === "recent"
-          ? `Estimated from ${sqftAuto.sample} lawns we've measured in ${sqftAuto.zone_name}. The crew confirms it on site.`
-          : `Estimated from a typical lot in ${sqftAuto.zone_name}. The crew confirms it on site.`;
+      $("scope-pick").hidden = !sqftAuto;
+      if (!sqft || !sqftAuto) { value.textContent = "Pick your address to size your lawn"; basis.textContent = ""; return; }
+      value.textContent = `${sqft.toLocaleString()} sq ft · ${SCOPE_LABEL[scope]}`;
+      basis.textContent = LOCKED;
     }
-    const estimated = () => sqftAuto && sqft === sqftAuto.sqft;
     function applyEstimate(est, address) {
       sqftAuto = { ...est, address };
-      sqftInput.value = String(est.sqft);
+      $("scope-yard-size").textContent = `Main or fenced yard only · ~${est.sqft.toLocaleString()} sq ft`;
+      $("scope-full-size").textContent = `The whole property, minus the house · ~${est.full_sqft.toLocaleString()} sq ft`;
+      sqftInput.value = String(scopeSize());
       readSqft(false); updateRateCards(); renderEstimate();
     }
     const chosenAddOns = new Set(new URLSearchParams(location.search).getAll("addon"));
@@ -240,7 +252,9 @@
       const md = m * 100 + d, s = a.season_range[0][0] * 100 + a.season_range[0][1], e = a.season_range[1][0] * 100 + a.season_range[1][1];
       return s > e ? md >= s || md <= e : md >= s && md <= e;
     }
-    const pickedAddOns = () => addOnCatalog.filter((a) => chosenAddOns.has(a.key) && addOnInSeason(a, dateInput.value)).map((a) => a.key);
+    const pickedAddOns = () => [
+      ...addOnCatalog.filter((a) => !a.scope && chosenAddOns.has(a.key) && addOnInSeason(a, dateInput.value)).map((a) => a.key),
+      ...(sqftAuto ? [scope] : [])];     // yard / full property rides along as a no-charge choice
 
     const row = (label, value, cls = "") => {
       const d = document.createElement("div"); if (cls) d.className = cls;
@@ -304,7 +318,7 @@
         && !(lastQuote.add_on_total > 0) ? lastQuote.tax : null;
       lines.replaceChildren(
         baseRow(money(baseFee)),
-        row("Lawn size", sqft ? `${sqft.toLocaleString()} sq ft${estimated() ? " (estimated)" : ""}` : "Add your address in step 1"),
+        row("Lawn size", sqft ? `${sqft.toLocaleString()} sq ft${estimated() ? ` · ${SCOPE_LABEL[scope]}` : ""}` : "Add your address in step 1"),
         row("Selected rate", p ? `${p.label} · ${rateText(p.sqft_rate)}` : "Choose above"),
         row("Lawn size charge", charge != null ? money(charge) : "—"),
         row("Estimated subtotal", subtotal != null ? money(subtotal) : "—", "sub-strong"),
@@ -319,7 +333,7 @@
     // ---------- Step 3: add-ons ----------
     function renderAddOns() {
       const box = $("add-ons");
-      box.replaceChildren(...addOnCatalog.flatMap((a) => {
+      box.replaceChildren(...addOnCatalog.filter((a) => !a.scope).flatMap((a) => {
         const open = addOnInSeason(a, dateInput.value);
         const input = Object.assign(document.createElement("input"), { type: "checkbox", id: `addon-${a.key}`, value: a.key,
           checked: open && chosenAddOns.has(a.key), disabled: !open });
@@ -358,19 +372,20 @@
       priceEmpty.hidden = true; priceLines.hidden = false; priceNote.hidden = false;
       const charge = Math.round((q.mow_price - q.base_fee) * 100) / 100;
       priceLines.replaceChildren(
-        row(`Lawn mowing · ${q.package_label} · ${q.lawn_sqft.toLocaleString()} sq ft${estimated() ? " (estimated)" : ""}`, ""),
+        row(`Lawn mowing · ${q.package_label} · ${lockedScope(q) ? `${lockedScope(q).label} · ` : ""}${q.lawn_sqft.toLocaleString()} sq ft`, ""),
         baseRow(money(q.base_fee), "sub"),
         row(`Lawn size charge (${q.lawn_sqft.toLocaleString()} × ${rateText(q.sqft_rate)})`, money(charge), "sub"),
-        ...(q.add_ons || []).map((a) => row(a.price == null ? a.label : `Add-on: ${a.label}`, a.price == null ? "No charge" : money(a.price))),
+        ...(q.add_ons || []).filter((a) => !a.scope).map((a) => row(a.price == null ? a.label : `Add-on: ${a.label}`, a.price == null ? "No charge" : money(a.price))),
         row("Subtotal", money(q.subtotal), "sub-strong"),
         row(`Sales tax (${pct(q.tax_rate)})`, money(q.tax)),
         row("Total", money(q.total), "total"));
       priceNote.replaceChildren();
-      if (estimated()) priceNote.append(Object.assign(document.createElement("span"),
-        { className: "verify-badge", textContent: "✓ Address verified · lawn size estimated" }), " ");
-      priceNote.append((q.add_ons || []).some((a) => a.price == null)
-        ? "Holiday lighting is a free quote: the crew takes a look and you decide later. Nothing is charged for it."
-        : "Your crew confirms the lawn size on site; the price only changes if it's different.");
+      if (lockedScope(q)) priceNote.append(Object.assign(document.createElement("span"),
+        { className: "verify-badge", textContent: "✓ Price locked" }), " ",
+        "You pay this total for the area you chose. No surprise changes on site.");
+      else priceNote.append("Your crew confirms the lawn size on site; the price only changes if it's different.");
+      if ((q.add_ons || []).some((a) => a.price == null))
+        priceNote.append(" Holiday lighting is a free quote: the crew takes a look and you decide later. Nothing is charged for it.");
     }
 
     async function updateServer() {
@@ -414,9 +429,12 @@
     }
     const checkArea = updateServer;
 
-    $("size-edit-btn").addEventListener("click", () => {
-      $("size-edit").hidden = false; $("size-edit-btn").hidden = true; sqftInput.focus(); sqftInput.select();
-    });
+    document.querySelectorAll('input[name="scope"]').forEach((r) => r.addEventListener("change", () => {
+      scope = r.value;
+      if (!sqftAuto) return;
+      sqftInput.value = String(scopeSize());
+      readSqft(false); updateRateCards(); renderEstimate(); updateServer();   // the totals follow right away
+    }));
 
     let sqftTimer;
     sqftInput.addEventListener("input", () => {
@@ -560,11 +578,11 @@
           const charge = Math.round((body.subtotal - (body.add_on_total || 0) - baseFee) * 100) / 100;
           dl.append(
             row("Service", "Lawn mowing"),
-            row("Lawn size", `${body.lawn_sqft.toLocaleString()} sq ft`),
+            row("Lawn size", `${body.lawn_sqft.toLocaleString()} sq ft${lockedScope(body) ? ` · ${lockedScope(body).label} (price locked)` : ""}`),
             row("Selected rate", tier ? `${tier.label} · ${rateText(body.sqft_rate)}` : rateText(body.sqft_rate)),
             baseRow(money(baseFee)),
             row("Lawn size charge", money(charge)),
-            ...(body.add_ons || []).map((a) => row(a.price == null ? a.label : `Add-on: ${a.label}`, a.price == null ? "No charge" : money(a.price))),
+            ...(body.add_ons || []).filter((a) => !a.scope).map((a) => row(a.price == null ? a.label : `Add-on: ${a.label}`, a.price == null ? "No charge" : money(a.price))),
             row(`Sales tax (${pct(body.tax_rate)})`, money(body.tax)),
             row("Total", money(body.total), "total"));
           ok.append(dl);
