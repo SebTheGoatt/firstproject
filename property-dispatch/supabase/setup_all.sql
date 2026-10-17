@@ -341,4 +341,10 @@ create index if not exists push_subscriptions_job_idx on push_subscriptions (job
 alter table push_subscriptions enable row level security;
 grant select, insert, update, delete on push_subscriptions to service_role;
 
+-- ===== migrations/20261026000000_crew_notes.sql =====
+-- Crew dashboard: a short private note per stop (gate code changed, dog in yard, etc.).
+-- Only the crew and owner see it; it is never shown on the customer's visit page.
+alter table route_stops add column if not exists crew_note text
+    check (crew_note is null or length(crew_note) <= 500);
+
 notify pgrst, 'reload schema';

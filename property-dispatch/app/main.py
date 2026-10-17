@@ -41,12 +41,13 @@ from .live_feed import record_booking, register_live_routes
 from .crew_auth import CrewIdentity
 from .crew_routes import register_crew_routes
 from .models import (SERVICE_LABELS, SERVICE_MINUTES, order_label, AddressCheck, CompleteStopRequest, GeoPoint, JobCreated,
-                     JobRequest, QuoteRequest, RouteView, Service, StopView)
+                     JobRequest, OptimizeRouteRequest, QuoteRequest, RouteView, Service, StopNote, StopView)
 from .charity import describe as describe_charities, split_donation
 from .pricing import (ADD_ONS, MAX_SQFT, MIN_SQFT, PACKAGES, LawnSizeError, check_sqft, in_season, package_for_rate,
                       quote, season_text)
 from .routing.matrix import haversine_m
 from .nightly import run_nightly
+from .dispatch import reoptimize_remaining
 from .notify import (TwilioClient, booking_message, day_words, notify_next_customer, notify_stop, send_pay_link, send_text,
                      service_words)
 from .pay_routes import register_pay_routes
@@ -116,7 +117,7 @@ def build_route_view(route: dict, settings: Settings) -> RouteView:
             stop_id=s["stop_id"], job_id=s["job_id"], sequence=s["sequence"],
             customer_name=s["customer_name"], phone=s["phone"], address=s["address"],
             lat=s["lat"], lng=s["lng"], service=s["service"],
-            service_label=order_label(s["service"], s.get("add_ons")),
+            service_label=order_label(s["service"], s.get("add_ons")), service_minutes=s.get("service_minutes"),
             add_ons=s.get("add_ons") or [], add_on_total=s.get("add_on_total") or 0.0,
             eta=s["eta"], leg_distance_m=s["leg_distance_m"], leg_duration_s=s["leg_duration_s"],
             completed_at=s["completed_at"], completed_by_name=s.get("completed_by_name"),
@@ -192,6 +193,10 @@ def create_app(
     @app.get("/crew", include_in_schema=False)
     def crew_page():
         return page("crew.html")
+
+    @app.get("/crew/dashboard", include_in_schema=False)
+    def crew_dashboard_page():
+        return page("crew-dashboard.html")
 
     @app.get("/team", include_in_schema=False)
     @app.get("/team/{slug}", include_in_schema=False)
@@ -509,6 +514,53 @@ def create_app(
             raise HTTPException(status_code=409, detail="That job is already done.")
         member = repo.get_crew(who.member_id) if who.member_id else None
         return notify_stop(repo, settings, stop, None, member["display_name"] if member else None, text=False)
+
+    # ---------- Crew dashboard: one-button route -----------------------
+    @app.post("/api/crew/optimize-route", dependencies=[Depends(crew_auth)])
+    def optimize_route_now(body: OptimizeRouteRequest | None = None, repo: Repository = Depends(get_repo)):
+        """Plan the day's open stops from the crew's position (or the last finished stop / the base).
+        Builds the route first if it doesn't exist yet and the day is already locked (past the 5 PM cutoff)."""
+        body = body or OptimizeRouteRequest()
+        now = local_now(settings)
+        day = body.day or now.date()
+        if day < now.date():
+            raise HTTPException(status_code=409, detail="That day has already passed.")
+        built = False
+        if repo.get_route(day) is None:
+            if day >= earliest_bookable_day(now, settings.freeze_hour):
+                raise HTTPException(status_code=409, detail="That day isn't locked yet. Routes are built at 5 PM the day before.")
+            if not repo.list_routable_jobs(day):
+                raise HTTPException(status_code=404, detail="No jobs are booked for that day.")
+            run_nightly(repo, settings, day)
+            built = True
+        origin = (body.lat, body.lng) if body.lat is not None and body.lng is not None else None
+        summary = reoptimize_remaining(repo, settings, day, now, origin)
+        return {**summary, "built": built, "used_gps": origin is not None,
+                "route": build_route_view(repo.get_route(day), settings)}
+
+    @app.put("/api/stops/{stop_id}/note", dependencies=[Depends(crew_auth)])
+    def save_stop_note(stop_id: str, body: StopNote, repo: Repository = Depends(get_repo)):
+        """Private crew note on a stop (never shown to the customer)."""
+        if repo.get_stop(stop_id) is None:
+            raise HTTPException(status_code=404, detail="Stop not found.")
+        note = (body.note or "").strip() or None
+        try:
+            repo.set_stop_note(stop_id, note)
+        except Exception:
+            log.exception("Saving a crew note failed")
+            raise HTTPException(status_code=503, detail="Notes need a one-time database update. Ask the owner to run the "
+                                                        "latest Supabase SQL (crew notes).")
+        return {"stop_id": stop_id, "note": note}
+
+    @app.get("/api/routes/{day}/notes", dependencies=[Depends(crew_auth)])
+    def route_notes(day: date, repo: Repository = Depends(get_repo)):
+        route = repo.get_route(day)
+        if route is None:
+            return {}
+        try:
+            return repo.stop_notes(route["id"])
+        except Exception:      # notes column not added yet: the dashboard still works without notes
+            return {}
 
     class CompletionHook(BaseModel):
         stop_id: str | None = None

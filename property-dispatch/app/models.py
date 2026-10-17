@@ -150,6 +150,7 @@ class StopView(BaseModel):
     lng: float
     service: Service
     service_label: str
+    service_minutes: int | None = None   # planned time on site (for the dashboard's route-time estimate)
     eta: datetime | None
     leg_distance_m: int
     leg_duration_s: int
@@ -226,6 +227,17 @@ class CompleteStopRequest(BaseModel):
     amount_due: float | None = Field(default=None, gt=0, le=5000)     # older crew app: same as `price`
     lawn_sqft: int | None = Field(default=None, ge=100, le=200_000)    # mowing: corrected lawn size
     cash_collected: float | None = Field(default=None, ge=0, le=10000)  # total cash handed to the crew
+
+
+class OptimizeRouteRequest(BaseModel):
+    """Crew dashboard: re-plan the open stops from where the crew is now. GPS is optional."""
+    day: date | None = None                                      # default: today (business time zone)
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lng: float | None = Field(default=None, ge=-180, le=180)
+
+
+class StopNote(BaseModel):
+    note: str | None = Field(default=None, max_length=500)
 
 
 class AddressCheck(BaseModel):
