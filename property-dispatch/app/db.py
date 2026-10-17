@@ -107,6 +107,7 @@ class Repository(Protocol):
     def stop_id_for_job(self, job_id: str) -> str | None: ...
     def next_open_stop(self, route_id: str, after_sequence: int) -> dict | None: ...
     def resequence_stops(self, route_id: str, updates: list[dict]) -> None: ...
+    def recent_lawn_sizes(self, zone_key: str, limit: int = 50) -> list[int]: ...
     def set_stop_note(self, stop_id: str, note: str | None) -> None: ...
     def stop_notes(self, route_id: str) -> dict[str, str]: ...
     def claim_notification(self, stop_id: str) -> bool: ...
@@ -307,6 +308,12 @@ class SupabaseRepository:
                 "leg_duration_s": u["leg_duration_s"], "eta": u["eta"],
             }).eq("id", u["stop_id"]).eq("route_id", route_id).execute()
         self.sb.table("routes").update({"optimized_at": _now_iso()}).eq("id", route_id).execute()
+
+    def recent_lawn_sizes(self, zone_key: str, limit: int = 50) -> list[int]:
+        """Crew-confirmed lawn sizes of finished jobs in an area, newest first (for the booking estimate)."""
+        rows = (self.sb.table("jobs").select("lawn_sqft").eq("zone_key", zone_key).eq("status", "completed")
+                .not_.is_("lawn_sqft", "null").order("completed_at", desc=True).limit(limit).execute().data)
+        return [r["lawn_sqft"] for r in rows]
 
     def set_stop_note(self, stop_id: str, note: str | None) -> None:
         # Needs supabase/migrations/20261026000000_crew_notes.sql (route_stops.crew_note).
@@ -641,6 +648,11 @@ class MemoryRepository:
                 st.update(sequence=u["sequence"], leg_distance_m=u["leg_distance_m"],
                           leg_duration_s=u["leg_duration_s"], eta=u["eta"])
             self.routes[route_id]["optimized_at"] = _now_iso()
+
+    def recent_lawn_sizes(self, zone_key: str, limit: int = 50) -> list[int]:
+        done = [j for j in self.jobs.values() if j.get("zone_key") == zone_key and j["status"] == "completed" and j.get("lawn_sqft")]
+        done.sort(key=lambda j: str(j.get("completed_at") or ""), reverse=True)
+        return [j["lawn_sqft"] for j in done[:limit]]
 
     def set_stop_note(self, stop_id: str, note: str | None) -> None:
         with self._lock:

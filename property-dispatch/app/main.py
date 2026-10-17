@@ -48,6 +48,7 @@ from .pricing import (ADD_ONS, FEATURED_PACKAGE, MAX_SQFT, MIN_SQFT, PACKAGES, L
 from .routing.matrix import haversine_m
 from .nightly import run_nightly
 from .dispatch import reoptimize_remaining
+from .lawn_estimate import estimate_lawn
 from .directions import DirectionsUnavailable, get_directions
 from .notify import (TwilioClient, booking_message, day_words, notify_next_customer, notify_stop, send_pay_link, send_text,
                      service_words)
@@ -327,7 +328,7 @@ def create_app(
     check_limiter = RateLimiter(limit=30, window_s=600)
 
     @app.post("/api/check-address")
-    def check_address(body: AddressCheck, request: Request):
+    def check_address(body: AddressCheck, request: Request, repo: Repository = Depends(get_repo)):
         """Instant 'are you in our area?' answer while the customer fills out the form. Saves nothing."""
         if not check_limiter.allow(request.client.host if request.client else "unknown"):
             raise HTTPException(status_code=429, detail="Too many checks. Please wait a few minutes.")
@@ -340,6 +341,8 @@ def create_app(
             "matched_address": geo.formatted_address if geo.precision == "address" else body.address.strip(),
             "message": (f"Good news: you're in our {zone.name} area. Mowing is ${zone.mow_rate:,.2f} per visit plus a small per-sq-ft rate."
                         if zone else outside_message()),
+            # So the customer doesn't have to guess: an estimate for this area (they can change it; the crew confirms on site).
+            "lawn_estimate": estimate_lawn(repo, zone) if zone else None,
         }
 
     @app.post("/api/quote")
