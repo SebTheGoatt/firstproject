@@ -120,3 +120,28 @@ def test_a_dead_site_is_reported_not_crashed_on():
         raise sg.SiteError("Couldn't reach the site.")
     out = []
     assert sg.seed_mock_week(out=out.append, http=down) == 1 and "Couldn't reach" in out[0]
+
+
+def test_new_caney_mock_week_is_its_own_valid_fake_week():
+    plan = sg.mock_bookings(date(2026, 10, 26), per_day=5, area="new-caney")           # a Monday
+    assert len(plan) == 30 and len({b["scheduled_date"] for b in plan}) == 6
+    assert all(b["name"].startswith("MOCK ") for b in plan)
+    assert {b["address"] for b in plan} <= set(sg.NEW_CANEY_ADDRESSES)
+    assert all(("Splendora" in a or "New Caney" in a) for a in sg.NEW_CANEY_ADDRESSES)
+    other = sg.mock_bookings(date(2026, 10, 19), per_day=5)
+    phones = [b["phone"] for b in plan]
+    assert len(set(phones)) == len(phones) and not set(phones) & {b["phone"] for b in other}   # no clash with the first mock week
+    assert all(re.fullmatch(r"\(281\) 555-01\d\d", p) for p in phones)
+    for b in plan:
+        JobRequest(**b)
+    assert plan == sg.mock_bookings(date(2026, 10, 26), per_day=5, area="new-caney")
+
+
+def test_new_caney_seeding_starts_on_a_monday_after_the_first_week():
+    posts = []
+    http = lambda method, url, body=None, **k: ({"earliest_date": "2026-10-18"} if method == "GET" else posts.append(body))
+    out = []
+    assert sg.seed_mock_week(out=out.append, confirm=lambda: True, http=http, sleep=lambda s: None, area="new-caney") == 0
+    days = sorted({p["scheduled_date"] for p in posts})
+    assert days[0] == "2026-10-26" and date.fromisoformat(days[0]).weekday() == 0 and len(posts) == 30
+    assert "New Caney / Splendora area" in out[0]

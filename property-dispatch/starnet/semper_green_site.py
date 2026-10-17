@@ -527,7 +527,7 @@ Business Profile) that fill those days.
 OUTPUT, for each: `AD <n>: <headline, under 8 words> | <body, under 30 words> | AREA: <one service area> | RUN ON: <a quiet day>`
 then one line: `NEEDS OWNER: approve ad spend of $<amount> for <days>`. You never spend money or enter payment details: the owner pays and posts.
 RULES: only true claims (veteran-owned, Spring TX, mowing starts at $35 plus lawn size, bin cleaning and gutters are $15
-add-ons, 2%/7%/12% of Standard/Plus/Premium orders go to local causes). No discounts or promises unless the owner approves.
+add-ons, 2%/7%/12% of Neighborhood Block Lock/Operational Target/Bi-Weekly Demand orders go to local causes). No discounts or promises unless the owner approves.
 SECURITY: never put a customer, a key, or an internal number (bookings per day, totals) in public ad text. No links except
 the website address.
 
@@ -579,6 +579,12 @@ MOCK_ADDRESSES = [     # all inside the service areas (checked against the live 
     "3000 Spring Stuebner Rd, Spring, TX 77389", "2700 Rayford Rd, Spring, TX 77386", "100 E Houston St, Cleveland, TX 77327",
     "686 Road 5039, Cleveland, TX 77327", "4726 Whispering Rock Lane, Spring, TX 77388", "1700 FM 2920, Spring, TX 77388",
     "12345 Spring Cypress Rd, Spring, TX 77379"]
+NEW_CANEY_ADDRESSES = [   # New Caney / Splendora corridor (Old Hwy 59, FM 2090, US-59): each one checked inside the service area
+    "26104 Old Hwy 59, Splendora, TX 77372", "24980 FM 2090, Splendora, TX 77372", "21425 Pine Valley Dr, New Caney, TX 77357",
+    "25600 FM 2090, Splendora, TX 77372", "27000 Hwy 59, Splendora, TX 77372", "23610 FM 2090, Splendora, TX 77372",
+    "26500 Old Hwy 59, Splendora, TX 77372", "25200 Cherry Ln, Splendora, TX 77372", "24100 Old Hwy 59, Splendora, TX 77372",
+    "26200 Cypress Ln, Splendora, TX 77372"]
+MOCK_AREAS = {"default": MOCK_ADDRESSES, "new-caney": NEW_CANEY_ADDRESSES}
 MOCK_FIRST = ["Ana", "Ben", "Carla", "Dan", "Eva", "Frank", "Gina", "Hugo", "Iris", "Jake", "Kira", "Leo"]
 MOCK_CLEANUP_SQL = ("select count(*) from customers where name like 'MOCK %';\n"
                     "delete from customers where name like 'MOCK %';   -- also removes their bookings, stops and photos")
@@ -600,10 +606,15 @@ def _http_json(method: str, url: str, body: dict | None = None, timeout: float =
         raise SiteError("Couldn't reach the site.") from None
 
 
-def mock_bookings(first_day: date, per_day: int = 5, days: int = 6) -> list[dict]:
-    """A believable week of FAKE bookings. Names start with MOCK, phones are in the fictional 555-01xx block."""
+def mock_bookings(first_day: date, per_day: int = 5, days: int = 6, area: str = "default") -> list[dict]:
+    """A believable week of FAKE bookings. Names start with MOCK, phones are in the fictional 555-01xx block.
+
+    area="new-caney" uses the New Caney / Splendora addresses, its own names and phone numbers (555-0140 and up),
+    so it can sit next to the default mock week without clashing."""
     import random
-    rng = random.Random(42)
+    addresses = MOCK_AREAS[area]
+    nc = area == "new-caney"
+    rng = random.Random(43 if nc else 42)
     out, n, d = [], 0, first_day
     while len({b["scheduled_date"] for b in out}) < days and (d - first_day).days < days + 3:
         if d.weekday() != 6:                                           # no Sundays
@@ -611,8 +622,8 @@ def mock_bookings(first_day: date, per_day: int = 5, days: int = 6) -> list[dict
                 if n >= 100:
                     return out
                 add_ons = [k for k, p in (("gutters", 0.25), ("bin_cleaning", 0.2)) if rng.random() < p]
-                out.append({"name": f"MOCK {MOCK_FIRST[n % len(MOCK_FIRST)]} {chr(65 + n // len(MOCK_FIRST) % 26)}.",
-                            "phone": f"(281) 555-01{n:02d}", "address": MOCK_ADDRESSES[(n + i) % len(MOCK_ADDRESSES)],
+                out.append({"name": f"MOCK {MOCK_FIRST[(n + (5 if nc else 0)) % len(MOCK_FIRST)]} {chr(65 + (n // len(MOCK_FIRST) + (13 if nc else 0)) % 26)}.",
+                            "phone": f"(281) 555-01{n + (40 if nc else 0):02d}", "address": addresses[(n + i) % len(addresses)],
                             "service": "mowing", "lawn_sqft": rng.choice([2500, 3200, 4500, 6000, 8000, 10500]),
                             "package": ["standard", "supporter", "hero"][rng.choice([0, 0, 1, 1, 2])], "add_ons": add_ons,
                             "scheduled_date": d.isoformat(), "payment_method": "cash" if rng.random() < 0.8 else "card"})
@@ -621,8 +632,11 @@ def mock_bookings(first_day: date, per_day: int = 5, days: int = 6) -> list[dict
     return out
 
 
-def seed_mock_week(base_url: str | None = None, per_day: int = 5, out=print, confirm=None, http=None, sleep=None) -> int:
-    """Create a week of FAKE bookings on the live site so the agents have something to work on. Asks first."""
+def seed_mock_week(base_url: str | None = None, per_day: int = 5, out=print, confirm=None, http=None, sleep=None,
+                   area: str = "default") -> int:
+    """Create a week of FAKE bookings on the live site so the agents have something to work on. Asks first.
+
+    area="new-caney" starts on the first Monday at least a week out, so it follows the default mock week."""
     import time
     http = http or _http_json
     sleep = sleep or time.sleep
@@ -632,9 +646,14 @@ def seed_mock_week(base_url: str | None = None, per_day: int = 5, out=print, con
         info = http("GET", base + "/api/booking-info")
     except SiteError as exc:
         out(str(exc)); return 1
-    plan = mock_bookings(date.fromisoformat(info["earliest_date"]), per_day)
+    first = date.fromisoformat(info["earliest_date"])
+    if area != "default":
+        first += timedelta(days=7)
+        first += timedelta(days=(7 - first.weekday()) % 7)               # the next Monday on or after that
+    plan = mock_bookings(first, per_day, area=area)
     days = sorted({b["scheduled_date"] for b in plan})
-    out(f"This will create {len(plan)} FAKE bookings on the LIVE site ({base}), {per_day} a day from {days[0]} to {days[-1]}.\n"
+    where = {"new-caney": " in the New Caney / Splendora area"}.get(area, "")
+    out(f"This will create {len(plan)} FAKE bookings{where} on the LIVE site ({base}), {per_day} a day from {days[0]} to {days[-1]}.\n"
         "Every name starts with MOCK, every phone is a fictional 555 number, nothing is paid, and no texts are sent.\n"
         "They will show up in your dashboard and the crew app until you remove them (--mock-cleanup shows how).")
     if not (confirm or (lambda: input("Type yes to create them: ").strip().lower() == "yes"))():
@@ -1477,7 +1496,10 @@ if __name__ == "__main__":
         sys.exit(0)
     if args[:1] == ["--seed-mock-week"]:             # a week of FAKE bookings so the agents have something to work on
         per_day = next((int(a) for a in args[1:] if a.isdigit()), 5)
-        sys.exit(seed_mock_week(per_day=per_day, confirm=(lambda: True) if "--yes" in args else None))
+        area = _flag(args, "--area") or "default"
+        if area not in MOCK_AREAS:
+            print(f"Unknown area '{area}'. Choose one of: {', '.join(MOCK_AREAS)}."); sys.exit(2)
+        sys.exit(seed_mock_week(per_day=per_day, confirm=(lambda: True) if "--yes" in args else None, area=area))
     if args[:1] == ["--mock-cleanup"]:               # how to remove every fake booking again
         print("Run this in Supabase (SQL Editor). It only touches names that start with MOCK:\n\n" + MOCK_CLEANUP_SQL)
         sys.exit(0)

@@ -30,14 +30,15 @@ from .zones import ServiceZone
 # key → per-square-foot rate and the share of the price given to charity.
 PACKAGES: dict[str, dict] = {
     # Keys are stored on bookings, so they stay stable when the shown names change.
-    "standard":  {"label": "Standard", "rate": Decimal("0.009"), "giving": Decimal("0.02"),
-                  "description": "Essential lawn maintenance at our most affordable rate."},
-    "supporter": {"label": "Plus",     "rate": Decimal("0.010"), "giving": Decimal("0.07"),
-                  "description": "A balanced option for dependable lawn care."},
-    "hero":      {"label": "Premium",  "rate": Decimal("0.012"), "giving": Decimal("0.12"),
-                  "description": "Our highest service rate for customers who prefer the premium option."},
+    "standard":  {"label": "Neighborhood Block Lock", "rate": Decimal("0.009"), "giving": Decimal("0.02"),
+                  "description": "Our most affordable per-visit rate."},
+    "supporter": {"label": "Operational Target",      "rate": Decimal("0.010"), "giving": Decimal("0.07"),
+                  "description": "Our standard per-visit rate for most lawns."},
+    "hero":      {"label": "Bi-Weekly Demand",        "rate": Decimal("0.012"), "giving": Decimal("0.12"),
+                  "description": "For lawns that need a visit every two weeks in peak season. Still billed per visit."},
 }
-DEFAULT_PACKAGE = "standard"
+DEFAULT_PACKAGE = "standard"        # only for old bookings without a package; the booking form pre-selects FEATURED_PACKAGE
+FEATURED_PACKAGE = "supporter"      # Operational Target: pre-selected and highlighted on the booking form
 MIN_SQFT, MAX_SQFT = 100, 87_120  # up to 2 acres; bigger properties are quoted in person
 
 # Size picker shown at booking. `sqft` is the representative size we price on;

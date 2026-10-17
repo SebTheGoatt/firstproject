@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     twilio_auth_token: str = ""
     twilio_from_number: str = ""
     business_name: str = "Semper Green Lawn Care"
+    # Shown under the "Operational Base & Liability Allocation" line at booking, ONLY when the owner sets them.
+    # Put the real amount from your insurance certificate (e.g. "$2M"); leave blank if you don't carry it.
+    liability_coverage: str = ""
+    crew_background_checked: bool = False    # set true only if every crew member has passed a background check
     # Used in texts sent outside a web request (e.g. the completion webhook).
     public_base_url: str = ""
 

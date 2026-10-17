@@ -55,7 +55,8 @@
         <fieldset>
           <legend class="visually-hidden">Rate per square foot</legend>
           <div class="rates tiers" id="rates" role="radiogroup" aria-describedby="rate-error"></div>
-          <p class="field-error" id="rate-error" role="alert" hidden>Choose Standard, Plus or Premium to continue.</p>
+          <p class="field-error" id="rate-error" role="alert" hidden>Choose a rate to continue.</p>
+          <p class="hint per-visit-note">Billed per visit. No subscription, no contract.</p>
         </fieldset>
         <div class="price-box estimate" id="estimate" aria-live="polite">
           <h3 class="order-title">Lawn Mowing estimate</h3>
@@ -154,14 +155,28 @@
       new Date(iso + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
     const pct = (r) => `${(r * 100).toFixed(2).replace(/\.?0+$/, "")}%`;
     const rateText = (r) => `$${r.toFixed(3)} / sq. ft.`;
+    // The $35 per-visit base. Its note only states what the owner has confirmed in Render (insurance, background checks).
+    const BASE_LABEL = "Operational Base & Liability Allocation";
+    function baseRow(value, cls) {
+      const r = row(BASE_LABEL, value, cls);
+      const note = document.createElement("small"); note.className = "fee-note";
+      const parts = [Object.assign(document.createElement("span"),
+        { textContent: "Covers your crew, equipment and an optimized neighborhood route to your door." })];
+      if (assurances.background_checked) parts.push(Object.assign(document.createElement("span"), { textContent: "Background-checked crew." }));
+      if (assurances.liability_coverage) parts.push(Object.assign(document.createElement("span"),
+        { textContent: `Includes ${assurances.liability_coverage} commercial liability coverage while we're on your property.` }));
+      parts.forEach((x, i) => { if (i) note.append(" "); note.append(x); });
+      r.querySelector("dt").append(note);
+      return r;
+    }
     const service = () => "mowing";   // every booking is a mow; bins and gutters are add-ons
 
     // ---------- Pricing settings (from /api/booking-info; these are only fallbacks) ----------
     let baseFee = 35, limits = { min: 100, max: 87120 };
     let packages = [
-      { key: "standard", label: "Standard", sqft_rate: 0.009, charity_rate: 0.02, description: "Essential lawn maintenance at our most affordable rate." },
-      { key: "supporter", label: "Plus", sqft_rate: 0.01, charity_rate: 0.07, description: "A balanced option for dependable lawn care." },
-      { key: "hero", label: "Premium", sqft_rate: 0.012, charity_rate: 0.12, description: "Our highest service rate for customers who prefer the premium option." },
+      { key: "standard", label: "Neighborhood Block Lock", sqft_rate: 0.009, charity_rate: 0.02, description: "Our most affordable per-visit rate." },
+      { key: "supporter", label: "Operational Target", sqft_rate: 0.01, charity_rate: 0.07, description: "Our standard per-visit rate for most lawns." },
+      { key: "hero", label: "Bi-Weekly Demand", sqft_rate: 0.012, charity_rate: 0.12, description: "For lawns that need a visit every two weeks in peak season. Still billed per visit." },
     ];
     let addOnCatalog = [
       { key: "bin_cleaning", label: "Bin cleaning", price: 15, quote: false, season: null, season_range: null },
@@ -170,7 +185,9 @@
     ];
 
     // ---------- Customer choices ----------
-    let sqft = null, pkgKey = null, lastQuote = null, sqftTouched = false;
+    // Operational Target is pre-selected (the server says which one in booking-info); the customer can change it.
+    let sqft = null, pkgKey = "supporter", lastQuote = null, sqftTouched = false;
+    let assurances = { liability_coverage: null, background_checked: false };
     const chosenAddOns = new Set(new URLSearchParams(location.search).getAll("addon"));
     const sqftInput = $("lawn-sqft");
 
@@ -259,7 +276,7 @@
       const serverTax = lastQuote && lastQuote.in_area && lastQuote.package === pkgKey && lastQuote.lawn_sqft === sqft
         && !(lastQuote.add_on_total > 0) ? lastQuote.tax : null;
       lines.replaceChildren(
-        row("Base service fee", money(baseFee)),
+        baseRow(money(baseFee)),
         row("Lawn size", sqft ? `${sqft.toLocaleString()} sq ft` : "Enter above"),
         row("Selected rate", p ? `${p.label} · ${rateText(p.sqft_rate)}` : "Choose above"),
         row("Lawn size charge", charge != null ? money(charge) : "—"),
@@ -315,7 +332,7 @@
       const charge = Math.round((q.mow_price - q.base_fee) * 100) / 100;
       priceLines.replaceChildren(
         row(`Lawn mowing · ${q.package_label} · ${q.lawn_sqft.toLocaleString()} sq ft`, ""),
-        row("Base service fee", money(q.base_fee), "sub"),
+        baseRow(money(q.base_fee), "sub"),
         row(`Lawn size charge (${q.lawn_sqft.toLocaleString()} × ${rateText(q.sqft_rate)})`, money(charge), "sub"),
         ...(q.add_ons || []).map((a) => row(a.price == null ? a.label : `Add-on: ${a.label}`, a.price == null ? "No charge" : money(a.price))),
         row("Subtotal", money(q.subtotal), "sub-strong"),
@@ -419,7 +436,13 @@
       if (info.lawn_sqft_limits) limits = info.lawn_sqft_limits;
       if (info.google_maps_key) setUpGoogleAutocomplete(info.google_maps_key);
       if (info.add_ons) addOnCatalog = info.add_ons;
-      if (info.packages) { packages = info.packages; renderRates(); }
+      if (info.assurances) assurances = info.assurances;
+      if (info.packages) {
+        packages = info.packages;
+        if (pkgKey === "supporter" && info.featured_package) pkgKey = info.featured_package;
+        renderRates();
+      }
+      renderEstimate();
       renderAddOns();
       readSqft(sqftTouched);
       renderEstimate();
@@ -444,7 +467,7 @@
       // The mowing calculator comes first: a real lawn size and an explicit rate choice.
       sqftTouched = true;
       if (!readSqft(true)) { showError($("sqft-error").textContent, sqftInput); return; }
-      if (!pkgKey) { $("rate-error").hidden = false; showError("Choose Standard, Plus or Premium to continue.", $("rates")); return; }
+      if (!pkgKey) { $("rate-error").hidden = false; showError("Choose a rate to continue.", $("rates")); return; }
       if (!form.checkValidity()) { form.reportValidity(); return; }
       if (!addressInput.value.trim()) { showError("Please choose your address from the list."); return; }
 
@@ -490,7 +513,7 @@
             row("Service", "Lawn mowing"),
             row("Lawn size", `${body.lawn_sqft.toLocaleString()} sq ft`),
             row("Selected rate", tier ? `${tier.label} · ${rateText(body.sqft_rate)}` : rateText(body.sqft_rate)),
-            row("Base service fee", money(baseFee)),
+            baseRow(money(baseFee)),
             row("Lawn size charge", money(charge)),
             ...(body.add_ons || []).map((a) => row(a.price == null ? a.label : `Add-on: ${a.label}`, a.price == null ? "No charge" : money(a.price))),
             row(`Sales tax (${pct(body.tax_rate)})`, money(body.tax)),
