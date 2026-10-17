@@ -94,3 +94,61 @@ def test_private_notes(client, repo, settings):
     assert client.put("/api/stops/nope/note", json={"note": "hi"}, headers=CREW).status_code == 404
     client.put(f"/api/stops/{stop['stop_id']}/note", json={"note": ""}, headers=CREW)
     assert client.get(f"/api/routes/{TOMORROW}/notes", headers=CREW).json() == {}
+
+
+# ---------- In-app turn-by-turn ----------
+from app.directions import DirectionsUnavailable, instruction  # noqa: E402
+
+OSRM_ROUTE = {"code": "Ok", "routes": [{"distance": 1500.4, "duration": 180.2,
+    "geometry": {"coordinates": [[-95.39, 30.15], [-95.38, 30.15], [-95.38, 30.16]]},
+    "legs": [{"steps": [
+        {"name": "Avalon Springs Ln", "distance": 900, "duration": 100,
+         "maneuver": {"type": "depart", "bearing_after": 90, "location": [-95.39, 30.15]}},
+        {"name": "Kuykendahl Rd", "distance": 600, "duration": 80,
+         "maneuver": {"type": "turn", "modifier": "left", "location": [-95.38, 30.15]}},
+        {"name": "", "distance": 0, "duration": 0,
+         "maneuver": {"type": "arrive", "modifier": "right", "location": [-95.38, 30.16]}}]}]}]}
+
+
+def test_instructions_read_like_a_person_talking():
+    assert instruction({"name": "Avalon Springs Ln", "maneuver": {"type": "depart", "bearing_after": 90}}) == "Head east on Avalon Springs Ln"
+    assert instruction({"name": "Kuykendahl Rd", "maneuver": {"type": "turn", "modifier": "left"}}) == "Turn left onto Kuykendahl Rd"
+    assert instruction({"name": "FM 1314", "maneuver": {"type": "turn", "modifier": "slight right"}}) == "Bear right onto FM 1314"
+    assert instruction({"name": "", "maneuver": {"type": "off ramp", "modifier": "slight right"}}) == "Take the exit on the right"
+    assert instruction({"name": "Main St", "maneuver": {"type": "roundabout", "exit": 2}}) == "At the roundabout, take the 2nd exit onto Main St"
+    assert instruction({"name": "", "maneuver": {"type": "arrive", "modifier": "left"}}) == "Arrive at the stop on the left"
+    assert instruction({"name": "Spring Cypress", "maneuver": {"type": "new name", "modifier": "straight"}}) == "Continue straight onto Spring Cypress"
+
+
+def test_directions_endpoint_returns_path_and_steps(client, repo, settings):
+    booked(client, "AB")
+    run_nightly(repo, settings, TOMORROW)
+    stop = client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]
+
+    class FakeResp:
+        def raise_for_status(self): pass
+        def json(self): return OSRM_ROUTE
+
+    settings.osrm_url = "https://osrm.test"
+    with patch("app.directions._http") as http:
+        http.return_value.get.return_value = FakeResp()
+        r = client.get(f"/api/crew/directions/{stop['stop_id']}?lat=30.15&lng=-95.39", headers=CREW)
+    get = http.return_value.get
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert get.call_args.args[0].startswith("https://osrm.test/route/v1/driving/-95.390000,30.150000;")
+    assert [s["instruction"] for s in body["steps"]] == ["Head east on Avalon Springs Ln", "Turn left onto Kuykendahl Rd",
+                                                         "Arrive at the stop on the right"]
+    assert body["distance_m"] == 1500 and body["duration_s"] == 180 and len(body["path"]) == 3
+    assert body["destination"] == [stop["lng"], stop["lat"]]
+
+
+def test_directions_need_gps_sign_in_and_a_working_service(client, repo, settings):
+    booked(client, "A")
+    run_nightly(repo, settings, TOMORROW)
+    sid = client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]["stop_id"]
+    assert client.get(f"/api/crew/directions/{sid}?lat=30.1&lng=-95.3").status_code == 401
+    assert client.get(f"/api/crew/directions/{sid}", headers=CREW).status_code == 422
+    assert client.get(f"/api/crew/directions/nope?lat=30.1&lng=-95.3", headers=CREW).status_code == 404
+    r = client.get(f"/api/crew/directions/{sid}?lat=30.1&lng=-95.3", headers=CREW)   # tests have no OSRM_URL
+    assert r.status_code == 503 and r.json()["detail"]

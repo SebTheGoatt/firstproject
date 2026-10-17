@@ -48,6 +48,7 @@ from .pricing import (ADD_ONS, MAX_SQFT, MIN_SQFT, PACKAGES, LawnSizeError, chec
 from .routing.matrix import haversine_m
 from .nightly import run_nightly
 from .dispatch import reoptimize_remaining
+from .directions import DirectionsUnavailable, get_directions
 from .notify import (TwilioClient, booking_message, day_words, notify_next_customer, notify_stop, send_pay_link, send_text,
                      service_words)
 from .pay_routes import register_pay_routes
@@ -537,6 +538,21 @@ def create_app(
         summary = reoptimize_remaining(repo, settings, day, now, origin)
         return {**summary, "built": built, "used_gps": origin is not None,
                 "route": build_route_view(repo.get_route(day), settings)}
+
+    @app.get("/api/crew/directions/{stop_id}", dependencies=[Depends(crew_auth)])
+    def directions_to_stop(stop_id: str, lat: float | None = None, lng: float | None = None,
+                           repo: Repository = Depends(get_repo)):
+        """In-app turn-by-turn: the road route from the crew's GPS position to this stop."""
+        stop = repo.get_stop(stop_id)
+        if stop is None:
+            raise HTTPException(status_code=404, detail="Stop not found.")
+        if lat is None or lng is None or not (-90 <= lat <= 90 and -180 <= lng <= 180):
+            raise HTTPException(status_code=422, detail="Turn on location so the app can guide you.")
+        try:
+            out = get_directions(settings.osrm_url, (lat, lng), (stop["lat"], stop["lng"]))
+        except DirectionsUnavailable as exc:
+            raise HTTPException(status_code=503, detail=str(exc))
+        return {**out, "stop_id": stop_id, "destination": [stop["lng"], stop["lat"]], "address": stop["address"]}
 
     @app.put("/api/stops/{stop_id}/note", dependencies=[Depends(crew_auth)])
     def save_stop_note(stop_id: str, body: StopNote, repo: Repository = Depends(get_repo)):

@@ -63,6 +63,24 @@
     .empty-state p { color: var(--muted); }
     .toast-d { position: fixed; left: 16px; right: 16px; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); z-index: 40;
       max-width: 528px; margin: 0 auto; background: #111; color: #fff; padding: 12px 14px; border-radius: 12px; font-size: 0.95rem; }
+    /* ---------- In-app navigation ---------- */
+    .nav-view { position: fixed; inset: 0; z-index: 50; background: #fff; display: grid; grid-template-rows: auto 1fr auto; }
+    .nav-banner { background: var(--brand-deep); color: #fff; padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
+      display: grid; grid-template-columns: 56px 1fr; gap: 12px; align-items: center; }
+    .nav-arrow { font-size: 2.4rem; line-height: 1; text-align: center; }
+    .nav-dist { font-size: 1.6rem; font-weight: 800; line-height: 1.1; }
+    .nav-text { font-size: 1.05rem; font-weight: 600; line-height: 1.3; }
+    .nav-then { grid-column: 1 / -1; font-size: 0.85rem; opacity: 0.85; border-top: 1px solid rgb(255 255 255 / 0.2); padding-top: 6px; }
+    #nav-map { width: 100%; height: 100%; }
+    .nav-foot { padding: 10px 16px calc(12px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--border); background: #fff; }
+    .nav-stats { display: flex; justify-content: space-between; gap: 8px; font-size: 0.95rem; margin-bottom: 8px; }
+    .nav-stats b { font-size: 1.1rem; }
+    .nav-tools { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+    .nav-tools .btn { min-height: 46px; font-size: 0.92rem; }
+    .nav-arrive { display: block; width: 100%; min-height: 60px; border: 0; border-radius: 14px; background: #1a73e8; color: #fff;
+      font: 800 1.1rem/1.2 system-ui, sans-serif; letter-spacing: 0.04em; cursor: pointer; }
+    .nav-arrive.near { background: var(--brand-deep); }
+    .nav-me { width: 22px; height: 22px; border-radius: 50%; background: #1a73e8; border: 3px solid #fff; box-shadow: 0 0 0 6px rgb(26 115 232 / 0.25); }
   </style>
 </head>
 <body class="dash">
@@ -104,6 +122,24 @@
 
   <div class="main-cta" id="cta-bar" hidden>
     <button type="button" id="cta" data-step="start">START DAILY ROUTE</button>
+  </div>
+
+  <div class="nav-view" id="nav-view" hidden role="dialog" aria-modal="true" aria-label="Turn-by-turn directions">
+    <div class="nav-banner" aria-live="polite">
+      <div class="nav-arrow" id="nav-arrow" aria-hidden="true">↑</div>
+      <div><div class="nav-dist" id="nav-dist">Finding you…</div><div class="nav-text" id="nav-text">Getting your location</div></div>
+      <div class="nav-then" id="nav-then" hidden></div>
+    </div>
+    <div id="nav-map"></div>
+    <div class="nav-foot">
+      <div class="nav-stats"><span><b id="nav-left">–</b> left</span><span>Arrive <b id="nav-eta">–</b></span></div>
+      <div class="nav-tools">
+        <button class="btn" type="button" id="nav-voice">🔊 Voice on</button>
+        <a class="btn" id="nav-gmaps" target="_blank" rel="noopener">Google Maps</a>
+        <button class="btn" type="button" id="nav-end">End</button>
+      </div>
+      <button class="nav-arrive" type="button" id="nav-arrive">ARRIVED AT PROPERTY</button>
+    </div>
   </div>
 
   <div class="toast-d" id="toast" role="status" hidden></div>
@@ -242,7 +278,7 @@
           cur.eta ? el("span", { class: "chip-d" }, `ETA ${fmtTime(cur.eta)}`) : null,
           pay),
         el("div", { class: "stop-actions" },
-          el("a", { class: "btn btn-nav", href: cur.google_maps_url, target: "_blank", rel: "noopener" }, "➤ Navigate"),
+          el("button", { class: "btn btn-nav", type: "button", onclick: () => startNav(cur) }, "➤ Navigate"),
           el("a", { class: "btn", href: `tel:${cur.phone}` }, "Call")),
         el("button", { class: "note-toggle", type: "button", "aria-expanded": "false", onclick: (e) => {
           noteBox.hidden = !noteBox.hidden; e.target.setAttribute("aria-expanded", String(!noteBox.hidden));
@@ -338,8 +374,11 @@
           if (first) {
             const r = await api(`/api/stops/${first.stop_id}/on-the-way`, { method: "POST" }).catch(() => null);
             toast(r && (r.pushed || r.texted) ? `${first.customer_name.split(/\s+/)[0]} was told you're on the way.`
-                                              : "Route started. Tap Navigate to head to the first stop.");
+                                              : "Route started. Directions to the first stop are up.");
           }
+          render();
+          if (first) startNav(current());
+          return;
         } else if (s === "arrive") {
           store.set(arrivedKey(current().stop_id), new Date().toISOString());
         }
@@ -409,6 +448,7 @@
           const n = done.notification || {};
           toast(n.notified ? "Done. The next customer was told you're on the way." : "Job complete. Nice work.");
           render();
+          if (current()) startNav(current());   // straight into directions to the next stop
         } catch (err) {
           toast(err.message);
           confirm.disabled = false; confirm.textContent = "Complete job";
@@ -417,6 +457,178 @@
       document.body.append(bg);
       confirm.focus();
     }
+
+    // ---------- In-app turn-by-turn navigation ----------
+    // The road route comes from our server (OSRM, the same roads used to plan the day). The phone's GPS moves the
+    // blue dot, the banner shows the next turn, and the voice reads it out. If anything fails, Google Maps is one tap away.
+    const nav = { stop: null, dir: null, step: 1, watch: null, map: null, me: null, voice: true, warned: new Set(),
+                  offCount: 0, lastFetch: 0, wake: null, pos: null, arrivedNear: false };
+    try { nav.voice = store.get("navVoice") !== "off"; } catch {}
+
+    const R = 6371000, rad = (d) => d * Math.PI / 180;
+    function meters(a, b) {   // a, b = [lng, lat]
+      const x = rad(b[0] - a[0]) * Math.cos(rad((a[1] + b[1]) / 2)), y = rad(b[1] - a[1]);
+      return Math.sqrt(x * x + y * y) * R;
+    }
+    // Snap a GPS point onto the route line: how far off the line we are, and how far along it (meters from the start).
+    function project(p, path, cum) {
+      let off = Infinity, along = 0;
+      const kx = Math.cos(rad(p[1])) * R * Math.PI / 180, ky = R * Math.PI / 180;
+      for (let i = 1; i < path.length; i++) {
+        const ax = (path[i - 1][0] - p[0]) * kx, ay = (path[i - 1][1] - p[1]) * ky;
+        const bx = (path[i][0] - p[0]) * kx, by = (path[i][1] - p[1]) * ky;
+        const dx = bx - ax, dy = by - ay, len = dx * dx + dy * dy;
+        const t = len ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / len)) : 0;
+        const d = Math.hypot(ax + t * dx, ay + t * dy);
+        if (d < off) { off = d; along = cum[i - 1] + t * (cum[i] - cum[i - 1]); }
+      }
+      return { off, along };
+    }
+    // Distance along the route at every path point, and where along the route each turn happens.
+    function prepare(dir) {
+      const cum = [0];
+      for (let i = 1; i < dir.path.length; i++) cum.push(cum[i - 1] + meters(dir.path[i - 1], dir.path[i]));
+      let from = 0;
+      dir.stepAt = dir.steps.map((s) => {
+        let best = from, bd = Infinity;
+        for (let i = from; i < dir.path.length; i++) { const d = meters(s.location, dir.path[i]); if (d < bd) { bd = d; best = i; } }
+        from = best; return cum[best];
+      });
+      dir.cum = cum; dir.total = cum[cum.length - 1];
+    }
+    const fmtDist = (m) => m < 160 ? `${Math.max(10, Math.round(m * 3.28084 / 10) * 10)} ft` : `${(m / 1609.344).toFixed(m < 16093 ? 1 : 0)} mi`;
+    function arrowFor(s) {
+      if (!s) return "↑";
+      if (s.type === "arrive") return "📍";
+      if (s.type === "roundabout" || s.type === "rotary") return "⟳";
+      const m = s.modifier || "";
+      return m === "uturn" ? "↩" : m.includes("left") ? (m.includes("slight") ? "↖" : "←") : m.includes("right") ? (m.includes("slight") ? "↗" : "→") : "↑";
+    }
+    function say(text) {
+      if (!nav.voice || !window.speechSynthesis) return;
+      try { speechSynthesis.cancel(); speechSynthesis.speak(Object.assign(new SpeechSynthesisUtterance(text), { lang: "en-US", rate: 1 })); } catch {}
+    }
+
+    async function startNav(stop) {
+      nav.stop = stop; nav.dir = null; nav.step = 1; nav.warned = new Set(); nav.offCount = 0; nav.arrivedNear = false;
+      $("nav-view").hidden = false; document.body.style.overflow = "hidden";
+      $("nav-gmaps").href = stop.google_maps_url;
+      $("nav-voice").textContent = nav.voice ? "🔊 Voice on" : "🔇 Voice off";
+      $("nav-dist").textContent = "Finding you…"; $("nav-text").textContent = "Getting your GPS location"; $("nav-then").hidden = true;
+      $("nav-arrow").textContent = "📡"; $("nav-left").textContent = "–"; $("nav-eta").textContent = "–";
+      try { nav.wake = await navigator.wakeLock?.request("screen"); } catch {}   // keep the screen on while driving
+      if (!nav.map && window.maplibregl) {
+        try {
+          nav.map = new maplibregl.Map({ container: "nav-map", style: "https://tiles.openfreemap.org/styles/positron",
+                                         center: [stop.lng, stop.lat], zoom: 14, attributionControl: { compact: true } });
+          nav.map.on("load", () => {
+            nav.map.addSource("nav-route", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+            nav.map.addLayer({ id: "nav-route-casing", type: "line", source: "nav-route", paint: { "line-color": "#0b3d2e", "line-width": 10 } });
+            nav.map.addLayer({ id: "nav-route", type: "line", source: "nav-route", paint: { "line-color": "#1a73e8", "line-width": 6 } });
+            nav.map.addSource("nav-dest", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+            nav.map.addLayer({ id: "nav-dest", type: "circle", source: "nav-dest",
+              paint: { "circle-radius": 11, "circle-color": "#b45309", "circle-stroke-color": "#fff", "circle-stroke-width": 3 } });
+            if (nav.dir) drawNavRoute();
+          });
+        } catch { $("nav-map").hidden = true; }
+      } else if (nav.map) { setTimeout(() => nav.map.resize(), 50); }
+      if (!navigator.geolocation) return navProblem("This phone can't share its location. Use Google Maps instead.");
+      nav.watch = navigator.geolocation.watchPosition(onNavFix, (e) => {
+        if (e.code === 1) navProblem("Location is off for this site. Turn it on in your browser settings, or use Google Maps.");
+        else if (!nav.pos) { $("nav-dist").textContent = "Looking for GPS…"; $("nav-text").textContent = "Step outside or wait a moment."; }
+      }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
+    }
+
+    function navProblem(msg) {
+      $("nav-arrow").textContent = "⚠"; $("nav-dist").textContent = "Can't guide right now"; $("nav-text").textContent = msg;
+    }
+
+    function stopNav() {
+      if (nav.watch != null) navigator.geolocation.clearWatch(nav.watch);
+      nav.watch = null;
+      try { nav.wake?.release(); } catch {}
+      try { speechSynthesis.cancel(); } catch {}
+      $("nav-view").hidden = true; document.body.style.overflow = "";
+    }
+
+    async function fetchDirections(p) {
+      nav.lastFetch = Date.now();
+      try {
+        nav.dir = await api(`/api/crew/directions/${nav.stop.stop_id}?lat=${p[1]}&lng=${p[0]}`);
+        prepare(nav.dir);
+        nav.step = Math.min(1, nav.dir.steps.length - 1); nav.warned = new Set(); nav.offCount = 0;
+        drawNavRoute();
+        const first = nav.dir.steps[0];
+        if (first) say(`${first.instruction}. ${fmtDist(nav.dir.distance_m).replace("mi", "miles").replace("ft", "feet")} to go.`);
+      } catch (err) {
+        if (!nav.dir) navProblem(`${err.message} Tap Google Maps to go now.`);
+      }
+    }
+
+    function drawNavRoute() {
+      if (!nav.map || !nav.map.getSource("nav-route") || !nav.dir) return;
+      nav.map.getSource("nav-route").setData({ type: "Feature", geometry: { type: "LineString", coordinates: nav.dir.path } });
+      nav.map.getSource("nav-dest").setData({ type: "Feature", geometry: { type: "Point", coordinates: nav.dir.destination } });
+    }
+
+    async function onNavFix(fix) {
+      const p = [fix.coords.longitude, fix.coords.latitude];
+      nav.pos = p;
+      if (nav.map) {
+        if (!nav.me) nav.me = new maplibregl.Marker({ element: el("div", { class: "nav-me" }) }).setLngLat(p).addTo(nav.map);
+        else nav.me.setLngLat(p);
+        nav.map.easeTo({ center: p, zoom: 16.5, bearing: fix.coords.heading > 0 && fix.coords.speed > 2 ? fix.coords.heading : nav.map.getBearing(),
+                         pitch: 40, duration: 800 });
+      }
+      if (!nav.dir) { if (Date.now() - nav.lastFetch > 8000) await fetchDirections(p); if (!nav.dir) return; }
+
+      const { off, along } = project(p, nav.dir.path, nav.dir.cum);
+      // Off the blue line twice in a row → new route from here (at most every 20 s).
+      if (off > 60) {
+        if (++nav.offCount >= 2 && Date.now() - nav.lastFetch > 20000) { say("Rerouting"); return fetchDirections(p); }
+      } else nav.offCount = 0;
+
+      const steps = nav.dir.steps;
+      // The next turn is the first one still ahead of us along the route (works even if GPS skips past a corner).
+      let k = 1;
+      while (k < steps.length - 1 && nav.dir.stepAt[k] <= along + 15) k++;
+      nav.step = k;
+      const next = steps[k], after = steps[k + 1];
+      const toNext = Math.max(0, nav.dir.stepAt[k] - along);
+      const left = Math.max(0, nav.dir.total - along);
+      const secs = nav.dir.total ? nav.dir.duration_s * (left / nav.dir.total) : 0;
+
+      $("nav-arrow").textContent = arrowFor(next);
+      $("nav-dist").textContent = fmtDist(toNext);
+      $("nav-text").textContent = next.instruction;
+      $("nav-then").hidden = !after || after.type === "arrive" && next.type === "arrive";
+      if (after) $("nav-then").textContent = `Then: ${after.instruction}`;
+      $("nav-left").textContent = fmtDist(left);
+      $("nav-eta").textContent = new Date(Date.now() + secs * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+
+      // Spoken heads-up once around 1/4 mile (or 800 ft in town), then again right at the turn.
+      const key = `${nav.step}`;
+      if (toNext < (next.distance_m > 2000 ? 400 : 250) && toNext > 60 && !nav.warned.has(key + "a")) {
+        nav.warned.add(key + "a"); say(`In ${fmtDist(toNext).replace("mi", "miles").replace("ft", "feet")}, ${next.instruction}`);
+      }
+      if (toNext <= 60 && !nav.warned.has(key + "b")) { nav.warned.add(key + "b"); say(next.instruction); }
+
+      const atStop = left < 60 || meters(p, nav.dir.destination) < 100;
+      $("nav-arrive").classList.toggle("near", atStop);
+      if (atStop && !nav.arrivedNear) { nav.arrivedNear = true; say("You have arrived. Tap arrived at property."); }
+    }
+
+    $("nav-voice").addEventListener("click", () => {
+      nav.voice = !nav.voice; store.set("navVoice", nav.voice ? "on" : "off");
+      $("nav-voice").textContent = nav.voice ? "🔊 Voice on" : "🔇 Voice off";
+      if (!nav.voice) try { speechSynthesis.cancel(); } catch {}
+    });
+    $("nav-end").addEventListener("click", stopNav);
+    $("nav-arrive").addEventListener("click", () => {
+      const cur = current();
+      if (cur && nav.stop && cur.stop_id === nav.stop.stop_id) store.set(arrivedKey(cur.stop_id), new Date().toISOString());
+      stopNav(); render();
+    });
 
     $("cta").addEventListener("click", onCta);
     $("build-btn").addEventListener("click", async () => {

@@ -150,6 +150,7 @@
           <h2 class="tab-title">Route</h2>
           <input type="date" id="day" aria-label="Route date">
         </div>
+        <a class="btn btn-primary btn-block route-mode" href="/crew/dashboard">▶ One-button route mode</a>
         <div id="offline" class="alert alert-warn" role="status" hidden></div>
         <div id="err" class="alert alert-error" role="alert" hidden></div>
         <div id="route" hidden>
@@ -370,6 +371,8 @@
         const r = await api(path, { method: "POST", json: payload });
         token = r.token;
         try { localStorage.setItem(TOKEN_KEY, token); } catch {}
+        // Crew members land on the one-button route; the owner lands on the dispatch dashboard.
+        if (path === "/api/crew/login") { location.href = "/crew/dashboard"; return; }
         start();
       } catch (e) {
         $("signin-err").textContent = e instanceof TypeError ? "No signal. Try again when you're connected." : e.message;
