@@ -25,7 +25,7 @@ from pydantic import BaseModel, Field
 
 from . import push
 from .booking import local_now
-from .charity import describe as describe_charities, ledger
+from .charity import all_causes, describe as describe_charities, ledger
 from .pricing import PACKAGES
 from .config import Settings
 from .crew_auth import CrewIdentity
@@ -213,7 +213,7 @@ def register_visit_routes(app: FastAPI, settings: Settings, crew_auth):
             "donations_by_charity": [
                 {**c, "amount": round(sum(float((j.get("giving_split") or {}).get(c["key"], 0))
                                           + float((j.get("donation_split") or {}).get(c["key"], 0)) for j in paid), 2)}
-                for c in describe_charities(settings)],
+                for c in all_causes(settings)],   # every cause, including customers' picks (e.g. the toy drive)
         }
 
     @app.get("/api/owner/day/{day}", dependencies=[Depends(owner)])

@@ -109,7 +109,8 @@ def test_bookings_show_on_the_dashboard_before_any_route_exists(client, repo):
                            "donations_by_charity": [
                                {"key": "vfw", "name": "Veterans of Foreign Wars (VFW)", "percent": 33, "amount": 0},
                                {"key": "nicu", "name": "Neonatal intensive care (NICU) families", "percent": 33, "amount": 0},
-                               {"key": "at_risk_youth", "name": "At-risk youth programs", "percent": 34, "amount": 0}]}
+                               {"key": "at_risk_youth", "name": "At-risk youth programs", "percent": 34, "amount": 0},
+                               {"key": "toys_for_tots", "name": "Holiday toy drive for local kids", "percent": 0, "amount": 0}]}
     assert re.fullmatch(r"\w{4}-\w{4}", d["jobs"][0]["access_code"])
     assert d["auto_build"]["hour"] == 17
 
@@ -135,7 +136,7 @@ def test_owner_builds_route_now_and_sees_order(client):
     assert d["totals"]["sales_tax"] == 6.6
     # To pass on: Standard's 2% ($1.60) + the $13.40 donation, each split 33% / 33% / 34%
     assert d["totals"]["charity_giving"] == 1.6
-    assert [c["amount"] for c in d["totals"]["donations_by_charity"]] == [4.95, 4.95, 5.10]   # tax on what's been paid, for the owner's sales-tax filing
+    assert [c["amount"] for c in d["totals"]["donations_by_charity"]] == [4.95, 4.95, 5.10, 0]   # tax on what's been paid, for the owner's sales-tax filing
 
 
 def test_outlook_and_owner_only(client):

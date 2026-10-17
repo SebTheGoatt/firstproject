@@ -14,7 +14,7 @@ import logging
 from fastapi import FastAPI, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from .charity import describe as describe_charities, ledger, split_donation
+from .charity import causes as charity_causes, chosen_cause, describe as describe_charities, ledger, route_donation
 from .config import Settings, site_url
 from .models import SERVICE_LABELS, Service, order_label
 from .pricing import PACKAGES
@@ -57,6 +57,8 @@ def register_pay_routes(app: FastAPI, settings: Settings, stripe: StripeClient |
             "donation": p["donation"],
             "donation_ledger": ledger(settings, p.get("donation_split")) if p.get("donation_split") else [],
             "charities": describe_charities(settings),
+            "charity_choice_name": next((c["name"] for c in charity_causes(settings)
+                                         if c["key"] == chosen_cause(p.get("giving_split"))), None),
             "card_enabled": stripe is not None,
         }
 
@@ -78,7 +80,8 @@ def register_pay_routes(app: FastAPI, settings: Settings, stripe: StripeClient |
                 service_date=str(p["scheduled_date"]), amount_due=p["amount_due"], donation=donation,
                 success_url=f"{base}/pay/{token}?done=1", cancel_url=f"{base}/pay/{token}",
                 subtotal=p.get("subtotal"), tax=p.get("tax_amount"), tax_rate=p.get("tax_rate"),
-                charities=describe_charities(settings),
+                charities=charity_causes(settings) if chosen_cause(p.get("giving_split")) else describe_charities(settings),
+                charity_choice=chosen_cause(p.get("giving_split")),
                 package_label=PACKAGES[p["package"]]["label"] if p.get("package") in PACKAGES else None,
                 charity_rate=p.get("charity_rate"), charity_amount=p.get("charity_amount"),
             )
@@ -105,7 +108,7 @@ def register_pay_routes(app: FastAPI, settings: Settings, stripe: StripeClient |
                     newly = request.app.state.repo.mark_paid(
                         job_id, method="card",
                         amount_paid=round(int(obj.get("amount_total") or 0) / 100, 2),
-                        donation=donation, donation_split=split_donation(donation),
+                        donation=donation, donation_split=route_donation(donation, meta.get("charity_choice") or None),
                     )
                     log.info("Stripe payment for job %s recorded (new=%s)", job_id, newly)
                 except KeyError:

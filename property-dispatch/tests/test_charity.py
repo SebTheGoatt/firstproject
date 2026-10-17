@@ -83,3 +83,48 @@ def test_booking_info_counts_real_openings_on_the_next_route(client, settings, r
     with patch.object(repo, "count_active_jobs", side_effect=RuntimeError("db down")):
         info = client.get("/api/booking-info").json()
     assert info["spots_left"] is None and info["earliest_date"]  # the page still loads
+
+
+# ---------- The customer picks one cause ----------
+from app.charity import chosen_cause, ledger, route_donation  # noqa: E402
+
+
+def test_route_donation_sends_everything_to_the_pick_or_splits_without_one():
+    assert route_donation(7.0, "toys_for_tots") == {"toys_for_tots": 7.0}
+    assert route_donation(5, None) == {"vfw": 1.65, "nicu": 1.65, "at_risk_youth": 1.70}
+    assert route_donation(0, "vfw") == {} and chosen_cause({"vfw": 3.0}) == "vfw"
+    assert chosen_cause({"vfw": 1.65, "nicu": 1.65, "at_risk_youth": 1.70}) is None
+
+
+def test_booking_with_a_pick_routes_its_giving_and_cash_donation_there(client, repo, settings):
+    settings.charity_toys_name = "Marine Toys for Tots, Liberty County"
+    with patch("app.main.local_now", return_value=NOW):
+        r = client.post("/api/jobs", json={"name": "Customer A", "phone": "(281) 555-0501", "address": "100 A Example Rd",
+                                           "service": "mowing", "lawn_sqft": 5000, "package": "supporter",
+                                           "scheduled_date": TOMORROW.isoformat(), "charity_choice": "toys_for_tots"})
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["charity_choice"] == "toys_for_tots" and body["charity_amount"] == 5.95
+    job = repo.jobs[body["id"]]
+    assert job["giving_split"] == {"toys_for_tots": 5.95}
+    assert ledger(settings, job["giving_split"]) == [
+        {"key": "toys_for_tots", "name": "Marine Toys for Tots, Liberty County", "percent": 100, "amount": 5.95}]
+
+    run_nightly(repo, settings, TOMORROW)
+    stop = client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]
+    assert stop["charity_choice_name"] == "Marine Toys for Tots, Liberty County"     # the crew can say where extra goes
+    done = client.post(f"/api/stops/{stop['stop_id']}/complete", json={"cash_collected": 100}, headers=CREW).json()
+    assert done["payment"]["donation_split"] == {"toys_for_tots": round(100 - stop["amount_due"], 2)}
+
+
+def test_the_booking_page_gets_the_three_causes(client):
+    info = client.get("/api/booking-info").json()
+    assert [c["key"] for c in info["causes"]] == ["toys_for_tots", "vfw", "nicu"]
+    assert all(c["name"] and c["blurb"] for c in info["causes"])
+
+
+def test_an_unknown_pick_is_refused(client):
+    r = client.post("/api/jobs", json={"name": "X", "phone": "(281) 555-0502", "address": "100 A Example Rd",
+                                       "lawn_sqft": 5000, "package": "standard", "scheduled_date": TOMORROW.isoformat(),
+                                       "charity_choice": "my_pocket"})
+    assert r.status_code == 422

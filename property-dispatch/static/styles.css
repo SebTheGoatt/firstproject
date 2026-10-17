@@ -794,3 +794,17 @@ label.check input { width: 18px; height: 18px; }
 .scope-pick input:checked + label { border-color: var(--brand); background: var(--brand-soft); box-shadow: inset 0 0 0 1px var(--brand); }
 .scope-pick input:checked + label strong::before { content: "● "; color: var(--brand); }
 .scope-pick input:focus-visible + label { outline: 3px solid color-mix(in srgb, var(--brand) 45%, transparent); }
+.impact-pick { margin: 16px 0 0; padding: 0; border: 0; }
+.impact-pick legend { font-weight: 700; font-size: 1rem; padding: 0; margin-bottom: 4px; }
+.impact-pick .hint { margin: 0 0 10px; }
+.impact-options { display: grid; gap: 8px; }
+.impact-options input { position: absolute; opacity: 0; pointer-events: none; }
+.impact-options label { display: grid; gap: 2px; margin: 0; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px;
+  background: var(--bg); cursor: pointer; font-weight: 500; }
+.impact-options label strong { font-size: 0.98rem; }
+.impact-options label span { font-size: 0.85rem; color: var(--muted); line-height: 1.4; }
+.impact-options input:checked + label { border-color: var(--brand); background: var(--brand-soft); box-shadow: inset 0 0 0 1px var(--brand); }
+.impact-options input:checked + label strong::before { content: "● "; color: var(--brand); }
+.impact-options input:focus-visible + label { outline: 3px solid color-mix(in srgb, var(--brand) 45%, transparent); }
+.impact-promise { margin: 18px 0 10px; padding: 10px 12px; border-radius: 10px; background: var(--brand-soft); color: var(--brand);
+  font-weight: 600; font-size: 0.88rem; line-height: 1.45; }

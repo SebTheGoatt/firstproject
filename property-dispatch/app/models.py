@@ -67,6 +67,8 @@ class JobRequest(BaseModel):
     package: Package | None = None   # standard | supporter (Plus) | hero (Premium)
     lang: Literal["en", "es"] = "en"  # the customer's language, for their texts
     add_ons: list[AddOn] = Field(default_factory=list, max_length=4)
+    # The one cause this order's giving goes to (app/charity.py CHOICES); none = the standard split.
+    charity_choice: Literal["toys_for_tots", "vfw", "nicu"] | None = None
 
     @field_validator("name", "address")
     @classmethod
@@ -110,6 +112,7 @@ class JobCreated(BaseModel):
     sqft_rate: float | None = None
     charity_rate: float | None = None     # share of the price the business gives to charity
     charity_amount: float | None = None
+    charity_choice: str | None = None     # the cause the customer picked
     subtotal: float | None = None
     tax_rate: float | None = None
     tax: float | None = None
@@ -152,6 +155,7 @@ class StopView(BaseModel):
     service_label: str
     service_minutes: int | None = None   # planned time on site (for the dashboard's route-time estimate)
     scope: Literal["scope_yard", "scope_full"] | None = None   # what the customer booked; None = older booking
+    charity_choice_name: str | None = None   # where this customer's giving and any extra cash donation go
     eta: datetime | None
     leg_distance_m: int
     leg_duration_s: int

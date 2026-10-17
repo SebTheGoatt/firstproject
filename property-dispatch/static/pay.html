@@ -116,7 +116,7 @@
         $("tax").textContent = money(info.tax);
       }
       if (info.charity_amount > 0) {
-        $("giving").textContent = `★ Your order generates ${money(info.charity_amount)} for local VFW, NICU & at-risk youth programs ` +
+        $("giving").textContent = `★ Your order generates ${money(info.charity_amount)} for ${info.charity_choice_name || "local VFW, NICU & at-risk youth programs"} ` +
           `(${info.package_label ? info.package_label + ", " : ""}${Math.round((info.charity_rate || 0) * 100)}% of your price). It's included in your total, not added on.`;
         show("giving");
       }
@@ -202,7 +202,9 @@
     (async () => {
       try {
         info = await load();
-        if (info.charities?.length) {
+        if (info.charity_choice_name) {
+          $("charity-list").textContent = `all of it to ${info.charity_choice_name}, the cause you picked`;
+        } else if (info.charities?.length) {
           causes = info.charities;
           $("charity-list").textContent = causes.map((c) => `${c.percent}% to ${c.name}`).join(", ").replace(/, ([^,]*)$/, " and $1");
         }

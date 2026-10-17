@@ -89,7 +89,7 @@
           <div class="impact-box" id="impact-box" hidden>
             <span class="impact-kicker">Your order generates</span>
             <strong class="impact-amount" id="impact-amount"></strong>
-            <span class="impact-for">for local VFW, NICU &amp; at-risk youth programs</span>
+            <span class="impact-for" id="impact-for">for the cause you pick in step 6</span>
           </div>
         </div>
       </section>
@@ -131,10 +131,19 @@
             <input type="radio" name="payment_method" id="pay-card" value="card" disabled>
             <label for="pay-card" id="pay-card-label"><strong>Card, Apple Pay or Google Pay</strong><span id="pay-card-note">Coming soon.</span></label>
           </div>
-          <p class="veteran-note"><span class="flag" aria-hidden="true">★</span>
-            <span>No tip necessary. Donations are always welcome, never taxed, and go to
-            <span id="charity-list">the VFW (33%), NICU families (33%) and at-risk youth programs (34%)</span>.
-            We're a veteran-owned business.</span></p>
+        </fieldset>
+        <!-- The customer picks the one cause their order's giving goes to (names come from Render settings). -->
+        <fieldset class="impact-pick" id="impact-pick">
+          <legend>Direct Your Local Community Impact Token</legend>
+          <p class="hint">Part of every order goes to a local cause. Pick where yours goes.</p>
+          <div class="impact-options" id="impact-options">
+            <input type="radio" name="charity_choice" id="cause-toys_for_tots" value="toys_for_tots" checked>
+            <label for="cause-toys_for_tots"><strong>Holiday toy drive for local kids</strong><span>Helps buy holiday toys for kids in our service area.</span></label>
+            <input type="radio" name="charity_choice" id="cause-vfw" value="vfw">
+            <label for="cause-vfw"><strong>Veterans of Foreign Wars (VFW)</strong><span>Helps local veterans and their families through a VFW post in our area.</span></label>
+            <input type="radio" name="charity_choice" id="cause-nicu" value="nicu">
+            <label for="cause-nicu"><strong>Neonatal intensive care (NICU) families</strong><span>Helps families whose newborns are in neonatal intensive care.</span></label>
+          </div>
         </fieldset>
       </section>
 
@@ -151,6 +160,7 @@
         </div>
       </section>
 
+      <p class="impact-promise" id="impact-promise">✓ Your pick is saved with your booking. What your order generates goes to that cause, and so does anything extra you give the crew.</p>
       <button class="btn btn-primary btn-block btn-lg" type="submit" id="submit">Book service</button>
     </form>
   </main>
@@ -251,6 +261,25 @@
       const [, m, d] = iso.split("-").map(Number);
       const md = m * 100 + d, s = a.season_range[0][0] * 100 + a.season_range[0][1], e = a.season_range[1][0] * 100 + a.season_range[1][1];
       return s > e ? md >= s || md <= e : md >= s && md <= e;
+    }
+    // Step 6: the cause this order's giving goes to.
+    let causeList = [];
+    const pickedCause = () => document.querySelector('input[name="charity_choice"]:checked')?.value || "toys_for_tots";
+    const causeName = (key) => (causeList.find((c) => c.key === key) || {}).name
+      || $(`cause-${key}`)?.nextElementSibling?.querySelector("strong")?.textContent || "our local cause";
+    function renderCauses(list) {
+      causeList = list;
+      const keep = pickedCause();
+      $("impact-options").replaceChildren(...list.flatMap((c) => {
+        const input = Object.assign(document.createElement("input"),
+          { type: "radio", name: "charity_choice", id: `cause-${c.key}`, value: c.key, checked: c.key === keep });
+        input.addEventListener("change", () => { $("impact-for").textContent = `for ${c.name}`; });
+        const label = document.createElement("label"); label.htmlFor = input.id;
+        label.append(Object.assign(document.createElement("strong"), { textContent: c.name }),
+                     Object.assign(document.createElement("span"), { textContent: c.blurb }));
+        return [input, label];
+      }));
+      $("impact-for").textContent = `for ${causeName(pickedCause())}`;
     }
     const pickedAddOns = () => [
       ...addOnCatalog.filter((a) => !a.scope && chosenAddOns.has(a.key) && addOnInSeason(a, dateInput.value)).map((a) => a.key),
@@ -510,8 +539,7 @@
       renderAddOns();
       readSqft(sqftTouched);
       renderEstimate();
-      if (info.charities) $("charity-list").textContent =
-        info.charities.map((c) => `${c.name} (${c.percent}%)`).join(", ").replace(/, ([^,]*)$/, " and $1");
+      if (info.causes) renderCauses(info.causes);
       if (info.card_payments) {
         $("pay-card").disabled = false;
         $("pay-card-note").textContent = "Pay securely now, or after the visit.";
@@ -544,6 +572,8 @@
       data.lawn_sqft = sqft;
       data.package = pkgKey;
       data.add_ons = pickedAddOns();
+      data.charity_choice = pickedCause();
+      delete data.scope;
       data.lang = window.I18N?.lang === "es" ? "es" : "en";   // their texts come in this language
       if (addressInput.dataset.picked === addressInput.value && latInput.value) {
         data.lat = Number(latInput.value);
@@ -588,7 +618,7 @@
           ok.append(dl);
           if (body.charity_amount) {
             const g = document.createElement("div"); g.className = "hint";
-            g.textContent = `Your order generates ${money(body.charity_amount)} for local VFW, NICU & at-risk youth programs. Thank you!`;
+            g.textContent = `Your order generates ${money(body.charity_amount)} for ${causeName(body.charity_choice)}. Thank you!`;
             ok.append(g);
           }
         }

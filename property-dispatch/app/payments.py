@@ -12,7 +12,7 @@ import time
 
 import httpx
 
-from .charity import split_donation
+from .charity import route_donation
 from .config import Settings
 
 MAX_DONATION = 500.00
@@ -49,7 +49,7 @@ class StripeClient:
         success_url: str, cancel_url: str, subtotal: float | None = None, tax: float | None = None,
         tax_rate: float | None = None, charities: list[dict] | None = None,
         package_label: str | None = None, charity_rate: float | None = None, charity_amount: float | None = None,
-        add_ons: list | None = None,
+        add_ons: list | None = None, charity_choice: str | None = None,
     ) -> dict:
         """One Stripe line for the service, one for Texas sales tax, and one per cause an optional
         donation goes to (so the receipt shows exactly where it went).
@@ -62,6 +62,7 @@ class StripeClient:
             "metadata[job_id]": job_id,
             "metadata[amount_due_cents]": str(to_cents(amount_due)),
             "metadata[donation_cents]": str(to_cents(donation)),
+            "metadata[charity_choice]": charity_choice or "",
             "payment_intent_data[description]": f"{self.settings.business_name}: {service_label} on {service_date}",
         }
         lines: list[tuple[str, float]] = []
@@ -80,8 +81,11 @@ class StripeClient:
         else:
             lines.append((service_name, amount_due))
         if donation > 0:
-            split = split_donation(donation)
-            if charities:
+            split = route_donation(donation, charity_choice)
+            if charity_choice:
+                name = next((c["name"] for c in charities or [] if c["key"] == charity_choice), "our local cause")
+                lines.append((f"Donation to {name} (not taxed)", donation))
+            elif charities:
                 for c in charities:
                     if split.get(c["key"], 0) > 0:
                         lines.append((f"Donation, {c['percent']}% to {c['name']} (not taxed)", split[c["key"]]))

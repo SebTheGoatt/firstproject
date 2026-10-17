@@ -213,8 +213,10 @@
         }
         if (p.method === "card" && p.pay_url) pay.append(el("a", { class: "btn btn-primary", href: p.pay_url }, p.amount_due != null ? "Pay now" : "Open payment page"));
         else pay.append(el("p", { class: "muted" }, "You chose cash: pay the crew when they arrive."));
+        const picked = (p.giving_ledger || []).length === 1 && p.giving_ledger[0].percent === 100 ? p.giving_ledger[0].name : null;
         pay.append(el("p", { class: "veteran-note" }, el("span", { class: "flag", "aria-hidden": "true" }, "★"),
-          "No tip necessary. Donations are always welcome and go to the VFW (33%), NICU families (33%) and at-risk youth programs (34%)."));
+          picked ? `No tip necessary. Anything extra you give goes to ${picked}, the cause you picked.`
+                 : "No tip necessary. Donations are always welcome and go to the VFW (33%), NICU families (33%) and at-risk youth programs (34%)."));
       }
 
       if (p.charity_amount > 0) {
