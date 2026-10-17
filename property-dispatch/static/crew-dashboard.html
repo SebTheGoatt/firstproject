@@ -103,7 +103,7 @@
         <div class="metric status" id="m-status-box"><b id="m-status">–</b><span>Status</span></div>
       </section>
 
-      <div id="route-map" role="img" aria-label="Map of today's stops in order"></div>
+      <div id="route-map" role="button" tabindex="0" aria-label="Map of today's stops. Tap for turn-by-turn directions to the current stop."></div>
 
       <section id="current" aria-live="polite"></section>
 
@@ -296,41 +296,85 @@
     }
 
     // Map: OpenStreetMap tiles (no key, no per-load cost), stops joined in route order.
+    // Stops at the same spot share one pin labeled with all their numbers ("4–8"), so nothing hides.
+    function groupStops(cur) {
+      const groups = new Map();
+      route.stops.forEach((s, i) => {
+        const key = `${s.lat.toFixed(4)},${s.lng.toFixed(4)}`;
+        if (!groups.has(key)) groups.set(key, { at: [s.lng, s.lat], nums: [], states: [] });
+        const g = groups.get(key);
+        g.nums.push(i + 1); g.states.push(s.completed_at ? "done" : s === cur ? "now" : "todo");
+      });
+      const label = (n) => n.length === 1 ? String(n[0])
+        : n.every((x, i) => !i || x === n[i - 1] + 1) ? `${n[0]}–${n[n.length - 1]}` : n.join(",");
+      return [...groups.values()].map((g) => ({ type: "Feature", geometry: { type: "Point", coordinates: g.at },
+        properties: { n: label(g.nums), state: g.states.includes("now") ? "now" : g.states.every((x) => x === "done") ? "done" : "todo" } }));
+    }
+
+    // Map: OpenStreetMap tiles (no key, no per-load cost). Stops joined in route order, plus where you are now
+    // and the road route to the current stop (the same route the directions screen will follow).
+    const preview = { stopId: null, path: null, me: null, marker: null };
     function drawMap() {
       if (!window.maplibregl) { $("route-map").hidden = true; return; }
-      const pts = route.stops.map((s) => [s.lng, s.lat]);
       const cur = current();
-      const data = {
-        line: { type: "Feature", geometry: { type: "LineString", coordinates: pts } },
-        stops: { type: "FeatureCollection", features: route.stops.map((s, i) => ({ type: "Feature",
-          geometry: { type: "Point", coordinates: [s.lng, s.lat] },
-          properties: { n: String(i + 1), state: s.completed_at ? "done" : s === cur ? "now" : "todo" } })) },
-      };
+      const pts = route.stops.map((s) => [s.lng, s.lat]);
       const fit = () => {
-        if (!pts.length) return;
-        const b = pts.reduce((bb, p) => bb.extend(p), new maplibregl.LngLatBounds(pts[0], pts[0]));
-        map.fitBounds(b, { padding: { top: 30, right: 30, bottom: 70, left: 30 }, maxZoom: 15, duration: 0 });
+        const all = [...pts, ...(preview.path || []), ...(preview.me ? [preview.me] : [])];
+        if (!all.length) return;
+        const b = all.reduce((bb, p) => bb.extend(p), new maplibregl.LngLatBounds(all[0], all[0]));
+        map.fitBounds(b, { padding: { top: 34, right: 34, bottom: 70, left: 34 }, maxZoom: 15, duration: 0 });
       };
-      if (map) {
-        if (map.getSource("line")) { map.getSource("line").setData(data.line); map.getSource("stops").setData(data.stops); fit(); }
-        return;
-      }
-      try {
-        map = new maplibregl.Map({ container: "route-map", style: "https://tiles.openfreemap.org/styles/positron",
-                                   center: pts[0] || [-95.4, 30.1], zoom: 11, attributionControl: { compact: true } });
-      } catch { $("route-map").hidden = true; return; }
-      map.on("load", () => {
-        map.addSource("line", { type: "geojson", data: data.line });
-        map.addSource("stops", { type: "geojson", data: data.stops });
-        map.addLayer({ id: "line", type: "line", source: "line", paint: { "line-color": "#0b3d2e", "line-width": 4, "line-opacity": 0.8 } });
-        map.addLayer({ id: "stops", type: "circle", source: "stops", paint: {
-          "circle-radius": ["match", ["get", "state"], "now", 13, 10],
-          "circle-color": ["match", ["get", "state"], "done", "#9aa7a0", "now", "#1a73e8", "#2f7d4f"],
-          "circle-stroke-color": "#ffffff", "circle-stroke-width": 2 } });
-        map.addLayer({ id: "stop-n", type: "symbol", source: "stops",
-          layout: { "text-field": ["get", "n"], "text-size": 11, "text-font": ["Noto Sans Bold"] }, paint: { "text-color": "#ffffff" } });
+      const setData = () => {
+        map.getSource("line").setData({ type: "Feature", geometry: { type: "LineString", coordinates: pts } });
+        map.getSource("stops").setData({ type: "FeatureCollection", features: groupStops(cur) });
+        map.getSource("preview").setData(preview.path && cur && preview.stopId === cur.stop_id
+          ? { type: "Feature", geometry: { type: "LineString", coordinates: preview.path } } : { type: "FeatureCollection", features: [] });
+        if (preview.me) {
+          if (!preview.marker) preview.marker = new maplibregl.Marker({ element: el("div", { class: "nav-me" }) }).setLngLat(preview.me).addTo(map);
+          else preview.marker.setLngLat(preview.me);
+        }
         fit();
-      });
+      };
+      if (!map) {
+        try {
+          map = new maplibregl.Map({ container: "route-map", style: "https://tiles.openfreemap.org/styles/positron",
+                                     center: pts[0] || [-95.4, 30.1], zoom: 11, attributionControl: { compact: true } });
+        } catch { $("route-map").hidden = true; return; }
+        map.on("load", () => {
+          map.addSource("line", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+          map.addSource("preview", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+          map.addSource("stops", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+          map.addLayer({ id: "line", type: "line", source: "line", paint: { "line-color": "#0b3d2e", "line-width": 3, "line-opacity": 0.5, "line-dasharray": [2, 2] } });
+          map.addLayer({ id: "preview-casing", type: "line", source: "preview", paint: { "line-color": "#0b3d2e", "line-width": 8 } });
+          map.addLayer({ id: "preview", type: "line", source: "preview", paint: { "line-color": "#1a73e8", "line-width": 5 } });
+          map.addLayer({ id: "stops", type: "circle", source: "stops", paint: {
+            "circle-radius": ["match", ["get", "state"], "now", 14, 11],
+            "circle-color": ["match", ["get", "state"], "done", "#9aa7a0", "now", "#b45309", "#2f7d4f"],
+            "circle-stroke-color": "#ffffff", "circle-stroke-width": 2 } });
+          map.addLayer({ id: "stop-n", type: "symbol", source: "stops",
+            layout: { "text-field": ["get", "n"], "text-size": 11, "text-font": ["Noto Sans Bold"], "text-allow-overlap": true },
+            paint: { "text-color": "#ffffff" } });
+          setData();
+        });
+        // Tap the map → turn-by-turn to the current stop.
+        $("route-map").addEventListener("click", () => { const c = current(); if (c) startNav(c); });
+      } else if (map.getSource("line")) setData();
+      loadPreview(cur, () => map && map.getSource("line") && setData());
+    }
+
+    // Road route from your GPS to the current stop, fetched once per stop (GPS or service down → just the stops).
+    async function loadPreview(cur, redraw) {
+      if (!cur || step() === "start") { preview.path = null; return; }
+      if (preview.stopId === cur.stop_id && preview.path) return;
+      preview.stopId = cur.stop_id; preview.path = null;
+      const where = await position();
+      if (!where) return;
+      preview.me = [where.lng, where.lat];
+      try {
+        const d = await api(`/api/crew/directions/${cur.stop_id}?lat=${where.lat}&lng=${where.lng}`);
+        if (preview.stopId === cur.stop_id) preview.path = d.path;
+      } catch {}
+      redraw();
     }
 
     // ---------- actions ----------
