@@ -35,6 +35,17 @@
     .stop-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .stop-actions .btn { min-height: 52px; font-size: 1rem; }
     .btn-nav { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .workload { margin: -4px 0 12px; font-size: 0.85rem; color: var(--muted); text-align: center; }
+    .breakdown { margin-top: 12px; padding: 12px 14px; border-radius: 12px; border: 2px solid; }
+    .breakdown p { margin: 0; }
+    .breakdown-title { font-size: 0.75rem; font-weight: 800; letter-spacing: 0.08em; margin-bottom: 4px !important; }
+    .breakdown-scope { font-weight: 700; font-size: 1rem; line-height: 1.35; }
+    .breakdown-meta { margin-top: 6px !important; font-size: 0.85rem; }
+    .breakdown.scope-yard { background: #fff4d6; border-color: #b45309; color: #5c2c00; }
+    .breakdown.scope-full { background: #e8f0fe; border-color: #1a56c4; color: #0b2a66; }
+    .breakdown.scope-legacy { background: #f2f4f3; border-color: #9aa7a0; color: #1b2420; }
+    .tag-full, .tag-yard { margin-left: 6px; padding: 1px 6px; border-radius: 6px; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.04em; }
+    .tag-full { background: #1a56c4; color: #fff; } .tag-yard { background: #b45309; color: #fff; }
     .note-toggle { margin-top: 10px; font: inherit; font-weight: 600; background: none; border: 0; color: var(--brand); padding: 6px 0; cursor: pointer; }
     .note-box textarea { width: 100%; min-height: 70px; font: inherit; padding: 10px; border: 1px solid var(--border); border-radius: 10px; }
     .note-saved { font-size: 0.85rem; color: var(--muted); }
@@ -102,6 +113,7 @@
         <div class="metric"><b id="m-time">–</b><span>Est. route time</span></div>
         <div class="metric status" id="m-status-box"><b id="m-status">–</b><span>Status</span></div>
       </section>
+      <p class="workload" id="workload"></p>
 
       <div id="route-map" role="button" tabindex="0" aria-label="Map of today's stops. Tap for turn-by-turn directions to the current stop."></div>
 
@@ -240,6 +252,12 @@
       const total = stops.reduce((t, x) => t + (x.leg_duration_s || 0) + (x.service_minutes || 0) * 60, 0);
       $("m-stops").textContent = stops.length;
       $("m-time").textContent = fmtDur(total);
+      // Where the time goes: turf to cut (bigger lawns = longer stops) vs. driving.
+      const turf = stops.reduce((t, x) => t + (x.lawn_sqft || 0), 0);
+      const work = stops.reduce((t, x) => t + (x.service_minutes || 0) * 60, 0);
+      const full = stops.filter((x) => x.scope === "scope_full").length;
+      $("workload").textContent = `${turf.toLocaleString()} sq ft of turf · ~${fmtDur(work)} on site · ~${fmtDur(total - work)} driving`
+        + (full ? ` · ${full} full-property ${full === 1 ? "stop" : "stops"}` : "");
       $("m-status").textContent = s === "start" ? "Not started" : s === "done" ? "Completed" : "Active";
       $("m-status-box").dataset.state = s === "start" ? "idle" : s === "done" ? "done" : "active";
 
@@ -280,6 +298,7 @@
         el("div", { class: "stop-actions" },
           el("button", { class: "btn btn-nav", type: "button", onclick: () => startNav(cur) }, "➤ Navigate"),
           el("a", { class: "btn", href: `tel:${cur.phone}` }, "Call")),
+        breakdown(cur),
         el("button", { class: "note-toggle", type: "button", "aria-expanded": "false", onclick: (e) => {
           noteBox.hidden = !noteBox.hidden; e.target.setAttribute("aria-expanded", String(!noteBox.hidden));
         } }, notes[cur.stop_id] ? "📝 Note (1)" : "📝 Add a note"),
@@ -287,11 +306,30 @@
       $("note-text").value = notes[cur.stop_id] || "";
     }
 
+    // OPERATIONAL BREAKDOWN: exactly what this customer paid for, so nobody mows more (or less) than booked.
+    function breakdown(cur) {
+      const sq = cur.lawn_sqft ? `~${cur.lawn_sqft.toLocaleString()} sq ft` : "size not set";
+      const mins = cur.service_minutes ? `Plan ~${cur.service_minutes} min on site.` : "";
+      const extras = (cur.add_ons || []).filter((a) => !String(a.key || "").startsWith("scope_")).map((a) => a.label);
+      const [cls, icon, text] = cur.scope === "scope_yard"
+        ? ["scope-yard", "⚠️", `SCOPE ENFORCEMENT: Customer booked the main / fenced yard only (${sq}). Do NOT cut the rest of the lot.`]
+        : cur.scope === "scope_full"
+          ? ["scope-full", "⚡", `SCOPE ENFORCEMENT: Full property (${sq} of mowable turf). Complete edge-to-edge service required.`]
+          : ["scope-legacy", "ℹ️", `Standard visit (${sq}). Older booking: confirm the lawn size when you finish.`];
+      return el("section", { class: `breakdown ${cls}`, "aria-label": "Operational breakdown" },
+        el("p", { class: "breakdown-title" }, "OPERATIONAL BREAKDOWN"),
+        el("p", { class: "breakdown-scope" }, `${icon} ${text}`),
+        el("p", { class: "breakdown-meta" }, [mins, extras.length ? `Also: ${extras.join(", ")}.` : "",
+          cur.scope ? "Price is locked for this area." : ""].filter(Boolean).join(" ")));
+    }
+
     function renderList() {
       const cur = current();
       $("stop-list").replaceChildren(...route.stops.map((x, i) => el("li", { class: x.completed_at ? "done" : "" },
         el("span", { class: "n" }, String(i + 1)),
-        el("span", {}, `${x.customer_name.split(/\s+/)[0]} · ${x.address.split(",")[0]}`, x === cur ? " ← now" : ""),
+        el("span", {}, `${x.customer_name.split(/\s+/)[0]} · ${x.address.split(",")[0]}`,
+          x.scope === "scope_full" ? el("span", { class: "tag-full" }, "FULL") : x.scope === "scope_yard" ? el("span", { class: "tag-yard" }, "YARD") : null,
+          x === cur ? " ← now" : ""),
         el("time", {}, x.completed_at ? "done" : fmtTime(x.eta)))));
     }
 

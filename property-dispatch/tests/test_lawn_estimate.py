@@ -110,3 +110,18 @@ def test_scope_choices_are_not_offered_as_add_on_checkboxes(client):
     info = client.get("/api/booking-info").json()
     scopes = [a["key"] for a in info["add_ons"] if a["scope"]]
     assert scopes == ["scope_yard", "scope_full"]
+
+
+def test_stop_time_scales_with_lawn_size():
+    from app.pricing import mow_minutes
+    assert (mow_minutes(None), mow_minutes(2500), mow_minutes(4500), mow_minutes(8000), mow_minutes(14500)) == (45, 45, 45, 61, 90)
+
+
+def test_crew_stop_carries_the_scope_and_a_longer_full_property_visit(client, repo, settings):
+    from app.nightly import run_nightly
+    assert scoped_booking(client, "scope_full", letter="A", suffix="0410").status_code == 201
+    assert scoped_booking(client, "scope_yard", letter="B", suffix="0411").status_code == 201
+    run_nightly(repo, settings, TOMORROW)
+    stops = {s["scope"]: s for s in client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"]}
+    assert stops["scope_full"]["lawn_sqft"] == 8000 and stops["scope_full"]["service_minutes"] == 61
+    assert stops["scope_yard"]["lawn_sqft"] == 4500 and stops["scope_yard"]["service_minutes"] == 45

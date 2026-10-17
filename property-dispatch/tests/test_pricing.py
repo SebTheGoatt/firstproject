@@ -226,7 +226,7 @@ def test_booking_with_add_ons(client, repo):
     assert (b["subtotal"], b["add_on_total"], b["tax"], b["total"], b["charity_amount"]) == (100.0, 15.0, 8.25, 108.25, 7.0)
     assert [(a["label"], a["price"]) for a in b["add_ons"]] == [("Gutter cleaning", 15.0), ("Holiday lighting quote", None)]
     job = repo.jobs[b["id"]]
-    assert job["service_minutes"] == 45 + 30 + 10            # mow + gutters + a quick look for the lighting quote
+    assert job["service_minutes"] == 48 + 30 + 10            # mow (5,000 sq ft) + gutters + a quick look for the lighting quote
     assert job["add_on_total"] == 15.0 and len(job["add_ons"]) == 2
 
 

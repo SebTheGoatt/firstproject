@@ -40,10 +40,10 @@ from .agent_api import register_agent_api
 from .live_feed import record_booking, register_live_routes
 from .crew_auth import CrewIdentity
 from .crew_routes import register_crew_routes
-from .models import (SERVICE_LABELS, SERVICE_MINUTES, order_label, AddressCheck, CompleteStopRequest, GeoPoint, JobCreated,
+from .models import (SERVICE_LABELS, order_label, AddressCheck, CompleteStopRequest, GeoPoint, JobCreated,
                      JobRequest, OptimizeRouteRequest, QuoteRequest, RouteView, Service, StopNote, StopView)
 from .charity import describe as describe_charities, split_donation
-from .pricing import (ADD_ONS, FEATURED_PACKAGE, scope_of, MAX_SQFT, MIN_SQFT, PACKAGES, LawnSizeError, check_sqft, in_season, package_for_rate,
+from .pricing import (ADD_ONS, FEATURED_PACKAGE, mow_minutes, scope_of, MAX_SQFT, MIN_SQFT, PACKAGES, LawnSizeError, check_sqft, in_season, package_for_rate,
                       quote, season_text)
 from .routing.matrix import haversine_m
 from .nightly import run_nightly
@@ -120,6 +120,7 @@ def build_route_view(route: dict, settings: Settings) -> RouteView:
             customer_name=s["customer_name"], phone=s["phone"], address=s["address"],
             lat=s["lat"], lng=s["lng"], service=s["service"],
             service_label=order_label(s["service"], s.get("add_ons")), service_minutes=s.get("service_minutes"),
+            scope=scope_of(s.get("add_ons")),
             add_ons=s.get("add_ons") or [], add_on_total=s.get("add_on_total") or 0.0,
             eta=s["eta"], leg_distance_m=s["leg_distance_m"], leg_duration_s=s["leg_duration_s"],
             completed_at=s["completed_at"], completed_by_name=s.get("completed_by_name"),
@@ -415,7 +416,7 @@ def create_app(
         job = repo.create_job(
             name=body.name, phone=body.phone, address=body.address, geo=geo,
             service=body.service, scheduled_date=body.scheduled_date,
-            service_minutes=SERVICE_MINUTES[body.service] + sum(ADD_ONS[a["key"]]["minutes"] for a in add_ons),
+            service_minutes=mow_minutes(sqft) + sum(ADD_ONS[a["key"]]["minutes"] for a in add_ons),   # bigger lawn, longer stop
             zone_key=zone.key, quoted_price=price,
             payment_method=body.payment_method, pay_token=pay_token, access_code=access_code,
             amount_due=float(q.total) if q.total is not None else None, lawn_sqft=sqft,

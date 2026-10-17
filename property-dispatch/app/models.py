@@ -151,6 +151,7 @@ class StopView(BaseModel):
     service: Service
     service_label: str
     service_minutes: int | None = None   # planned time on site (for the dashboard's route-time estimate)
+    scope: Literal["scope_yard", "scope_full"] | None = None   # what the customer booked; None = older booking
     eta: datetime | None
     leg_distance_m: int
     leg_duration_s: int
