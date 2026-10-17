@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Route | {{BUSINESS_NAME}}</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#0b3d2e">
+  <link rel="manifest" href="/crew.webmanifest">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="/static/styles.css?v={{V}}">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <style>
+    /* Crew dashboard: one screen, one big button. Built for a phone in the sun with gloves on. */
+    body.dash { background: #ffffff; color: #000000; }
+    .dash-wrap { max-width: 560px; margin: 0 auto; padding: 12px 16px calc(120px + env(safe-area-inset-bottom, 0px)); }
+    .dash-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+    .dash-top h1 { font-size: 1.15rem; margin: 0; }
+    .dash-top a { font-size: 0.9rem; color: var(--brand); font-weight: 600; text-decoration: none; }
+    .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+    .metric { border: 1px solid var(--border); border-radius: 12px; padding: 10px 8px; text-align: center; }
+    .metric b { display: block; font-size: 1.25rem; line-height: 1.2; }
+    .metric span { font-size: 0.75rem; color: var(--muted); }
+    .metric.status b { font-size: 1rem; }
+    .metric.status[data-state="active"] b { color: var(--brand); }
+    .metric.status[data-state="done"] b { color: var(--brand-deep); }
+    #route-map { height: 230px; border-radius: 14px; overflow: hidden; border: 1px solid var(--border); margin-bottom: 12px; background: #eef2ef; }
+    .stop-card { border: 2px solid var(--brand); border-radius: 16px; padding: 16px; margin-bottom: 12px; }
+    .stop-kicker { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--brand); margin: 0 0 4px; }
+    .stop-name { font-size: 1.3rem; font-weight: 750; margin: 0; }
+    .stop-addr { margin: 2px 0 8px; font-size: 1rem; }
+    .stop-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .chip-d { font-size: 0.82rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--brand-soft); }
+    .chip-d.warn { background: var(--warn-soft); color: var(--warn); }
+    .stop-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stop-actions .btn { min-height: 52px; font-size: 1rem; }
+    .btn-nav { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .note-toggle { margin-top: 10px; font: inherit; font-weight: 600; background: none; border: 0; color: var(--brand); padding: 6px 0; cursor: pointer; }
+    .note-box textarea { width: 100%; min-height: 70px; font: inherit; padding: 10px; border: 1px solid var(--border); border-radius: 10px; }
+    .note-saved { font-size: 0.85rem; color: var(--muted); }
+    .main-cta { position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+      background: #ffffff; border-top: 1px solid var(--border); z-index: 20; }
+    .main-cta button { display: block; width: 100%; max-width: 528px; margin: 0 auto; min-height: 64px; border: 0; border-radius: 14px;
+      font: 800 1.15rem/1.2 system-ui, sans-serif; letter-spacing: 0.04em; color: #ffffff; background: var(--brand-deep); cursor: pointer; }
+    .main-cta button[data-step="arrive"] { background: #1a73e8; }
+    .main-cta button[data-step="complete"] { background: #b45309; }
+    .main-cta button:disabled { opacity: 0.6; }
+    .up-next h2 { font-size: 1rem; margin: 18px 0 8px; }
+    .up-next ol { list-style: none; margin: 0; padding: 0; }
+    .up-next li { display: flex; gap: 10px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.92rem; }
+    .up-next .n { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--brand-soft); text-align: center; font-weight: 700; font-size: 0.8rem; line-height: 24px; }
+    .up-next li.done { color: var(--muted); text-decoration: line-through; }
+    .up-next time { margin-left: auto; color: var(--muted); white-space: nowrap; }
+    .sheet-bg { position: fixed; inset: 0; background: rgb(0 0 0 / 0.45); z-index: 30; display: flex; align-items: flex-end; }
+    .sheet { background: #ffffff; width: 100%; max-width: 560px; margin: 0 auto; border-radius: 18px 18px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px)); max-height: 92vh; overflow-y: auto; }
+    .sheet h2 { margin: 0 0 12px; font-size: 1.2rem; }
+    .sheet .field input { width: 100%; }
+    .sheet .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+    .sheet .row .btn { min-height: 56px; font-size: 1rem; }
+    .pay-line { padding: 10px 12px; border-radius: 10px; background: var(--brand-soft); font-weight: 600; margin-bottom: 14px; }
+    .pay-line.due { background: var(--warn-soft); color: var(--warn); }
+    .empty-state { text-align: center; padding: 40px 10px; }
+    .empty-state p { color: var(--muted); }
+    .toast-d { position: fixed; left: 16px; right: 16px; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); z-index: 40;
+      max-width: 528px; margin: 0 auto; background: #111; color: #fff; padding: 12px 14px; border-radius: 12px; font-size: 0.95rem; }
+  </style>
+</head>
+<body class="dash">
+  <div class="dash-wrap">
+    <header class="dash-top">
+      <h1>Today's route</h1>
+      <a href="/crew">Full crew app</a>
+    </header>
+
+    <div id="signed-out" class="empty-state" hidden>
+      <h2>Sign in first</h2>
+      <p>Open the crew app, sign in with your code, then come back here.</p>
+      <a class="btn btn-primary" href="/crew">Go to crew sign-in</a>
+    </div>
+
+    <div id="dash" hidden>
+      <section class="metrics" aria-label="Route progress">
+        <div class="metric"><b id="m-stops">–</b><span>Total stops</span></div>
+        <div class="metric"><b id="m-time">–</b><span>Est. route time</span></div>
+        <div class="metric status" id="m-status-box"><b id="m-status">–</b><span>Status</span></div>
+      </section>
+
+      <div id="route-map" role="img" aria-label="Map of today's stops in order"></div>
+
+      <section id="current" aria-live="polite"></section>
+
+      <section class="up-next" aria-labelledby="up-next-title">
+        <h2 id="up-next-title">The whole day</h2>
+        <ol id="stop-list"></ol>
+      </section>
+    </div>
+
+    <div id="no-route" class="empty-state" hidden>
+      <h2>No route yet</h2>
+      <p id="no-route-msg">Routes are built at 5 PM the day before.</p>
+      <button class="btn btn-primary" type="button" id="build-btn">Build today's route</button>
+    </div>
+  </div>
+
+  <div class="main-cta" id="cta-bar" hidden>
+    <button type="button" id="cta" data-step="start">START DAILY ROUTE</button>
+  </div>
+
+  <div class="toast-d" id="toast" role="status" hidden></div>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script>
+    // ---------- Crew dashboard ----------
+    // Life cycle of the current stop:  START DAILY ROUTE → ARRIVED AT PROPERTY → COMPLETE JOB & NEXT STOP.
+    // The server owns the route, payments and customer notices; this page only stores two small things on the
+    // phone: "route started today" and "arrived at stop X" (so a refresh keeps the right button).
+    const $ = (id) => document.getElementById(id);
+    let token = null;
+    try { token = localStorage.getItem("crewToken"); } catch {}
+    let route = null, notes = {}, tz = "America/Chicago", map = null;
+
+    const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    const fmtTime = (iso) => iso ? new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: tz }) : "";
+    const fmtDur = (s) => s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.round((s % 3600) / 60)}m` : `${Math.max(1, Math.round(s / 60))}m`;
+    const money = (n) => Number(n).toLocaleString("en-US", { style: "currency", currency: "USD" });
+    const store = {
+      get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+      set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+    };
+
+    function el(tag, attrs = {}, ...kids) {
+      const n = document.createElement(tag);
+      for (const [k, v] of Object.entries(attrs)) {
+        if (v === false || v == null) continue;
+        if (k === "class") n.className = v; else if (k.startsWith("on")) n.addEventListener(k.slice(2), v); else n.setAttribute(k, v === true ? "" : v);
+      }
+      n.append(...kids.filter((k) => k !== null && k !== undefined && k !== false));
+      return n;
+    }
+    function toast(msg) {
+      const t = $("toast"); t.textContent = msg; t.hidden = false;
+      clearTimeout(toast._t); toast._t = setTimeout(() => (t.hidden = true), 4200);
+    }
+
+    async function api(path, opts = {}) {
+      const headers = { "X-Crew-Token": token };
+      if (opts.json !== undefined) { headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(opts.json); }
+      let res;
+      try { res = await fetch(path, { ...opts, headers }); }
+      catch { throw new Error("No signal. Try again when you have coverage."); }
+      if (res.status === 401) { showSignedOut(); throw new Error("Please sign in again."); }
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = Array.isArray(body.detail) ? body.detail.map((d) => d.msg).join(". ") : body.detail;
+        throw Object.assign(new Error(msg || `Something went wrong (${res.status}).`), { status: res.status });
+      }
+      return body;
+    }
+
+    // GPS is a bonus, never a requirement: 8 seconds, then the server plans from the last stop instead.
+    function position() {
+      return new Promise((resolve) => {
+        if (!navigator.geolocation) return resolve(null);
+        navigator.geolocation.getCurrentPosition(
+          (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
+          () => resolve(null),
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
+      });
+    }
+
+    // Shrink photos on the phone before upload (same as the full crew app).
+    function resizeImage(file, max = 1280, quality = 0.8) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          const k = Math.min(1, max / Math.max(img.width, img.height));
+          const c = Object.assign(document.createElement("canvas"), { width: Math.round(img.width * k), height: Math.round(img.height * k) });
+          c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+          URL.revokeObjectURL(img.src);
+          resolve(c.toDataURL("image/jpeg", quality));
+        };
+        img.onerror = () => reject(new Error("That file isn't a photo we can use."));
+        img.src = URL.createObjectURL(file);
+      });
+    }
+
+    // ---------- state ----------
+    const startedKey = () => `routeStarted:${today()}`;
+    const arrivedKey = (id) => `arrived:${id}`;
+    const openStops = () => route.stops.filter((s) => !s.completed_at);
+    const current = () => openStops()[0] || null;
+    function step() {
+      const cur = current();
+      if (!cur) return "done";
+      const started = store.get(startedKey()) || route.stops.some((s) => s.completed_at);
+      if (!started) return "start";
+      return store.get(arrivedKey(cur.stop_id)) ? "complete" : "arrive";
+    }
+
+    // ---------- drawing ----------
+    function render() {
+      $("dash").hidden = false; $("no-route").hidden = true; $("cta-bar").hidden = false;
+      const stops = route.stops, s = step();
+      const total = stops.reduce((t, x) => t + (x.leg_duration_s || 0) + (x.service_minutes || 0) * 60, 0);
+      $("m-stops").textContent = stops.length;
+      $("m-time").textContent = fmtDur(total);
+      $("m-status").textContent = s === "start" ? "Not started" : s === "done" ? "Completed" : "Active";
+      $("m-status-box").dataset.state = s === "start" ? "idle" : s === "done" ? "done" : "active";
+
+      const cta = $("cta");
+      cta.dataset.step = s;
+      cta.textContent = { start: "START DAILY ROUTE", arrive: "ARRIVED AT PROPERTY", complete: "COMPLETE JOB & NEXT STOP" }[s] || "";
+      $("cta-bar").hidden = s === "done";
+      renderCurrent(s);
+      renderList();
+      drawMap();
+    }
+
+    function renderCurrent(s) {
+      const box = $("current"), cur = current();
+      if (!cur) {
+        box.replaceChildren(el("div", { class: "stop-card" },
+          el("p", { class: "stop-kicker" }, "All done"),
+          el("p", { class: "stop-name" }, `${route.stops.length} of ${route.stops.length} stops finished`),
+          el("p", { class: "stop-addr" }, "Great work today. Every customer has their receipt.")));
+        return;
+      }
+      const n = route.stops.indexOf(cur) + 1;
+      const pay = cur.payment_status === "paid" ? el("span", { class: "chip-d" }, "Paid ✓")
+        : cur.payment_method === "card" ? el("span", { class: "chip-d" }, "Card: pay link sent after the job")
+        : el("span", { class: "chip-d warn" }, cur.amount_due != null ? `Collect cash ${money(cur.amount_due)}` : "Cash: price on site");
+      const noteBox = el("div", { class: "note-box", hidden: true },
+        el("textarea", { id: "note-text", maxlength: "500", placeholder: "Gate code, dog in yard, anything the next crew should know" }),
+        el("button", { class: "btn", type: "button", onclick: () => saveNote(cur.stop_id) }, "Save note"),
+        el("span", { class: "note-saved", id: "note-saved" }));
+      box.replaceChildren(el("div", { class: "stop-card" },
+        el("p", { class: "stop-kicker" }, `Stop ${n} of ${route.stops.length}` + (s === "complete" ? " · on site" : s === "arrive" ? " · en route" : "")),
+        el("p", { class: "stop-name" }, cur.customer_name),
+        el("p", { class: "stop-addr" }, cur.address),
+        el("div", { class: "stop-meta" },
+          el("span", { class: "chip-d" }, cur.service_label),
+          cur.eta ? el("span", { class: "chip-d" }, `ETA ${fmtTime(cur.eta)}`) : null,
+          pay),
+        el("div", { class: "stop-actions" },
+          el("a", { class: "btn btn-nav", href: cur.google_maps_url, target: "_blank", rel: "noopener" }, "➤ Navigate"),
+          el("a", { class: "btn", href: `tel:${cur.phone}` }, "Call")),
+        el("button", { class: "note-toggle", type: "button", "aria-expanded": "false", onclick: (e) => {
+          noteBox.hidden = !noteBox.hidden; e.target.setAttribute("aria-expanded", String(!noteBox.hidden));
+        } }, notes[cur.stop_id] ? "📝 Note (1)" : "📝 Add a note"),
+        noteBox));
+      $("note-text").value = notes[cur.stop_id] || "";
+    }
+
+    function renderList() {
+      const cur = current();
+      $("stop-list").replaceChildren(...route.stops.map((x, i) => el("li", { class: x.completed_at ? "done" : "" },
+        el("span", { class: "n" }, String(i + 1)),
+        el("span", {}, `${x.customer_name.split(/\s+/)[0]} · ${x.address.split(",")[0]}`, x === cur ? " ← now" : ""),
+        el("time", {}, x.completed_at ? "done" : fmtTime(x.eta)))));
+    }
+
+    // Map: OpenStreetMap tiles (no key, no per-load cost), stops joined in route order.
+    function drawMap() {
+      if (!window.maplibregl) { $("route-map").hidden = true; return; }
+      const pts = route.stops.map((s) => [s.lng, s.lat]);
+      const cur = current();
+      const data = {
+        line: { type: "Feature", geometry: { type: "LineString", coordinates: pts } },
+        stops: { type: "FeatureCollection", features: route.stops.map((s, i) => ({ type: "Feature",
+          geometry: { type: "Point", coordinates: [s.lng, s.lat] },
+          properties: { n: String(i + 1), state: s.completed_at ? "done" : s === cur ? "now" : "todo" } })) },
+      };
+      const fit = () => {
+        if (!pts.length) return;
+        const b = pts.reduce((bb, p) => bb.extend(p), new maplibregl.LngLatBounds(pts[0], pts[0]));
+        map.fitBounds(b, { padding: { top: 30, right: 30, bottom: 70, left: 30 }, maxZoom: 15, duration: 0 });
+      };
+      if (map) {
+        if (map.getSource("line")) { map.getSource("line").setData(data.line); map.getSource("stops").setData(data.stops); fit(); }
+        return;
+      }
+      try {
+        map = new maplibregl.Map({ container: "route-map", style: "https://tiles.openfreemap.org/styles/positron",
+                                   center: pts[0] || [-95.4, 30.1], zoom: 11, attributionControl: { compact: true } });
+      } catch { $("route-map").hidden = true; return; }
+      map.on("load", () => {
+        map.addSource("line", { type: "geojson", data: data.line });
+        map.addSource("stops", { type: "geojson", data: data.stops });
+        map.addLayer({ id: "line", type: "line", source: "line", paint: { "line-color": "#0b3d2e", "line-width": 4, "line-opacity": 0.8 } });
+        map.addLayer({ id: "stops", type: "circle", source: "stops", paint: {
+          "circle-radius": ["match", ["get", "state"], "now", 13, 10],
+          "circle-color": ["match", ["get", "state"], "done", "#9aa7a0", "now", "#1a73e8", "#2f7d4f"],
+          "circle-stroke-color": "#ffffff", "circle-stroke-width": 2 } });
+        map.addLayer({ id: "stop-n", type: "symbol", source: "stops",
+          layout: { "text-field": ["get", "n"], "text-size": 11, "text-font": ["Noto Sans Bold"] }, paint: { "text-color": "#ffffff" } });
+        fit();
+      });
+    }
+
+    // ---------- actions ----------
+    async function load() {
+      tz = "America/Chicago";
+      try {
+        route = await api(`/api/routes/${today()}`);
+        tz = route.timezone || tz;
+        try { notes = await api(`/api/routes/${today()}/notes`); } catch { notes = {}; }
+        render();
+      } catch (err) {
+        if (err.status === 404) return showNoRoute("No route for today yet. Build it now if today's jobs are booked.");
+        if (err.message !== "Please sign in again.") showNoRoute(err.message);
+      }
+    }
+    function showNoRoute(msg) {
+      $("dash").hidden = true; $("cta-bar").hidden = true; $("no-route").hidden = false; $("no-route-msg").textContent = msg;
+    }
+    function showSignedOut() {
+      $("dash").hidden = true; $("no-route").hidden = true; $("cta-bar").hidden = true; $("signed-out").hidden = false;
+    }
+
+    // Re-plan the open stops from here. GPS failing is fine: the server uses the last finished stop.
+    async function replan() {
+      const where = await position();
+      const out = await api("/api/crew/optimize-route", { method: "POST", json: { day: today(), ...(where || {}) } });
+      route = out.route;
+      if (!where) toast("No GPS right now, so the route was planned from your last stop.");
+      return out;
+    }
+
+    async function onCta() {
+      const btn = $("cta"), s = btn.dataset.step;
+      if (s === "complete") return openCompleteSheet();
+      btn.disabled = true;
+      try {
+        if (s === "start") {
+          await replan();
+          store.set(startedKey(), "1");
+          const first = current();
+          if (first) {
+            const r = await api(`/api/stops/${first.stop_id}/on-the-way`, { method: "POST" }).catch(() => null);
+            toast(r && (r.pushed || r.texted) ? `${first.customer_name.split(/\s+/)[0]} was told you're on the way.`
+                                              : "Route started. Tap Navigate to head to the first stop.");
+          }
+        } else if (s === "arrive") {
+          store.set(arrivedKey(current().stop_id), new Date().toISOString());
+        }
+        render();
+      } catch (err) { toast(err.message); }
+      finally { btn.disabled = false; }
+    }
+
+    async function saveNote(stopId) {
+      const text = $("note-text").value;
+      try {
+        await api(`/api/stops/${stopId}/note`, { method: "PUT", json: { note: text } });
+        notes[stopId] = text.trim();
+        $("note-saved").textContent = " Saved.";
+      } catch (err) { toast(err.message); }
+    }
+
+    function openCompleteSheet() {
+      const cur = current();
+      const cashDue = cur.payment_method === "cash" && cur.payment_status === "unpaid";
+      const needsPrice = cashDue && cur.amount_due == null;
+      const cashIn = el("input", { id: "cash-in", type: "number", inputmode: "decimal", step: "0.01", min: "0",
+                                   value: cur.amount_due != null ? cur.amount_due.toFixed(2) : "" });
+      const noteIn = el("textarea", { id: "done-note", maxlength: "500", placeholder: "Optional note (only the crew sees it)" });
+      noteIn.value = notes[cur.stop_id] || "";
+      const photoIn = el("input", { id: "after-photo", type: "file", accept: "image/*", capture: "environment" });
+      const confirm = el("button", { class: "btn btn-primary", type: "button" }, "Complete job");
+      const close = () => bg.remove();
+      const bg = el("div", { class: "sheet-bg", onclick: (e) => { if (e.target === bg) close(); } },
+        el("div", { class: "sheet", role: "dialog", "aria-modal": "true", "aria-labelledby": "sheet-title" },
+          el("h2", { id: "sheet-title" }, `Finish ${cur.customer_name.split(/\s+/)[0]}'s job`),
+          cur.payment_status === "paid" ? el("p", { class: "pay-line" }, "Already paid ✓")
+            : cur.payment_method === "card" ? el("p", { class: "pay-line" }, "Card customer: their private pay link is sent when you complete.")
+            : needsPrice ? el("p", { class: "pay-line due" }, "This job needs a price. Finish it in the full crew app.")
+            : el("p", { class: "pay-line due" }, `Collect ${money(cur.amount_due)} cash. Anything extra is a donation.`),
+          cashDue && !needsPrice ? el("div", { class: "field" }, el("label", { for: "cash-in" }, "Cash collected"), cashIn) : null,
+          el("div", { class: "field" }, el("label", { for: "after-photo" }, "After photo (optional, the customer sees it)"), photoIn),
+          el("div", { class: "field note-box" }, el("label", { for: "done-note" }, "Note (optional)"), noteIn),
+          el("div", { class: "row" }, el("button", { class: "btn", type: "button", onclick: close }, "Cancel"),
+            needsPrice ? el("a", { class: "btn btn-primary", href: "/crew" }, "Open crew app") : confirm)));
+      confirm.addEventListener("click", async () => {
+        confirm.disabled = true; confirm.textContent = "Saving…";
+        try {
+          const body = {};
+          if (cashDue && !needsPrice) {
+            const cash = Number(cashIn.value);
+            if (!cashIn.value || !(cash >= 0)) throw new Error("Enter the cash you collected.");
+            body.cash_collected = cash;
+          }
+          const done = await api(`/api/stops/${cur.stop_id}/complete`, { method: "POST", json: body });
+          // Extras never block the job: each one is best effort.
+          if (photoIn.files?.[0]) {
+            try { await api(`/api/stops/${cur.stop_id}/photos`, { method: "POST", json: { kind: "after", photo: await resizeImage(photoIn.files[0]) } }); }
+            catch (err) { toast(`Job saved, but the photo didn't upload: ${err.message}`); }
+          }
+          if ((noteIn.value || "").trim() !== (notes[cur.stop_id] || "")) {
+            try { await api(`/api/stops/${cur.stop_id}/note`, { method: "PUT", json: { note: noteIn.value } }); notes[cur.stop_id] = noteIn.value.trim(); }
+            catch (err) { toast(`Job saved. Note not saved: ${err.message}`); }
+          }
+          close();
+          if (openStops().length > 1) {
+            try { await replan(); }
+            catch { route = await api(`/api/routes/${today()}`); }
+          } else {
+            route = await api(`/api/routes/${today()}`);
+          }
+          const n = done.notification || {};
+          toast(n.notified ? "Done. The next customer was told you're on the way." : "Job complete. Nice work.");
+          render();
+        } catch (err) {
+          toast(err.message);
+          confirm.disabled = false; confirm.textContent = "Complete job";
+        }
+      });
+      document.body.append(bg);
+      confirm.focus();
+    }
+
+    $("cta").addEventListener("click", onCta);
+    $("build-btn").addEventListener("click", async () => {
+      $("build-btn").disabled = true;
+      try { await replan(); render(); } catch (err) { $("no-route-msg").textContent = err.message; }
+      finally { $("build-btn").disabled = false; }
+    });
+
+    if (!token) showSignedOut(); else load();
+  </script>
+</body>
+</html>

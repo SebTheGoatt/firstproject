@@ -106,6 +106,9 @@ class Repository(Protocol):
     def complete_stop(self, stop_id: str, member_id: str | None = None) -> tuple[dict, bool] | None: ...
     def stop_id_for_job(self, job_id: str) -> str | None: ...
     def next_open_stop(self, route_id: str, after_sequence: int) -> dict | None: ...
+    def resequence_stops(self, route_id: str, updates: list[dict]) -> None: ...
+    def set_stop_note(self, stop_id: str, note: str | None) -> None: ...
+    def stop_notes(self, route_id: str) -> dict[str, str]: ...
     def claim_notification(self, stop_id: str) -> bool: ...
     def release_notification(self, stop_id: str) -> None: ...
     # Payments
@@ -150,7 +153,7 @@ class SupabaseRepository:
     STOP_SELECT = (
         "id, route_id, job_id, sequence, leg_distance_m, leg_duration_s, eta, completed_at, notified_at,"
         " completed_by, crew_members(display_name),"
-        " jobs(address, formatted_address, lat, lng, service, " + ", ".join(PAYMENT_FIELDS + PRICE_FIELDS) + ","
+        " jobs(address, formatted_address, lat, lng, service, service_minutes, " + ", ".join(PAYMENT_FIELDS + PRICE_FIELDS) + ","
         " customers(name, phone))"
     )
 
@@ -184,6 +187,7 @@ class SupabaseRepository:
             "lat": job["lat"],
             "lng": job["lng"],
             "service": job["service"],
+            "service_minutes": job.get("service_minutes"),
             "payment_method": job["payment_method"],
             "payment_status": job["payment_status"],
             "amount_due": _money(job["amount_due"]),
@@ -291,6 +295,26 @@ class SupabaseRepository:
     def stop_id_for_job(self, job_id: str) -> str | None:
         rows = self.sb.table("route_stops").select("id").eq("job_id", job_id).limit(1).execute().data
         return rows[0]["id"] if rows else None
+
+    def resequence_stops(self, route_id: str, updates: list[dict]) -> None:
+        # (route_id, sequence) is unique, so park every stop on a high number first, then set the new order.
+        for u in updates:
+            self.sb.table("route_stops").update({"sequence": u["sequence"] + 10_000}) \
+                .eq("id", u["stop_id"]).eq("route_id", route_id).execute()
+        for u in updates:
+            self.sb.table("route_stops").update({
+                "sequence": u["sequence"], "leg_distance_m": u["leg_distance_m"],
+                "leg_duration_s": u["leg_duration_s"], "eta": u["eta"],
+            }).eq("id", u["stop_id"]).eq("route_id", route_id).execute()
+        self.sb.table("routes").update({"optimized_at": _now_iso()}).eq("id", route_id).execute()
+
+    def set_stop_note(self, stop_id: str, note: str | None) -> None:
+        # Needs supabase/migrations/20261026000000_crew_notes.sql (route_stops.crew_note).
+        self.sb.table("route_stops").update({"crew_note": note}).eq("id", stop_id).execute()
+
+    def stop_notes(self, route_id: str) -> dict[str, str]:
+        rows = self.sb.table("route_stops").select("id, crew_note").eq("route_id", route_id).execute().data
+        return {r["id"]: r["crew_note"] for r in rows if r.get("crew_note")}
 
     def next_open_stop(self, route_id: str, after_sequence: int) -> dict | None:
         rows = (
@@ -575,7 +599,7 @@ class MemoryRepository:
             "completed_at": s["completed_at"], "notified_at": s["notified_at"],
             "completed_by": s.get("completed_by"), "completed_by_name": member["display_name"] if member else None,
             "customer_name": c["name"], "phone": c["phone"], "address": j["address"],
-            "lat": j["lat"], "lng": j["lng"], "service": j["service"],
+            "lat": j["lat"], "lng": j["lng"], "service": j["service"], "service_minutes": j.get("service_minutes"),
             **{k: j[k] for k in PAYMENT_FIELDS},
             **_price(j),
         }
@@ -608,6 +632,23 @@ class MemoryRepository:
 
     def stop_id_for_job(self, job_id: str) -> str | None:
         return next((sid for sid, s in self.stops.items() if s["job_id"] == job_id), None)
+
+    def resequence_stops(self, route_id: str, updates: list[dict]) -> None:
+        with self._lock:
+            for u in updates:
+                st = self.stops[u["stop_id"]]
+                assert st["route_id"] == route_id
+                st.update(sequence=u["sequence"], leg_distance_m=u["leg_distance_m"],
+                          leg_duration_s=u["leg_duration_s"], eta=u["eta"])
+            self.routes[route_id]["optimized_at"] = _now_iso()
+
+    def set_stop_note(self, stop_id: str, note: str | None) -> None:
+        with self._lock:
+            self.stops[stop_id]["crew_note"] = note
+
+    def stop_notes(self, route_id: str) -> dict[str, str]:
+        return {sid: st["crew_note"] for sid, st in self.stops.items()
+                if st["route_id"] == route_id and st.get("crew_note")}
 
     def next_open_stop(self, route_id: str, after_sequence: int) -> dict | None:
         cands = [s for s in self.stops.values()
