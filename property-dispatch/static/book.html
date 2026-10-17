@@ -140,6 +140,7 @@
 
   <script src="/static/site.js?v={{V}}"></script>
   <script src="/static/push.js?v={{V}}"></script>
+  <script src="/static/places.js?v={{V}}"></script>
   <script>
     const form = document.getElementById("intake");
     const err = document.getElementById("err");
@@ -217,12 +218,18 @@
     }
 
     // ---------- Step 2: rate cards (nothing preselected) ----------
+    const FEATURED_PACKAGE = "supporter";   // the center card gets the visual emphasis; display only, prices unchanged
     function renderRates() {
       const box = $("rates");
       box.replaceChildren(...packages.flatMap((pk) => {
         const input = Object.assign(document.createElement("input"),
           { type: "radio", name: "package_pick", id: `pkg-${pk.key}`, value: pk.key, checked: pk.key === pkgKey });
         const label = document.createElement("label"); label.htmlFor = input.id;
+        if (pk.key === FEATURED_PACKAGE) {
+          label.classList.add("featured");
+          const badge = document.createElement("span"); badge.className = "tier-badge"; badge.textContent = "Recommended";
+          label.append(badge);
+        }
         const name = document.createElement("strong"); name.textContent = pk.label;
         const rate = document.createElement("span"); rate.className = "tier-rate"; rate.textContent = rateText(pk.sqft_rate);
         const desc = document.createElement("small"); desc.textContent = pk.description || "";
@@ -278,7 +285,7 @@
         label.append(name, price);
         const note = document.createElement("small");
         note.textContent = a.quote ? (open ? `No charge. Seasonal: ${a.season}` : `Available for ${a.season} visits`)
-          : "Added to your mowing visit";
+          : a.key === "bin_cleaning" ? "Sanitized, not just rinsed" : "Added to your mowing visit";
         label.append(note);
         input.addEventListener("change", () => {
           input.checked ? chosenAddOns.add(a.key) : chosenAddOns.delete(a.key);   // a Set: never added twice
@@ -368,50 +375,31 @@
     renderEstimate();
 
     // ---------- Optional Google address dropdown (Places API (New)) ----------
-    // Only loads when the owner sets GOOGLE_MAPS_BROWSER_KEY; otherwise customers type normally.
+    // Only loads when the owner sets GOOGLE_MAPS_API_KEY (or GOOGLE_MAPS_BROWSER_KEY); otherwise customers type normally.
     function usePlainAddressBox() {
       const slot = document.getElementById("address-picker");
       slot.replaceChildren(); slot.hidden = true;
       addressInput.hidden = false; addressInput.required = true;
       document.getElementById("address-hint").textContent = "House number, street, city and ZIP.";
     }
-    // Google calls this if the key is invalid, expired or not allowed on this site.
-    window.gm_authFailure = usePlainAddressBox;
-
     function setUpGoogleAutocomplete(key) {
-      window.__initPlaces = async () => {
-        try {
-          const { PlaceAutocompleteElement } = await google.maps.importLibrary("places");
-          const picker = new PlaceAutocompleteElement({ includedPrimaryTypes: ["street_address", "premise", "subpremise"] });
-          picker.includedRegionCodes = ["us"];
-          picker.locationBias = { center: { lat: 30.17, lng: -95.27 }, radius: 50000 };  // north Houston service areas
-          picker.placeholder = "Start typing your address…";
-          picker.id = "address-autocomplete";
-          picker.setAttribute("aria-label", "Service address");
-          picker.addEventListener("gmp-select", async ({ placePrediction }) => {
-            const place = placePrediction.toPlace();
-            await place.fetchFields({ fields: ["formattedAddress", "location"] });
-            const text = (place.formattedAddress || "").replace(/, USA$/, "");
-            addressInput.value = text;
-            addressInput.dataset.picked = text;
-            latInput.value = place.location.lat();
-            lngInput.value = place.location.lng();
-            checkArea();
-          });
-          const slot = document.getElementById("address-picker");
-          slot.append(picker);
-          slot.hidden = false;
+      SGPlaces.attach(key, {
+        slot: document.getElementById("address-picker"), id: "address-autocomplete", label: "Service address",
+        onPick(text, lat, lng) {
+          addressInput.value = text;
+          addressInput.dataset.picked = text;
+          latInput.value = lat;
+          lngInput.value = lng;
+          checkArea();
+        },
+        onReady() {
           // Keep the plain box as the form's value (and a fallback); hide it once Google is ready.
           addressInput.hidden = true;
           addressInput.required = false;
           document.getElementById("address-hint").textContent = "Pick your address from the list.";
-        } catch { /* Google didn't load: the plain address box keeps working */ }
-      };
-      const s = document.createElement("script");
-      s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&loading=async&libraries=places&callback=__initPlaces`;
-      s.async = true;
-      s.onerror = usePlainAddressBox;
-      document.head.append(s);
+        },
+        onFail: usePlainAddressBox,
+      });
     }
 
     fetch("/api/booking-info").then(r => r.json()).then(info => {
