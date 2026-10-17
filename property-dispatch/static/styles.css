@@ -775,3 +775,12 @@ label.check input { width: 18px; height: 18px; }
 .auto-size { color: var(--brand); font-weight: 600; }
 .verify-badge { display: inline-block; margin: 0 4px 4px 0; padding: 2px 10px; border-radius: 999px; background: var(--brand-soft);
   color: var(--brand); font-weight: 700; font-size: 0.8rem; }
+.size-readout { display: grid; gap: 2px; margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: var(--brand-soft);
+  border: 1px solid color-mix(in srgb, var(--brand) 25%, transparent); }
+.size-readout .size-label { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--brand); }
+.size-readout strong { font-size: 1.25rem; line-height: 1.25; }
+.size-readout .size-basis { font-size: 0.85rem; color: var(--muted); }
+.size-readout .size-basis:empty { display: none; }
+.size-edit-btn { justify-self: start; margin-top: 4px; padding: 4px 0; border: 0; background: none; font: inherit; font-size: 0.88rem;
+  font-weight: 600; color: var(--brand); text-decoration: underline; cursor: pointer; }
+#size-edit { margin-top: 12px; }
