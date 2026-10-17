@@ -231,3 +231,13 @@ def test_street_match_in_another_city_and_zip_is_not_trusted(settings):
 
     with pytest.raises(GeocodingError):
         geocoder(settings, handler).geocode("686 County Road 5039, Cleveland, TX 77327")
+
+
+def test_maps_key_is_read_from_either_render_name(monkeypatch):
+    from app.config import Settings
+    monkeypatch.delenv("GOOGLE_MAPS_BROWSER_KEY", raising=False)
+    monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "AIza-from-api-name")
+    assert Settings(_env_file=None).google_maps_browser_key == "AIza-from-api-name"
+    monkeypatch.setenv("GOOGLE_MAPS_BROWSER_KEY", "AIza-from-browser-name")
+    assert Settings(_env_file=None).google_maps_browser_key == "AIza-from-browser-name"   # the original name wins
+    assert Settings(_env_file=None, google_maps_browser_key="direct").google_maps_browser_key == "direct"

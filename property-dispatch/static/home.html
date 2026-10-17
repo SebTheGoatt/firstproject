@@ -160,6 +160,7 @@
             <form class="card area-checker" id="area-checker" novalidate>
               <label for="check-address">Check your address</label>
               <div class="checker-row">
+                <div id="check-picker" class="check-picker" hidden></div>
                 <input id="check-address" type="text" autocomplete="street-address" required
                        placeholder="1234 Oak Forest Ln, Spring, TX 77386">
                 <button class="btn btn-primary" type="submit" id="check-btn">Check</button>
@@ -262,6 +263,7 @@
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="/static/site.js?v={{V}}"></script>
+  <script src="/static/places.js?v={{V}}"></script>
   <script>
     document.getElementById("year").textContent = new Date().getFullYear();
     const money = (n) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -445,6 +447,19 @@
         const low = Math.min(...rates);
         document.getElementById("mow-from").textContent = `Starting at ${money(low).replace(/\.00$/, "")} per visit`;
       }
+      // Google address dropdown on "Check your address" when the owner set the Maps key in Render.
+      if (info.google_maps_key) {
+        const input = document.getElementById("check-address"), slot = document.getElementById("check-picker");
+        SGPlaces.attach(info.google_maps_key, {
+          slot, id: "check-autocomplete", label: "Check your address",
+          onPick(text, lat, lng) {
+            input.value = text; picked = { text, lat, lng };
+            document.getElementById("area-checker").requestSubmit();   // check right away, no extra tap
+          },
+          onReady() { input.hidden = true; input.required = false; },
+          onFail() { slot.replaceChildren(); slot.hidden = true; input.hidden = false; input.required = true; },
+        });
+      }
     }).catch(() => {
       document.getElementById("next-day").textContent = "See the booking page";
       document.getElementById("area-list").replaceChildren();
@@ -452,6 +467,7 @@
 
     // "Do we service your area?" uses the same instant check as the booking page. Nothing is saved.
     const checker = document.getElementById("area-checker");
+    let picked = null;   // Google's coordinates for the address picked from the dropdown
     checker.addEventListener("submit", async (e) => {
       e.preventDefault();
       const input = document.getElementById("check-address"), out = document.getElementById("check-result");
@@ -467,7 +483,8 @@
       btn.disabled = true; out.className = "area-check"; out.textContent = "Checking your address…";
       try {
         const res = await fetch("/api/check-address", { method: "POST", headers: { "Content-Type": "application/json" },
-                                                         body: JSON.stringify({ address }) });
+                                                         body: JSON.stringify(picked && picked.text === address
+                                                           ? { address, lat: picked.lat, lng: picked.lng } : { address }) });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) {
           out.className = "area-check warn";

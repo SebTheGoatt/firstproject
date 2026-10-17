@@ -594,7 +594,8 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
 .area-check.ok { background: var(--brand-soft); color: var(--text); font-weight: 600; }
 .area-check.bad { background: var(--danger-soft); color: var(--danger); }
 .area-check.warn { background: var(--warn-soft); color: var(--warn); }
-#address-picker gmp-place-autocomplete, #address-autocomplete { width: 100%; display: block; color-scheme: light; }
+#address-picker gmp-place-autocomplete, #address-autocomplete, #check-autocomplete { width: 100%; display: block; color-scheme: light; }
+.check-picker { flex: 1; min-width: 0; }
 
 /* ---------- Customer visit page ---------- */
 .visit-title { margin: 0 0 6px; font-size: 1.6rem; letter-spacing: -0.01em; }
