@@ -62,9 +62,17 @@ ADD_ONS: dict[str, dict] = {
     # What to mow (pick one). No charge of their own: they set the lawn size the server prices, and they
     # lock the price (the crew mows the area booked; no on-site re-measuring). They show on the crew's stop.
     "scope_yard":     {"label": "Yard only",                 "price": Decimal("0.00"), "minutes": 0, "scope": True},
-    "scope_full":     {"label": "Full property",             "price": Decimal("0.00"), "minutes": 30, "scope": True},
+    "scope_full":     {"label": "Full property",             "price": Decimal("0.00"), "minutes": 0, "scope": True},
 }
 SCOPES = tuple(k for k, a in ADD_ONS.items() if a.get("scope"))
+
+
+def mow_minutes(lawn_sqft: int | None) -> int:
+    """On-site time for the mow, scaled by lawn size: ~45 min for a 4,500 sq ft yard, ~90 min for 14,500.
+    Feeds route ETAs and the crew dashboard's route time. Never less than the standard 45 minutes."""
+    if not lawn_sqft:
+        return 45
+    return max(45, round(25 + lawn_sqft * 0.0045))
 
 
 def scope_of(add_ons) -> str | None:
