@@ -84,6 +84,8 @@ class Settings(BaseSettings):
     charity_vfw_name: str = "Veterans of Foreign Wars (VFW)"
     charity_nicu_name: str = "Neonatal intensive care (NICU) families"
     charity_youth_name: str = "At-risk youth programs"
+    # Set the official name only once the local program has said yes (e.g. "Marine Toys for Tots, Liberty County").
+    charity_toys_name: str = "Holiday toy drive for local kids"
 
     # --- Stripe card payments (leave blank to take cash only) ---------
     stripe_secret_key: str = ""

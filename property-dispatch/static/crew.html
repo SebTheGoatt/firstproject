@@ -568,7 +568,8 @@
         donationLine.hidden = !(extra > 0);
         if (extra > 0) {
           const sp = splitDonation(extra);
-          donationLine.textContent = `${money(extra)} donation: ` + charities.map((c) => `${money(sp[c.key] || 0)} ${c.short}`).join(" · ");
+          donationLine.textContent = s.charity_choice_name ? `${money(extra)} donation to ${s.charity_choice_name}`
+            : `${money(extra)} donation: ` + charities.map((c) => `${money(sp[c.key] || 0)} ${c.short}`).join(" · ");
         }
       }
       const refresh = () => { const t = currentTotal(); if (cashIn && !cashEdited && t != null) cashIn.value = t.toFixed(2); showDonation(t); };
@@ -587,7 +588,9 @@
         needsPrice ? el("div", { class: "field" }, el("label", { for: priceIn.id }, "Price before tax ($)"), priceIn) : null,
         totalLine,
         isCash ? el("div", { class: "field" }, el("label", { for: cashIn.id }, "Cash collected ($)"), cashIn,
-          el("p", { class: "hint" }, "Leave blank if they haven't paid yet. Anything over the price is a donation, split 33% VFW, 33% NICU, 34% at-risk youth."),
+          el("p", { class: "hint" }, s.charity_choice_name
+            ? `Leave blank if they haven't paid yet. Anything over the price is a donation to ${s.charity_choice_name} (the customer's pick).`
+            : "Leave blank if they haven't paid yet. Anything over the price is a donation, split 33% VFW, 33% NICU, 34% at-risk youth."),
           donationLine) : null,
         s.payment_method === "card" && s.payment_status !== "paid"
           ? el("p", { class: "hint" }, "Card customer: we'll text them a secure payment link.") : null,

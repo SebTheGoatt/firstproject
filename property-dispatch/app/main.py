@@ -42,7 +42,7 @@ from .crew_auth import CrewIdentity
 from .crew_routes import register_crew_routes
 from .models import (SERVICE_LABELS, order_label, AddressCheck, CompleteStopRequest, GeoPoint, JobCreated,
                      JobRequest, OptimizeRouteRequest, QuoteRequest, RouteView, Service, StopNote, StopView)
-from .charity import describe as describe_charities, split_donation
+from .charity import causes as charity_causes, chosen_cause, charity_names, describe as describe_charities, route_donation
 from .pricing import (ADD_ONS, FEATURED_PACKAGE, mow_minutes, scope_of, MAX_SQFT, MIN_SQFT, PACKAGES, LawnSizeError, check_sqft, in_season, package_for_rate,
                       quote, season_text)
 from .routing.matrix import haversine_m
@@ -121,6 +121,7 @@ def build_route_view(route: dict, settings: Settings) -> RouteView:
             lat=s["lat"], lng=s["lng"], service=s["service"],
             service_label=order_label(s["service"], s.get("add_ons")), service_minutes=s.get("service_minutes"),
             scope=scope_of(s.get("add_ons")),
+            charity_choice_name=(charity_names(settings)[c] if (c := chosen_cause(s.get("giving_split"))) else None),
             add_ons=s.get("add_ons") or [], add_on_total=s.get("add_on_total") or 0.0,
             eta=s["eta"], leg_distance_m=s["leg_distance_m"], leg_duration_s=s["leg_duration_s"],
             completed_at=s["completed_at"], completed_by_name=s.get("completed_by_name"),
@@ -297,6 +298,7 @@ def create_app(
                          "scope": bool(a.get("scope"))}
                         for k, a in ADD_ONS.items()],
             "charities": describe_charities(settings),
+            "causes": charity_causes(settings),           # the customer picks one at booking
             "business_name": settings.business_name,
             "card_payments": app.state.stripe is not None,
             "google_maps_key": settings.google_maps_browser_key or None,
@@ -423,7 +425,7 @@ def create_app(
             subtotal=price, tax_rate=float(q.tax_rate), tax_amount=float(q.tax) if q.tax is not None else None,
             sqft_rate=rate, package=q.package,
             charity_rate=float(q.charity_rate) if q.charity_rate is not None else None,
-            charity_amount=giving, giving_split=split_donation(giving) if giving else None,
+            charity_amount=giving, giving_split=route_donation(giving, body.charity_choice) if giving else None,
             add_ons=add_ons, add_on_total=float(q.add_on_total), lang=body.lang,
         )
         record_booking(job_id=str(job["id"]))   # the only booking counter (idempotent per job)
@@ -442,7 +444,8 @@ def create_app(
                           access_code=format_code(access_code), visit_url=f"/visit/{access_code}",
                           lawn_sqft=sqft, sqft_rate=rate, package=q.package,
                           charity_rate=float(q.charity_rate) if q.charity_rate is not None else None,
-                          charity_amount=giving, add_ons=add_ons, add_on_total=float(q.add_on_total),
+                          charity_amount=giving, charity_choice=body.charity_choice,
+                          add_ons=add_ons, add_on_total=float(q.add_on_total),
                           subtotal=price, tax_rate=float(q.tax_rate),
                           tax=float(q.tax) if q.tax is not None else None,
                           total=float(q.total) if q.total is not None else None)
@@ -495,14 +498,15 @@ def create_app(
             giving = float(new_price.charity_amount) if new_price.charity_amount is not None else None
             repo.set_price(before["job_id"], subtotal=float(new_price.subtotal), tax_amount=float(new_price.tax),
                            total=float(new_price.total), lawn_sqft=new_price.lawn_sqft,
-                           charity_amount=giving, giving_split=split_donation(giving) if giving else None)
+                           charity_amount=giving,
+                           giving_split=route_donation(giving, chosen_cause(before.get("giving_split"))) if giving else None)
         stop, newly = repo.complete_stop(stop_id, member_id)
         done_push = push.send_to_job(repo, settings, stop["job_id"], "done") if newly else None
 
         payment = {"status": stop["payment_status"], "total": due}
         if cash is not None and stop["payment_status"] == "unpaid":
             donation = round(cash - due, 2)
-            split = split_donation(donation)
+            split = route_donation(donation, chosen_cause(before.get("giving_split")))   # to the customer's pick
             repo.mark_paid(stop["job_id"], method="cash", amount_paid=cash, donation=donation, donation_split=split)
             payment = {"status": "paid", "method": "cash", "amount_paid": cash, "donation": donation,
                        "donation_split": split, "total": due}
