@@ -72,3 +72,14 @@ def test_donations_from_before_the_split_show_no_ledger(client, repo, settings):
     repo.mark_paid(job["id"], method="cash", amount_paid=60.0, donation=5.87)   # recorded the old way, no split
     pay = client.get(f"/api/visit/{job['access_code'].replace('-', '')}").json()["payment"]
     assert pay["donation"] == 5.87 and pay["donation_ledger"] == []
+
+
+def test_booking_info_counts_real_openings_on_the_next_route(client, settings, repo):
+    assert client.get("/api/booking-info").json()["spots_left"] == settings.daily_job_quota
+    with patch.object(repo, "count_active_jobs", return_value=settings.daily_job_quota - 2):
+        assert client.get("/api/booking-info").json()["spots_left"] == 2
+    with patch.object(repo, "count_active_jobs", return_value=settings.daily_job_quota + 3):
+        assert client.get("/api/booking-info").json()["spots_left"] == 0
+    with patch.object(repo, "count_active_jobs", side_effect=RuntimeError("db down")):
+        info = client.get("/api/booking-info").json()
+    assert info["spots_left"] is None and info["earliest_date"]  # the page still loads

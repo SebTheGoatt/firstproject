@@ -44,6 +44,14 @@
   </header>
 
   <main id="main">
+    <div class="route-banner" role="note">
+      <div class="site-wrap route-banner-row">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h5a3 3 0 0 0 0-6h-2a3 3 0 0 1 0-6h5"/></svg>
+        <p><strong>Tight route density.</strong> We work each neighborhood on a set rotation, so the crew's time goes into
+          your lawn, not the road. <span id="banner-cutoff">Next-day booking closes at 5 PM sharp.</span></p>
+      </div>
+    </div>
+
     <section class="hero" aria-labelledby="hero-title">
       <div class="site-wrap hero-grid">
         <div class="hero-copy">
@@ -65,6 +73,7 @@
           <p class="eyebrow">Next open day</p>
           <p class="next-day" id="next-day">Checking…</p>
           <p class="hint" id="cutoff">Next-day booking closes at 5 PM.</p>
+          <p class="spots-left" id="spots-left" hidden></p>
           <a class="btn btn-primary btn-block" href="/book">Book this day</a>
         </aside>
       </div>
@@ -90,7 +99,7 @@
           <article class="card service">
             <span class="service-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 7h14M9 7V5h6v2M6.5 7l1 13h9l1-13M10 11v6M14 11v6"/></svg></span>
             <h3>Bin Cleaning</h3>
-            <p>Fresh, sanitized bins without the hassle.</p>
+            <p>Trash bins build up bacteria like E. coli and Salmonella and draw flies, roaches and rodents to your door. A hose rinse doesn't remove that buildup. We clean and sanitize every bin.</p>
             <div class="service-foot">
               <p class="price">+$15 per visit</p>
               <p class="hint">Add to any lawn mowing visit.</p>
@@ -110,10 +119,13 @@
           <article class="card service">
             <span class="service-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2 6c5 4 15 4 20 0M6 8.5v2.5M12 9.5V12M18 8.5v2.5"/><circle cx="6" cy="13" r="2"/><circle cx="12" cy="14" r="2"/><circle cx="18" cy="13" r="2"/></svg></span>
             <h3>Holiday Lighting</h3>
+            <p class="window-badge">Install window: Oct 15 – Jan 15</p>
             <p>Holiday lighting, professionally installed to fit your home.</p>
+            <p class="plan-note">Every quote starts with a custom lighting plan drawn for your home's roofline.
+              Installs are scheduled by neighborhood, on the same routes as our lawn work.</p>
             <div class="service-foot">
               <p class="price">Custom Quote</p>
-              <p class="hint">Pricing depends on home size, roofline, and installation needs. Available October 15 – January 15.</p>
+              <p class="hint">Pricing depends on home size, roofline, and installation needs.</p>
               <a class="btn btn-outline btn-block" href="/book?addon=holiday_lights#step-size">Get a Quote</a>
             </div>
           </article>
@@ -199,6 +211,8 @@
         <header class="section-head">
           <h2 id="crew-title">Meet the Crew</h2>
           <p class="section-lede">Real people from the neighborhood, led by a veteran. Here's who shows up at your door.</p>
+          <p class="trust-line">Run with Marine Corps discipline: a planned route every day, a live page for every visit,
+            and card payments through Stripe's encrypted checkout.</p>
         </header>
         <ul class="team-grid" id="crew-grid"></ul>
         <p><a class="btn btn-outline" href="/team">See everyone's work</a></p>
@@ -227,6 +241,7 @@
         </a>
         <p class="footer-tagline">Clean lawns. Stronger communities.</p>
         <p>Veteran-owned · Spring, TX</p>
+        <p class="footer-trust">Marine-led operations · Planned daily routes · Encrypted card payments</p>
       </div>
       <nav aria-label="Footer">
         <a href="/book">Book a service</a>
@@ -388,6 +403,15 @@
       document.getElementById("bar-day").textContent = new Date(info.earliest_date + "T12:00:00")
         .toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
       document.getElementById("cutoff").textContent = `Next-day booking closes at ${hour12(info.freeze_hour)} Central.`;
+      document.getElementById("banner-cutoff").textContent = `Next-day booking closes at ${hour12(info.freeze_hour)} sharp.`;
+      // Real openings only: daily limit minus jobs already booked. Shown when the route is nearly full.
+      const spots = document.getElementById("spots-left");
+      if (info.spots_left != null && info.spots_left <= 3) {
+        const wd = new Date(info.earliest_date + "T12:00:00").toLocaleDateString(undefined, { weekday: "long" });
+        spots.textContent = info.spots_left === 0 ? `${wd}'s route is full. Pick another day when you book.`
+          : `Only ${info.spots_left} ${info.spots_left === 1 ? "spot" : "spots"} left on ${wd}'s route.`;
+        spots.hidden = false;
+      }
 
       // Neighborhoods: one price note when every area costs the same, otherwise a price per area.
       const rates = [...new Set(info.zones.map((z) => z.mow_rate))];

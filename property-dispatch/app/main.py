@@ -258,10 +258,16 @@ def create_app(
 
     # ---------- Intake -------------------------------------------------
     @app.get("/api/booking-info")
-    def booking_info():
+    def booking_info(request: Request):
         now = local_now(settings)
+        earliest = earliest_bookable_day(now, settings.freeze_hour)
+        try:  # real openings on the next route (daily_job_quota minus active jobs); never blocks the page
+            spots_left = max(0, settings.daily_job_quota - request.app.state.repo.count_active_jobs(earliest))
+        except Exception:
+            spots_left = None
         return {
-            "earliest_date": earliest_bookable_day(now, settings.freeze_hour),
+            "earliest_date": earliest,
+            "spots_left": spots_left,
             "latest_date": now.date() + timedelta(days=settings.booking_horizon_days),
             "freeze_hour": settings.freeze_hour,
             "services": [{"value": s.value, "label": SERVICE_LABELS[s]} for s in Service],

@@ -217,12 +217,18 @@
     }
 
     // ---------- Step 2: rate cards (nothing preselected) ----------
+    const FEATURED_PACKAGE = "supporter";   // the center card gets the visual emphasis; display only, prices unchanged
     function renderRates() {
       const box = $("rates");
       box.replaceChildren(...packages.flatMap((pk) => {
         const input = Object.assign(document.createElement("input"),
           { type: "radio", name: "package_pick", id: `pkg-${pk.key}`, value: pk.key, checked: pk.key === pkgKey });
         const label = document.createElement("label"); label.htmlFor = input.id;
+        if (pk.key === FEATURED_PACKAGE) {
+          label.classList.add("featured");
+          const badge = document.createElement("span"); badge.className = "tier-badge"; badge.textContent = "Recommended";
+          label.append(badge);
+        }
         const name = document.createElement("strong"); name.textContent = pk.label;
         const rate = document.createElement("span"); rate.className = "tier-rate"; rate.textContent = rateText(pk.sqft_rate);
         const desc = document.createElement("small"); desc.textContent = pk.description || "";
@@ -278,7 +284,7 @@
         label.append(name, price);
         const note = document.createElement("small");
         note.textContent = a.quote ? (open ? `No charge. Seasonal: ${a.season}` : `Available for ${a.season} visits`)
-          : "Added to your mowing visit";
+          : a.key === "bin_cleaning" ? "Sanitized, not just rinsed" : "Added to your mowing visit";
         label.append(note);
         input.addEventListener("change", () => {
           input.checked ? chosenAddOns.add(a.key) : chosenAddOns.delete(a.key);   // a Set: never added twice

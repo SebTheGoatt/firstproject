@@ -97,7 +97,8 @@
     "Clean cuts. Crisp edges. A lawn you're proud of.": "Cortes limpios. Bordes definidos. Un césped del que te sentirás orgulloso.",
     "Your final price depends on lawn size and the rate you select.": "Tu precio final depende del tamaño del césped y de la tarifa que elijas.",
     "Calculate My Price": "Calcular mi precio",
-    "Fresh, sanitized bins without the hassle.": "Botes limpios y desinfectados, sin complicaciones.",
+    "Trash bins build up bacteria like E. coli and Salmonella and draw flies, roaches and rodents to your door. A hose rinse doesn't remove that buildup. We clean and sanitize every bin.":
+      "Los botes de basura acumulan bacterias como E. coli y Salmonella y atraen moscas, cucarachas y roedores a tu puerta. Enjuagarlos con manguera no quita esa suciedad. Nosotros limpiamos y desinfectamos cada bote.",
     "Add to any lawn mowing visit.": "Agrégalo a cualquier visita de corte de césped.",
     "Add Bin Cleaning": "Agregar limpieza de botes",
     "Gutter Cleaning": "Limpieza de canaletas",
@@ -106,8 +107,11 @@
     "Holiday Lighting": "Luces navideñas",
     "Holiday lighting, professionally installed to fit your home.": "Luces navideñas instaladas profesionalmente a la medida de tu hogar.",
     "Custom Quote": "Cotización personalizada",
-    "Pricing depends on home size, roofline, and installation needs. Available October 15 – January 15.":
-      "El precio depende del tamaño de la casa, el techo y la instalación. Disponible del 15 de octubre al 15 de enero.",
+    "Pricing depends on home size, roofline, and installation needs.":
+      "El precio depende del tamaño de la casa, el techo y la instalación.",
+    "Install window: Oct 15 – Jan 15": "Temporada de instalación: 15 oct – 15 ene",
+    "Every quote starts with a custom lighting plan drawn for your home's roofline. Installs are scheduled by neighborhood, on the same routes as our lawn work.":
+      "Cada cotización empieza con un plan de luces hecho a la medida del techo de tu casa. Las instalaciones se programan por vecindario, en las mismas rutas de nuestro trabajo de jardín.",
     "Get a Quote": "Pedir cotización",
     "Why homeowners book with us": "Por qué nos eligen",
     "Neighborhood Routing": "Rutas por vecindario",
@@ -149,6 +153,13 @@
     "Pay cash to the crew or by card. We lock the route at 5 PM the day before and alert you when we're on the way.":
       "Paga en efectivo al equipo o con tarjeta. Cerramos la ruta a las 5 PM del día anterior y te avisamos cuando vamos en camino.",
     "Meet the Crew": "Conoce al equipo",
+    "Tight route density.": "Rutas compactas.",
+    "We work each neighborhood on a set rotation, so the crew's time goes into your lawn, not the road.":
+      "Trabajamos cada vecindario en una rotación fija, para que el tiempo del equipo se use en tu jardín, no en el camino.",
+    "Run with Marine Corps discipline: a planned route every day, a live page for every visit, and card payments through Stripe's encrypted checkout.":
+      "Con la disciplina del Cuerpo de Marines: una ruta planificada cada día, una página en vivo para cada visita y pagos con tarjeta en el pago cifrado de Stripe.",
+    "Marine-led operations · Planned daily routes · Encrypted card payments":
+      "Dirigido por un Marine · Rutas planificadas cada día · Pagos con tarjeta cifrados",
     "Real people from the neighborhood, led by a veteran. Here's who shows up at your door.":
       "Gente real del vecindario, dirigida por un veterano. Ellos son quienes llegan a tu puerta.",
     "See everyone's work": "Ver el trabajo de todos",
@@ -186,6 +197,8 @@
     "(optional)": "(opcional)",
     "Add-ons to your mowing visit": "Extras para tu visita de corte",
     "Added to your mowing visit": "Se agrega a tu visita de corte",
+    "Sanitized, not just rinsed": "Desinfectado, no solo enjuagado",
+    "Recommended": "Recomendado",
     "Free quote": "Cotización gratis",
     "Address & day": "Dirección y día",
     "Service address": "Dirección del servicio",
@@ -321,6 +334,9 @@
     [/^Mowing from (\$[\d,.]+) per visit$/, (m) => `Corte desde ${m[1]} por visita`],
     [/^Show (.+) on the map$/, (m) => `Mostrar ${m[1]} en el mapa`],
     [/^(.+): mowing (\$[\d,.]+) per visit plus a per-sq-ft rate$/, (m) => `${m[1]}: corte desde ${m[2]} por visita más una tarifa por pie²`],
+    [/^Next-day booking closes at (\d+ [AP]M) sharp\.$/, (m) => `Las reservas para el día siguiente cierran a las ${m[1]} en punto.`],
+    [/^Only (\d+) spots? left on (.+)'s route\.$/, (m) => m[1] === "1" ? `Solo queda 1 lugar en la ruta del ${m[2]}.` : `Solo quedan ${m[1]} lugares en la ruta del ${m[2]}.`],
+    [/^(.+)'s route is full\. Pick another day when you book\.$/, (m) => `La ruta del ${m[1]} está llena. Elige otro día al reservar.`],
     [/^Next-day booking closes at (\d+ [AP]M) Central\.$/, (m) => `Las reservas para el día siguiente cierran a las ${m[1]} (hora del centro).`],
     [/^Earliest available: (.+)\. Next-day bookings close at (\d+ [AP]M)\.$/, (m) => `Primer día disponible: ${m[1]}. Las reservas para el día siguiente cierran a las ${m[2]}.`],
     [/^That day's route is already locked\. The earliest available day is (.+)\.$/, (m) => `La ruta de ese día ya está cerrada. El primer día disponible es ${esDate(m[1])}.`],
