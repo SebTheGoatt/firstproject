@@ -83,9 +83,9 @@
 
     // ---------- Home ----------
     "Veteran-owned · Spring, TX area": "Negocio de un veterano · Área de Spring, TX",
-    "Reliable Lawn Care. Simple Booking.": "Cuidado de césped confiable. Reservas sencillas.",
-    "Explore our services, check your area, and book your next visit in one place. We text you when the crew is on the way.":
-      "Conoce nuestros servicios, revisa tu área y reserva tu próxima visita en un solo lugar. Te enviamos un mensaje cuando el equipo va en camino.",
+    "Lawn Care, Run Like an Operation.": "Cuidado de césped, operado con precisión.",
+    "Every visit is scheduled, routed and tracked. We run tight neighborhood routes so the crew's time goes into your lawn, not the road, and you get an alert when we're on the way.":
+      "Cada visita se programa, se planifica en ruta y se sigue en vivo. Trabajamos en rutas compactas por vecindario para que el tiempo del equipo se use en tu jardín, no en el camino, y te avisamos cuando vamos en camino.",
     "Explore Services": "Ver servicios",
     "Next open day": "Próximo día disponible",
     "Next available service day": "Próximo día de servicio disponible",
@@ -110,12 +110,12 @@
       "El precio depende del tamaño de la casa, el techo y la instalación. Disponible del 15 de octubre al 15 de enero.",
     "Get a Quote": "Pedir cotización",
     "Why homeowners book with us": "Por qué nos eligen",
-    "Know Your Price": "Conoce tu precio",
-    "Review your mowing estimate before booking.": "Revisa tu estimado de corte antes de reservar.",
-    "Easy Online Booking": "Reserva fácil en línea",
-    "Choose your service in minutes.": "Elige tu servicio en minutos.",
-    "Updates Along the Way": "Avisos en el camino",
-    "Get text updates when the crew is on the way.": "Recibe mensajes cuando el equipo va en camino.",
+    "Neighborhood Routing": "Rutas por vecindario",
+    "Each day's route is planned the evening before, stop by stop.": "La ruta de cada día se planifica la tarde anterior, parada por parada.",
+    "Live Visit Tracking": "Seguimiento de tu visita en vivo",
+    "An alert when the crew is on the way, and a live page for every visit.": "Un aviso cuando el equipo va en camino y una página en vivo para cada visita.",
+    "Secure Billing": "Pagos seguros",
+    "Cards are paid through Stripe's encrypted checkout. Every visit ends with a digital receipt and before & after photos.": "Las tarjetas se pagan en el pago cifrado de Stripe. Cada visita termina con un recibo digital y fotos de antes y después.",
     "Do We Service Your Area?": "¿Damos servicio en tu área?",
     "We keep our routes tight so the crew spends time on lawns, not on the road. Check your address, or find your neighborhood below.":
       "Mantenemos rutas cortas para que el equipo pase su tiempo en los jardines, no en la carretera. Revisa tu dirección o busca tu vecindario abajo.",
@@ -146,13 +146,13 @@
     "Enter your address and day. We check your area and show your full price with tax before you book.":
       "Escribe tu dirección y el día. Revisamos tu área y te mostramos el precio completo con impuestos antes de reservar.",
     "Book Your Visit": "Reserva tu visita",
-    "Pay cash to the crew or by card. We plan the route at 5 PM the day before and text you when we're on the way.":
-      "Paga en efectivo al equipo o con tarjeta. Planeamos la ruta a las 5 PM del día anterior y te avisamos por mensaje cuando vamos en camino.",
+    "Pay cash to the crew or by card. We lock the route at 5 PM the day before and alert you when we're on the way.":
+      "Paga en efectivo al equipo o con tarjeta. Cerramos la ruta a las 5 PM del día anterior y te avisamos cuando vamos en camino.",
     "Meet the Crew": "Conoce al equipo",
     "Real people from the neighborhood, led by a veteran. Here's who shows up at your door.":
       "Gente real del vecindario, dirigida por un veterano. Ellos son quienes llegan a tu puerta.",
     "See everyone's work": "Ver el trabajo de todos",
-    "Ready when you are.": "Listos cuando tú lo estés.",
+    "Put your lawn on the route.": "Pon tu jardín en la ruta.",
     "Booking takes about a minute, and you'll see your full price before you book.":
       "Reservar toma como un minuto y verás tu precio completo antes de confirmar.",
 
