@@ -39,13 +39,29 @@
     <form id="intake" class="card" novalidate>
       <div id="err" class="alert alert-error" role="alert" hidden></div>
 
-      <section class="step" aria-labelledby="step-size">
-        <h2 class="step-title" id="step-size"><span>1</span>Lawn mowing</h2>
+      <section class="step" aria-labelledby="step-where">
+        <h2 class="step-title" id="step-where"><span>1</span>Your address</h2>
         <div class="field">
-          <label for="lawn-sqft">How large is your lawn?</label>
+          <label for="address">Service address</label>
+          <div id="address-picker" hidden></div>
+          <input id="address" name="address" type="text" autocomplete="street-address" required
+                 placeholder="1234 Oak Forest Ln, Spring, TX 77386">
+          <input type="hidden" id="lat"><input type="hidden" id="lng">
+          <div class="hint" id="address-hint">House number, street, city and ZIP.</div>
+          <div class="area-check" id="area-check" role="status" aria-live="polite" hidden></div>
+        </div>
+        <!-- Lawn size comes from the address: shown here, editable only if the customer knows better. -->
+        <div class="size-readout" id="size-readout" aria-live="polite">
+          <span class="size-label">Your lawn</span>
+          <strong id="size-value">Pick your address to size your lawn</strong>
+          <span class="size-basis" id="size-basis"></span>
+          <button type="button" class="size-edit-btn" id="size-edit-btn" hidden>Know your exact size? Edit</button>
+        </div>
+        <div class="field" id="size-edit" hidden>
+          <label for="lawn-sqft">Your lawn size</label>
           <div class="sqft-input"><input id="lawn-sqft" type="text" inputmode="numeric" autocomplete="off"
-            placeholder="Enter lawn square footage" aria-describedby="sqft-help sqft-error"><span>sq ft</span></div>
-          <p class="hint" id="sqft-help">Enter your mowable lawn area in square feet. Not sure? Skip it: we'll estimate it from your address in step 4.</p>
+            placeholder="Lawn square footage" aria-describedby="sqft-help sqft-error"><span>sq ft</span></div>
+          <p class="hint" id="sqft-help">Mowable lawn area only. The crew confirms it on site.</p>
           <p class="field-error" id="sqft-error" role="alert" hidden></p>
         </div>
       </section>
@@ -77,17 +93,8 @@
         </fieldset>
       </section>
 
-      <section class="step" aria-labelledby="step-where">
-        <h2 class="step-title" id="step-where"><span>4</span>Address &amp; day</h2>
-        <div class="field">
-          <label for="address">Service address</label>
-          <div id="address-picker" hidden></div>
-          <input id="address" name="address" type="text" autocomplete="street-address" required
-                 placeholder="1234 Oak Forest Ln, Spring, TX 77386">
-          <input type="hidden" id="lat"><input type="hidden" id="lng">
-          <div class="hint" id="address-hint">House number, street, city and ZIP.</div>
-          <div class="area-check" id="area-check" role="status" aria-live="polite" hidden></div>
-        </div>
+      <section class="step" aria-labelledby="step-day">
+        <h2 class="step-title" id="step-day"><span>4</span>Service day</h2>
         <div class="field">
           <label for="date">Service day</label>
           <input id="date" name="scheduled_date" type="date" required>
@@ -99,7 +106,7 @@
         <h2 class="step-title" id="step-review"><span>5</span>Review your order</h2>
         <div class="price-box order-summary" id="price-box" aria-live="polite">
           <h3 class="order-title">Order summary</h3>
-          <p class="muted" id="price-empty">Add your lawn size, rate and address to see your final total.</p>
+          <p class="muted" id="price-empty">Add your address in step 1 to see your final total.</p>
           <dl class="price-lines" id="price-lines" hidden></dl>
           <p class="hint" id="price-note" hidden></p>
         </div>
@@ -190,16 +197,22 @@
     let assurances = { liability_coverage: null, background_checked: false };
     // Lawn size filled in from the address (an estimate for the area), until the customer types their own.
     let sqftAuto = null;   // { sqft, basis, sample, zone_name, address }
-    const SQFT_HELP = "Enter your mowable lawn area in square feet. Not sure? Skip it: we'll estimate it from your address in step 4.";
+    // The size read-out under the address: the estimate for the area, or the customer's own number.
+    function renderSize() {
+      const value = $("size-value"), basis = $("size-basis");
+      $("size-edit-btn").hidden = !$("size-edit").hidden || (!sqft && !sqftAuto);
+      if (!sqft) { value.textContent = "Pick your address to size your lawn"; basis.textContent = ""; return; }
+      value.textContent = `${sqft.toLocaleString()} sq ft`;
+      basis.textContent = !estimated() ? "Your size. The crew confirms it on site."
+        : sqftAuto.basis === "recent"
+          ? `Estimated from ${sqftAuto.sample} lawns we've measured in ${sqftAuto.zone_name}. The crew confirms it on site.`
+          : `Estimated from a typical lot in ${sqftAuto.zone_name}. The crew confirms it on site.`;
+    }
     const estimated = () => sqftAuto && sqft === sqftAuto.sqft;
     function applyEstimate(est, address) {
       sqftAuto = { ...est, address };
       sqftInput.value = String(est.sqft);
       readSqft(false); updateRateCards(); renderEstimate();
-      $("sqft-help").textContent = est.basis === "recent"
-        ? `Estimated from ${est.sample} lawns we've measured in ${est.zone_name}. Change it if you know your size; the crew confirms it on site.`
-        : `Estimated from a typical lot in ${est.zone_name}. Change it if you know your size; the crew confirms it on site.`;
-      $("sqft-help").classList.add("auto-size");
     }
     const chosenAddOns = new Set(new URLSearchParams(location.search).getAll("addon"));
     const sqftInput = $("lawn-sqft");
@@ -236,7 +249,7 @@
       d.append(dt, dd); return d;
     };
 
-    // ---------- Step 1: lawn size ----------
+    // ---------- Lawn size (filled in from the address in step 1; editable) ----------
     function readSqft(showError) {
       const r = checkSqft(sqftInput.value);
       sqft = r.value ?? null;
@@ -247,7 +260,7 @@
       return !r.error;
     }
 
-    // ---------- Step 2: rate cards (nothing preselected) ----------
+    // ---------- Step 2: rate cards (Operational Target pre-selected) ----------
     const FEATURED_PACKAGE = "supporter";   // the center card gets the visual emphasis; display only, prices unchanged
     function renderRates() {
       const box = $("rates");
@@ -283,6 +296,7 @@
     // Live estimate: updates instantly from the size and rate. Tax is shown once we know the
     // address (it depends on the service area); until then it says "Calculated at checkout".
     function renderEstimate() {
+      renderSize();
       const lines = $("estimate-lines"), p = pkg();
       const charge = sqft && p ? sizeChargeCents(sqft, p.sqft_rate) / 100 : null;
       const subtotal = charge != null ? Math.round((baseFee + charge) * 100) / 100 : null;
@@ -290,7 +304,7 @@
         && !(lastQuote.add_on_total > 0) ? lastQuote.tax : null;
       lines.replaceChildren(
         baseRow(money(baseFee)),
-        row("Lawn size", sqft ? `${sqft.toLocaleString()} sq ft${estimated() ? " (estimated)" : ""}` : "Enter above or add your address"),
+        row("Lawn size", sqft ? `${sqft.toLocaleString()} sq ft${estimated() ? " (estimated)" : ""}` : "Add your address in step 1"),
         row("Selected rate", p ? `${p.label} · ${rateText(p.sqft_rate)}` : "Choose above"),
         row("Lawn size charge", charge != null ? money(charge) : "—"),
         row("Estimated subtotal", subtotal != null ? money(subtotal) : "—", "sub-strong"),
@@ -325,12 +339,12 @@
       }));
     }
 
-    // ---------- Steps 4–5: area check and the server's itemized total ----------
+    // ---------- Step 1 address check and the step 5 itemized total ----------
     const addressInput = $("address");
     const latInput = $("lat"), lngInput = $("lng");
     const areaBox = $("area-check");
     const priceLines = $("price-lines"), priceEmpty = $("price-empty"), priceNote = $("price-note");
-    let checkSeq = 0;
+    let checkSeq = 0, lastCheckedAddress = null;
 
     function renderReview(q) {
       lastQuote = q;
@@ -338,7 +352,7 @@
       if (!q || !q.in_area || q.total == null) {
         priceLines.hidden = true; priceNote.hidden = true; priceEmpty.hidden = false;
         priceEmpty.textContent = q && !q.in_area ? "We don't serve that address yet."
-          : "Add your lawn size, rate and address to see your final total.";
+          : "Add your address in step 1 to see your final total.";
         return;
       }
       priceEmpty.hidden = true; priceLines.hidden = false; priceNote.hidden = false;
@@ -384,6 +398,8 @@
           renderReview(null);
           return;
         }
+        lastCheckedAddress = address;
+        if (body.in_area && err.textContent.startsWith("Pick your address")) err.hidden = true;
         areaBox.className = "area-check " + (body.in_area ? "ok" : "bad");
         areaBox.textContent = body.in_area ? `✓ Good news: you're in our ${body.zone_name} area.` : body.message;
         // No lawn size yet (or still our estimate)? Fill in the estimate for this area and get the real price.
@@ -398,9 +414,13 @@
     }
     const checkArea = updateServer;
 
+    $("size-edit-btn").addEventListener("click", () => {
+      $("size-edit").hidden = false; $("size-edit-btn").hidden = true; sqftInput.focus(); sqftInput.select();
+    });
+
     let sqftTimer;
     sqftInput.addEventListener("input", () => {
-      if (sqftAuto) { sqftAuto = null; $("sqft-help").textContent = SQFT_HELP; $("sqft-help").classList.remove("auto-size"); }
+      if (sqftAuto) sqftAuto = null;
       const valid = readSqft(sqftTouched);
       renderEstimate();
       clearTimeout(sqftTimer);
@@ -410,6 +430,8 @@
     dateInput.addEventListener("change", () => { renderAddOns(); updateServer(); });
     addressInput.addEventListener("change", () => {
       if (addressInput.dataset.picked !== addressInput.value) { latInput.value = lngInput.value = ""; }
+      // Leaving the box without changing the address (e.g. tapping "Edit") shouldn't re-check it and shift the page.
+      if (addressInput.value.trim() === lastCheckedAddress) return;
       checkArea();
     });
     renderRates();
@@ -490,7 +512,10 @@
       err.hidden = true;
       // The mowing calculator comes first: a real lawn size and an explicit rate choice.
       sqftTouched = true;
-      if (!readSqft(true)) { showError($("sqft-error").textContent, sqftInput); return; }
+      if (!readSqft(true)) {
+        if ($("size-edit").hidden) { showError("Pick your address from the list first so we can size your lawn.", $("step-where")); return; }
+        showError($("sqft-error").textContent, sqftInput); return;
+      }
       if (!pkgKey) { $("rate-error").hidden = false; showError("Choose a rate to continue.", $("rates")); return; }
       if (!form.checkValidity()) { form.reportValidity(); return; }
       if (!addressInput.value.trim()) { showError("Please choose your address from the list."); return; }
