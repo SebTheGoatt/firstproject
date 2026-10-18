@@ -132,3 +132,12 @@ def test_booking_form_asks_for_yard_type_not_tiers(client):
     info = client.get("/api/booking-info").json()["yield"]
     assert (info["base"], info["included_sqft"], info["step"], info["giving_rate"]) == (75.0, 5000, 0.08, 0.02)
     assert [y["key"] for y in info["yard_types"]] == ["STANDARD", "COMPLEX_OBSTACLES", "STEEP_SLOPES"]
+
+
+def test_add_on_cards_are_on_the_booking_and_estimate_pages(client):
+    for path in ("/book", "/estimate"):
+        t = client.get(path).text
+        assert "<addon-injector" in t and '<script src="/static/addon-injector.js' in t, path
+    js = client.get("/static/addon-injector.js").text
+    assert 'customElements.define("addon-injector", AddonInjector)' in js and 'role="checkbox"' in js
+    assert "addonSelectionChange" in js

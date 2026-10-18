@@ -43,6 +43,7 @@ from .geocode import GeocodingError, GeocoderUnavailable, NominatimGeocoder
 from .agent import register_agent_routes
 from .agent_api import register_agent_api
 from .live_feed import record_booking, register_live_routes
+from .about_page import register_about_page
 from .legal_pages import SMS_CONSENT, legal_footer_html, register_legal_pages
 from .local_pages import home_structured_data, register_local_pages
 from .yield_engine import register_yield_engine
@@ -270,6 +271,7 @@ def create_app(
     register_agent_api(app, settings, build={"static_version": version, "commit": os.environ.get("RENDER_GIT_COMMIT", "")[:7]})   # scoped, audited keys for StarNet agents (off unless AGENT_KEY_READ / AGENT_KEY_OPS are set)
     register_agent_routes(app, settings, crew_auth)   # owner-only Ollama dispatch assistant (off unless OLLAMA_BASE_URL is set)
     register_local_pages(app, settings, version)      # server-rendered /local area pages + /sitemap.xml for search engines
+    register_about_page(app, settings, version)       # /about: founders and how we work
     register_legal_pages(app, settings, version)      # /privacy, /terms (with the damage policy), /refunds
     register_yield_engine(app, settings, page)        # owner's yield pricing engine: /api/v1/calculate-yield-price + /estimate
 
