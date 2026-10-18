@@ -20,3 +20,15 @@ def test_about_page_has_both_founders_and_true_pillars(client, settings):
 def test_about_is_linked_and_in_the_sitemap(client):
     assert 'href="/about"' in client.get("/").text and 'href="/about"' in client.get("/local/spring").text
     assert "/about</loc>" in client.get("/sitemap.xml").text
+
+
+def test_trust_badges_claim_insurance_only_when_set(client, settings, repo):
+    from fastapi.testclient import TestClient
+    from app.main import create_app
+    t = client.get("/about").text
+    assert "<trust-badges></trust-badges>" in t and "/static/trust-badges.js" in t
+    js = client.get("/static/trust-badges.js").text
+    assert "Top Secret Clear" not in js and "OSHA Certified" not in js and "PMP" not in js and "100% Insured" not in js
+    settings.liability_coverage, settings.crew_background_checked = "$1M/$2M", True
+    t = TestClient(create_app(settings, repo=repo)).get("/about").text
+    assert '<trust-badges coverage="$1M/$2M" background-checked></trust-badges>' in t
