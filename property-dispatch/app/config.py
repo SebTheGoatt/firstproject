@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     twilio_auth_token: str = ""
     twilio_from_number: str = ""
     business_name: str = "Semper Green Lawn Care"
+    # Who customers contract with, and how they reach us (footer, privacy policy, terms, refunds).
+    legal_name: str = "Semper Green LLC"
+    business_email: str = "raymundo.alvareztx@gmail.com"
+    business_phone: str = ""       # e.g. "(281) 555-0123"; shown everywhere once set
     # Shown under the "Operational Base & Liability Allocation" line at booking, ONLY when the owner sets them.
     # Put the real amount from your insurance certificate (e.g. "$2M"); leave blank if you don't carry it.
     liability_coverage: str = ""

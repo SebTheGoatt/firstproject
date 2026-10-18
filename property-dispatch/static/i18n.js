@@ -30,6 +30,21 @@
     "Sections": "Secciones",
     "Footer": "Pie de página",
     "Areas we serve": "Áreas que atendemos",
+    // Policies and the texting consent box
+    "Privacy": "Privacidad",
+    "Terms": "Términos",
+    "Refunds": "Reembolsos",
+    "terms": "términos",
+    "privacy policy": "política de privacidad",
+    "and": "y",
+    "Delete my information": "Eliminar mis datos",
+    "Delete your name, phone number, address, photos and notes from our records? This can't be undone, and this access code will stop working.":
+      "¿Eliminar tu nombre, teléfono, dirección, fotos y notas de nuestros registros? No se puede deshacer y este código de acceso dejará de funcionar.",
+    "Done. Your information has been deleted. Thank you for choosing us.": "Listo. Tus datos fueron eliminados. Gracias por elegirnos.",
+    "You have a visit coming up. Cancel it first (see our refund policy), then delete your information.":
+      "Tienes una visita próxima. Cancélala primero (consulta nuestra política de reembolsos) y luego elimina tus datos.",
+    "Please tick the box agreeing to texts about this booking. We use them to tell you when the crew is on the way.":
+      "Marca la casilla para aceptar mensajes de texto sobre esta reserva. Los usamos para avisarte cuando el equipo va en camino.",
     // Local area pages (/local)
     "Book now": "Reservar",
     "Book online": "Reservar en línea",
@@ -442,6 +457,8 @@
     [/^(.+) \| Mowing, Bin Cleaning & Gutters in Spring, TX$/, (m) => `${m[1]} | Corte de césped, limpieza de botes y canaletas en Spring, TX`],
     [/^Starting at (\$[\d,.]+) per visit$/, (m) => `Desde ${m[1]} por visita`],
     [/^\+(\$[\d,.]+) per visit$/, (m) => `+${m[1]} por visita`],
+    [/^I agree to get text messages from (.+) about this booking: confirmation, crew on the way, job done, payment link, and one note afterward asking how we did\. Msg & data rates may apply; frequency varies\. Reply STOP to opt out, HELP for help\.( See our)?$/,
+      (m) => `Acepto recibir mensajes de texto de ${m[1]} sobre esta reserva: confirmación, equipo en camino, trabajo terminado, enlace de pago y un mensaje después para preguntar cómo lo hicimos. Pueden aplicar tarifas de mensajes y datos; la frecuencia varía. Responde STOP para dejar de recibirlos o HELP para ayuda.${m[2] ? " Consulta nuestros" : ""}`],
     // Local area pages (/local)
     [/^Lawn [Mm]owing in (.+), TX \| (.+)$/, (m) => `Corte de césped en ${m[1]}, TX | ${m[2]}`],
     [/^Lawn mowing in (.+), TX$/, (m) => `Corte de césped en ${m[1]}, TX`],

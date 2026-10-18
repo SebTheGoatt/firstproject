@@ -3,6 +3,7 @@
 Customer, with the access code from their booking confirmation:
     GET  /api/visit/{code}                 status, arrival time, crew, payment, photos
     GET  /media/visit/{photo_id}?code=...  a before/after photo (only with that visit's code)
+    POST /api/visit/{code}/forget          erase the customer's personal details (privacy request)
 
 Crew:
     POST /api/stops/{stop_id}/photos       add a before or after photo to a job
@@ -35,6 +36,7 @@ from .media import MediaError, normalize_photo, parse_photo
 from .models import SERVICE_LABELS, Service, order_label
 from .nightly import run_nightly
 
+log = logging.getLogger(__name__)
 CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"  # no 0/O, 1/I/L look-alikes
 CODE_LEN = 8
 
@@ -145,6 +147,25 @@ def register_visit_routes(app: FastAPI, settings: Settings, crew_auth):
             # Same ask for every customer, only once the work is done (app/reviews.py has the rules).
             "review_url": (review_link(settings) or None) if v["status"] == "completed" else None,
         }
+
+    class ForgetRequest(BaseModel):
+        confirm: Literal[True]          # the page asks "Are you sure?" first
+
+    @app.post("/api/visit/{raw_code}/forget")
+    def forget(raw_code: str, body: ForgetRequest, request: Request, r=Depends(repo)):
+        """Privacy request: remove name, phone, address, photos and notes for every booking of this customer.
+        The access code proves who is asking. Amounts and dates stay for tax records (see /privacy)."""
+        if not visit_throttle.allow(request.client.host if request.client else "unknown"):
+            raise HTTPException(status_code=429, detail="Too many tries. Please wait a few minutes.")
+        code = normalize_code(raw_code)
+        result = r.forget_customer(code) if code else "not_found"
+        if result == "not_found":
+            raise HTTPException(status_code=404, detail="We couldn't find that code. Check it and try again.")
+        if result == "upcoming":
+            raise HTTPException(status_code=409, detail=(
+                "You have a visit coming up. Cancel it first (see our refund policy), then delete your information."))
+        log.info("Privacy request: customer details erased")      # no code or ids: nothing that points back to them
+        return {"deleted": True}
 
     @app.get("/api/push-config")
     def push_config():
