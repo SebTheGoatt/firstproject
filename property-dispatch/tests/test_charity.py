@@ -37,8 +37,8 @@ def test_shares_add_up_to_100_percent_and_names_are_settings(settings):
 
 def test_booking_info_offers_the_packages_and_causes(client):
     info = client.get("/api/booking-info").json()
-    assert [(p["key"], p["sqft_rate"], p["charity_rate"]) for p in info["packages"]] == [
-        ("standard", 0.009, 0.02), ("supporter", 0.01, 0.07), ("hero", 0.012, 0.12)]
+    assert [(p["key"], p["charity_rate"], p["brackets"][1]["price"]) for p in info["packages"]] == [
+        ("standard", 0.02, 105), ("supporter", 0.07, 114), ("hero", 0.12, 131)]
     assert "default_package" not in info          # the customer must pick a rate; nothing is preselected
     assert [p["label"] for p in info["packages"]] == ["Neighborhood Block Lock", "Operational Target", "Bi-Weekly Demand"]
     assert info["lawn_sqft_limits"] == {"min": 100, "max": 87_120}
@@ -59,7 +59,7 @@ def test_cash_donation_is_split_and_shown_to_the_customer(client, repo, settings
                                              "service": "mowing", "lawn_sqft": 5000, "package": "standard", "scheduled_date": TOMORROW.isoformat()}).json()
     run_nightly(repo, settings, TOMORROW)
     stop = client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]
-    client.post(f"/api/stops/{stop['stop_id']}/complete", headers=CREW, json={"cash_collected": 96.6})   # $86.60 + $10
+    client.post(f"/api/stops/{stop['stop_id']}/complete", headers=CREW, json={"cash_collected": 123.66})   # $113.66 + $10
     pay = client.get(f"/api/visit/{job['access_code'].replace('-', '')}").json()["payment"]
     assert pay["donation"] == 10.0
     assert [(c["key"], c["amount"]) for c in pay["donation_ledger"]] == [("vfw", 3.3), ("nicu", 3.3), ("at_risk_youth", 3.4)]
@@ -104,17 +104,17 @@ def test_booking_with_a_pick_routes_its_giving_and_cash_donation_there(client, r
                                            "scheduled_date": TOMORROW.isoformat(), "charity_choice": "toys_for_tots"})
     assert r.status_code == 201, r.text
     body = r.json()
-    assert body["charity_choice"] == "toys_for_tots" and body["charity_amount"] == 5.95
+    assert body["charity_choice"] == "toys_for_tots" and body["charity_amount"] == 7.98   # 7% of $114
     job = repo.jobs[body["id"]]
-    assert job["giving_split"] == {"toys_for_tots": 5.95}
+    assert job["giving_split"] == {"toys_for_tots": 7.98}
     assert ledger(settings, job["giving_split"]) == [
-        {"key": "toys_for_tots", "name": "Marine Toys for Tots, Liberty County", "percent": 100, "amount": 5.95}]
+        {"key": "toys_for_tots", "name": "Marine Toys for Tots, Liberty County", "percent": 100, "amount": 7.98}]
 
     run_nightly(repo, settings, TOMORROW)
     stop = client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]
     assert stop["charity_choice_name"] == "Marine Toys for Tots, Liberty County"     # the crew can say where extra goes
-    done = client.post(f"/api/stops/{stop['stop_id']}/complete", json={"cash_collected": 100}, headers=CREW).json()
-    assert done["payment"]["donation_split"] == {"toys_for_tots": round(100 - stop["amount_due"], 2)}
+    done = client.post(f"/api/stops/{stop['stop_id']}/complete", json={"cash_collected": 130}, headers=CREW).json()
+    assert done["payment"]["donation_split"] == {"toys_for_tots": round(130 - stop["amount_due"], 2)}
 
 
 def test_the_booking_page_gets_the_three_causes(client):

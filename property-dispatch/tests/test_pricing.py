@@ -19,27 +19,35 @@ from .test_api_flow import CREW, NOW, TOMORROW
 SPRING = zone_by_key("SPRING_LUXURY_LOOP")   # $35 base service fee, like every area
 
 
-# The acceptance examples: 5,000 sq ft → Standard $80, Plus $85, Premium $95 before tax.
+# The acceptance examples: a flat price per visit from the lawn-size bracket and tier ($35 base included).
 @pytest.mark.parametrize("sqft, package, subtotal, tax, total, charity, net", [
-    (5_000, "standard",  "80.00", "6.60", "86.60",  "1.60", "78.40"),
-    (5_000, "supporter", "85.00", "7.01", "92.01",  "5.95", "79.05"),   # Plus
-    (5_000, "hero",      "95.00", "7.84", "102.84", "11.40", "83.60"),  # Premium
-    (3_333, "standard",  "65.00", "5.36", "70.36",  "1.30", "63.70"),   # $64.997 rounds to $65.00
-    (4_321, "hero",      "86.85", "7.17", "94.02",  "10.42", "76.43"),  # $86.852 rounds to $86.85
+    (5_000, "standard",  "105.00", "8.66",  "113.66", "2.10",  "102.90"),
+    (5_000, "supporter", "114.00", "9.41",  "123.41", "7.98",  "106.02"),   # $9.405 tax rounds half up
+    (5_000, "hero",      "131.00", "10.81", "141.81", "15.72", "115.28"),
+    (3_333, "standard",  "75.00",  "6.19",  "81.19",  "1.50",  "73.50"),
+    (4_321, "hero",      "131.00", "10.81", "141.81", "15.72", "115.28"),
 ])
-def test_mowing_is_35_base_plus_sqft_times_chosen_rate(sqft, package, subtotal, tax, total, charity, net):
+def test_mowing_is_a_flat_price_from_the_size_bracket_and_tier(sqft, package, subtotal, tax, total, charity, net):
     q = quote(SPRING, Service.MOWING, sqft, package=package)
     assert (q.subtotal, q.tax, q.total, q.charity_amount, q.business_net) == \
         tuple(Decimal(x) for x in (subtotal, tax, total, charity, net))
-    assert q.basis == "base_plus_sqft" and q.base_fee == Decimal("35.00")
-    assert q.subtotal == q.base_fee + q.mow_price - q.base_fee   # the base fee is in once, not per sq ft
+    assert q.basis == "bracket" and q.base_fee == Decimal("35.00") and q.sqft_rate is None
 
 
-def test_tier_rates_and_names():
-    rates = {k: quote(SPRING, Service.MOWING, 1_000, package=k) for k in ("standard", "supporter", "hero")}
-    assert {k: (q.sqft_rate, q.as_dict()["package_label"]) for k, q in rates.items()} == {
-        "standard": (Decimal("0.009"), "Neighborhood Block Lock"), "supporter": (Decimal("0.010"), "Operational Target"),
-        "hero": (Decimal("0.012"), "Bi-Weekly Demand")}
+@pytest.mark.parametrize("sqft, prices", [
+    (100, (75, 83, 94)), (3_500, (75, 83, 94)),                   # edges belong to the lower bracket
+    (3_501, (105, 114, 131)), (7_500, (105, 114, 131)),
+    (7_501, (138, 151, 184)), (15_000, (138, 151, 184)),
+    (15_001, (192, 211, 232)), (87_120, (192, 211, 232)),
+])
+def test_price_brackets(sqft, prices):
+    assert tuple(quote(SPRING, Service.MOWING, sqft, package=k).subtotal for k in ("standard", "supporter", "hero")) == \
+        tuple(Decimal(p) for p in prices)
+
+
+def test_tier_names():
+    assert {k: quote(SPRING, Service.MOWING, 1_000, package=k).as_dict()["package_label"] for k in ("standard", "supporter", "hero")} \
+        == {"standard": "Neighborhood Block Lock", "supporter": "Operational Target", "hero": "Bi-Weekly Demand"}
 
 
 def test_no_lawn_size_is_never_guessed():
@@ -60,8 +68,8 @@ def test_lawn_size_validation(value, ok):
 
 
 def test_texas_sales_tax_is_on_the_whole_price_and_rounds_to_the_cent():
-    q = quote(SPRING, Service.MOWING, 5_000, package="supporter")   # $85 × 8.25% = $7.0125 → $7.01
-    assert (q.tax, q.tax_rate) == (Decimal("7.01"), Decimal("0.0825"))
+    q = quote(SPRING, Service.MOWING, 5_000, package="supporter")   # $114 × 8.25% = $9.405 → $9.41
+    assert (q.tax, q.tax_rate) == (Decimal("9.41"), Decimal("0.0825"))
     assert q.total == q.subtotal + q.tax                              # the charity share isn't extra
     g = quote(SPRING, Service.GUTTERS, on_site_price=120)
     assert (g.subtotal, g.tax, g.total, g.charity_amount) == (Decimal("120.00"), Decimal("9.90"), Decimal("129.90"), None)
@@ -105,8 +113,8 @@ def test_live_quote_endpoint(client):
     r = client.post("/api/quote", json={"address": "100 A Example Rd", "service": "mowing", "lawn_sqft": 5_000,
                                         "package": "supporter"}).json()
     assert (r["in_area"], r["subtotal"], r["tax"], r["total"], r["charity_amount"], r["business_net"]) == \
-        (True, 85.0, 7.01, 92.01, 5.95, 79.05)
-    assert (r["package_label"], r["sqft_rate"], r["base_fee"], r["mow_price"]) == ("Operational Target", 0.01, 35.0, 85.0)
+        (True, 114.0, 9.41, 123.41, 7.98, 106.02)
+    assert (r["package_label"], r["sqft_rate"], r["base_fee"], r["mow_price"]) == ("Operational Target", None, 35.0, 114.0)
     for bad in ({"package": "gold", "lawn_sqft": 5_000}, {"package": "standard", "lawn_sqft": 0},
                 {"package": "standard", "lawn_sqft": -10}, {"package": "standard", "lawn_sqft": "abc"},
                 {"package": "standard"}):
@@ -130,36 +138,36 @@ def test_booking_needs_a_chosen_rate_and_a_real_lawn_size(client, repo, missing,
 def test_server_recalculates_and_ignores_any_client_total(client, repo):
     r = post_job(client, lawn_sqft=5_000, package="hero", total=1.00, subtotal=1.00, amount_due=1.00)
     b = r.json()
-    assert (b["subtotal"], b["tax"], b["total"]) == (95.0, 7.84, 102.84)
-    assert repo.jobs[b["id"]]["amount_due"] == 102.84
+    assert (b["subtotal"], b["tax"], b["total"]) == (131.0, 10.81, 141.81)
+    assert repo.jobs[b["id"]]["amount_due"] == 141.81
 
 
 def test_booking_saves_the_breakdown_and_charity_share(client, repo):
     r = post_job(client, lawn_sqft=5_000, package="hero").json()
     assert (r["lawn_sqft"], r["package"], r["sqft_rate"], r["subtotal"], r["tax"], r["total"], r["charity_amount"]) == \
-        (5_000, "hero", 0.012, 95.0, 7.84, 102.84, 11.4)
+        (5_000, "hero", None, 131.0, 10.81, 141.81, 15.72)
     job = repo.jobs[r["id"]]
     assert (job["amount_due"], job["subtotal"], job["tax_amount"], job["charity_rate"], job["charity_amount"]) == \
-        (102.84, 95.0, 7.84, 0.12, 11.4)
-    assert job["giving_split"] == split_donation(11.4)
+        (141.81, 131.0, 10.81, 0.12, 15.72)
+    assert job["giving_split"] == split_donation(15.72)
 
 
 def test_crew_corrects_lawn_size_on_site(client, repo, settings):
-    job = post_job(client, lawn_sqft=5_000, package="supporter").json()   # Plus: $85 + $7.01 = $92.01
+    job = post_job(client, lawn_sqft=5_000, package="supporter").json()   # Operational: $114 + $9.41 = $123.41
     run_nightly(repo, settings, TOMORROW)
     stop = client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]
     assert (stop["lawn_sqft"], stop["package"], stop["subtotal"], stop["amount_due"], stop["charity_amount"]) == \
-        (5_000, "supporter", 85.0, 92.01, 5.95)
-    # Actually 6,000 sq ft, same rate: $35 + $60 = $95 + $7.84 tax = $102.84. Short cash is refused...
-    bad = client.post(f"/api/stops/{stop['stop_id']}/complete", headers=CREW, json={"lawn_sqft": 6_000, "cash_collected": 100})
-    assert bad.status_code == 422 and "102.84" in bad.json()["detail"]
-    assert repo.jobs[job["id"]]["amount_due"] == 92.01            # ...and nothing was changed
-    ok = client.post(f"/api/stops/{stop['stop_id']}/complete", headers=CREW, json={"lawn_sqft": 6_000, "cash_collected": 105}).json()
-    assert ok["payment"]["total"] == 102.84 and ok["payment"]["donation"] == 2.16
+        (5_000, "supporter", 114.0, 123.41, 7.98)
+    # Actually 8,000 sq ft, next bracket, same tier: $151 + $12.46 tax = $163.46. Short cash is refused...
+    bad = client.post(f"/api/stops/{stop['stop_id']}/complete", headers=CREW, json={"lawn_sqft": 8_000, "cash_collected": 150})
+    assert bad.status_code == 422 and "163.46" in bad.json()["detail"]
+    assert repo.jobs[job["id"]]["amount_due"] == 123.41           # ...and nothing was changed
+    ok = client.post(f"/api/stops/{stop['stop_id']}/complete", headers=CREW, json={"lawn_sqft": 8_000, "cash_collected": 170}).json()
+    assert ok["payment"]["total"] == 163.46 and ok["payment"]["donation"] == 6.54
     j = repo.jobs[job["id"]]
     assert (j["lawn_sqft"], j["subtotal"], j["tax_amount"], j["amount_due"], j["charity_amount"]) == \
-        (6_000, 95.0, 7.84, 102.84, 6.65)
-    assert j["giving_split"] == split_donation(6.65) and j["donation_split"] == split_donation(2.16)
+        (8_000, 151.0, 12.46, 163.46, 10.57)
+    assert j["giving_split"] == split_donation(10.57) and j["donation_split"] == split_donation(6.54)
 
 
 def test_stripe_checkout_lines_split_price_tax_and_untaxed_donations_per_charity(settings):
@@ -192,8 +200,8 @@ def test_stripe_checkout_lines_split_price_tax_and_untaxed_donations_per_charity
 # ---------- Add-ons: bin cleaning $15, gutters $15 (with a mow); holiday lighting is a free quote ----------
 def test_add_ons_are_part_of_the_order_taxed_and_counted_for_charity():
     q = quote(SPRING, Service.MOWING, 5_000, package="supporter", add_ons=["gutters", "bin_cleaning"])
-    assert (q.mow_price, q.add_on_total, q.subtotal) == (Decimal("85.00"), Decimal("30.00"), Decimal("115.00"))
-    assert (q.tax, q.total, q.charity_amount) == (Decimal("9.49"), Decimal("124.49"), Decimal("8.05"))   # 7% of the whole order
+    assert (q.mow_price, q.add_on_total, q.subtotal) == (Decimal("114.00"), Decimal("30.00"), Decimal("144.00"))
+    assert (q.tax, q.total, q.charity_amount) == (Decimal("11.88"), Decimal("155.88"), Decimal("10.08"))   # 7% of the whole order
     assert [a["key"] for a in q.add_ons] == ["bin_cleaning", "gutters"]                                 # catalog order
     with pytest.raises(ValueError):
         quote(SPRING, Service.MOWING, 5_000, add_ons=["pressure_washing"])
@@ -206,7 +214,7 @@ def test_add_ons_are_never_charged_twice():
 
 def test_holiday_lighting_is_a_free_quote_request():
     q = quote(SPRING, Service.MOWING, 5_000, package="standard", add_ons=["holiday_lights"])
-    assert q.add_on_total == 0 and q.subtotal == Decimal("80.00")       # nothing charged for the quote
+    assert q.add_on_total == 0 and q.subtotal == Decimal("105.00")      # nothing charged for the quote
     assert q.add_ons == ({"key": "holiday_lights", "label": "Holiday lighting quote", "price": None, "quote": True},)
 
 
@@ -223,7 +231,7 @@ def test_booking_with_add_ons(client, repo):
     r = post_job(client, lawn_sqft=5_000, package="supporter", add_ons=["holiday_lights", "gutters"])
     assert r.status_code == 201, r.text
     b = r.json()
-    assert (b["subtotal"], b["add_on_total"], b["tax"], b["total"], b["charity_amount"]) == (100.0, 15.0, 8.25, 108.25, 7.0)
+    assert (b["subtotal"], b["add_on_total"], b["tax"], b["total"], b["charity_amount"]) == (129.0, 15.0, 10.64, 139.64, 9.03)
     assert [(a["label"], a["price"]) for a in b["add_ons"]] == [("Gutter cleaning", 15.0), ("Holiday lighting quote", None)]
     job = repo.jobs[b["id"]]
     assert job["service_minutes"] == 48 + 30 + 10            # mow (5,000 sq ft) + gutters + a quick look for the lighting quote
@@ -241,19 +249,19 @@ def test_add_ons_out_of_season_or_without_a_mow_are_refused(client):
     assert r.status_code == 422 and "Oct 15 – Jan 15" in r.json()["detail"]
     q = client.post("/api/quote", json={"address": "100 A Example Rd", "lawn_sqft": 5_000, "package": "standard",
                                         "add_ons": ["holiday_lights"], "scheduled_date": "2027-07-02"}).json()
-    assert q["add_ons"] == [] and q["subtotal"] == 80.0            # quote drops out-of-season add-ons
+    assert q["add_ons"] == [] and q["subtotal"] == 105.0           # quote drops out-of-season add-ons
 
 
 def test_crew_sees_add_ons_and_size_corrections_keep_them(client, repo, settings):
-    post_job(client, lawn_sqft=5_000, package="supporter", add_ons=["bin_cleaning"])   # $85 + $15 = $100
+    post_job(client, lawn_sqft=5_000, package="supporter", add_ons=["bin_cleaning"])   # $114 + $15 = $129
     run_nightly(repo, settings, TOMORROW)
     stop = client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]
     assert stop["service_label"] == "Mowing + Bin cleaning" and stop["add_on_total"] == 15.0
     ok = client.post(f"/api/stops/{stop['stop_id']}/complete", headers=CREW,
-                     json={"lawn_sqft": 6_000, "cash_collected": 120}).json()
-    assert ok["payment"]["total"] == 119.08                        # ($95 mow + $15 bins) + 8.25% tax
+                     json={"lawn_sqft": 8_000, "cash_collected": 180}).json()
+    assert ok["payment"]["total"] == 179.70                        # ($151 mow + $15 bins) + 8.25% tax
     stop = client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]
-    assert (stop["subtotal"], stop["charity_amount"]) == (110.0, 7.7)
+    assert (stop["subtotal"], stop["charity_amount"]) == (166.0, 11.62)
 
 
 @pytest.mark.parametrize("lat, lng, section", [
@@ -278,7 +286,7 @@ def test_plum_grove_and_cleveland_unchanged_by_colony_ridge():
 
 def test_stripe_charges_exactly_the_booked_total_and_never_the_free_quote(client, repo, settings):
     b = post_job(client, lawn_sqft=5_000, package="supporter", add_ons=["gutters", "holiday_lights"]).json()
-    assert b["total"] == 108.25                       # $85 mow + $15 gutters + $8.25 tax; the lighting quote is free
+    assert b["total"] == 139.64                       # $114 mow + $15 gutters + $10.64 tax; the lighting quote is free
     sent = {}
 
     def handler(req):
@@ -292,25 +300,29 @@ def test_stripe_charges_exactly_the_booked_total_and_never_the_free_quote(client
         tax_rate=b["tax_rate"], add_ons=b["add_ons"], package_label="Operational Target", charity_rate=0.07, charity_amount=b["charity_amount"])
     lines = [int(v) for k, v in sent.items() if k.endswith("[unit_amount]")]
     names = [v for k, v in sent.items() if k.endswith("[product_data][name]")]
-    assert sum(lines) == 10825 and lines == [8500, 1500, 825]
+    assert sum(lines) == 13964 and lines == [11400, 1500, 1064]
     assert not any("Holiday" in n for n in names)
 
 
 # ---------- Per-visit formula, tier names, base-fee note facts, no subscriptions ----------
-@pytest.mark.parametrize("package, rate", [("hero", "0.012"), ("supporter", "0.010"), ("standard", "0.009")])
-@pytest.mark.parametrize("sqft", [2500, 4500, 8000, 12500])
-def test_total_is_base_plus_sqft_times_multiplier_plus_texas_tax(package, rate, sqft):
+@pytest.mark.parametrize("package", ["standard", "supporter", "hero"])
+@pytest.mark.parametrize("sqft", [2500, 4500, 8000, 12500, 20000])
+def test_total_is_the_bracket_price_plus_texas_tax_to_the_cent(package, sqft):
+    from app.pricing import bracket_price
     zone = zone_by_key("SPRING_LUXURY_LOOP")
     q = quote(zone, Service.MOWING, sqft, package=package)
-    subtotal = (Decimal("35.00") + sqft * Decimal(rate)).quantize(Decimal("0.01"))
+    subtotal = bracket_price(sqft, package)
     tax = (subtotal * Decimal("0.0825")).quantize(Decimal("0.01"), rounding="ROUND_HALF_UP")
-    assert (q.subtotal, q.tax, q.total) == (subtotal, tax, subtotal + tax)
+    assert (q.subtotal, q.tax, q.total) == (subtotal, tax, subtotal + tax) and subtotal > Decimal("35.00")
 
 
 def test_tiers_are_named_and_operational_target_is_featured(client):
     info = client.get("/api/booking-info").json()
-    assert [(p["label"], p["sqft_rate"]) for p in info["packages"]] == [
-        ("Neighborhood Block Lock", 0.009), ("Operational Target", 0.01), ("Bi-Weekly Demand", 0.012)]
+    assert [(p["label"], [b["price"] for b in p["brackets"]]) for p in info["packages"]] == [
+        ("Neighborhood Block Lock", [75, 105, 138, 192]), ("Operational Target", [83, 114, 151, 211]),
+        ("Bi-Weekly Demand", [94, 131, 184, 232])]
+    assert [b["max_sqft"] for b in info["packages"][0]["brackets"]] == [3500, 7500, 15000, None]
+    assert all("sqft_rate" not in p for p in info["packages"])        # no per-sq-ft rate goes to the page
     assert info["featured_package"] == "supporter"
 
 
@@ -326,3 +338,24 @@ def test_card_checkout_is_one_time_per_visit_never_a_subscription():
     assert '"mode": "payment"' in src
     for word in ('"subscription"', "recurring", "interval"):
         assert word not in src
+
+
+def test_crew_app_bracket_table_matches_the_server():
+    """The crew's live total (static/crew.html) must use the same flat prices as app/pricing.py."""
+    import re
+    from pathlib import Path
+    from app.pricing import PRICE_BRACKETS
+    src = Path(__file__).resolve().parents[1].joinpath("static", "crew.html").read_text(encoding="utf-8")
+    table = re.search(r"const BRACKETS = (\[.*?\]);", src, re.S).group(1)
+    rows = re.findall(r"\[(\d+|null), \{ standard: (\d+), supporter: (\d+), hero: (\d+) \}\]", table)
+    assert [(None if m == "null" else int(m), int(a), int(b), int(c)) for m, a, b, c in rows] == \
+        [(limit, int(p["standard"]), int(p["supporter"]), int(p["hero"])) for limit, p in PRICE_BRACKETS]
+
+
+def test_no_per_square_foot_rate_on_customer_pages():
+    from pathlib import Path
+    static = Path(__file__).resolve().parents[1].joinpath("static")
+    for page in ("book.html", "home.html", "pay.html", "visit.html"):
+        text = static.joinpath(page).read_text(encoding="utf-8")
+        for leak in ("/ sq. ft.", "0.009", "0.012", "sqft_rate", "Lawn size charge ("):
+            assert leak not in text, (page, leak)

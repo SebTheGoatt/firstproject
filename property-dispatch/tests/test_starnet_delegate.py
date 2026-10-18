@@ -31,7 +31,7 @@ def test_the_briefing_says_what_is_happening_today_and_whether_tomorrows_route_i
         assert book(client, "B", "0101").status_code == 201
     text = brief(box, client, settings)
     assert "Today (Wed Oct 14): 0 booking(s)" in text and "No bookings, so no route." in text
-    assert "Tomorrow (Thu Oct 15): 2 booking(s), 0 finished, $173.20 expected, $0.00 collected. Route: NOT BUILT yet" in text
+    assert "Tomorrow (Thu Oct 15): 2 booking(s), 0 finished, $227.32 expected, $0.00 collected. Route: NOT BUILT yet" in text
     assert "built automatically at 5 PM" in text
     run_nightly(repo, settings, TOMORROW)
     assert "Route: BUILT (2 stops, 0 finished)" in brief(box, client, settings)

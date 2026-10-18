@@ -43,7 +43,7 @@ from .crew_routes import register_crew_routes
 from .models import (SERVICE_LABELS, order_label, AddressCheck, CompleteStopRequest, GeoPoint, JobCreated,
                      JobRequest, OptimizeRouteRequest, QuoteRequest, RouteView, Service, StopNote, StopView)
 from .charity import causes as charity_causes, chosen_cause, charity_names, describe as describe_charities, route_donation
-from .pricing import (ADD_ONS, FEATURED_PACKAGE, mow_minutes, scope_of, MAX_SQFT, MIN_SQFT, PACKAGES, LawnSizeError, check_sqft, in_season, package_for_rate,
+from .pricing import (ADD_ONS, FEATURED_PACKAGE, PRICE_BRACKETS, mow_minutes, scope_of, MAX_SQFT, MIN_SQFT, PACKAGES, LawnSizeError, check_sqft, in_season, package_for_rate,
                       quote, season_text)
 from .routing.matrix import haversine_m
 from .nightly import run_nightly
@@ -285,7 +285,9 @@ def create_app(
                       for z in SERVICE_ZONES],
             # Mowing: base fee (per area) + lawn sq ft × the rate tier the customer picks (form pre-selects the featured one).
             "packages": [{"key": k, "label": p["label"], "description": p["description"],
-                          "sqft_rate": float(p["rate"]), "charity_rate": float(p["giving"])}
+                          "charity_rate": float(p["giving"]),
+                          # flat price per visit by lawn size (base included); no per-sq-ft rate is shown
+                          "brackets": [{"max_sqft": limit, "price": float(prices[k])} for limit, prices in PRICE_BRACKETS]}
                          for k, p in PACKAGES.items()],
             "featured_package": FEATURED_PACKAGE,
             "lawn_sqft_limits": {"min": MIN_SQFT, "max": MAX_SQFT},

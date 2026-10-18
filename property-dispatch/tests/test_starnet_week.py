@@ -63,7 +63,7 @@ def test_a_practice_day_briefing_shows_that_day_as_today(week):
         text = sg.briefing(week.site, None, as_of=date(2026, 10, 14), clock="5:15 PM")
     assert "(Wed Oct 14, 5:15 PM, practice day)" in text
     assert "Today (Wed Oct 14): 0 booking(s)" in text and "Tomorrow (Thu Oct 15): 2 booking(s)" in text
-    assert "Wed Oct 14: 0 bookings of 25 possible" in text and "Thu Oct 15: 2 bookings of 25 possible, $173.20 expected" in text
+    assert "Wed Oct 14: 0 bookings of 25 possible" in text and "Thu Oct 15: 2 bookings of 25 possible, $227.32 expected" in text
     assert "Customer A" not in text
 
 

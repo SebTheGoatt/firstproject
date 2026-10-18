@@ -1,11 +1,14 @@
 """Prices, lawn sizes, rate tiers and Texas sales tax.
 
-Mowing:   subtotal = $35 base service fee (once per visit) + square feet × the
-          rate the customer picks. The customer must pick one; nothing is preselected.
-            Standard  $0.009 / sq ft
-            Plus      $0.010 / sq ft
-            Premium   $0.012 / sq ft
-          The tiers are prices only; the work is the same. Each tier also gives a
+Mowing:   a flat price per visit from the lawn-size bracket and the tier the customer picks
+          (PRICE_BRACKETS below). Each price already includes the $35 operational base; it is
+          shown as its own line and the rest as "Precision Turf Maintenance Profile".
+                         <= 3,500   3,501-7,500   7,501-15,000   > 15,000 sq ft
+            Block Lock      $75        $105          $138           $192
+            Operational     $83        $114          $151           $211
+            Bi-Weekly       $94        $131          $184           $232
+          No per-square-foot rate is shown to customers. Older bookings priced per sq ft keep
+          their stored price. The tiers are prices only; the work is the same. Each tier also gives a
           share of the price to charity (2% / 7% / 12%), split between the causes
           in app/charity.py. That comes out of what the business keeps; the
           customer pays the price + tax, nothing extra.
@@ -37,6 +40,24 @@ PACKAGES: dict[str, dict] = {
     "hero":      {"label": "Bi-Weekly Demand",        "rate": Decimal("0.012"), "giving": Decimal("0.12"),
                   "description": "For lawns that need a visit every two weeks in peak season. Still billed per visit."},
 }
+# Flat per-visit price (before tax, $35 base included) by lawn size: (largest sq ft in bracket, price per tier).
+# The last bracket has no upper limit (MAX_SQFT still applies; bigger lots are quoted in person).
+PRICE_BRACKETS: tuple[tuple[int | None, dict[str, Decimal]], ...] = (
+    (3_500,  {"standard": Decimal("75.00"),  "supporter": Decimal("83.00"),  "hero": Decimal("94.00")}),
+    (7_500,  {"standard": Decimal("105.00"), "supporter": Decimal("114.00"), "hero": Decimal("131.00")}),
+    (15_000, {"standard": Decimal("138.00"), "supporter": Decimal("151.00"), "hero": Decimal("184.00")}),
+    (None,   {"standard": Decimal("192.00"), "supporter": Decimal("211.00"), "hero": Decimal("232.00")}),
+)
+
+
+def bracket_price(lawn_sqft: int, package: str) -> Decimal:
+    """The flat mowing price (before tax, base included) for this lawn size and tier."""
+    for limit, prices in PRICE_BRACKETS:
+        if limit is None or lawn_sqft <= limit:
+            return prices[package]
+    raise AssertionError("unreachable")
+
+
 DEFAULT_PACKAGE = "standard"        # only for old bookings without a package; the booking form pre-selects FEATURED_PACKAGE
 FEATURED_PACKAGE = "supporter"      # Operational Target: pre-selected and highlighted on the booking form
 MIN_SQFT, MAX_SQFT = 100, 87_120  # up to 2 acres; bigger properties are quoted in person
@@ -112,7 +133,7 @@ class Quote:
     tax: Decimal | None
     total: Decimal | None
     lawn_sqft: int | None
-    basis: str                    # "base_plus_sqft" | "on_site" | "set_on_site"
+    basis: str                    # "bracket" | "on_site" | "set_on_site" (older bookings: "base_plus_sqft")
     package: str | None = None    # mowing: standard | supporter | hero
     sqft_rate: Decimal | None = None
     base_fee: Decimal | None = None
@@ -221,9 +242,9 @@ def quote(zone: ServiceZone, service: Service, lawn_sqft: int | None = None,
         base = money(zone.mow_rate)          # charged once per visit
         extras = priced_add_ons(add_ons)
         extra_total = sum((a["price"] for a in extras if a["price"] is not None), Decimal(0))   # quotes are free
-        subtotal = money(base + pkg["rate"] * sqft) + extra_total
+        subtotal = bracket_price(sqft, key) + extra_total
         tax, total = with_tax(subtotal, rate)
-        return Quote(subtotal, rate, tax, total, sqft, "base_plus_sqft", key, pkg["rate"], base,
+        return Quote(subtotal, rate, tax, total, sqft, "bracket", key, None, base,
                      pkg["giving"], money(subtotal * pkg["giving"]), extras, extra_total)
     if on_site_price is not None:
         subtotal = money(on_site_price)
