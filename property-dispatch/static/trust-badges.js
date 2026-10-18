@@ -27,7 +27,7 @@ class TrustBadges extends HTMLElement {
                     <h3>Operational Pedigree &amp; Security</h3>
                 </div>
                 <div class="tb-grid">
-                    ${badge("🔓", "Embassy Security Veteran", "Directed by a USMC Embassy Security Guard veteran who held a Top Secret (DoD) clearance.")}
+                    ${badge("🔓", "Embassy Security Veteran", "Directed by a U.S. Embassy Marine Security Guard veteran.")}
                     ${badge("🧠", "AI Infrastructure", "Founder trained in NVIDIA AI Infrastructure &amp; Operations; routes planned by our own optimization software.")}
                     ${badge("🛡️", "OSHA 30 Trained", "Job-site safety and risk mitigation run to OSHA 30-hour training standards.")}
                     ${badge("📈", "Data Systems", "Schedules tracked with Google Project Management and IBM Data Science certificate methods.")}

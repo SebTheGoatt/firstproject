@@ -28,7 +28,7 @@ def test_trust_badges_claim_insurance_only_when_set(client, settings, repo):
     t = client.get("/about").text
     assert "<trust-badges></trust-badges>" in t and "/static/trust-badges.js" in t
     js = client.get("/static/trust-badges.js").text
-    assert "Top Secret Clear" not in js and "OSHA Certified" not in js and "PMP" not in js and "100% Insured" not in js
+    assert "Top Secret" not in js and "clearance" not in js and "OSHA Certified" not in js and "PMP" not in js and "100% Insured" not in js
     settings.liability_coverage, settings.crew_background_checked = "$1M/$2M", True
     t = TestClient(create_app(settings, repo=repo)).get("/about").text
     assert '<trust-badges coverage="$1M/$2M" background-checked></trust-badges>' in t
