@@ -29,7 +29,7 @@ def test_policy_pages_name_the_business_and_how_to_reach_it(client, settings):
         assert r.status_code == 200 and "noindex" not in r.text and "{{" not in r.text
         t = r.text
         assert words in t and "Semper Green LLC" in t
-        assert f'href="mailto:{settings.business_email}"' in t and 'href="tel:' not in t     # no phone until it's set
+        assert f'href="mailto:{settings.business_email}"' in t and 'href="tel:9364330447">(936) 433-0447</a>' in t
     t = app_with(settings, client.app.state.repo, business_phone="(281) 555-0199").get("/refunds").text
     assert 'href="tel:2815550199">(281) 555-0199</a>' in t
 
