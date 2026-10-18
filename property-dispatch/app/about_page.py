@@ -1,6 +1,6 @@
 """About page (/about): the founders and how the business runs. Server-rendered, same header and footer.
 
-The founders' bios are their own words. The three "how we work" points only say what the app really does
+The founder's bio is his own words. The three "how we work" points only say what the app really does
 (price from lawn size and yard type, the real route-density discount, the causes from settings).
 """
 
@@ -20,6 +20,10 @@ FOUNDERS = (
      "the U.S. Marine Corps Security Guard Program, securing vital federal architecture and diplomatic infrastructure "
      "across global U.S. Embassies. Combines an immaculate 4.0 graduate business background with specialized NVIDIA "
      "AI Infrastructure tracking to ensure flawless routing execution on the ground."),
+)
+
+# Waiting on Ciro's go-ahead. To show him on the page, move this entry into FOUNDERS above.
+PENDING_FOUNDERS = (
     ("Ciro Marabillo-Arreguin", "Co-Founder · Supply Chain Manager", "LOGISTICS CORE",
      "An accomplished enterprise shipping, inventory control, and multi-stop operations supervisor with a proven "
      "record managing complex commercial fleet dispatch paths and strict KPI tracking logs at RXO Logistics. "

@@ -9,6 +9,7 @@ def test_about_page_has_both_founders_and_true_pillars(client, settings):
     t = r.text
     for name, role, tag, _ in FOUNDERS:
         assert name in t and role in t and tag in t
+    assert "Ciro" not in t and "RXO" not in t and len(FOUNDERS) == 1
     assert "Built on Pedigree. Driven by <span>Discernment.</span>" in t
     assert "5:00 PM sharp" in t and "cutting down the fuel" in t
     assert "Holiday toy drive for local kids" in t and "Local veterans and their families" in t   # real causes
