@@ -14,6 +14,7 @@ Crew member records never include `passcode_hash` or `photo` unless a method
 says so; photos are served separately so lists stay small.
 """
 
+import secrets
 import threading
 import uuid
 from copy import deepcopy
@@ -24,6 +25,12 @@ from .models import GeoPoint, Job, Service
 from .pricing import scope_of
 
 ACTIVE_STATUSES = ("pending", "scheduled")
+DELETED_NAME, DELETED_ADDRESS = "Deleted customer", "Deleted at the customer's request"
+
+
+def _anonymous_phone() -> str:
+    """A placeholder that passes the E.164 check but can't be anyone's number (+999 is not a country code)."""
+    return "+999" + "".join(secrets.choice("0123456789") for _ in range(10))
 CREW_PUBLIC_FIELDS = ("id", "slug", "display_name", "role_title", "bio", "years_experience", "specialties",
                       "service_branch", "accent_color", "photo_updated_at", "active", "created_at")
 PORTFOLIO_FIELDS = ("id", "member_id", "job_id", "service", "caption", "created_at")
@@ -142,6 +149,7 @@ class Repository(Protocol):
     def list_jobs(self, day: date) -> list[dict]: ...
     def list_jobs_between(self, start: date, end: date) -> list[dict]: ...
     def get_visit(self, access_code: str) -> dict | None: ...
+    def forget_customer(self, access_code: str) -> str: ...   # "deleted" | "upcoming" | "not_found"
     def add_job_photo(self, job_id: str, member_id: str | None, kind: str, photo: str) -> dict: ...
     def list_job_photos(self, job_id: str) -> list[dict]: ...
     def job_photo(self, photo_id: str) -> dict | None: ...
@@ -504,6 +512,30 @@ class SupabaseRepository:
             .neq("status", "cancelled").execute()
         ).data
 
+    def forget_customer(self, access_code: str) -> str:
+        """Erase a customer's personal details on request. Amounts, dates and services stay (tax records),
+        with no name, phone, street address, photos, notes or links attached. Refused while a visit is still ahead."""
+        rows = self.sb.table("jobs").select("customer_id").eq("access_code", access_code).limit(1).execute().data
+        if not rows:
+            return "not_found"
+        cid = rows[0]["customer_id"]
+        jobs = self.sb.table("jobs").select("id, status, lat, lng").eq("customer_id", cid).execute().data
+        if any(j["status"] in ACTIVE_STATUSES for j in jobs):
+            return "upcoming"
+        ids = [j["id"] for j in jobs]
+        self.sb.table("job_photos").delete().in_("job_id", ids).execute()
+        self.sb.table("push_subscriptions").delete().in_("job_id", ids).execute()
+        try:
+            self.sb.table("route_stops").update({"crew_note": None}).in_("job_id", ids).execute()
+        except Exception:      # crew_note column not added yet: nothing to clear
+            pass
+        for j in jobs:         # keep only the area (about a kilometer), never the house
+            self.sb.table("jobs").update({"address": DELETED_ADDRESS, "formatted_address": None, "access_code": None,
+                                          "pay_token": None, "lat": round(j["lat"], 2), "lng": round(j["lng"], 2)}
+                                         ).eq("id", j["id"]).execute()
+        self.sb.table("customers").update({"name": DELETED_NAME, "phone": _anonymous_phone()}).eq("id", cid).execute()
+        return "deleted"
+
     def get_visit(self, access_code: str) -> dict | None:
         rows = (
             self.sb.table("jobs")
@@ -861,6 +893,26 @@ class MemoryRepository:
     def list_jobs_between(self, start: date, end: date) -> list[dict]:
         return [{k: j.get(k) for k in ("scheduled_date", "status", "payment_status", "amount_due", "amount_paid", "donation", "tax_amount")}
                 for j in self.jobs.values() if start <= j["scheduled_date"] <= end and j["status"] != "cancelled"]
+
+    def forget_customer(self, access_code: str) -> str:
+        with self._lock:
+            j = next((j for j in self.jobs.values() if access_code and j.get("access_code") == access_code), None)
+            if j is None:
+                return "not_found"
+            jobs = [x for x in self.jobs.values() if x["customer_id"] == j["customer_id"]]
+            if any(x["status"] in ACTIVE_STATUSES for x in jobs):
+                return "upcoming"
+            ids = {x["id"] for x in jobs}
+            self.job_photos = {k: p for k, p in self.job_photos.items() if p["job_id"] not in ids}
+            self.push_subs = {k: p for k, p in self.push_subs.items() if p["job_id"] not in ids}
+            for st in self.stops.values():
+                if st["job_id"] in ids:
+                    st["crew_note"] = None
+            for x in jobs:
+                x.update(address=DELETED_ADDRESS, formatted_address=None, access_code=None, pay_token=None,
+                         lat=round(x["lat"], 2), lng=round(x["lng"], 2))
+            self.customers[j["customer_id"]].update(name=DELETED_NAME, phone=_anonymous_phone())
+            return "deleted"
 
     def get_visit(self, access_code: str) -> dict | None:
         j = next((j for j in self.jobs.values() if access_code and j.get("access_code") == access_code), None)

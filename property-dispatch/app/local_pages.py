@@ -265,7 +265,8 @@ def layout(settings: Settings, version: str, *, title: str, description: str, bo
         <a class="footer-areas-title" href="/local">Areas we serve</a>
 {areas}
       </nav>
-      <p class="footer-copy">© {local_now(settings).year} {name}</p>
+      <p class="footer-copy">© {local_now(settings).year} {esc(settings.legal_name)}{contact_line(settings)}
+        · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a></p>
     </div>
   </footer>
 
@@ -274,6 +275,17 @@ def layout(settings: Settings, version: str, *, title: str, description: str, bo
 </body>
 </html>
 """
+
+
+def contact_line(settings: Settings) -> str:
+    """" · email · phone" for the footer (the phone only once the owner sets it)."""
+    out = ""
+    if settings.business_email:
+        out += f' · <a href="mailto:{esc(settings.business_email)}">{esc(settings.business_email)}</a>'
+    if settings.business_phone:
+        digits = "".join(c for c in settings.business_phone if c.isdigit() or c == "+")
+        out += f' · <a href="tel:{esc(digits)}">{esc(settings.business_phone)}</a>'
+    return out
 
 
 def crumbs(trail: list[tuple[str, str | None]]) -> str:
@@ -513,7 +525,7 @@ def register_local_pages(app: FastAPI, settings: Settings, version: str = "") ->
     @app.get("/sitemap.xml", include_in_schema=False)
     def sitemap(request: Request):
         site = site_url(settings, request)
-        paths = ["/", "/book", "/team", "/local", *(f"/local/{a.slug}" for a in AREAS)]
+        paths = ["/", "/book", "/team", "/local", *(f"/local/{a.slug}" for a in AREAS), "/privacy", "/terms", "/refunds"]
         urls = "".join(f"  <url><loc>{xml_escape(site + p)}</loc></url>\n" for p in paths)
         body = ('<?xml version="1.0" encoding="UTF-8"?>\n'
                 f'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n{urls}</urlset>\n')

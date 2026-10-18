@@ -158,12 +158,18 @@
           <input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required placeholder="(281) 555-0123">
           <div class="hint">We text your access code, and again when the crew is on the way.</div>
         </div>
+        <div class="consent">
+          <input type="checkbox" id="sms-consent" name="sms_consent" required>
+          <label for="sms-consent">{{SMS_CONSENT}} See our <a href="/terms" target="_blank" rel="noopener">terms</a>
+            and <a href="/privacy" target="_blank" rel="noopener">privacy policy</a>.</label>
+        </div>
       </section>
 
       <p class="impact-promise" id="impact-promise">✓ Your pick is saved with your booking. What your order generates goes to that cause, and so does anything extra you give the crew.</p>
       <button class="btn btn-primary btn-block btn-lg" type="submit" id="submit">Book service</button>
     </form>
   </main>
+  <footer class="mini-footer site-wrap">{{LEGAL_FOOTER}}</footer>
 
   <script src="/static/site.js?v={{V}}"></script>
   <script src="/static/push.js?v={{V}}"></script>
@@ -578,6 +584,7 @@
       data.package = pkgKey;
       data.add_ons = pickedAddOns();
       data.charity_choice = pickedCause();
+      data.sms_consent = $("sms-consent").checked;     // required box: texts about this booking
       delete data.scope;
       data.lang = window.I18N?.lang === "es" ? "es" : "en";   // their texts come in this language
       if (addressInput.dataset.picked === addressInput.value && latInput.value) {

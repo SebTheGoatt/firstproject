@@ -8,6 +8,7 @@
     GET  /pay/{token}               customer payment page
     (crew sign-in/profiles: app/crew_routes.py · payments: app/pay_routes.py)
     GET  /local, /local/{area}      service-area pages + /sitemap.xml (app/local_pages.py)
+    GET  /privacy, /terms, /refunds policies (app/legal_pages.py)
     GET  /api/booking-info          earliest bookable date, services
     POST /api/jobs                  intake: validate → geocode → store
     GET  /api/routes/{date}         crew: optimized route with map links
@@ -42,6 +43,7 @@ from .geocode import GeocodingError, GeocoderUnavailable, NominatimGeocoder
 from .agent import register_agent_routes
 from .agent_api import register_agent_api
 from .live_feed import record_booking, register_live_routes
+from .legal_pages import SMS_CONSENT, legal_footer_html, register_legal_pages
 from .local_pages import register_local_pages
 from .crew_auth import CrewIdentity
 from .crew_routes import register_crew_routes
@@ -212,7 +214,9 @@ def create_app(
     def render(name: str) -> str:
         # Static pages are UTF-8 regardless of the host process locale (Windows hosts default to a legacy code page).
         text = (STATIC_DIR / name).read_text(encoding="utf-8")
-        return text.replace("{{BUSINESS_NAME}}", html.escape(settings.business_name)).replace("{{V}}", version)
+        return (text.replace("{{BUSINESS_NAME}}", html.escape(settings.business_name)).replace("{{V}}", version)
+                .replace("{{LEGAL_FOOTER}}", legal_footer_html(settings))
+                .replace("{{SMS_CONSENT}}", html.escape(SMS_CONSENT.format(legal=settings.legal_name))))
 
     def page(name: str) -> HTMLResponse:
         return HTMLResponse(render(name), headers={"Cache-Control": "no-cache"})
@@ -260,6 +264,7 @@ def create_app(
     register_agent_api(app, settings, build={"static_version": version, "commit": os.environ.get("RENDER_GIT_COMMIT", "")[:7]})   # scoped, audited keys for StarNet agents (off unless AGENT_KEY_READ / AGENT_KEY_OPS are set)
     register_agent_routes(app, settings, crew_auth)   # owner-only Ollama dispatch assistant (off unless OLLAMA_BASE_URL is set)
     register_local_pages(app, settings, version)      # server-rendered /local area pages + /sitemap.xml for search engines
+    register_legal_pages(app, settings, version)      # /privacy, /terms (with the damage policy), /refunds
 
     @app.get("/push-setup", include_in_schema=False)
     def push_setup_page():
@@ -418,6 +423,9 @@ def create_app(
         except BookingRejected as exc:
             raise HTTPException(status_code=409, detail=str(exc))
 
+        if body.sms_consent is False:
+            raise HTTPException(status_code=422, detail=(
+                "Please tick the box agreeing to texts about this booking. We use them to tell you when the crew is on the way."))
         if body.service is not Service.MOWING:
             raise HTTPException(status_code=422, detail=(
                 "Bin cleaning and gutters are add-ons to a mowing visit. Book mowing and add them on."))
@@ -466,6 +474,8 @@ def create_app(
             add_ons=add_ons, add_on_total=float(q.add_on_total), lang=body.lang,
         )
         record_booking(job_id=str(job["id"]))   # the only booking counter (idempotent per job)
+        if body.sms_consent:   # proof of consent for texting (TCPA): which booking, when, and the exact wording
+            log.info("SMS consent: job %s at %s: %s", job["id"], now.isoformat(), SMS_CONSENT.format(legal=settings.legal_name))
         base = site_url(settings, request)
         visit_url = f"{base}/visit/{access_code}"
         send_text(app.state.sms, body.phone, booking_message(

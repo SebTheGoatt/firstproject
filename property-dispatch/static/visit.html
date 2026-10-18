@@ -71,8 +71,10 @@
       </section>
 
       <p class="center hint"><button class="link-btn" type="button" id="other-code">Use a different code</button></p>
+      <p class="center hint"><button class="link-btn" type="button" id="forget-btn">Delete my information</button></p>
     </article>
   </main>
+  <footer class="mini-footer site-wrap">{{LEGAL_FOOTER}}</footer>
 
   <div class="lightbox" id="lightbox" hidden>
     <button class="lightbox-close" type="button" aria-label="Close">×</button>
@@ -266,6 +268,19 @@
     $("code").addEventListener("input", () => {
       const c = clean($("code").value).slice(0, 8);
       $("code").value = c.length > 4 ? `${c.slice(0, 4)}-${c.slice(4)}` : c;
+    });
+    // Privacy request: erase name, phone, address, photos and notes (amounts stay for tax records; see /privacy).
+    $("forget-btn").addEventListener("click", async () => {
+      const code = clean(location.pathname.split("/")[2]);
+      const t = (x) => window.I18N ? I18N.t(x) : x;
+      if (!code || !confirm(t("Delete your name, phone number, address, photos and notes from our records? This can't be undone, and this access code will stop working."))) return;
+      const res = await fetch(`/api/visit/${code}/forget`, { method: "POST", headers: { "Content-Type": "application/json" },
+                                                            body: JSON.stringify({ confirm: true }) }).catch(() => null);
+      const body = res ? await res.json().catch(() => ({})) : {};
+      if (!res || !res.ok) { alert(t(body.detail || "No connection. Please try again.")); return; }
+      try { localStorage.removeItem(KEY); } catch {}
+      history.replaceState(null, "", "/visit");
+      showForm("Done. Your information has been deleted. Thank you for choosing us.");
     });
     $("other-code").addEventListener("click", () => { try { localStorage.removeItem(KEY); } catch {} $("code").value = ""; history.replaceState(null, "", "/visit"); showForm(); });
     $("lightbox").addEventListener("click", (e) => { if (e.target.id !== "lb-img") $("lightbox").hidden = true; });
