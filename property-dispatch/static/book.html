@@ -98,6 +98,7 @@
         <h2 class="step-title" id="step-addons"><span>3</span>Add-ons <span class="optional">(optional)</span></h2>
         <fieldset id="addon-fieldset">
           <legend class="visually-hidden">Add-ons to your mowing visit</legend>
+          <addon-injector id="addon-injector"></addon-injector>
           <div class="add-ons" id="add-ons"></div>
         </fieldset>
       </section>
@@ -174,6 +175,7 @@
   <script src="/static/site.js?v={{V}}"></script>
   <script src="/static/push.js?v={{V}}"></script>
   <script src="/static/places.js?v={{V}}"></script>
+  <script src="/static/addon-injector.js?v={{V}}"></script>
   <script>
     const form = document.getElementById("intake");
     const err = document.getElementById("err");
@@ -260,6 +262,7 @@
       readSqft(false); updateRateCards(); renderEstimate();
     }
     const chosenAddOns = new Set(new URLSearchParams(location.search).getAll("addon"));
+    customElements.whenDefined("addon-injector").then(() => $("addon-injector").select([...chosenAddOns]));
     const sqftInput = $("lawn-sqft");
 
     // Same rules as the server (app/pricing.py check_sqft); the server checks again on booking.
@@ -390,9 +393,19 @@
     }
 
     // ---------- Step 3: add-ons ----------
+    const INJECTED = ["bin_cleaning", "gutters"];
+    document.addEventListener("addonSelectionChange", (e) => {
+      const pick = { bin_cleaning: e.detail.binCleaning, gutters: e.detail.gutterCleaning };
+      for (const [k, on] of Object.entries(pick)) on ? chosenAddOns.add(k) : chosenAddOns.delete(k);
+      updateServer();
+    });
     function renderAddOns() {
       const box = $("add-ons");
-      box.replaceChildren(...addOnCatalog.filter((a) => !a.scope).flatMap((a) => {
+      // Bin cleaning and gutters are the <addon-injector> cards above; the rest (seasonal quotes) stay as checkboxes.
+      const inj = $("addon-injector"), price = (k) => addOnCatalog.find((a) => a.key === k)?.price;
+      if (price("bin_cleaning") != null) inj.setAttribute("bin-price", price("bin_cleaning"));
+      if (price("gutters") != null) inj.setAttribute("gutter-price", price("gutters"));
+      box.replaceChildren(...addOnCatalog.filter((a) => !a.scope && !INJECTED.includes(a.key)).flatMap((a) => {
         const open = addOnInSeason(a, dateInput.value);
         const input = Object.assign(document.createElement("input"), { type: "checkbox", id: `addon-${a.key}`, value: a.key,
           checked: open && chosenAddOns.has(a.key), disabled: !open });

@@ -889,3 +889,22 @@ label.check input { width: 18px; height: 18px; }
 .about-pillars { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); padding-top: 24px; border-top: 1px solid #18181b; }
 .about-pillar h4 { margin: 0 0 8px; color: #d4d4d8; font: 700 0.85rem/1.4 ui-monospace, Menlo, monospace; text-transform: uppercase; letter-spacing: 0.08em; }
 .about-pillar p { margin: 0; color: #a1a1aa; font-size: 0.92rem; line-height: 1.6; }
+
+/* ---------- Add-on injector (<addon-injector>): dark cards, tap to add ---------- */
+.addon-injector { display: grid; gap: 16px; max-width: 576px; }
+.addon-head { display: grid; gap: 4px; }
+.addon-kicker { font: 600 0.75rem/1.4 ui-monospace, Menlo, monospace; letter-spacing: 0.08em; text-transform: uppercase; color: #71717a; }
+.addon-head h3 { margin: 0; font-size: 1.125rem; }
+.addon-head p { margin: 0; font-size: 0.85rem; color: #52525b; }
+.addon-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.addon-card { padding: 16px; min-height: 48px; background: #09090b; color: #e4e4e7; border: 2px solid #27272a; border-radius: 12px;
+  cursor: pointer; user-select: none; transition: border-color 0.2s, background 0.2s; }
+.addon-card:hover { border-color: #3f3f46; }
+.addon-card:focus-visible { outline: 3px solid #22c55e; outline-offset: 2px; }
+.addon-card.is-on { border-color: #22c55e; background: #18181b; }
+.addon-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.addon-top h4 { margin: 0 0 4px; font-size: 0.95rem; color: #e4e4e7; }
+.addon-top p { margin: 0; font-size: 0.8rem; color: #a1a1aa; }
+.addon-price { font: 700 0.85rem/1.4 ui-monospace, Menlo, monospace; color: #4ade80; white-space: nowrap; }
+.addon-check { margin-top: 16px; display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: #a1a1aa; }
+.addon-check input { accent-color: #22c55e; pointer-events: none; width: 18px; height: 18px; margin: 0; }

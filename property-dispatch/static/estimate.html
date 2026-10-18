@@ -51,8 +51,7 @@
       </select>
     </div>
     <div class="checks">
-      <label><input type="checkbox" id="toggle-bins"> Bin cleaning (+$15)</label>
-      <label><input type="checkbox" id="toggle-gutters"> Gutter cleaning (+$15)</label>
+      <addon-injector></addon-injector>
     </div>
     <button class="btn btn-primary btn-block" type="button" id="calculate-price-btn">Calculate price</button>
     <p class="total">Total: <span id="checkout-total-anchor">—</span></p>
@@ -62,6 +61,7 @@
   {{LEGAL_FOOTER}}
 
   <script src="/static/places.js?v={{V}}"></script>
+  <script src="/static/addon-injector.js?v={{V}}"></script>
   <script src="/static/yield-engine.js?v={{V}}"></script>
   <script>
     // Address step: the Google dropdown (when the Maps key is set) feeds the engine the real location.

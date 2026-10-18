@@ -40,6 +40,13 @@ const SemperGreenEngine = {
             this.fetchDynamicPricing();
         });
 
+        // Add-on cards (<addon-injector>) report every change here
+        document.addEventListener("addonSelectionChange", (e) => {
+            this.state.binCleaning = e.detail.binCleaning;
+            this.state.gutterCleaning = e.detail.gutterCleaning;
+            this.fetchDynamicPricing();
+        });
+
         // Addon checkbox hooks
         document.getElementById("toggle-bins")?.addEventListener("change", (e) => {
             this.state.binCleaning = e.target.checked;
