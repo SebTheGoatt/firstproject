@@ -15,12 +15,26 @@ services:
     envVars:
       - key: DATA_BACKEND
         value: supabase
+      - key: ENVIRONMENT
+        value: production
       - key: BUSINESS_TIMEZONE
         value: America/Chicago
       - key: BASE_LAT
         value: "30.0799"
       - key: BASE_LNG
         value: "-95.4172"
+      # Where the crew leaves from each morning (wins over BASE_LAT / BASE_LNG). Kept private: never shown on the site.
+      - key: BASE_YARD_LATITUDE
+        sync: false
+      - key: BASE_YARD_LONGITUDE
+        sync: false
+      # Backup copy of each night's dispatch manifest by email (Resend). Optional.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: OPERATIONAL_ALERT_EMAIL
+        sync: false
+      - key: RESEND_FROM
+        sync: false
       - key: BUSINESS_NAME
         sync: false
       - key: SUPABASE_URL
@@ -71,12 +85,26 @@ services:
     envVars:
       - key: DATA_BACKEND
         value: supabase
+      - key: ENVIRONMENT
+        value: production
       - key: BUSINESS_TIMEZONE
         value: America/Chicago
       - key: BASE_LAT
         value: "30.0799"
       - key: BASE_LNG
         value: "-95.4172"
+      # Where the crew leaves from each morning (wins over BASE_LAT / BASE_LNG). Kept private: never shown on the site.
+      - key: BASE_YARD_LATITUDE
+        sync: false
+      - key: BASE_YARD_LONGITUDE
+        sync: false
+      # Backup copy of each night's dispatch manifest by email (Resend). Optional.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: OPERATIONAL_ALERT_EMAIL
+        sync: false
+      - key: RESEND_FROM
+        sync: false
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY

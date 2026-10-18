@@ -202,7 +202,7 @@
       return Math.round(yieldCfg.base * 100 * (1 + steps * yieldCfg.step) * yt.mult + 1e-6) / 100;
     }
     // The fee's note only states what the owner has confirmed in Render (insurance, background checks).
-    const BASE_LABEL = "Base Logistics Deployment Fee";
+    const BASE_LABEL = "Logistics Deployment Fee Floor";
     function baseRow(value, cls) {
       const r = row(BASE_LABEL, value, cls);
       const note = document.createElement("small"); note.className = "fee-note";
@@ -358,13 +358,13 @@
       return [
         baseRow(money(fee), cls),
         discount > 0 ? row(`⚡ Route Cluster Optimization Benefit (${stops} stops)`, `-${money(discount)}`, `${cls} benefit`)
-                     : row("📍 Standalone Logistics Premium Area (Low route density)", "", `${cls} note`),
-        row("High-Margin Property Add-ons", money(q.add_on_total || 0), cls),
+                     : row("📍 Standalone Premium Density Target Area", "", `${cls} note`),
+        row("Ancillary High-Margin Infrastructure Add-ons", money(q.add_on_total || 0), cls),
         ...(q.add_ons || []).filter((a) => !a.scope && !a.info && a.price == null).map((a) => row(a.label, "No charge", cls)),
       ];
     }
     const lockedTotal = (q) => q.price_locked ?? !!lockedScope(q);
-    const totalLabel = (q) => lockedTotal(q) ? "Guaranteed Enterprise Total" : "Estimated total (confirmed on site)";
+    const totalLabel = (q) => lockedTotal(q) ? "Guaranteed Enterprise Checkout Total" : "Estimated total (confirmed on site)";
 
     // Live estimate: updates instantly from the size and rate. Tax is shown once we know the
     // address (it depends on the service area); until then it says "Calculated at checkout".
@@ -381,7 +381,7 @@
         row("Yard type", yt ? yt.label : "Choose above"),
         ...(q ? yieldRows(q) : [baseRow(fee != null ? money(fee) : "—"),
                                 row("Route cluster discount", sqft ? "Checked with your address" : "—")]),
-        row("Texas Sales Tax", q ? `${money(q.tax)} (${pct(q.tax_rate)})` : "Calculated at checkout"),
+        row("Texas Sales Tax Allocation", q ? `${money(q.tax)} (${pct(q.tax_rate)})` : "Calculated at checkout"),
         row(q ? totalLabel(q) : "Estimated total", q ? money(q.total) : subtotal == null ? "—" : `${money(subtotal)} + tax`, "total"));
       const giving = subtotal != null ? Math.round(subtotal * yieldCfg.giving_rate * 100) / 100 : 0;
       $("impact-box").hidden = !(giving > 0);
@@ -434,7 +434,7 @@
         ...yieldRows(q, "sub"),
         ...(q.add_ons || []).filter((a) => !a.scope && !a.info && a.price != null).map((a) => row(`Add-on: ${a.label}`, money(a.price), "sub")),
         row("Subtotal", money(q.subtotal), "sub-strong"),
-        row(`Texas Sales Tax (${pct(q.tax_rate)})`, money(q.tax)),
+        row(`Texas Sales Tax Allocation (${pct(q.tax_rate)})`, money(q.tax)),
         row(totalLabel(q), money(q.total), "total"));
       priceNote.replaceChildren();
       if (lockedScope(q)) priceNote.append(Object.assign(document.createElement("span"),
@@ -637,7 +637,7 @@
             row("Yard type", yt ? yt.label.replace(/^Yard type: /, "") : "—"),
             ...yieldRows(body),
             ...(body.add_ons || []).filter((a) => !a.scope && !a.info && a.price != null).map((a) => row(`Add-on: ${a.label}`, money(a.price))),
-            row(`Texas Sales Tax (${pct(body.tax_rate)})`, money(body.tax)),
+            row(`Texas Sales Tax Allocation (${pct(body.tax_rate)})`, money(body.tax)),
             row(totalLabel(body), money(body.total), "total"));
           ok.append(dl);
           if (body.charity_amount) {

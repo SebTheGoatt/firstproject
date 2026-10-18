@@ -103,14 +103,14 @@ def test_prices_and_tax_are_read_live(client, monkeypatch):
     monkeypatch.setattr("app.local_pages.zone_by_key", lambda key: dataclasses.replace(zone, tax_rate=0.0725))
     t = client.get("/local/klein").text
     assert ">$80</td>" in t and "7.25% Texas sales tax added" in t
-    assert by_type(json_ld(t))["LocalBusiness"]["priceRange"].startswith("$80-")
+    assert by_type(json_ld(t))["HomeAndConstructionBusiness"]["priceRange"].startswith("$80-")
 
 
 def test_json_ld_business_service_and_breadcrumbs(client):
     for a in AREAS:
         nodes = by_type(json_ld(client.get(f"/local/{a.slug}").text))
-        assert set(nodes) == {"LocalBusiness", "Service", "BreadcrumbList"}
-        biz, svc, crumbs = nodes["LocalBusiness"], nodes["Service"], nodes["BreadcrumbList"]
+        assert set(nodes) == {"HomeAndConstructionBusiness", "Service", "BreadcrumbList"}
+        biz, svc, crumbs = nodes["HomeAndConstructionBusiness"], nodes["Service"], nodes["BreadcrumbList"]
         assert biz["@id"] == "http://testserver/#business" and biz["name"] == "Semper Green Lawn Care"
         assert biz["priceRange"] == f"$75-{dollars(yield_mow_fee(MAX_SQFT, 'STEEP_SLOPES'))}"
         assert {c["name"] for c in biz["areaServed"]} == {f"{x.city}, TX" for x in AREAS}
@@ -131,7 +131,8 @@ def test_json_ld_never_has_ratings_phone_or_street(settings, repo):
     c = app_with(settings, repo, twilio_from_number="+12815550000")    # a texting number is not a business phone
     for path in AREA_PATHS:
         raw = LD_JSON.findall(c.get(path).text)[0]
-        for banned in ("aggregateRating", "review", "telephone", "streetAddress", "2815550000"):
+        assert '"telephone": "+19364330447"' in raw     # the business phone, never the texting number
+        for banned in ("aggregateRating", "review", "streetAddress", "2815550000", '"geo"'):
             assert banned not in raw, (path, banned)
 
 
@@ -218,7 +219,7 @@ def test_business_name_cannot_break_out_of_json_ld(settings, repo):
     t = app_with(settings, repo, business_name=name).get("/local/spring").text
     assert "<script>alert(1)" not in t and "&lt;/script&gt;" in t
     assert t.count("</script>") == t.count("<script")
-    assert by_type(json_ld(t))["LocalBusiness"]["name"] == name
+    assert by_type(json_ld(t))["HomeAndConstructionBusiness"]["name"] == name
 
 
 def test_home_footer_links_every_area(client):

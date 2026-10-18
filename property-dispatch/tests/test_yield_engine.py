@@ -127,7 +127,7 @@ def test_stripe_line_names_the_yard_type_and_discount(settings, repo):
 
 def test_booking_form_asks_for_yard_type_not_tiers(client):
     t = client.get("/book").text
-    assert "Your yard type" in t and "yard_type: yardKey" in t and "Guaranteed Enterprise Total" in t
+    assert "Your yard type" in t and "yard_type: yardKey" in t and "Guaranteed Enterprise Checkout Total" in t
     assert "data.package =" not in t and "Choose a rate" not in t
     info = client.get("/api/booking-info").json()["yield"]
     assert (info["base"], info["included_sqft"], info["step"], info["giving_rate"]) == (75.0, 5000, 0.08, 0.02)

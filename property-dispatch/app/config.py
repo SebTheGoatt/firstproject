@@ -18,8 +18,8 @@ class Settings(BaseSettings):
 
     # --- Business base (Spring, TX) -----------------------------------
     business_timezone: str = "America/Chicago"
-    base_lat: float = 30.0799
-    base_lng: float = -95.4172
+    base_lat: float = Field(default=30.0799, validation_alias=AliasChoices("BASE_YARD_LATITUDE", "BASE_LAT", "base_lat"))
+    base_lng: float = Field(default=-95.4172, validation_alias=AliasChoices("BASE_YARD_LONGITUDE", "BASE_LNG", "base_lng"))
     # End point defaults to the base; override for a different yard/dump site.
     end_lat: float | None = None
     end_lng: float | None = None
@@ -52,7 +52,18 @@ class Settings(BaseSettings):
     # --- Twilio -------------------------------------------------------
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""
-    twilio_from_number: str = ""
+    twilio_from_number: str = Field(
+        default="", validation_alias=AliasChoices("TWILIO_FROM_NUMBER", "TWILIO_PHONE_NUMBER", "twilio_from_number"))
+
+    # --- Production matrix ------------------------------------------------
+    environment: str = "development"    # "production" turns on the go-live checks (/api/owner/readiness)
+    debug: bool = False
+    secret_key: str = ""                # accepted for the matrix; sessions here use signed crew tokens
+    stripe_publishable_key: str = ""    # not needed: checkout runs on Stripe's own page
+    # Backup copy of each night's dispatch manifest by email (Resend). Blank = logs only.
+    resend_api_key: str = ""
+    operational_alert_email: str = ""
+    resend_from: str = "Semper Green Dispatch <onboarding@resend.dev>"   # use your verified domain once it's set up
     business_name: str = "Semper Green Lawn Care"
     # Who customers contract with, and how they reach us (footer, privacy policy, terms, refunds).
     legal_name: str = "Semper Green LLC"

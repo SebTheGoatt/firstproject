@@ -22,11 +22,13 @@ from datetime import date, timedelta
 from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 
 from . import push
 from .booking import local_now
 from .charity import all_causes, describe as describe_charities, ledger
+from .manifest import build_manifest
 from .pricing import PACKAGES
 from .reviews import review_link
 from .config import Settings
@@ -269,6 +271,18 @@ def register_visit_routes(app: FastAPI, settings: Settings, crew_auth):
                            "at": (build_at - timedelta(days=1)).isoformat() if day > now.date() else None},
         }
 
+    @app.get("/api/owner/manifest/{day}", dependencies=[Depends(owner)], response_class=PlainTextResponse)
+    def owner_manifest(day: date, r=Depends(repo)):
+        """The day's dispatch manifest as plain text (print it, or keep it as a backup)."""
+        route = r.get_route(day)
+        if route is None:
+            raise HTTPException(status_code=404, detail="No route for that day yet.")
+        try:
+            notes = r.stop_notes(route["id"])
+        except Exception:
+            notes = {}
+        return PlainTextResponse(build_manifest(route, notes, settings, day), headers={"Cache-Control": "no-store"})
+
     @app.get("/api/owner/outlook", dependencies=[Depends(owner)])
     def owner_outlook(days: int = 7, r=Depends(repo)):
         days = max(1, min(days, 31))
@@ -297,3 +311,5 @@ def register_visit_routes(app: FastAPI, settings: Settings, crew_auth):
         if not r.list_routable_jobs(day):
             raise HTTPException(status_code=409, detail="There are no bookings to route for that day.")
         return run_nightly(r, settings, day)
+
+    return owner

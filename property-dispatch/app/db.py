@@ -151,6 +151,7 @@ class Repository(Protocol):
     def list_jobs_between(self, start: date, end: date) -> list[dict]: ...
     def get_visit(self, access_code: str) -> dict | None: ...
     def forget_customer(self, access_code: str) -> str: ...   # "deleted" | "upcoming" | "not_found"
+    def count_customers_named(self, prefix: str) -> int: ...  # test data check before going live
     def add_job_photo(self, job_id: str, member_id: str | None, kind: str, photo: str) -> dict: ...
     def list_job_photos(self, job_id: str) -> list[dict]: ...
     def job_photo(self, photo_id: str) -> dict | None: ...
@@ -517,6 +518,10 @@ class SupabaseRepository:
             .gte("scheduled_date", start.isoformat()).lte("scheduled_date", end.isoformat())
             .neq("status", "cancelled").execute()
         ).data
+
+    def count_customers_named(self, prefix: str) -> int:
+        res = self.sb.table("customers").select("id", count="exact", head=True).like("name", f"{prefix}%").execute()
+        return res.count or 0
 
     def forget_customer(self, access_code: str) -> str:
         """Erase a customer's personal details on request. Amounts, dates and services stay (tax records),
@@ -903,6 +908,9 @@ class MemoryRepository:
     def list_jobs_between(self, start: date, end: date) -> list[dict]:
         return [{k: j.get(k) for k in ("scheduled_date", "status", "payment_status", "amount_due", "amount_paid", "donation", "tax_amount")}
                 for j in self.jobs.values() if start <= j["scheduled_date"] <= end and j["status"] != "cancelled"]
+
+    def count_customers_named(self, prefix: str) -> int:
+        return sum(1 for c in self.customers.values() if c["name"].startswith(prefix))
 
     def forget_customer(self, access_code: str) -> str:
         with self._lock:
