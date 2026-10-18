@@ -1,5 +1,15 @@
 """Prices, lawn sizes, rate tiers and Texas sales tax.
 
+Mowing (every booking made from the booking form): the YIELD ENGINE below.
+          $75 base for up to 5,000 sq ft, +8% for each started 1,000 sq ft over that,
+          x1.15 for lots of trees/beds or x1.25 for steep slopes (the customer's yard type),
+          minus a route-density discount for other bookings already within half a mile
+          (2-4 nearby: 5%, 5 or more: 10%), plus add-ons, plus the area's sales tax.
+          2% of the subtotal goes to the cause the customer picks (YIELD_GIVING_RATE).
+          The yard type and density are saved on the booking (as "info" entries in add_ons),
+          so a re-measure on site re-prices with the same choices.
+
+Older bookings and API callers that send a `package` keep the tier brackets below:
 Mowing:   a flat price per visit from the lawn-size bracket and the tier the customer picks
           (PRICE_BRACKETS below). Each price already includes the $35 operational base; it is
           shown as its own line and the rest as "Precision Turf Maintenance Profile".
@@ -165,6 +175,11 @@ class Quote:
     charity_amount: Decimal | None = None   # part of the subtotal the business gives away
     add_ons: tuple = ()                     # ({"key", "label", "price"}, ...)
     add_on_total: Decimal = Decimal(0)
+    # Yield engine only:
+    yard_type: str | None = None            # STANDARD | COMPLEX_OBSTACLES | STEEP_SLOPES
+    mow_fee: Decimal | None = None          # base x size x yard type, before the density discount
+    density_stops: int = 0                  # bookings already within half a mile
+    density_discount: Decimal = Decimal(0)
 
     @property
     def mow_price(self) -> Decimal | None:
@@ -187,7 +202,10 @@ class Quote:
                 "charity_rate": f(self.charity_rate), "charity_amount": f(self.charity_amount),
                 "business_net": f(self.business_net), "mow_price": f(self.mow_price),
                 "add_ons": [{**a, "price": f(a["price"])} for a in self.add_ons],
-                "add_on_total": float(self.add_on_total)}
+                "add_on_total": float(self.add_on_total),
+                "yard_type": self.yard_type, "yard_type_label": YARD_TYPES[self.yard_type]["label"] if self.yard_type else None,
+                "mow_fee": f(self.mow_fee), "density_stops": self.density_stops,
+                "density_discount": float(self.density_discount), "price_locked": scope_of(self.add_ons) is not None}
 
 
 def resolve_package(package: str | None) -> str:
@@ -253,11 +271,83 @@ def check_sqft(lawn_sqft) -> int:
     return n
 
 
+# ---------- Yield engine (the price for every booking-form booking) ----------
+YIELD_BASE = Decimal("75.00")          # covers up to YIELD_INCLUDED_SQFT
+YIELD_INCLUDED_SQFT = 5_000
+YIELD_STEP = Decimal("0.08")           # +8% per started 1,000 sq ft over that
+YIELD_GIVING_RATE = Decimal("0.02")    # share of the subtotal for the customer's cause
+DENSITY_RADIUS_M = 805                 # half a mile
+YARD_TYPES = {
+    "STANDARD":          {"label": "Standard yard",         "mult": Decimal("1.00")},
+    "COMPLEX_OBSTACLES": {"label": "Lots of trees or beds", "mult": Decimal("1.15")},
+    "STEEP_SLOPES":      {"label": "Steep slopes",          "mult": Decimal("1.25")},
+}
+
+
+def yield_mow_fee(lawn_sqft: int, yard_type: str) -> Decimal:
+    over = max(0, int(lawn_sqft) - YIELD_INCLUDED_SQFT)
+    size = 1 + -(-over // 1000) * YIELD_STEP
+    return money(YIELD_BASE * size * YARD_TYPES[yard_type]["mult"])
+
+
+def density_pct(nearby: int) -> Decimal:
+    return Decimal("0.10") if nearby >= 5 else Decimal("0.05") if nearby >= 2 else Decimal(0)
+
+
+def count_nearby(points, lat: float, lng: float) -> int:
+    """Bookings already on the books within half a mile of this address."""
+    from .routing.matrix import haversine_m
+    return sum(1 for p in points if haversine_m(p, (lat, lng)) <= DENSITY_RADIUS_M)
+
+
+def is_info(a) -> bool:
+    """Saved pricing notes (yard type, density discount) ride in add_ons but aren't add-ons."""
+    return isinstance(a, dict) and bool(a.get("info"))
+
+
+def real_add_ons(add_ons) -> list:
+    return [a for a in (add_ons or []) if not is_info(a)]
+
+
+def yield_choice(add_ons) -> tuple[str, int] | None:
+    """(yard type, nearby stops) saved on a yield-priced booking, or None for older bookings."""
+    notes = {a["key"]: a for a in (add_ons or []) if is_info(a)}
+    if "yard_type" not in notes:
+        return None
+    return notes["yard_type"]["value"], int(notes.get("route_density", {}).get("stops", 0))
+
+
+def yield_notes(yard_type: str, nearby: int, discount: Decimal) -> tuple:
+    notes = [{"key": "yard_type", "label": f"Yard type: {YARD_TYPES[yard_type]['label']}", "price": None,
+              "info": True, "value": yard_type}]
+    notes.append({"key": "route_density", "label": f"Route Cluster Optimization Benefit ({nearby} stops)" if discount
+                  else "Standalone Logistics Premium Area (Low route density)", "price": None, "info": True,
+                  "stops": nearby, "amount": float(-discount)})
+    return tuple(notes)
+
+
 def quote(zone: ServiceZone, service: Service, lawn_sqft: int | None = None,
-          on_site_price: float | None = None, package: str | None = None, add_ons=()) -> Quote:
+          on_site_price: float | None = None, package: str | None = None, add_ons=(),
+          yard_type: str | None = None, nearby: int = 0) -> Quote:
     """Price a visit. `on_site_price` is the crew's pre-tax price for quoted services;
-    `package` is the customer's mowing package (see PACKAGES); `add_ons` are ADD_ONS keys."""
+    `yard_type` prices mowing with the yield engine (with `nearby` bookings for the density discount);
+    otherwise `package` prices it with the older tier brackets. `add_ons` are ADD_ONS keys."""
     rate = Decimal(str(zone.tax_rate))
+    if service is Service.MOWING and yard_type is not None:
+        if yard_type not in YARD_TYPES:
+            raise ValueError("Choose your yard type: standard, lots of trees or beds, or steep slopes.")
+        if not lawn_sqft:
+            raise LawnSizeError("Enter your lawn size in square feet.")
+        sqft = int(lawn_sqft)
+        fee = yield_mow_fee(sqft, yard_type)
+        discount = money(fee * density_pct(nearby))
+        extras = priced_add_ons([k for k in add_ons if not is_info(k)])
+        extra_total = sum((a["price"] for a in extras if a["price"] is not None), Decimal(0))
+        subtotal = fee - discount + extra_total
+        tax, total = with_tax(subtotal, rate)
+        return Quote(subtotal, rate, tax, total, sqft, "yield", None, None, YIELD_BASE,
+                     YIELD_GIVING_RATE, money(subtotal * YIELD_GIVING_RATE), extras + yield_notes(yard_type, nearby, discount),
+                     extra_total, yard_type, fee, nearby, discount)
     if service is Service.MOWING:
         key = resolve_package(package)
         pkg = PACKAGES[key]

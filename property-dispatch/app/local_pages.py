@@ -31,8 +31,8 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from .booking import earliest_bookable_day, local_now
 from .charity import causes
 from .config import Settings, site_url
-from .pricing import (ADD_ONS, BRACKET_PROFILES, MAX_SQFT, PACKAGES, PRICE_BRACKETS, bracket_label, bracket_price,
-                      bracket_profile, season_text)
+from .pricing import (ADD_ONS, MAX_SQFT, YARD_TYPES, YIELD_GIVING_RATE, YIELD_INCLUDED_SQFT, bracket_profile,
+                      density_pct, season_text, yield_mow_fee)
 from .zones import zone_by_key
 
 esc = html.escape
@@ -101,13 +101,13 @@ def percent(rate) -> str:
     return text.rstrip("0").rstrip(".") if "." in text else text
 
 
-def price_rows() -> list[tuple[str, dict[str, Decimal]]]:
-    """(lawn size in words, {tier: price before tax}) for each row of PRICE_BRACKETS."""
-    rows, low = [], 0
-    for limit, prices in PRICE_BRACKETS:
-        rows.append((bracket_label(limit if limit is not None else low + 1), prices))
-        low = limit if limit is not None else low
-    return rows
+SAMPLE_SIZES = (5_000, 7_500, 10_000, 15_000, 20_000)   # rows of the price table
+
+
+def price_rows() -> list[tuple[str, int, dict[str, Decimal]]]:
+    """(lawn size in words, sq ft, {yard type: price before tax}) from the yield engine the booking form charges."""
+    return [(f"Up to {n:,} sq ft" if n == YIELD_INCLUDED_SQFT else f"{n:,} sq ft", n,
+             {k: yield_mow_fee(n, k) for k in YARD_TYPES}) for n in SAMPLE_SIZES]
 
 
 def next_open_day(settings: Settings, repo) -> date:
@@ -132,8 +132,8 @@ def cause_names(settings: Settings) -> list[str]:
 
 
 def price_range() -> tuple[Decimal, Decimal]:
-    every = [p for _, prices in PRICE_BRACKETS for p in prices.values()]
-    return min(every), max(every)
+    """Cheapest and most expensive mow we book online, before tax and before any route discount."""
+    return yield_mow_fee(1, "STANDARD"), yield_mow_fee(MAX_SQFT, "STEEP_SLOPES")
 
 
 def add_on_rows() -> list[tuple[str, str]]:
@@ -173,8 +173,8 @@ def structured_data(settings: Settings, area: Area, site: str) -> dict:
     business_id = f"{site}/#business"
     page_url = f"{site}/local/{area.slug}"
     low, high = price_range()
-    offers = [{"@type": "Offer", "name": f"{p['label']}: {size}", "price": f"{prices[k]:.2f}", "priceCurrency": "USD"}
-              for size, prices in price_rows() for k, p in PACKAGES.items()]
+    offers = [{"@type": "Offer", "name": f"{y['label']}: {size}", "price": f"{prices[k]:.2f}", "priceCurrency": "USD"}
+              for size, _, prices in price_rows() for k, y in YARD_TYPES.items()]
     return {"@context": "https://schema.org", "@graph": [
         {"@type": "LocalBusiness", "@id": business_id, "name": settings.business_name, "url": f"{site}/",
          "description": "Veteran-owned lawn mowing with bin and gutter cleaning add-ons, booked online, "
@@ -328,17 +328,16 @@ def area_html(settings: Settings, version: str, area: Area, site: str, day: date
     page_url = f"{site}/local/{area.slug}"
     low, _ = price_range()
 
-    tiers = list(PACKAGES.items())
-    head = "".join(f'<th scope="col">{esc(p["label"])}</th>' for _, p in tiers)
-    rows = "".join(f'\n              <tr><th scope="row">{esc(size)}<small>{esc(profile)}</small></th>'
-                   + "".join(f'<td data-label="{esc(p["label"])}">{dollars(prices[k])}</td>' for k, p in tiers)
-                   + "</tr>" for (size, prices), profile in zip(price_rows(), BRACKET_PROFILES))
+    tiers = list(YARD_TYPES.items())
+    head = "".join(f'<th scope="col">{esc(y["label"])}</th>' for _, y in tiers)
+    rows = "".join(f'\n              <tr><th scope="row">{esc(size)}<small>{esc(bracket_profile(n))}</small></th>'
+                   + "".join(f'<td data-label="{esc(y["label"])}">{dollars(prices[k])}</td>' for k, y in tiers)
+                   + "</tr>" for size, n, prices in price_rows())
     add_ons = "".join(f"<li><strong>{esc(label)}</strong><span>{esc(price)}</span></li>" for label, price in add_on_rows())
-    giving = joined(f"{percent(p['giving'])}% on {p['label']}" for p in PACKAGES.values())
     cause_list = "".join(f"<li>{esc(name)}</li>" for name in cause_names(settings))
     # Facts that really differ by area: the size "Full property" is priced at, county, ZIPs, tax.
     full = zone.full_property_sqft
-    full_prices = " / ".join(dollars(bracket_price(full, k)) for k in PACKAGES)
+    full_prices = " / ".join(dollars(yield_mow_fee(full, k)) for k in YARD_TYPES)
     facts = "".join(f"<li><strong>{esc(k)}</strong><span>{esc(v)}</span></li>" for k, v in (
         ("County", area.county),
         *((("ZIP codes", ", ".join(area.zips)),) if area.zips else ()),
@@ -386,17 +385,19 @@ def area_html(settings: Settings, version: str, area: Area, site: str, day: date
     <section class="section" id="prices" aria-labelledby="prices-title">
       <div class="site-wrap">
         <h2 id="prices-title">Mowing prices (the same in every area we serve)</h2>
-        <p class="section-lede">A flat price per visit, set by your lawn size and the rate you pick. Prices are before tax.</p>
+        <p class="section-lede">A price per visit, set by your lawn size and your yard type. Prices are before tax.</p>
         <div class="card price-card">
           <table class="price-table">
-            <caption class="visually-hidden">Mowing price per visit by lawn size and rate, before tax</caption>
+            <caption class="visually-hidden">Mowing price per visit by lawn size and yard type, before tax</caption>
             <thead><tr><th scope="col">Lawn size</th>{head}</tr></thead>
             <tbody>{rows}
             </tbody>
           </table>
         </div>
         <p class="tax-note">{percent(zone.tax_rate)}% Texas sales tax added.</p>
-        <p class="hint">The mowing is the same on every rate; they differ in price and in how much goes to charity.
+        <p class="hint">Sizes in between are priced the same way; the booking form shows your exact price before you book.
+          Neighbors already on the route save you money: with 2 or more of our customers booked within half a mile,
+          you get {percent(density_pct(2))}% off the mowing ({percent(density_pct(5))}% with 5 or more).
           Lawns over {MAX_SQFT:,} sq ft ({acres} acres) are quoted in person.</p>
         <h3>Add to any mowing visit</h3>
         <ul class="local-list">{add_ons}</ul>
@@ -407,8 +408,8 @@ def area_html(settings: Settings, version: str, area: Area, site: str, day: date
     <section class="section" aria-labelledby="giving-title">
       <div class="site-wrap">
         <h2 id="giving-title">Giving back</h2>
-        <p class="section-lede">Part of every visit's price goes to the cause you pick when you book: {esc(giving)}.
-          It's included in the price shown, not added on top. Higher rates cost more and give a bigger share.</p>
+        <p class="section-lede">{percent(YIELD_GIVING_RATE)}% of every visit's price goes to the cause you pick when you book.
+          It's included in the price shown, not added on top.</p>
         <ul class="spec-list">{cause_list}</ul>
       </div>
     </section>

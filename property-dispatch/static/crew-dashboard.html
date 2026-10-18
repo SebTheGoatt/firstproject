@@ -480,7 +480,9 @@
     function scopeBlock(cur) {
       const sq = cur.lawn_sqft ? cur.lawn_sqft.toLocaleString("en-US") : null;
       const plan = cur.service_minutes ? `Plan ~${cur.service_minutes} min on site.` : "";
-      const extras = (cur.add_ons || []).filter((a) => !String(a.key || "").startsWith("scope_")).map((a) => a.label);
+      const extras = (cur.add_ons || []).filter((a) => !a.info && !String(a.key || "").startsWith("scope_")).map((a) => a.label);
+      const yard = (cur.add_ons || []).find((a) => a.key === "yard_type");   // yield-priced bookings: tell the crew the yard type
+      if (yard && yard.value !== "STANDARD") extras.unshift(yard.label);
       const [cls, text] = cur.scope === "scope_yard"
         ? ["scope-yard", `⚠️ COMPLIANCE LOCK: Core Yard Mowing Only (${sq ? `~${sq} sq ft` : "size not set"}). Do NOT expand service footprint beyond the main fenceline layout.`]
         : cur.scope === "scope_full"

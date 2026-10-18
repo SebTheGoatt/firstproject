@@ -13,7 +13,8 @@ import json
 from . import push
 from .charity import CHARITY_SPLIT
 from .config import Settings
-from .pricing import ADD_ONS, MAX_SQFT, MIN_SQFT, PACKAGES, PRICE_BRACKETS
+from .pricing import (ADD_ONS, DENSITY_RADIUS_M, MAX_SQFT, MIN_SQFT, PACKAGES, PRICE_BRACKETS, YARD_TYPES, YIELD_BASE,
+                      YIELD_GIVING_RATE, YIELD_INCLUDED_SQFT, YIELD_STEP)
 from .zones import FLAT_FEE, SERVICE_ZONES
 
 MANIFEST_VERSION = 1
@@ -68,6 +69,13 @@ def facts(settings: Settings) -> dict:
         "pricing": {
             "base_fee": FLAT_FEE,
             "sqft_limits": {"min": MIN_SQFT, "max": MAX_SQFT},
+            # What the booking form charges: base x (1 + step per started 1,000 sq ft over the included size)
+            # x yard type, minus the route-density discount, plus add-ons and the area's tax.
+            "yield_engine": {"base": _money(YIELD_BASE), "included_sqft": YIELD_INCLUDED_SQFT, "step_per_1000_sqft": _money(YIELD_STEP),
+                             "yard_types": {k: {"label": y["label"], "multiplier": _money(y["mult"])} for k, y in YARD_TYPES.items()},
+                             "density_discount": {"radius_m": DENSITY_RADIUS_M, "two_to_four_nearby": 0.05, "five_or_more_nearby": 0.10},
+                             "giving": _money(YIELD_GIVING_RATE)},
+            # Older tier prices: only bookings made before the yield engine (and API callers that send a package).
             "packages": {k: {"label": p["label"], "giving": _money(p["giving"]),
                              "price_by_size": [[limit, _money(prices[k])] for limit, prices in PRICE_BRACKETS]}
                          for k, p in PACKAGES.items()},

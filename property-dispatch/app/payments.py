@@ -78,6 +78,12 @@ class StripeClient:
             # The package's giving is part of the price, so it's named on the line rather than charged again.
             service_name = (f"{service_label}, {package_label} ({service_date}): generates "
                             f"${charity_amount:,.2f} ({charity_rate * 100:g}%) for VFW, NICU & youth programs")
+        notes = {a["key"]: a for a in (add_ons or []) if a.get("info")}   # yield engine: yard type + density discount
+        if "yard_type" in notes:
+            yard = notes["yard_type"]["label"].removeprefix("Yard type: ")
+            cut = -float(notes.get("route_density", {}).get("amount") or 0)
+            service_name = (f"{service_label}, {yard} ({service_date})"
+                            + (f", after a ${cut:,.2f} route cluster discount" if cut > 0 else ""))
         if subtotal is not None and tax is not None and abs(subtotal + tax - amount_due) < 0.005:
             extras = [(f"Add-on: {a['label']}", float(a["price"])) for a in (add_ons or [])
                       if a.get("price") is not None and float(a["price"]) > 0]     # yard / full property: no line of its own

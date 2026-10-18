@@ -45,13 +45,15 @@ from .agent_api import register_agent_api
 from .live_feed import record_booking, register_live_routes
 from .legal_pages import SMS_CONSENT, legal_footer_html, register_legal_pages
 from .local_pages import register_local_pages
+from .yield_engine import register_yield_engine
 from .crew_auth import CrewIdentity
 from .crew_routes import register_crew_routes
 from .models import (SERVICE_LABELS, order_label, AddressCheck, CompleteStopRequest, GeoPoint, JobCreated,
                      JobRequest, OptimizeRouteRequest, QuoteRequest, RouteView, Service, StopNote, StopView)
 from .charity import causes as charity_causes, chosen_cause, charity_names, describe as describe_charities, route_donation
 from .pricing import (ADD_ONS, BRACKET_PROFILES, FEATURED_PACKAGE, PRICE_BRACKETS, mow_minutes, scope_of, MAX_SQFT, MIN_SQFT, PACKAGES, LawnSizeError, check_sqft, in_season, package_for_rate,
-                      quote, season_text)
+                      quote, season_text, count_nearby, real_add_ons, yield_choice, YARD_TYPES, YIELD_BASE,
+                      YIELD_GIVING_RATE, YIELD_INCLUDED_SQFT, YIELD_STEP)
 from .routing.matrix import haversine_m
 from .nightly import run_nightly
 from .dispatch import reoptimize_remaining
@@ -265,6 +267,7 @@ def create_app(
     register_agent_routes(app, settings, crew_auth)   # owner-only Ollama dispatch assistant (off unless OLLAMA_BASE_URL is set)
     register_local_pages(app, settings, version)      # server-rendered /local area pages + /sitemap.xml for search engines
     register_legal_pages(app, settings, version)      # /privacy, /terms (with the damage policy), /refunds
+    register_yield_engine(app, settings, page)        # owner's yield pricing engine: /api/v1/calculate-yield-price + /estimate
 
     @app.get("/push-setup", include_in_schema=False)
     def push_setup_page():
@@ -329,6 +332,11 @@ def create_app(
                                        for (limit, prices), name in zip(PRICE_BRACKETS, BRACKET_PROFILES)]}
                          for k, p in PACKAGES.items()],
             "featured_package": FEATURED_PACKAGE,
+            # The price the booking form charges (yield engine, app/pricing.py); the page estimates with these
+            # and the server adds the density discount and tax.
+            "yield": {"base": float(YIELD_BASE), "included_sqft": YIELD_INCLUDED_SQFT, "step": float(YIELD_STEP),
+                      "giving_rate": float(YIELD_GIVING_RATE),
+                      "yard_types": [{"key": k, "label": y["label"], "mult": float(y["mult"])} for k, y in YARD_TYPES.items()]},
             "lawn_sqft_limits": {"min": MIN_SQFT, "max": MAX_SQFT},
             # Owner-confirmed facts for the base-fee note; nothing is claimed unless it's set in Render.
             "assurances": {"liability_coverage": settings.liability_coverage.strip() or None,
@@ -396,6 +404,14 @@ def create_app(
         scope = scope_of(add_ons)
         return scope_sqft(repo, zone, scope) if scope else client_sqft
 
+    def nearby_bookings(repo, geo) -> int:
+        """Upcoming bookings within half a mile (the yield engine's route-density discount)."""
+        try:
+            return count_nearby(repo.active_job_points(local_now(settings).date()), geo.lat, geo.lng)
+        except Exception:          # never block a quote on this; no discount instead
+            log.exception("Couldn't count nearby bookings")
+            return 0
+
     @app.post("/api/quote")
     def price_quote(body: QuoteRequest, request: Request, repo: Repository = Depends(get_repo)):
         """Live price while the customer fills in the form. Saves nothing."""
@@ -409,7 +425,8 @@ def create_app(
         try:
             sqft = (check_sqft(scoped_sqft(add_ons, zone, body.lawn_sqft, repo))
                     if body.service is Service.MOWING else None)
-            q = quote(zone, body.service, sqft, package=body.package, add_ons=add_ons)
+            q = quote(zone, body.service, sqft, package=body.package, add_ons=add_ons, yard_type=body.yard_type,
+                      nearby=nearby_bookings(repo, geo) if body.yard_type else 0)
         except (LawnSizeError, ValueError) as exc:
             raise HTTPException(status_code=422, detail=str(exc))
         return {"in_area": True, "zone_name": zone.name, "flat_fee": zone.mow_rate,
@@ -429,8 +446,8 @@ def create_app(
         if body.service is not Service.MOWING:
             raise HTTPException(status_code=422, detail=(
                 "Bin cleaning and gutters are add-ons to a mowing visit. Book mowing and add them on."))
-        if body.package is None:
-            raise HTTPException(status_code=422, detail="Choose a rate: Neighborhood Block Lock, Operational Target or Bi-Weekly Demand.")
+        if body.package is None and body.yard_type is None:
+            raise HTTPException(status_code=422, detail="Choose your yard type: standard, lots of trees or beds, or steep slopes.")
         if not scope_of(body.add_ons):          # yard / full property: the size comes from the address below
             try:
                 check_sqft(body.lawn_sqft)
@@ -447,7 +464,8 @@ def create_app(
         # The server's own price, from the size (set here for yard / full property), tier and add-ons.
         try:
             lawn_sqft = check_sqft(scoped_sqft(body.add_ons, zone, body.lawn_sqft, repo))
-            q = quote(zone, body.service, lawn_sqft, package=body.package, add_ons=body.add_ons)
+            q = quote(zone, body.service, lawn_sqft, package=body.package, add_ons=body.add_ons, yard_type=body.yard_type,
+                      nearby=nearby_bookings(repo, geo) if body.yard_type else 0)
         except (LawnSizeError, ValueError) as exc:
             raise HTTPException(status_code=422, detail=str(exc))
         add_ons = [{**a, "price": float(a["price"]) if a["price"] is not None else None} for a in q.add_ons]
@@ -463,7 +481,7 @@ def create_app(
         job = repo.create_job(
             name=body.name, phone=body.phone, address=body.address, geo=geo,
             service=body.service, scheduled_date=body.scheduled_date,
-            service_minutes=mow_minutes(sqft) + sum(ADD_ONS[a["key"]]["minutes"] for a in add_ons),   # bigger lawn, longer stop
+            service_minutes=mow_minutes(sqft) + sum(ADD_ONS[a["key"]]["minutes"] for a in real_add_ons(add_ons)),   # bigger lawn, longer stop
             zone_key=zone.key, quoted_price=price,
             payment_method=body.payment_method, pay_token=pay_token, access_code=access_code,
             amount_due=float(q.total) if q.total is not None else None, lawn_sqft=sqft,
@@ -523,10 +541,12 @@ def create_app(
             # Yard / full property bookings are price-locked: the crew mows the area booked, no re-measuring.
             if (before["service"] == Service.MOWING.value and body.lawn_sqft and body.lawn_sqft != before.get("lawn_sqft")
                     and not scope_of(before.get("add_ons"))):
-                # Same package the customer chose at booking.
+                # Same choices the customer made at booking: yard type + density (yield engine) or their tier.
+                saved = yield_choice(before.get("add_ons"))
                 new_price = quote(zone, Service.MOWING, body.lawn_sqft,
                                   package=before.get("package") or package_for_rate(before.get("sqft_rate")),
-                                  add_ons=[a["key"] for a in before.get("add_ons") or []])
+                                  add_ons=[a["key"] for a in real_add_ons(before.get("add_ons"))],
+                                  yard_type=saved[0] if saved else None, nearby=saved[1] if saved else 0)
             elif before["service"] != Service.MOWING.value and on_site is not None:
                 new_price = quote(zone, Service(before["service"]), on_site_price=on_site)
         if new_price is not None:

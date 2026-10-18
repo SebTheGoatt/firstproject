@@ -545,8 +545,18 @@
       const GIVING = { standard: 0.02, supporter: 0.07, hero: 0.12 };
       const tier = GIVING[s.package] != null ? s.package : "standard";
       const giving = GIVING[s.package] ?? (s.charity_rate || 0);
-      const flatPrice = (sq) => BRACKETS.find(([max]) => max == null || sq <= max)[1][tier];
-      const pkgName = { standard: "Neighborhood Block Lock", supporter: "Operational Target", hero: "Bi-Weekly Demand" }[s.package] || "Neighborhood Block Lock";
+      // Bookings from the booking form use the yield engine (same math as app/pricing.py): $75 up to 5,000 sq ft,
+      // +8% per started 1,000 over, x yard type, minus the route-density discount saved at booking.
+      const notes = Object.fromEntries((s.add_ons || []).filter((a) => a.info).map((a) => [a.key, a]));
+      const YARD = { STANDARD: 1, COMPLEX_OBSTACLES: 1.15, STEEP_SLOPES: 1.25 };
+      const yieldFee = (sq) => {
+        const fee = Math.round(7500 * (1 + Math.ceil(Math.max(0, sq - 5000) / 1000) * 0.08) * YARD[notes.yard_type.value] + 1e-6) / 100;
+        const stops = notes.route_density?.stops || 0, pct = stops >= 5 ? 0.10 : stops >= 2 ? 0.05 : 0;
+        return cents(fee - Math.round(fee * pct * 100 + 1e-6) / 100);
+      };
+      const flatPrice = (sq) => notes.yard_type ? yieldFee(sq) : BRACKETS.find(([max]) => max == null || sq <= max)[1][tier];
+      const pkgName = notes.yard_type ? notes.yard_type.label
+        : { standard: "Neighborhood Block Lock", supporter: "Operational Target", hero: "Bi-Weekly Demand" }[s.package] || "Neighborhood Block Lock";
       const donationLine = el("p", { class: "hint donation-line", hidden: true });
       let cashEdited = false;
       cashIn?.addEventListener("input", () => { cashEdited = true; });

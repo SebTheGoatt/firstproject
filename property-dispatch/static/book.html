@@ -76,18 +76,18 @@
       </section>
 
       <section class="step" aria-labelledby="step-rate">
-        <h2 class="step-title" id="step-rate"><span>2</span>Choose your rate</h2>
+        <h2 class="step-title" id="step-rate"><span>2</span>Your yard type</h2>
         <fieldset>
-          <legend class="visually-hidden">Rate per square foot</legend>
+          <legend class="visually-hidden">Yard type</legend>
           <div class="rates tiers" id="rates" role="radiogroup" aria-describedby="rate-error"></div>
-          <p class="field-error" id="rate-error" role="alert" hidden>Choose a rate to continue.</p>
+          <p class="field-error" id="rate-error" role="alert" hidden>Choose your yard type to continue.</p>
           <p class="hint per-visit-note">Billed per visit. No subscription, no contract.</p>
         </fieldset>
         <div class="price-box estimate" id="estimate" aria-live="polite">
           <h3 class="order-title">Lawn Mowing estimate</h3>
           <dl class="price-lines" id="estimate-lines"></dl>
           <div class="impact-box" id="impact-box" hidden>
-            <span class="impact-kicker">✓ Package includes</span>
+            <span class="impact-kicker">✓ Your order includes</span>
             <strong class="impact-amount" id="impact-amount"></strong>
             <span class="impact-for" id="impact-for">for the cause you pick in step 6</span>
           </div>
@@ -186,12 +186,23 @@
     const fmtDay = (iso) =>
       new Date(iso + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
     const pct = (r) => `${(r * 100).toFixed(2).replace(/\.?0+$/, "")}%`;
-    // Flat price per visit (before tax, $35 base included) for this lawn size in a tier's brackets.
-    const PROFILE_LABEL = "Precision Turf Maintenance Profile";
+    // Lot profile name for a lawn size (the size brackets' names from booking-info).
     const bracketFor = (pk, n) => n ? pk.brackets.find((b) => b.max_sqft == null || n <= b.max_sqft) || {} : {};
-    const priceFor = (pk, n) => bracketFor(pk, n).price ?? null;
-    // The $35 per-visit base. Its note only states what the owner has confirmed in Render (insurance, background checks).
-    const BASE_LABEL = "Operational Base & Liability Allocation";
+    // Yield engine (app/pricing.py): base x size steps x yard type. The server adds the route-density discount and tax.
+    let yieldCfg = { base: 75, included_sqft: 5000, step: 0.08, giving_rate: 0.02, yard_types: [
+      { key: "STANDARD", label: "Standard yard", mult: 1 }, { key: "COMPLEX_OBSTACLES", label: "Lots of trees or beds", mult: 1.15 },
+      { key: "STEEP_SLOPES", label: "Steep slopes", mult: 1.25 }] };
+    const YARD_NOTE = { STANDARD: "Open lawn, normal edging", COMPLEX_OBSTACLES: "Many trees, beds or obstacles to trim around",
+                        STEEP_SLOPES: "Hills or slopes that take extra care" };
+    const yardType = () => yieldCfg.yard_types.find((y) => y.key === yardKey) || null;
+    function mowFee(n, yt) {
+      if (!n || !yt) return null;
+      const steps = Math.ceil(Math.max(0, n - yieldCfg.included_sqft) / 1000);
+      // Whole cents, like the server: (base x 100) x size x yard type, rounded half up.
+      return Math.round(yieldCfg.base * 100 * (1 + steps * yieldCfg.step) * yt.mult + 1e-6) / 100;
+    }
+    // The fee's note only states what the owner has confirmed in Render (insurance, background checks).
+    const BASE_LABEL = "Base Logistics Deployment Fee";
     function baseRow(value, cls) {
       const r = row(BASE_LABEL, value, cls);
       const note = document.createElement("small"); note.className = "fee-note";
@@ -223,8 +234,8 @@
     ];
 
     // ---------- Customer choices ----------
-    // Operational Target is pre-selected (the server says which one in booking-info); the customer can change it.
-    let sqft = null, pkgKey = "supporter", lastQuote = null, sqftTouched = false;
+    // Standard yard is pre-selected; the customer can change it.
+    let sqft = null, yardKey = "STANDARD", lastQuote = null, sqftTouched = false;
     let assurances = { liability_coverage: null, background_checked: false };
     // Lawn size comes from the address and the customer's "what to mow" choice; the server sets the same size.
     let sqftAuto = null;   // { sqft (yard), full_sqft, basis, sample, zone_name, address }
@@ -263,8 +274,6 @@
       if (n > limits.max) return { error: `Lawns over ${limits.max.toLocaleString()} sq ft (2 acres) are quoted in person.` };
       return { value: n };
     }
-    // Exact cents, half up, like the server's Decimal math: sq ft × rate in thousandths of a dollar.
-    const pkg = () => packages.find((p) => p.key === pkgKey) || null;
 
     function addOnInSeason(a, iso) {
       if (!a.season_range) return true;
@@ -314,57 +323,67 @@
       return !r.error;
     }
 
-    // ---------- Step 2: rate cards (Operational Target pre-selected) ----------
-    const FEATURED_PACKAGE = "supporter";   // the center card gets the visual emphasis; display only, prices unchanged
+    // ---------- Step 2: yard type (standard pre-selected) ----------
     function renderRates() {
       const box = $("rates");
-      box.replaceChildren(...packages.flatMap((pk) => {
+      box.replaceChildren(...yieldCfg.yard_types.flatMap((yt) => {
         const input = Object.assign(document.createElement("input"),
-          { type: "radio", name: "package_pick", id: `pkg-${pk.key}`, value: pk.key, checked: pk.key === pkgKey });
+          { type: "radio", name: "yard_pick", id: `yard-${yt.key}`, value: yt.key, checked: yt.key === yardKey });
         const label = document.createElement("label"); label.htmlFor = input.id;
-        if (pk.key === FEATURED_PACKAGE) {
-          label.classList.add("featured");
-          const badge = document.createElement("span"); badge.className = "tier-badge"; badge.textContent = "Recommended";
-          label.append(badge);
-        }
-        const name = document.createElement("strong"); name.textContent = pk.label;
-        const rate = document.createElement("span"); rate.className = "tier-rate"; rate.id = `est-${pk.key}`;
-        const desc = document.createElement("small"); desc.textContent = pk.description || "";
+        const name = document.createElement("strong"); name.textContent = yt.label;
+        const rate = document.createElement("span"); rate.className = "tier-rate"; rate.id = `est-${yt.key}`;
+        const desc = document.createElement("small"); desc.textContent = YARD_NOTE[yt.key] || "";
         label.append(name, rate, desc);
         input.addEventListener("change", () => {
-          pkgKey = pk.key; $("rate-error").hidden = true; renderEstimate(); updateServer();
+          yardKey = yt.key; $("rate-error").hidden = true; renderEstimate(); updateServer();
         });
         return [input, label];
       }));
       updateRateCards();
     }
-    // Each card shows only its price per visit for this lawn (text only, so focus stays put).
+    // Each card shows its mowing fee for this lawn (text only, so focus stays put).
     function updateRateCards() {
-      for (const pk of packages) {
-        const est = $(`est-${pk.key}`);
-        if (est) est.textContent = sqft ? `${money(priceFor(pk, sqft))} / visit` : `From ${money(pk.brackets[0].price)} / visit`;
+      for (const yt of yieldCfg.yard_types) {
+        const est = $(`est-${yt.key}`);
+        if (est) est.textContent = sqft ? `${money(mowFee(sqft, yt))} / visit` : `From ${money(mowFee(1, yt))} / visit`;
       }
     }
+
+    // Your engine's lines, from a server quote or booking (density discount and tax are the server's).
+    function yieldRows(q, cls = "") {
+      const notes = Object.fromEntries((q.add_ons || []).filter((a) => a.info).map((a) => [a.key, a]));
+      const discount = q.density_discount ?? -(notes.route_density?.amount || 0);
+      const stops = q.density_stops ?? (notes.route_density?.stops || 0);
+      const fee = q.mow_fee ?? Math.round((q.subtotal - (q.add_on_total || 0) + discount) * 100) / 100;
+      return [
+        baseRow(money(fee), cls),
+        discount > 0 ? row(`⚡ Route Cluster Optimization Benefit (${stops} stops)`, `-${money(discount)}`, `${cls} benefit`)
+                     : row("📍 Standalone Logistics Premium Area (Low route density)", "", `${cls} note`),
+        row("High-Margin Property Add-ons", money(q.add_on_total || 0), cls),
+        ...(q.add_ons || []).filter((a) => !a.scope && !a.info && a.price == null).map((a) => row(a.label, "No charge", cls)),
+      ];
+    }
+    const lockedTotal = (q) => q.price_locked ?? !!lockedScope(q);
+    const totalLabel = (q) => lockedTotal(q) ? "Guaranteed Enterprise Total" : "Estimated total (confirmed on site)";
 
     // Live estimate: updates instantly from the size and rate. Tax is shown once we know the
     // address (it depends on the service area); until then it says "Calculated at checkout".
     function renderEstimate() {
       renderSize();
-      const lines = $("estimate-lines"), p = pkg();
-      const subtotal = sqft && p ? priceFor(p, sqft) : null;
-      const charge = subtotal != null ? Math.round((subtotal - baseFee) * 100) / 100 : null;
-      const serverTax = lastQuote && lastQuote.in_area && lastQuote.package === pkgKey && lastQuote.lawn_sqft === sqft
-        && !(lastQuote.add_on_total > 0) ? lastQuote.tax : null;
+      const lines = $("estimate-lines"), yt = yardType();
+      const fee = mowFee(sqft, yt);
+      // The server's numbers (density discount, tax) once it has priced this exact lawn and yard type.
+      const q = lastQuote && lastQuote.in_area && lastQuote.yard_type === yardKey && lastQuote.lawn_sqft === sqft ? lastQuote : null;
+      const subtotal = q ? q.subtotal : fee;
       lines.replaceChildren(
-        baseRow(money(baseFee)),
         row("Lawn size", sqft ? `${sqft.toLocaleString()} sq ft${estimated() ? ` · ${SCOPE_LABEL[scope]}` : ""}` : "Add your address in step 1"),
-        row("Lot profile", sqft && p && bracketFor(p, sqft).profile ? bracketFor(p, sqft).profile : "—"),
-        row("Selected rate", p ? p.label : "Choose above"),
-        row(PROFILE_LABEL, charge != null ? money(charge) : "—"),
-        row("Estimated subtotal", subtotal != null ? money(subtotal) : "—", "sub-strong"),
-        row("Sales tax", serverTax != null ? money(serverTax) : "Calculated at checkout"),
-        row("Estimated total", subtotal == null ? "—" : serverTax != null ? money(subtotal + serverTax) : `${money(subtotal)} + tax`, "total"));
-      const giving = subtotal != null ? Math.round(subtotal * p.charity_rate * 100) / 100 : 0;
+        row("Lot profile", sqft && bracketFor(packages[0], sqft).profile ? bracketFor(packages[0], sqft).profile : "—"),
+        row("Yard type", yt ? yt.label : "Choose above"),
+        ...(q ? yieldRows(q) : [baseRow(fee != null ? money(fee) : "—"),
+                                row("Route cluster discount", sqft ? "Checked with your address" : "—")]),
+        row("Texas Sales Tax", q ? `${money(q.tax)} (${pct(q.tax_rate)})` : "Calculated at checkout"),
+        row(q ? totalLabel(q) : "Estimated total", q ? money(q.total) : subtotal == null ? "—" : `${money(subtotal)} + tax`, "total"));
+      const giving = subtotal != null ? Math.round(subtotal * yieldCfg.giving_rate * 100) / 100 : 0;
       $("impact-box").hidden = !(giving > 0);
       $("impact-amount").textContent = money(giving);
       updateRateCards();
@@ -410,15 +429,13 @@
         return;
       }
       priceEmpty.hidden = true; priceLines.hidden = false; priceNote.hidden = false;
-      const charge = Math.round((q.mow_price - q.base_fee) * 100) / 100;
       priceLines.replaceChildren(
-        row(`Lawn mowing · ${q.package_label} · ${lockedScope(q) ? `${lockedScope(q).label} · ` : ""}${q.lawn_sqft.toLocaleString()} sq ft`, ""),
-        baseRow(money(q.base_fee), "sub"),
-        row(PROFILE_LABEL, money(charge), "sub"),
-        ...(q.add_ons || []).filter((a) => !a.scope).map((a) => row(a.price == null ? a.label : `Add-on: ${a.label}`, a.price == null ? "No charge" : money(a.price))),
+        row(`Lawn mowing · ${q.yard_type_label || "Standard yard"} · ${lockedScope(q) ? `${lockedScope(q).label} · ` : ""}${q.lawn_sqft.toLocaleString()} sq ft`, ""),
+        ...yieldRows(q, "sub"),
+        ...(q.add_ons || []).filter((a) => !a.scope && !a.info && a.price != null).map((a) => row(`Add-on: ${a.label}`, money(a.price), "sub")),
         row("Subtotal", money(q.subtotal), "sub-strong"),
-        row(`Sales tax (${pct(q.tax_rate)})`, money(q.tax)),
-        row("Total", money(q.total), "total"));
+        row(`Texas Sales Tax (${pct(q.tax_rate)})`, money(q.tax)),
+        row(totalLabel(q), money(q.total), "total"));
       priceNote.replaceChildren();
       if (lockedScope(q)) priceNote.append(Object.assign(document.createElement("span"),
         { className: "verify-badge", textContent: "✓ Price locked" }), " ",
@@ -437,10 +454,10 @@
         ? { lat: Number(latInput.value), lng: Number(lngInput.value) } : {};
       // A new address while the size is still our estimate: check it first so the estimate follows the address.
       const reestimate = sqftAuto && estimated() && sqftAuto.address !== address;
-      const priced = sqft && pkgKey && !reestimate;
+      const priced = sqft && yardKey && !reestimate;
       const url = priced ? "/api/quote" : "/api/check-address";
       const payload = priced
-        ? { address, service: service(), lawn_sqft: sqft, package: pkgKey, add_ons: pickedAddOns(),
+        ? { address, service: service(), lawn_sqft: sqft, yard_type: yardKey, add_ons: pickedAddOns(),
             scheduled_date: dateInput.value || undefined, ...hint }
         : { address, ...hint };
       try {
@@ -541,11 +558,8 @@
       if (info.google_maps_key) setUpGoogleAutocomplete(info.google_maps_key);
       if (info.add_ons) addOnCatalog = info.add_ons;
       if (info.assurances) assurances = info.assurances;
-      if (info.packages) {
-        packages = info.packages;
-        if (pkgKey === "supporter" && info.featured_package) pkgKey = info.featured_package;
-        renderRates();
-      }
+      if (info.packages) packages = info.packages;          // lot profile names
+      if (info.yield) { yieldCfg = info.yield; renderRates(); }
       renderEstimate();
       renderAddOns();
       readSqft(sqftTouched);
@@ -573,15 +587,15 @@
         if ($("size-edit").hidden) { showError("Pick your address from the list first so we can size your lawn.", $("step-where")); return; }
         showError($("sqft-error").textContent, sqftInput); return;
       }
-      if (!pkgKey) { $("rate-error").hidden = false; showError("Choose a rate to continue.", $("rates")); return; }
+      if (!yardKey) { $("rate-error").hidden = false; showError("Choose your yard type to continue.", $("rates")); return; }
       if (!form.checkValidity()) { form.reportValidity(); return; }
       if (!addressInput.value.trim()) { showError("Please choose your address from the list."); return; }
 
       const data = Object.fromEntries(new FormData(form));
-      delete data.package_pick;
+      delete data.yard_pick;
       data.service = "mowing";
       data.lawn_sqft = sqft;
-      data.package = pkgKey;
+      data.yard_type = yardKey;
       data.add_ons = pickedAddOns();
       data.charity_choice = pickedCause();
       data.sms_consent = $("sms-consent").checked;     // required box: texts about this booking
@@ -615,22 +629,20 @@
         ok.append(h, p);
         // Itemized confirmation: the server's own numbers, the same ones checkout charges.
         if (body.total != null) {
-          const tier = packages.find((x) => x.key === body.package);
           const dl = document.createElement("dl"); dl.className = "price-lines confirm-lines";
-          const charge = Math.round((body.subtotal - (body.add_on_total || 0) - baseFee) * 100) / 100;
+          const yt = (body.add_ons || []).find((a) => a.key === "yard_type");
           dl.append(
             row("Service", "Lawn mowing"),
             row("Lawn size", `${body.lawn_sqft.toLocaleString()} sq ft${lockedScope(body) ? ` · ${lockedScope(body).label} (price locked)` : ""}`),
-            row("Selected rate", tier ? tier.label : "—"),
-            baseRow(money(baseFee)),
-            row(PROFILE_LABEL, money(charge)),
-            ...(body.add_ons || []).filter((a) => !a.scope).map((a) => row(a.price == null ? a.label : `Add-on: ${a.label}`, a.price == null ? "No charge" : money(a.price))),
-            row(`Sales tax (${pct(body.tax_rate)})`, money(body.tax)),
-            row("Total", money(body.total), "total"));
+            row("Yard type", yt ? yt.label.replace(/^Yard type: /, "") : "—"),
+            ...yieldRows(body),
+            ...(body.add_ons || []).filter((a) => !a.scope && !a.info && a.price != null).map((a) => row(`Add-on: ${a.label}`, money(a.price))),
+            row(`Texas Sales Tax (${pct(body.tax_rate)})`, money(body.tax)),
+            row(totalLabel(body), money(body.total), "total"));
           ok.append(dl);
           if (body.charity_amount) {
             const g = document.createElement("div"); g.className = "hint";
-            g.textContent = `✓ Package includes ${money(body.charity_amount)} for ${causeName(body.charity_choice)}. Thank you!`;
+            g.textContent = `✓ Your order includes ${money(body.charity_amount)} for ${causeName(body.charity_choice)}. Thank you!`;
             ok.append(g);
           }
         }
