@@ -880,7 +880,7 @@ label.check input { width: 18px; height: 18px; }
 .about-hero h1 span { color: #22c55e; }
 .about-lede { margin: 0; font-size: 1.125rem; line-height: 1.6; color: #a1a1aa; }
 .about-grid { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
-.about-card { padding: 24px; background: #09090b; border: 1px solid #18181b; border-radius: 12px; display: grid; gap: 16px; }
+.about-card { padding: 24px; background: #09090b; border: 1px solid #18181b; border-radius: 12px; display: grid; gap: 16px; align-content: start; }
 .about-card header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid #18181b; }
 .about-card h3 { margin: 0; font-size: 1.25rem; color: #f4f4f5; }
 .about-role { margin: 4px 0 0; color: #4ade80; font: 600 0.75rem/1.4 ui-monospace, Menlo, monospace; text-transform: uppercase; letter-spacing: 0.04em; }
@@ -911,3 +911,16 @@ label.check input { width: 18px; height: 18px; }
 .about-kicker { margin: 0 0 6px !important; color: #71717a !important; font: 0.75rem/1.4 ui-monospace, Menlo, monospace !important;
   text-transform: uppercase; letter-spacing: 0.12em; }
 .about-pillar h4 { font-family: inherit; text-transform: none; letter-spacing: 0; font-size: 1rem; color: #e4e4e7; }
+
+/* ---------- Trust badges (<trust-badges>) ---------- */
+.trust-badges { padding: 24px; background: #09090b; border: 1px solid #18181b; border-radius: 16px; display: grid; gap: 24px; max-width: 576px; color: #e4e4e7; }
+.tb-head { padding-bottom: 12px; border-bottom: 1px solid #18181b; }
+.tb-head h4 { margin: 0; color: #4ade80; font: 600 0.75rem/1.4 ui-monospace, Menlo, monospace; text-transform: uppercase; letter-spacing: 0.12em; }
+.tb-head h3 { margin: 4px 0 0; font-size: 1rem; color: #f4f4f5; }
+.tb-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.tb-item { display: flex; align-items: flex-start; gap: 12px; }
+.tb-icon { padding: 8px; background: #18181b; border: 1px solid #27272a; border-radius: 8px; line-height: 1; }
+.tb-item h5 { margin: 0; color: #e4e4e7; font: 700 0.75rem/1.4 ui-monospace, Menlo, monospace; text-transform: uppercase; letter-spacing: 0.04em; }
+.tb-item p { margin: 2px 0 0; color: #a1a1aa; font-size: 0.8rem; line-height: 1.5; }
+.tb-foot { background: rgb(24 24 27 / 0.5); border: 1px solid #18181b; padding: 12px; border-radius: 12px; text-align: center; }
+.tb-foot p { margin: 0; color: #a1a1aa; font: 0.72rem/1.5 ui-monospace, Menlo, monospace; text-transform: uppercase; letter-spacing: 0.06em; }

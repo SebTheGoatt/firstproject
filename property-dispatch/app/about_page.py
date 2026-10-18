@@ -66,6 +66,7 @@ def about_html(settings: Settings, version: str) -> str:
             institutional discipline, and data-driven logistics to home asset preservation.</p>
         </div>
         <div class="about-grid">{people}
+          <trust-badges{f' coverage="{esc(settings.liability_coverage.strip())}"' if settings.liability_coverage.strip() else ""}{" background-checked" if settings.crew_background_checked else ""}></trust-badges>
         </div>
         <div class="about-pillars">{cols}</div>
         <p><a class="btn btn-primary btn-lg" href="/book">Book your first visit</a></p>
@@ -74,7 +75,8 @@ def about_html(settings: Settings, version: str) -> str:
     return layout(settings, version, title=f"About | {settings.business_name}",
                   description="Veteran-owned lawn care around Spring, TX, run with operational discipline: "
                               "self-serve booking, planned routes, and a local cause on every order.",
-                  body=body, canonical=None)
+                  body=body, canonical=None,
+                  head_extra=f'\n  <script src="/static/trust-badges.js?v={esc(version)}" defer></script>')
 
 
 def register_about_page(app: FastAPI, settings: Settings, version: str = "") -> None:
