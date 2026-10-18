@@ -24,7 +24,35 @@ def optimize(client, when, **body):
 
 def test_dashboard_page_is_served(client):
     r = client.get("/crew/dashboard")
-    assert r.status_code == 200 and "START DAILY ROUTE" in r.text
+    assert r.status_code == 200 and "START ROUTE TRANSIT" in r.text
+
+
+def test_dashboard_is_a_field_hud(client):
+    page = client.get("/crew/dashboard").text
+    # Big button: start → arrived → a complete label that says what finishing does to the customer's bill.
+    for label in ("START ROUTE TRANSIT", "ARRIVED ON SITE", "COMPLETE VISIT & INVOICE STRIPE", "COMPLETE VISIT & COLLECT CASH"):
+        assert label in page
+    # Scope enforcement block, with the lawn size filled in from the stop (never a fixed number).
+    for text in ("SCOPE ENFORCEMENT", "COMPLIANCE LOCK", "FULL PARCEL ROTATION", "STANDARD VISIT"):
+        assert text in page
+    assert "4,500" not in page and "14,500" not in page
+    # Mobile layout: 48px tap targets, a bottom sheet that moves with transform only, two columns when sideways.
+    assert "--tap: 48px" in page and "translate3d" in page and "will-change: transform" in page
+    assert "(orientation: landscape) and (min-width: 640px), (min-width: 900px)" in page
+    # In-app directions stay the main action; the native Maps app is a plain link backup.
+    assert "➤ Navigate" in page and "Open in Maps" in page and "apple_maps_url" in page and "google_maps_url" in page
+    assert "OPERATIONAL BREAKDOWN" not in page and "START DAILY ROUTE" not in page
+
+
+def test_route_stops_carry_what_the_hud_needs(client, repo, settings):
+    booked(client, "AB")
+    run_nightly(repo, settings, TOMORROW)
+    stop = client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]
+    for field in ("scope", "lawn_sqft", "service_minutes", "eta", "leg_distance_m", "leg_duration_s",
+                  "payment_method", "payment_status", "amount_due", "apple_maps_url", "google_maps_url"):
+        assert field in stop
+    assert stop["apple_maps_url"].startswith("https://maps.apple.com/?")
+    assert stop["google_maps_url"].startswith("https://www.google.com/maps/dir/?")
 
 
 def test_crew_sign_in_is_required(client):

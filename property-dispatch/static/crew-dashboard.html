@@ -11,83 +11,221 @@
   <link rel="stylesheet" href="/static/styles.css?v={{V}}">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
   <style>
-    /* Crew dashboard: one screen, one big button. Built for a phone in the sun with gloves on. */
-    body.dash { background: #ffffff; color: #000000; }
-    .dash-wrap { max-width: 560px; margin: 0 auto; padding: 12px 16px calc(120px + env(safe-area-inset-bottom, 0px)); }
-    .dash-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
-    .dash-top h1 { font-size: 1.15rem; margin: 0; }
-    .dash-top a { font-size: 0.9rem; color: var(--brand); font-weight: 600; text-decoration: none; }
-    .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
-    .metric { border: 1px solid var(--border); border-radius: 12px; padding: 10px 8px; text-align: center; }
-    .metric b { display: block; font-size: 1.25rem; line-height: 1.2; }
-    .metric span { font-size: 0.75rem; color: var(--muted); }
-    .metric.status b { font-size: 1rem; }
-    .metric.status[data-state="active"] b { color: var(--brand); }
-    .metric.status[data-state="done"] b { color: var(--brand-deep); }
-    #route-map { height: 230px; border-radius: 14px; overflow: hidden; border: 1px solid var(--border); margin-bottom: 12px; background: #eef2ef; }
-    .stop-card { border: 2px solid var(--brand); border-radius: 16px; padding: 16px; margin-bottom: 12px; }
-    .stop-kicker { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--brand); margin: 0 0 4px; }
-    .stop-name { font-size: 1.3rem; font-weight: 750; margin: 0; }
-    .stop-addr { margin: 2px 0 8px; font-size: 1rem; }
-    .stop-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-    .chip-d { font-size: 0.82rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--brand-soft); }
-    .chip-d.warn { background: var(--warn-soft); color: var(--warn); }
-    .stop-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .stop-actions .btn { min-height: 52px; font-size: 1rem; }
-    .btn-nav { background: #1a73e8; border-color: #1a73e8; color: #fff; }
-    .workload { margin: -4px 0 12px; font-size: 0.85rem; color: var(--muted); text-align: center; }
-    .breakdown { margin-top: 12px; padding: 12px 14px; border-radius: 12px; border: 2px solid; }
-    .breakdown p { margin: 0; }
-    .breakdown-title { font-size: 0.75rem; font-weight: 800; letter-spacing: 0.08em; margin-bottom: 4px !important; }
-    .breakdown-scope { font-weight: 700; font-size: 1rem; line-height: 1.35; }
-    .breakdown-meta { margin-top: 6px !important; font-size: 0.85rem; }
-    .breakdown.scope-yard { background: #fff4d6; border-color: #b45309; color: #5c2c00; }
-    .breakdown.scope-full { background: #e8f0fe; border-color: #1a56c4; color: #0b2a66; }
-    .breakdown.scope-legacy { background: #f2f4f3; border-color: #9aa7a0; color: #1b2420; }
-    .tag-full, .tag-yard { margin-left: 6px; padding: 1px 6px; border-radius: 6px; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.04em; }
-    .tag-full { background: #1a56c4; color: #fff; } .tag-yard { background: #b45309; color: #fff; }
-    .note-toggle { margin-top: 10px; font: inherit; font-weight: 600; background: none; border: 0; color: var(--brand); padding: 6px 0; cursor: pointer; }
-    .note-box textarea { width: 100%; min-height: 70px; font: inherit; padding: 10px; border: 1px solid var(--border); border-radius: 10px; }
-    .note-saved { font-size: 0.85rem; color: var(--muted); }
-    .main-cta { position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
-      background: #ffffff; border-top: 1px solid var(--border); z-index: 20; }
-    .main-cta button { display: block; width: 100%; max-width: 528px; margin: 0 auto; min-height: 64px; border: 0; border-radius: 14px;
+    /* Crew dashboard: a field HUD. The map is the canvas, the route deck sits on top, one big button at the bottom.
+       Built for a phone in the sun with gloves on: white surfaces, black text, big targets. */
+    :root {
+      --tap: 48px;                 /* smallest thing a gloved thumb has to hit */
+      --gap-s: 8px; --gap: 12px; --gap-l: 16px;
+      --radius-card: 16px;
+      --hud-row: 56px;
+      --hud-h: calc(var(--hud-row) + env(safe-area-inset-top, 0px));
+      --cta-min: 72px; --cta-pad: 10px;
+      --cta-h: calc(var(--cta-min) + 2 * var(--cta-pad) + env(safe-area-inset-bottom, 0px));
+      --deck-top-gap: 12px;        /* map still peeks above the deck when it's fully open */
+      --hud-bg: #0b3d2e; --glow-blue: #1a73e8; --neon: #00e676; --amber: #f59e0b;
+      --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+      --z-deck: 10; --z-cta: 20; --z-hud: 25; --z-modal: 30; --z-toast: 40; --z-nav: 50;
+    }
+    body.dash { background: #ffffff; color: #000000; overscroll-behavior: none; }
+    .dash .btn { min-height: var(--tap); }
+
+    /* ---------- Top HUD bar ---------- */
+    .hud { position: fixed; top: 0; left: 0; right: 0; z-index: var(--z-hud); height: var(--hud-h);
+      padding: env(safe-area-inset-top, 0px) max(12px, env(safe-area-inset-right, 0px)) 0 max(12px, env(safe-area-inset-left, 0px));
+      display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--gap-s);
+      background: var(--hud-bg); color: #ffffff; }
+    .hud-readouts { display: flex; gap: clamp(8px, 2.5vw, 32px); min-width: 0; }
+    .readout { flex: 0 1 auto; min-width: 0; padding-left: var(--gap-s); border-left: 2px solid rgb(255 255 255 / 0.22); }
+    .readout span { display: block; font: 700 0.68rem/1.2 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.75; }
+    .readout b { display: block; font: 700 1rem/1.3 var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .readout.status b::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%;
+      vertical-align: 2px; background: #c9d4ce; }
+    .readout.status[data-state="active"] b { color: #7df3b2; }
+    .readout.status[data-state="active"] b::before { background: var(--neon); animation: blink 1.6s ease-in-out infinite; }
+    .readout.status[data-state="done"] b::before { background: var(--neon); }
+    .hud-link { display: inline-flex; align-items: center; justify-content: center; min-height: var(--tap); min-width: var(--tap);
+      padding: 0 12px; border: 1px solid rgb(255 255 255 / 0.4); border-radius: 10px; color: #ffffff; font-weight: 700;
+      font-size: 0.95rem; line-height: 1.15; text-align: center; text-decoration: none; max-width: 104px; }
+    @media (min-width: 600px) { .hud-link { max-width: none; } }
+
+    /* ---------- Signed out / no route ---------- */
+    .state-wrap { max-width: 560px; margin: 0 auto; padding: calc(var(--hud-h) + 16px) 16px 32px; }
+    .empty-state { text-align: center; padding: 40px 10px; }
+    .empty-state p { color: var(--muted); }
+
+    /* ---------- Stage: map + deck + big button ----------
+       Portrait phones: everything stacks in one grid cell (map underneath, deck and button on top).
+       Landscape phones and tablets: two columns, deck on the left (35%), map on the right (65%). */
+    #dash { position: fixed; inset: var(--hud-h) 0 0 0; z-index: 1; overflow: hidden;
+      display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); grid-template-areas: "stage"; }
+    #route-map { grid-area: stage; min-height: 0; background: #eef2ef; transform: translate3d(0, 0, 0); }
+    .map-fit { grid-area: stage; align-self: start; justify-self: start; z-index: 5; margin: var(--gap);
+      min-height: var(--tap); min-width: var(--tap); padding: 0 14px; border: 2px solid #000; border-radius: 12px;
+      background: #ffffff; color: #000; font: 700 1rem/1 system-ui, sans-serif; cursor: pointer; box-shadow: 0 2px 10px rgb(0 0 0 / 0.18); }
+
+    /* Bottom sheet. It only ever moves with transform (GPU), never top/height. */
+    .deck { grid-area: stage; align-self: end; justify-self: stretch; z-index: var(--z-deck); position: relative;
+      height: calc(100% - var(--deck-top-gap)); display: flex; flex-direction: column; min-height: 0;
+      background: #ffffff; border-radius: 18px 18px 0 0; border-top: 1px solid var(--border);
+      box-shadow: 0 -6px 24px rgb(0 0 0 / 0.18);
+      transform: translate3d(0, var(--sheet-y, 60%), 0); will-change: transform;
+      transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1); }
+    .deck.dragging { transition: none; }
+    .deck-handle { flex: none; display: grid; place-items: center; width: 100%; min-height: var(--tap); padding: 0;
+      border: 0; background: transparent; cursor: grab; touch-action: none; }
+    .deck-handle:active { cursor: grabbing; }
+    .deck-handle .grip { width: 48px; height: 6px; border-radius: 3px; background: #8a948f; }
+    .deck-body { flex: 1 1 auto; min-height: 0; overflow: hidden; overscroll-behavior: contain;
+      display: flex; flex-direction: column; gap: var(--gap);
+      padding: 0 max(16px, env(safe-area-inset-right, 0px)) calc(var(--cta-h) + 16px) max(16px, env(safe-area-inset-left, 0px)); }
+    .deck[data-snap="full"] .deck-body { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+    /* Sticky call-to-action. The deck pads for it, so it never covers anything. */
+    .main-cta { grid-area: stage; align-self: end; z-index: var(--z-cta); background: #ffffff; border-top: 1px solid var(--border);
+      padding: var(--cta-pad) max(16px, env(safe-area-inset-right, 0px)) calc(var(--cta-pad) + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+    .main-cta button { display: block; width: 100%; min-height: var(--cta-min); border: 0; border-radius: 14px; padding: 10px 14px;
       font: 800 1.15rem/1.2 system-ui, sans-serif; letter-spacing: 0.04em; color: #ffffff; background: var(--brand-deep); cursor: pointer; }
     .main-cta button[data-step="arrive"] { background: #1a73e8; }
     .main-cta button[data-step="complete"] { background: #b45309; }
     .main-cta button:disabled { opacity: 0.6; }
-    .up-next h2 { font-size: 1rem; margin: 18px 0 8px; }
-    .up-next ol { list-style: none; margin: 0; padding: 0; }
-    .up-next li { display: flex; gap: 10px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.92rem; }
-    .up-next .n { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--brand-soft); text-align: center; font-weight: 700; font-size: 0.8rem; line-height: 24px; }
-    .up-next li.done { color: var(--muted); text-decoration: line-through; }
-    .up-next time { margin-left: auto; color: var(--muted); white-space: nowrap; }
-    .sheet-bg { position: fixed; inset: 0; background: rgb(0 0 0 / 0.45); z-index: 30; display: flex; align-items: flex-end; }
-    .sheet { background: #ffffff; width: 100%; max-width: 560px; margin: 0 auto; border-radius: 18px 18px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px)); max-height: 92vh; overflow-y: auto; }
+
+    /* Portrait tablets: keep the deck a readable width and let the map show on both sides. */
+    @media (min-width: 680px) {
+      .deck, .main-cta { justify-self: center; width: min(100%, 640px); }
+      .main-cta { border: 1px solid var(--border); border-bottom: 0; border-radius: 16px 16px 0 0; }
+    }
+
+    /* Landscape phones and tablets: Route Sequence Deck (left) + Active Route Map (right). */
+    @media (orientation: landscape) and (min-width: 640px), (min-width: 900px) {
+      #dash { grid-template-columns: 35% 65%; grid-template-areas: "deck map"; }
+      #route-map, .map-fit { grid-area: map; }
+      .deck { grid-area: deck; justify-self: stretch; width: auto; height: 100%; border-radius: 0; border-top: 0;
+        border-right: 1px solid var(--border); box-shadow: none; transform: translate3d(0, 0, 0); transition: none; }
+      .deck-handle { display: none; }
+      .deck-body { overflow-y: auto; padding-top: var(--gap-l); padding-right: 16px; }
+      .deck-metrics { order: -1; }
+      .main-cta { grid-area: deck; justify-self: stretch; width: auto; border: 0; border-top: 1px solid var(--border);
+        border-right: 1px solid var(--border); border-radius: 0; padding-right: 16px; }
+    }
+    /* Sideways phones are short: keep the current stop in view (the HUD bar already shows the totals). */
+    @media (orientation: landscape) and (min-width: 640px) and (max-height: 500px) {
+      :root { --cta-pad: 8px; }
+      .deck-body { padding-top: var(--gap); }
+      .deck-metrics { padding: 8px 12px; }
+      .deck-metrics .workload { display: none; }
+      .route-bar { margin-bottom: 0; }
+    }
+
+    /* ---------- Active job card ---------- */
+    .stop-card { border: 2px solid var(--glow-blue); border-radius: var(--radius-card); padding: 14px; background: #ffffff;
+      box-shadow: 0 0 14px rgb(26 115 232 / 0.22); }
+    .stop-card.all-done { border-color: var(--brand); box-shadow: none; }
+    .stop-kicker { font: 800 1rem/1.3 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: #1a56c4; margin: 0 0 4px; }
+    .stop-name { font-size: 1.3rem; font-weight: 750; line-height: 1.25; margin: 0; overflow-wrap: anywhere; }
+    .stop-addr { margin: 2px 0 8px; font-size: 1rem; overflow-wrap: anywhere; }
+    .travel { display: block; margin: 0 0 10px; padding: 8px 10px; border-left: 4px solid var(--glow-blue); border-radius: 8px;
+      background: #eef4fe; font-weight: 700; font-size: 1rem; line-height: 1.35; font-variant-numeric: tabular-nums; }
+    .travel[data-src="planned"] { border-left-color: #8a948f; background: #f2f4f3; }
+    .travel[data-src="onsite"] { border-left-color: #b45309; background: #fff4d6; }
+    .stop-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .chip-d { font-size: 1rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--brand-soft); }
+    .chip-d.warn { background: var(--warn-soft); color: var(--warn); }
+    .stop-actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap-s); }
+    .stop-actions .btn { min-height: var(--tap); font-size: 1rem; }
+    .stop-actions .btn-nav { grid-column: 1 / -1; min-height: 56px; font-size: 1.1rem; font-weight: 800; }
+    .btn-nav { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .note-toggle { display: inline-flex; align-items: center; min-height: var(--tap); margin-top: 6px; font: inherit; font-weight: 600;
+      background: none; border: 0; color: var(--brand); padding: 0 4px; cursor: pointer; }
+    .note-box textarea { width: 100%; min-height: 80px; font: inherit; padding: 10px; border: 1px solid var(--border); border-radius: 10px; }
+    .note-box .btn { margin-top: var(--gap-s); }
+    .note-saved { font-size: 1rem; color: var(--muted); }
+
+    /* SCOPE ENFORCEMENT: high contrast, impossible to miss in the sun. */
+    .scope { margin-top: var(--gap); padding: 12px 14px; border-radius: 12px; border: 3px solid; }
+    .scope p { margin: 0; }
+    .scope-title { font: 800 1rem/1.2 var(--mono); letter-spacing: 0.1em; margin-bottom: 6px !important; }
+    .scope-text { font-weight: 800; font-size: 1rem; line-height: 1.4; }
+    .scope-meta { margin-top: 6px !important; font-size: 1rem; }
+    .scope.scope-yard { background: #fff4d6; border-color: var(--amber); color: #3d1f00; box-shadow: inset 0 0 0 1px #b45309; }
+    .scope.scope-full { background: #edfff4; border-color: var(--neon); color: #00210f;
+      box-shadow: 0 0 0 1px #00a152, 0 0 16px rgb(0 230 118 / 0.55); }
+    .scope.scope-legacy { background: #f2f4f3; border-color: #9aa7a0; color: #1b2420; }
+
+    /* ---------- Route metrics (inside the deck) ---------- */
+    .deck-metrics { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
+    .deck-metrics p { margin: 0; }
+    .progress-line { font: 700 1rem/1.3 var(--mono); }
+    .route-bar { height: 8px; margin: 8px 0; border-radius: 4px; background: #e3e9e5; overflow: hidden; }
+    .route-bar span { display: block; height: 100%; background: var(--brand); transform-origin: left center;
+      transform: scaleX(0); transition: transform 0.4s ease; }
+    .workload { font-size: 1rem; color: var(--muted); }
+
+    /* ---------- Route timeline ---------- */
+    .route-seq h2 { font: 800 1rem/1.3 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; margin: 4px 0 8px; }
+    .route-seq ol { position: relative; list-style: none; margin: 0; padding: 0; }
+    .route-seq ol::before { content: ""; position: absolute; left: 16.5px; top: 20px; bottom: 20px; width: 3px; border-radius: 2px; background: #c8d3cc; }
+    .tl-item { position: relative; display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 10px; align-items: center; padding: 5px 0; }
+    .tl-node { position: relative; z-index: 1; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%;
+      border: 3px solid var(--brand); background: #ffffff; font: 800 0.85rem/1 var(--mono); }
+    .tl-card { display: grid; gap: 2px; width: 100%; min-height: var(--tap); padding: 10px 12px; text-align: left; font: inherit; color: inherit;
+      background: #ffffff; border: 1px solid var(--border); border-radius: 12px; cursor: pointer; }
+    .tl-title { font-weight: 700; font-size: 1rem; line-height: 1.3; overflow-wrap: anywhere; }
+    .tl-sub { font-size: 1rem; color: #3d4742; font-variant-numeric: tabular-nums; }
+    .tl-card .travel { margin: 4px 0 0; }
+    .tag-full, .tag-yard, .badge-now { margin-left: 6px; padding: 1px 6px; border-radius: 6px; font: 800 0.72rem/1.4 var(--mono);
+      letter-spacing: 0.04em; vertical-align: 1px; white-space: nowrap; }
+    .tag-full { background: #0b7a3e; color: #fff; } .tag-yard { background: #b45309; color: #fff; }
+    .badge-now { background: var(--glow-blue); color: #fff; }
+    .badge-done { justify-self: start; padding: 2px 10px; border-radius: 999px; background: #dff3e6; color: #1e6b3f; font-weight: 800; font-size: 1rem; }
+    .tl-item.is-done { opacity: 0.55; }
+    .tl-item.is-done .tl-card { color: #5f6b65; }
+    .tl-item.is-done .tl-node { border-color: #9aa7a0; background: #eef1ef; color: #5f6b65; }
+    .tl-item.is-active .tl-card { border-color: var(--glow-blue); box-shadow: 0 0 0 2px #1a73e8, 0 0 18px rgba(26, 115, 232, 0.55); }
+    .tl-item.is-active .tl-node { border-color: var(--glow-blue); background: var(--glow-blue); color: #ffffff; }
+    .tl-item.is-active .tl-node::after { content: ""; position: absolute; inset: -7px; border-radius: 50%; border: 2px solid var(--glow-blue);
+      animation: ping 1.8s ease-out infinite; }
+    @keyframes ping { from { transform: scale(0.8); opacity: 0.9; } to { transform: scale(1.35); opacity: 0; } }
+    @keyframes blink { 50% { opacity: 0.35; } }
+    @media (prefers-reduced-motion: reduce) {
+      .deck, .route-bar span { transition: none; }
+      .tl-item.is-active .tl-node::after, .readout.status b::before { animation: none; }
+    }
+
+    /* Map credits: top-right on the route map (the deck covers the bottom), behind a full-size (i) button. */
+    :is(#route-map, #nav-map) .maplibregl-ctrl-attrib.maplibregl-compact { min-height: var(--tap); padding-right: var(--tap); border-radius: 24px; }
+    :is(#route-map, #nav-map) .maplibregl-ctrl-attrib-button { width: var(--tap); height: var(--tap); border-radius: 24px;
+      background-position: center; background-repeat: no-repeat; background-size: 24px; }
+    :is(#route-map, #nav-map) .maplibregl-compact-show .maplibregl-ctrl-attrib-inner { display: block; padding: 14px 6px 0 14px; }
+
+    /* ---------- Finish-job sheet (modal) ---------- */
+    .sheet-bg { position: fixed; inset: 0; background: rgb(0 0 0 / 0.45); z-index: var(--z-modal); display: flex; align-items: flex-end; }
+    .sheet { background: #ffffff; width: 100%; max-width: 560px; margin: 0 auto; border-radius: 18px 18px 0 0;
+      padding: 18px max(16px, env(safe-area-inset-right, 0px)) calc(18px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+      max-height: 92vh; max-height: 92dvh; overflow-y: auto; overscroll-behavior: contain; }
     .sheet h2 { margin: 0 0 12px; font-size: 1.2rem; }
     .sheet .field input { width: 100%; }
+    .sheet input[type="file"] { min-height: var(--tap); padding: 10px 0; font-size: 1rem; }
     .sheet .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
     .sheet .row .btn { min-height: 56px; font-size: 1rem; }
     .pay-line { padding: 10px 12px; border-radius: 10px; background: var(--brand-soft); font-weight: 600; margin-bottom: 14px; }
     .pay-line.due { background: var(--warn-soft); color: var(--warn); }
-    .empty-state { text-align: center; padding: 40px 10px; }
-    .empty-state p { color: var(--muted); }
-    .toast-d { position: fixed; left: 16px; right: 16px; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); z-index: 40;
-      max-width: 528px; margin: 0 auto; background: #111; color: #fff; padding: 12px 14px; border-radius: 12px; font-size: 0.95rem; }
-    /* ---------- In-app navigation ---------- */
-    .nav-view { position: fixed; inset: 0; z-index: 50; background: #fff; display: grid; grid-template-rows: auto 1fr auto; }
+    .toast-d { position: fixed; left: 16px; right: 16px; bottom: calc(var(--cta-h) + 12px); z-index: var(--z-toast);
+      max-width: 528px; margin: 0 auto; background: #111; color: #fff; padding: 12px 14px; border-radius: 12px; font-size: 1rem; }
+
+    /* ---------- In-app navigation (always on top of the deck and the big button) ---------- */
+    .nav-view { position: fixed; inset: 0; z-index: var(--z-nav); background: #fff; display: grid; grid-template-rows: auto 1fr auto; }
     .nav-banner { background: var(--brand-deep); color: #fff; padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
       display: grid; grid-template-columns: 56px 1fr; gap: 12px; align-items: center; }
     .nav-arrow { font-size: 2.4rem; line-height: 1; text-align: center; }
     .nav-dist { font-size: 1.6rem; font-weight: 800; line-height: 1.1; }
     .nav-text { font-size: 1.05rem; font-weight: 600; line-height: 1.3; }
-    .nav-then { grid-column: 1 / -1; font-size: 0.85rem; opacity: 0.85; border-top: 1px solid rgb(255 255 255 / 0.2); padding-top: 6px; }
+    .nav-then { grid-column: 1 / -1; font-size: 0.9rem; opacity: 0.85; border-top: 1px solid rgb(255 255 255 / 0.2); padding-top: 6px; }
     #nav-map { width: 100%; height: 100%; }
     .nav-foot { padding: 10px 16px calc(12px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--border); background: #fff; }
-    .nav-stats { display: flex; justify-content: space-between; gap: 8px; font-size: 0.95rem; margin-bottom: 8px; }
+    .nav-stats { display: flex; justify-content: space-between; gap: 8px; font-size: 1rem; margin-bottom: 8px; }
     .nav-stats b { font-size: 1.1rem; }
     .nav-tools { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
-    .nav-tools .btn { min-height: 46px; font-size: 0.92rem; }
+    .nav-tools .btn { min-height: var(--tap); font-size: 0.95rem; }
     .nav-arrive { display: block; width: 100%; min-height: 60px; border: 0; border-radius: 14px; background: #1a73e8; color: #fff;
       font: 800 1.1rem/1.2 system-ui, sans-serif; letter-spacing: 0.04em; cursor: pointer; }
     .nav-arrive.near { background: var(--brand-deep); }
@@ -95,34 +233,21 @@
   </style>
 </head>
 <body class="dash">
-  <div class="dash-wrap">
-    <header class="dash-top">
-      <h1>Today's route</h1>
-      <a href="/crew">Full crew app</a>
-    </header>
+  <header class="hud">
+    <h1 class="visually-hidden">Today's route</h1>
+    <section class="hud-readouts" aria-label="Route progress">
+      <div class="readout"><span>Stops</span><b id="m-stops">–</b></div>
+      <div class="readout"><span>Route</span><b id="m-time">–</b></div>
+      <div class="readout status" id="m-status-box"><span>Status</span><b id="m-status">–</b></div>
+    </section>
+    <a class="hud-link" href="/crew">Full crew app</a>
+  </header>
 
+  <main class="state-wrap">
     <div id="signed-out" class="empty-state" hidden>
       <h2>Sign in first</h2>
       <p>Open the crew app, sign in with your code, then come back here.</p>
       <a class="btn btn-primary" href="/crew">Go to crew sign-in</a>
-    </div>
-
-    <div id="dash" hidden>
-      <section class="metrics" aria-label="Route progress">
-        <div class="metric"><b id="m-stops">–</b><span>Total stops</span></div>
-        <div class="metric"><b id="m-time">–</b><span>Est. route time</span></div>
-        <div class="metric status" id="m-status-box"><b id="m-status">–</b><span>Status</span></div>
-      </section>
-      <p class="workload" id="workload"></p>
-
-      <div id="route-map" role="button" tabindex="0" aria-label="Map of today's stops. Tap for turn-by-turn directions to the current stop."></div>
-
-      <section id="current" aria-live="polite"></section>
-
-      <section class="up-next" aria-labelledby="up-next-title">
-        <h2 id="up-next-title">The whole day</h2>
-        <ol id="stop-list"></ol>
-      </section>
     </div>
 
     <div id="no-route" class="empty-state" hidden>
@@ -130,10 +255,31 @@
       <p id="no-route-msg">Routes are built at 5 PM the day before.</p>
       <button class="btn btn-primary" type="button" id="build-btn">Build today's route</button>
     </div>
-  </div>
+  </main>
 
-  <div class="main-cta" id="cta-bar" hidden>
-    <button type="button" id="cta" data-step="start">START DAILY ROUTE</button>
+  <div id="dash" hidden>
+    <div id="route-map" role="button" tabindex="0" aria-label="Active Route Map: today's stops. Tap for turn-by-turn directions to the current stop."></div>
+    <button class="map-fit" id="map-fit" type="button" aria-label="Show the whole route on the map">⤢ Whole route</button>
+
+    <section class="deck" id="deck" data-snap="peek" aria-label="Route Sequence Deck">
+      <button class="deck-handle" id="deck-handle" type="button" aria-label="Show more of the route" aria-expanded="false"><span class="grip"></span></button>
+      <div class="deck-body" id="deck-body">
+        <section id="current" aria-live="polite"></section>
+        <section class="deck-metrics" aria-label="Route metrics">
+          <p class="progress-line"><b id="m-done">0</b> of <b id="m-total">0</b> stops done</p>
+          <div class="route-bar" aria-hidden="true"><span id="progress-fill"></span></div>
+          <p class="workload" id="workload"></p>
+        </section>
+        <section class="route-seq" aria-labelledby="up-next-title">
+          <h2 id="up-next-title">Route sequence</h2>
+          <ol id="stop-list"></ol>
+        </section>
+      </div>
+    </section>
+
+    <div class="main-cta" id="cta-bar" hidden>
+      <button type="button" id="cta" data-step="start">START ROUTE TRANSIT</button>
+    </div>
   </div>
 
   <div class="nav-view" id="nav-view" hidden role="dialog" aria-modal="true" aria-label="Turn-by-turn directions">
@@ -147,10 +293,10 @@
       <div class="nav-stats"><span><b id="nav-left">–</b> left</span><span>Arrive <b id="nav-eta">–</b></span></div>
       <div class="nav-tools">
         <button class="btn" type="button" id="nav-voice">🔊 Voice on</button>
-        <a class="btn" id="nav-gmaps" target="_blank" rel="noopener">Google Maps</a>
+        <a class="btn" id="nav-gmaps" target="_blank" rel="noopener">Open in Maps</a>
         <button class="btn" type="button" id="nav-end">End</button>
       </div>
-      <button class="nav-arrive" type="button" id="nav-arrive">ARRIVED AT PROPERTY</button>
+      <button class="nav-arrive" type="button" id="nav-arrive">ARRIVED ON SITE</button>
     </div>
   </div>
 
@@ -159,7 +305,7 @@
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script>
     // ---------- Crew dashboard ----------
-    // Life cycle of the current stop:  START DAILY ROUTE → ARRIVED AT PROPERTY → COMPLETE JOB & NEXT STOP.
+    // Life cycle of the current stop:  START ROUTE TRANSIT → ARRIVED ON SITE → COMPLETE VISIT.
     // The server owns the route, payments and customer notices; this page only stores two small things on the
     // phone: "route started today" and "arrived at stop X" (so a refresh keeps the right button).
     const $ = (id) => document.getElementById(id);
@@ -171,10 +317,15 @@
     const fmtTime = (iso) => iso ? new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: tz }) : "";
     const fmtDur = (s) => s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.round((s % 3600) / 60)}m` : `${Math.max(1, Math.round(s / 60))}m`;
     const money = (n) => Number(n).toLocaleString("en-US", { style: "currency", currency: "USD" });
+    const miles = (m) => ((m || 0) / 1609.344).toFixed(1);
+    const minutes = (s) => s > 0 ? Math.max(1, Math.round(s / 60)) : 0;
     const store = {
       get(k) { try { return localStorage.getItem(k); } catch { return null; } },
       set(k, v) { try { localStorage.setItem(k, v); } catch {} },
     };
+    // iPhone and iPad hand off to Apple Maps (iPads say they're a Mac, so check for touch too); everyone else to Google Maps.
+    const IS_IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+    const mapsUrl = (stop) => IS_IOS ? stop.apple_maps_url : stop.google_maps_url;
 
     function el(tag, attrs = {}, ...kids) {
       const n = document.createElement(tag);
@@ -245,38 +396,54 @@
       return store.get(arrivedKey(cur.stop_id)) ? "complete" : "arrive";
     }
 
+    // The big button says exactly what finishing does: card customers get their Stripe pay link, cash gets collected.
+    function ctaLabel(s, cur) {
+      if (s === "start") return "START ROUTE TRANSIT";
+      if (s === "arrive") return "ARRIVED ON SITE";
+      if (s !== "complete") return "";
+      if (cur.payment_status === "paid") return "COMPLETE VISIT";
+      if (cur.payment_method === "card") return cur.amount_due != null ? "COMPLETE VISIT & INVOICE STRIPE" : "COMPLETE VISIT";
+      return "COMPLETE VISIT & COLLECT CASH";
+    }
+
     // ---------- drawing ----------
     function render() {
       $("dash").hidden = false; $("no-route").hidden = true; $("cta-bar").hidden = false;
-      const stops = route.stops, s = step();
+      const stops = route.stops, s = step(), cur = current();
       const total = stops.reduce((t, x) => t + (x.leg_duration_s || 0) + (x.service_minutes || 0) * 60, 0);
-      $("m-stops").textContent = stops.length;
+      const done = stops.filter((x) => x.completed_at).length;
+      $("m-stops").textContent = `${done}/${stops.length}`;
       $("m-time").textContent = fmtDur(total);
+      $("m-done").textContent = done; $("m-total").textContent = stops.length;
+      $("progress-fill").style.transform = `scaleX(${stops.length ? done / stops.length : 0})`;
       // Where the time goes: turf to cut (bigger lawns = longer stops) vs. driving.
       const turf = stops.reduce((t, x) => t + (x.lawn_sqft || 0), 0);
       const work = stops.reduce((t, x) => t + (x.service_minutes || 0) * 60, 0);
       const full = stops.filter((x) => x.scope === "scope_full").length;
-      $("workload").textContent = `${turf.toLocaleString()} sq ft of turf · ~${fmtDur(work)} on site · ~${fmtDur(total - work)} driving`
+      $("workload").textContent = `${turf.toLocaleString("en-US")} sq ft of turf · ~${fmtDur(work)} on site · ~${fmtDur(total - work)} driving`
         + (full ? ` · ${full} full-property ${full === 1 ? "stop" : "stops"}` : "");
-      $("m-status").textContent = s === "start" ? "Not started" : s === "done" ? "Completed" : "Active";
+      $("m-status").textContent = s === "start" ? "READY" : s === "done" ? "DONE" : "ACTIVE";
       $("m-status-box").dataset.state = s === "start" ? "idle" : s === "done" ? "done" : "active";
 
       const cta = $("cta");
       cta.dataset.step = s;
-      cta.textContent = { start: "START DAILY ROUTE", arrive: "ARRIVED AT PROPERTY", complete: "COMPLETE JOB & NEXT STOP" }[s] || "";
+      cta.textContent = ctaLabel(s, cur);
       $("cta-bar").hidden = s === "done";
       renderCurrent(s);
       renderList();
+      updateTravel();
+      snapTo(deck.snap, !deck.placed); deck.placed = true;   // the card changed size: re-measure the peek
       drawMap();
+      loadPreview(cur, () => redrawPreview(true));
     }
 
     function renderCurrent(s) {
       const box = $("current"), cur = current();
       if (!cur) {
-        box.replaceChildren(el("div", { class: "stop-card" },
+        box.replaceChildren(el("div", { class: "stop-card all-done" },
           el("p", { class: "stop-kicker" }, "All done"),
           el("p", { class: "stop-name" }, `${route.stops.length} of ${route.stops.length} stops finished`),
-          el("p", { class: "stop-addr" }, "Great work today. Every customer has their receipt.")));
+          el("p", { class: "stop-addr", id: "peek-end" }, "Great work today. Every customer has their receipt.")));
         return;
       }
       const n = route.stops.indexOf(cur) + 1;
@@ -287,51 +454,162 @@
         el("textarea", { id: "note-text", maxlength: "500", placeholder: "Gate code, dog in yard, anything the next crew should know" }),
         el("button", { class: "btn", type: "button", onclick: () => saveNote(cur.stop_id) }, "Save note"),
         el("span", { class: "note-saved", id: "note-saved" }));
-      box.replaceChildren(el("div", { class: "stop-card" },
+      box.replaceChildren(el("article", { class: "stop-card", "aria-label": "Active job" },
         el("p", { class: "stop-kicker" }, `Stop ${n} of ${route.stops.length}` + (s === "complete" ? " · on site" : s === "arrive" ? " · en route" : "")),
         el("p", { class: "stop-name" }, cur.customer_name),
         el("p", { class: "stop-addr" }, cur.address),
+        el("p", { class: "travel", id: "peek-end" }),
         el("div", { class: "stop-meta" },
           el("span", { class: "chip-d" }, cur.service_label),
           cur.eta ? el("span", { class: "chip-d" }, `ETA ${fmtTime(cur.eta)}`) : null,
           pay),
         el("div", { class: "stop-actions" },
+          // In-app turn-by-turn is the main way to drive; the native Maps app is the backup.
           el("button", { class: "btn btn-nav", type: "button", onclick: () => startNav(cur) }, "➤ Navigate"),
+          el("a", { class: "btn", href: mapsUrl(cur), target: "_blank", rel: "noopener" }, "Open in Maps"),
           el("a", { class: "btn", href: `tel:${cur.phone}` }, "Call")),
-        breakdown(cur),
+        scopeBlock(cur),
         el("button", { class: "note-toggle", type: "button", "aria-expanded": "false", onclick: (e) => {
-          noteBox.hidden = !noteBox.hidden; e.target.setAttribute("aria-expanded", String(!noteBox.hidden));
+          noteBox.hidden = !noteBox.hidden; e.currentTarget.setAttribute("aria-expanded", String(!noteBox.hidden));
         } }, notes[cur.stop_id] ? "📝 Note (1)" : "📝 Add a note"),
         noteBox));
       $("note-text").value = notes[cur.stop_id] || "";
     }
 
-    // OPERATIONAL BREAKDOWN: exactly what this customer paid for, so nobody mows more (or less) than booked.
-    function breakdown(cur) {
-      const sq = cur.lawn_sqft ? `~${cur.lawn_sqft.toLocaleString()} sq ft` : "size not set";
-      const mins = cur.service_minutes ? `Plan ~${cur.service_minutes} min on site.` : "";
+    // SCOPE ENFORCEMENT: exactly what this customer paid for, so nobody mows more (or less) than booked.
+    function scopeBlock(cur) {
+      const sq = cur.lawn_sqft ? cur.lawn_sqft.toLocaleString("en-US") : null;
+      const plan = cur.service_minutes ? `Plan ~${cur.service_minutes} min on site.` : "";
       const extras = (cur.add_ons || []).filter((a) => !String(a.key || "").startsWith("scope_")).map((a) => a.label);
-      const [cls, icon, text] = cur.scope === "scope_yard"
-        ? ["scope-yard", "⚠️", `SCOPE ENFORCEMENT: Customer booked the main / fenced yard only (${sq}). Do NOT cut the rest of the lot.`]
+      const [cls, text] = cur.scope === "scope_yard"
+        ? ["scope-yard", `⚠️ COMPLIANCE LOCK: Core Yard Mowing Only (${sq ? `~${sq} sq ft` : "size not set"}). Do NOT expand service footprint beyond the main fenceline layout.`]
         : cur.scope === "scope_full"
-          ? ["scope-full", "⚡", `SCOPE ENFORCEMENT: Full property (${sq} of mowable turf). Complete edge-to-edge service required.`]
-          : ["scope-legacy", "ℹ️", `Standard visit (${sq}). Older booking: confirm the lawn size when you finish.`];
-      return el("section", { class: `breakdown ${cls}`, "aria-label": "Operational breakdown" },
-        el("p", { class: "breakdown-title" }, "OPERATIONAL BREAKDOWN"),
-        el("p", { class: "breakdown-scope" }, `${icon} ${text}`),
-        el("p", { class: "breakdown-meta" }, [mins, extras.length ? `Also: ${extras.join(", ")}.` : "",
-          cur.scope ? "Price is locked for this area." : ""].filter(Boolean).join(" ")));
+          ? ["scope-full", `⚡ FULL PARCEL ROTATION: Total Estate Infrastructure Management (${sq ? `~${sq} sq ft turf area` : "size not set"}). Perform full edge-to-edge sweep.`]
+          : ["scope-legacy", `ℹ️ STANDARD VISIT (${sq ? `~${sq} sq ft` : "size not set"}). Older booking: confirm the lawn size when you finish.`];
+      const meta = [plan, extras.length ? `Also: ${extras.join(", ")}.` : "", cur.scope ? "Price is locked for this area." : ""].filter(Boolean).join(" ");
+      return el("section", { class: `scope ${cls}`, "aria-label": "Scope enforcement" },
+        el("p", { class: "scope-title" }, "SCOPE ENFORCEMENT"),
+        el("p", { class: "scope-text" }, text),
+        meta ? el("p", { class: "scope-meta" }, meta) : null);
     }
 
+    // Route Sequence Deck: every stop of the day on one timeline. Tap a stop to see it on the map.
     function renderList() {
       const cur = current();
-      $("stop-list").replaceChildren(...route.stops.map((x, i) => el("li", { class: x.completed_at ? "done" : "" },
-        el("span", { class: "n" }, String(i + 1)),
-        el("span", {}, `${x.customer_name.split(/\s+/)[0]} · ${x.address.split(",")[0]}`,
-          x.scope === "scope_full" ? el("span", { class: "tag-full" }, "FULL") : x.scope === "scope_yard" ? el("span", { class: "tag-yard" }, "YARD") : null,
-          x === cur ? " ← now" : ""),
-        el("time", {}, x.completed_at ? "done" : fmtTime(x.eta)))));
+      $("stop-list").replaceChildren(...route.stops.map((x, i) => {
+        const state = x.completed_at ? "done" : x === cur ? "active" : "pending";
+        const tag = x.scope === "scope_full" ? el("span", { class: "tag-full" }, "FULL") : x.scope === "scope_yard" ? el("span", { class: "tag-yard" }, "YARD") : null;
+        const leg = x.leg_duration_s ? `${minutes(x.leg_duration_s)} min drive` : "";
+        const sub = state === "done" ? el("span", { class: "badge-done" }, "✓ Done")
+          : state === "active" ? el("span", { class: "travel" })
+          : el("span", { class: "tl-sub" }, [x.eta ? `ETA ${fmtTime(x.eta)}` : "", leg].filter(Boolean).join(" · "));
+        return el("li", { class: `tl-item is-${state}`, "aria-current": state === "active" ? "step" : false },
+          el("span", { class: "tl-node", "aria-hidden": "true" }, String(i + 1)),
+          el("button", { class: "tl-card", type: "button", onclick: () => showOnMap(x) },
+            el("span", { class: "tl-title" }, el("span", { class: "visually-hidden" }, `Stop ${i + 1}: `),
+              `${x.customer_name.split(/\s+/)[0]} · ${x.address.split(",")[0]}`, tag,
+              state === "active" ? el("span", { class: "badge-now" }, "NOW") : null),
+            sub));
+      }));
     }
+
+    // Travel line for the current stop: live (GPS + road route) when we have it, otherwise the planned leg.
+    function travelInfo(cur, s) {
+      if (s === "complete") return ["onsite", cur.service_minutes ? `On site · plan ~${cur.service_minutes} min` : "On site"];
+      if (preview.stopId === cur.stop_id && preview.dist != null) {
+        return ["live", `Current location → Next stop: ${miles(preview.dist)} mi · ${minutes(preview.secs)} min`];
+      }
+      return ["planned", `Planned leg → Next stop: ${miles(cur.leg_distance_m)} mi · ${minutes(cur.leg_duration_s)} min`];
+    }
+    function updateTravel() {
+      const cur = current();
+      if (!cur) return;
+      const [src, text] = travelInfo(cur, step());
+      document.querySelectorAll("#dash .travel").forEach((t) => { t.dataset.src = src; t.textContent = text; });
+    }
+
+    // ---------- Bottom sheet (portrait phones) ----------
+    // Three snap points: peek (current stop), half and full. It only ever moves with transform, so it stays smooth.
+    const split = matchMedia("(orientation: landscape) and (min-width: 640px), (min-width: 900px)");
+    const deck = { snap: "peek", y: 0, drag: null, moved: false, placed: false };
+    const NEXT_SNAP = { peek: "half", half: "full", full: "peek" };
+    function snapOffset(name) {
+      const box = $("deck"), h = box.offsetHeight;
+      if (name === "full") return 0;
+      const cta = $("cta-bar").hidden ? 0 : $("cta-bar").offsetHeight;
+      const end = $("peek-end");
+      // Peek shows the handle and the current stop down to its travel line, above the big button.
+      const peek = (end ? end.getBoundingClientRect().bottom - box.getBoundingClientRect().top + $("deck-body").scrollTop : 140) + 12 + cta;
+      const visible = name === "half" ? Math.max(peek, Math.round($("dash").clientHeight * 0.55)) : peek;
+      return Math.max(0, h - visible);
+    }
+    function setDeckY(y, animate) {
+      deck.y = y;
+      $("deck").classList.toggle("dragging", !animate);
+      $("deck").style.setProperty("--sheet-y", `${Math.round(y)}px`);
+    }
+    function snapTo(name, instant = false) {
+      const box = $("deck");
+      if (split.matches) { box.style.removeProperty("--sheet-y"); box.dataset.snap = "split"; return; }
+      deck.snap = name; box.dataset.snap = name;
+      if (name !== "full") $("deck-body").scrollTop = 0;
+      setDeckY(snapOffset(name), !instant);
+      $("deck-handle").setAttribute("aria-label", name === "full" ? "Shrink the route panel" : "Show more of the route");
+      $("deck-handle").setAttribute("aria-expanded", String(name === "full"));
+    }
+    const handle = $("deck-handle");
+    handle.addEventListener("pointerdown", (e) => {
+      if (split.matches) return;
+      deck.drag = { y0: e.clientY, from: deck.y, max: snapOffset("peek"), lastY: e.clientY, lastT: e.timeStamp, v: 0 };
+      deck.moved = false;
+      handle.setPointerCapture(e.pointerId);
+    });
+    handle.addEventListener("pointermove", (e) => {
+      const d = deck.drag;
+      if (!d) return;
+      if (Math.abs(e.clientY - d.y0) > 6) deck.moved = true;
+      if (!deck.moved) return;
+      setDeckY(Math.min(d.max, Math.max(0, d.from + e.clientY - d.y0)), false);
+      d.v = (e.clientY - d.lastY) / Math.max(1, e.timeStamp - d.lastT); d.lastY = e.clientY; d.lastT = e.timeStamp;
+    });
+    function endDrag() {
+      const d = deck.drag;
+      deck.drag = null;
+      if (!d || !deck.moved) return;
+      // A flick goes to the next snap that way; a slow drag settles on the nearest one.
+      const snaps = ["full", "half", "peek"].map((name) => ({ name, y: snapOffset(name) }));
+      let pick;
+      if (d.v < -0.4) pick = [...snaps].reverse().find((p) => p.y < deck.y - 1) || snaps[0];
+      else if (d.v > 0.4) pick = snaps.find((p) => p.y > deck.y + 1) || snaps[2];
+      else pick = snaps.reduce((a, b) => Math.abs(b.y - deck.y) < Math.abs(a.y - deck.y) ? b : a);
+      snapTo(pick.name);
+      fitMap(true);
+    }
+    handle.addEventListener("pointerup", endDrag);
+    handle.addEventListener("pointercancel", endDrag);
+    // Tap (or Enter) cycles peek → half → full → peek. A drag ends with a click too, so skip that one.
+    handle.addEventListener("click", () => {
+      if (deck.moved) { deck.moved = false; return; }
+      snapTo(NEXT_SNAP[deck.snap]);
+      fitMap(true);
+    });
+
+    // Rotating the phone or resizing switches layouts: re-measure the deck and let the map fill its new box.
+    let relayout = 0, wasPortrait = innerHeight >= innerWidth;
+    function onLayoutChange(refit) {
+      cancelAnimationFrame(relayout);
+      relayout = requestAnimationFrame(() => {
+        const portrait = innerHeight >= innerWidth;
+        refit = refit || portrait !== wasPortrait; wasPortrait = portrait;
+        if (!route || $("dash").hidden) return;
+        snapTo(deck.snap, true);
+        if (map) { map.resize(); if (refit) fitMap(); }
+      });
+    }
+    addEventListener("resize", () => onLayoutChange(false));
+    addEventListener("orientationchange", () => onLayoutChange(true));
+    if (split.addEventListener) split.addEventListener("change", () => onLayoutChange(true));
+    else if (split.addListener) split.addListener(() => onLayoutChange(true));
 
     // Map: OpenStreetMap tiles (no key, no per-load cost), stops joined in route order.
     // Stops at the same spot share one pin labeled with all their numbers ("4–8"), so nothing hides.
@@ -351,69 +629,97 @@
 
     // Map: OpenStreetMap tiles (no key, no per-load cost). Stops joined in route order, plus where you are now
     // and the road route to the current stop (the same route the directions screen will follow).
-    const preview = { stopId: null, path: null, me: null, marker: null };
-    function drawMap() {
-      if (!window.maplibregl) { $("route-map").hidden = true; return; }
+    const preview = { stopId: null, path: null, dist: null, secs: null, me: null, marker: null, busy: false };
+    // Keep pins out from under the deck: on phones the deck covers the bottom of the map.
+    function mapPadding() {
+      if (split.matches) return { top: 76, right: 34, bottom: 34, left: 34 };
+      const h = $("route-map").clientHeight;
+      const covered = $("deck").offsetHeight - (deck.snap === "full" ? snapOffset("peek") : deck.y);
+      return { top: 76, right: 30, bottom: Math.round(Math.min(h * 0.6, covered + 24)), left: 30 };
+    }
+    function fitMap(animate = false) {
+      if (!map || !route || !map.getSource("line")) return;
+      const all = [...route.stops.map((s) => [s.lng, s.lat]), ...(preview.path || []), ...(preview.me ? [preview.me] : [])];
+      if (!all.length) return;
+      const b = all.reduce((bb, p) => bb.extend(p), new maplibregl.LngLatBounds(all[0], all[0]));
+      map.fitBounds(b, { padding: mapPadding(), maxZoom: 15, duration: animate ? 400 : 0 });
+    }
+    function setMapData(refit = true) {
       const cur = current();
-      const pts = route.stops.map((s) => [s.lng, s.lat]);
-      const fit = () => {
-        const all = [...pts, ...(preview.path || []), ...(preview.me ? [preview.me] : [])];
-        if (!all.length) return;
-        const b = all.reduce((bb, p) => bb.extend(p), new maplibregl.LngLatBounds(all[0], all[0]));
-        map.fitBounds(b, { padding: { top: 34, right: 34, bottom: 70, left: 34 }, maxZoom: 15, duration: 0 });
-      };
-      const setData = () => {
-        map.getSource("line").setData({ type: "Feature", geometry: { type: "LineString", coordinates: pts } });
-        map.getSource("stops").setData({ type: "FeatureCollection", features: groupStops(cur) });
-        map.getSource("preview").setData(preview.path && cur && preview.stopId === cur.stop_id
-          ? { type: "Feature", geometry: { type: "LineString", coordinates: preview.path } } : { type: "FeatureCollection", features: [] });
-        if (preview.me) {
-          if (!preview.marker) preview.marker = new maplibregl.Marker({ element: el("div", { class: "nav-me" }) }).setLngLat(preview.me).addTo(map);
-          else preview.marker.setLngLat(preview.me);
-        }
-        fit();
-      };
-      if (!map) {
-        try {
-          map = new maplibregl.Map({ container: "route-map", style: "https://tiles.openfreemap.org/styles/positron",
-                                     center: pts[0] || [-95.4, 30.1], zoom: 11, attributionControl: { compact: true } });
-        } catch { $("route-map").hidden = true; return; }
-        map.on("load", () => {
-          map.addSource("line", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-          map.addSource("preview", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-          map.addSource("stops", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-          map.addLayer({ id: "line", type: "line", source: "line", paint: { "line-color": "#0b3d2e", "line-width": 3, "line-opacity": 0.5, "line-dasharray": [2, 2] } });
-          map.addLayer({ id: "preview-casing", type: "line", source: "preview", paint: { "line-color": "#0b3d2e", "line-width": 8 } });
-          map.addLayer({ id: "preview", type: "line", source: "preview", paint: { "line-color": "#1a73e8", "line-width": 5 } });
-          map.addLayer({ id: "stops", type: "circle", source: "stops", paint: {
-            "circle-radius": ["match", ["get", "state"], "now", 14, 11],
-            "circle-color": ["match", ["get", "state"], "done", "#9aa7a0", "now", "#b45309", "#2f7d4f"],
-            "circle-stroke-color": "#ffffff", "circle-stroke-width": 2 } });
-          map.addLayer({ id: "stop-n", type: "symbol", source: "stops",
-            layout: { "text-field": ["get", "n"], "text-size": 11, "text-font": ["Noto Sans Bold"], "text-allow-overlap": true },
-            paint: { "text-color": "#ffffff" } });
-          setData();
-        });
-        // Tap the map → turn-by-turn to the current stop.
-        $("route-map").addEventListener("click", () => { const c = current(); if (c) startNav(c); });
-      } else if (map.getSource("line")) setData();
-      loadPreview(cur, () => map && map.getSource("line") && setData());
+      map.getSource("line").setData({ type: "Feature", geometry: { type: "LineString", coordinates: route.stops.map((s) => [s.lng, s.lat]) } });
+      map.getSource("stops").setData({ type: "FeatureCollection", features: groupStops(cur) });
+      map.getSource("preview").setData(preview.path && cur && preview.stopId === cur.stop_id
+        ? { type: "Feature", geometry: { type: "LineString", coordinates: preview.path } } : { type: "FeatureCollection", features: [] });
+      if (preview.me) {
+        if (!preview.marker) preview.marker = new maplibregl.Marker({ element: el("div", { class: "nav-me" }) }).setLngLat(preview.me).addTo(map);
+        else preview.marker.setLngLat(preview.me);
+      }
+      if (refit) fitMap();
+    }
+    function drawMap() {
+      if (!window.maplibregl) { $("route-map").hidden = true; $("map-fit").hidden = true; return; }
+      if (map) { if (map.getSource("line")) setMapData(); return; }
+      const first = route.stops[0];
+      try {
+        map = new maplibregl.Map({ container: "route-map", style: "https://tiles.openfreemap.org/styles/positron",
+                                   center: first ? [first.lng, first.lat] : [-95.4, 30.1], zoom: 11, attributionControl: false });
+        map.addControl(new maplibregl.AttributionControl({ compact: true }), "top-right");
+      } catch { map = null; $("route-map").hidden = true; $("map-fit").hidden = true; return; }
+      map.on("load", () => {
+        map.addSource("line", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+        map.addSource("preview", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+        map.addSource("stops", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+        map.addLayer({ id: "line", type: "line", source: "line", paint: { "line-color": "#0b3d2e", "line-width": 3, "line-opacity": 0.5, "line-dasharray": [2, 2] } });
+        map.addLayer({ id: "preview-casing", type: "line", source: "preview", paint: { "line-color": "#0b3d2e", "line-width": 8 } });
+        map.addLayer({ id: "preview", type: "line", source: "preview", paint: { "line-color": "#1a73e8", "line-width": 5 } });
+        map.addLayer({ id: "stops", type: "circle", source: "stops", paint: {
+          "circle-radius": ["match", ["get", "state"], "now", 14, 11],
+          "circle-color": ["match", ["get", "state"], "done", "#9aa7a0", "now", "#b45309", "#2f7d4f"],
+          "circle-stroke-color": "#ffffff", "circle-stroke-width": 2 } });
+        map.addLayer({ id: "stop-n", type: "symbol", source: "stops",
+          layout: { "text-field": ["get", "n"], "text-size": 11, "text-font": ["Noto Sans Bold"], "text-allow-overlap": true },
+          paint: { "text-color": "#ffffff" } });
+        // Start with the credits folded behind the (i) button so they don't sit on top of the pins.
+        map.getContainer().querySelector(".maplibregl-ctrl-attrib")?.classList.remove("maplibregl-compact-show");
+        setMapData();
+      });
+      // Tap the map (a tap, not a drag or pinch) → turn-by-turn to the current stop.
+      map.on("click", () => { const c = current(); if (c) startNav(c); });
+    }
+    function redrawPreview(refit) {
+      if (map && map.getSource("line")) setMapData(refit);
+      updateTravel();
+    }
+    // Tap a stop in the timeline: drop the deck to peek and center that stop in the part of the map you can see.
+    function showOnMap(stop) {
+      if (!map) return;
+      if (!split.matches && deck.snap !== "peek") snapTo("peek");
+      const pad = mapPadding();
+      map.easeTo({ center: [stop.lng, stop.lat], zoom: Math.max(map.getZoom(), 15), offset: [0, (pad.top - pad.bottom) / 2], duration: 600 });
     }
 
-    // Road route from your GPS to the current stop, fetched once per stop (GPS or service down → just the stops).
-    async function loadPreview(cur, redraw) {
-      if (!cur || step() === "start") { preview.path = null; return; }
-      if (preview.stopId === cur.stop_id && preview.path) return;
-      preview.stopId = cur.stop_id; preview.path = null;
-      const where = await position();
-      if (!where) return;
-      preview.me = [where.lng, where.lat];
+    // Road route from your GPS to the current stop (GPS or service down → just the stops and the planned leg).
+    async function loadPreview(cur, redraw, force = false) {
+      if (!cur || step() === "start") { preview.path = null; preview.dist = null; return; }
+      if (!force && preview.stopId === cur.stop_id && (preview.path || preview.busy)) return;
+      if (preview.stopId !== cur.stop_id) { preview.path = null; preview.dist = null; preview.secs = null; }
+      preview.stopId = cur.stop_id; preview.busy = true;
       try {
-        const d = await api(`/api/crew/directions/${cur.stop_id}?lat=${where.lat}&lng=${where.lng}`);
-        if (preview.stopId === cur.stop_id) preview.path = d.path;
-      } catch {}
-      redraw();
+        const where = await position();
+        if (!where) return;
+        preview.me = [where.lng, where.lat];
+        try {
+          const d = await api(`/api/crew/directions/${cur.stop_id}?lat=${where.lat}&lng=${where.lng}`);
+          if (preview.stopId === cur.stop_id) { preview.path = d.path; preview.dist = d.distance_m; preview.secs = d.duration_s; }
+        } catch {}
+        redraw();
+      } finally { preview.busy = false; }
     }
+    // Keep the live travel line fresh while driving: every 2 minutes, only while this screen is showing.
+    setInterval(() => {
+      if (!route || document.hidden || !$("nav-view").hidden || step() !== "arrive") return;
+      loadPreview(current(), () => redrawPreview(false), true);
+    }, 120000);
 
     // ---------- actions ----------
     async function load() {
@@ -493,6 +799,7 @@
         el("div", { class: "sheet", role: "dialog", "aria-modal": "true", "aria-labelledby": "sheet-title" },
           el("h2", { id: "sheet-title" }, `Finish ${cur.customer_name.split(/\s+/)[0]}'s job`),
           cur.payment_status === "paid" ? el("p", { class: "pay-line" }, "Already paid ✓")
+            : cur.payment_method === "card" && cur.amount_due == null ? el("p", { class: "pay-line due" }, "Card customer with no price yet, so no pay link goes out. Set the price in the full crew app.")
             : cur.payment_method === "card" ? el("p", { class: "pay-line" }, "Card customer: their private pay link is sent when you complete.")
             : needsPrice ? el("p", { class: "pay-line due" }, "This job needs a price. Finish it in the full crew app.")
             : el("p", { class: "pay-line due" }, `Collect ${money(cur.amount_due)} cash. Anything extra is a donation.`),
@@ -542,7 +849,7 @@
 
     // ---------- In-app turn-by-turn navigation ----------
     // The road route comes from our server (OSRM, the same roads used to plan the day). The phone's GPS moves the
-    // blue dot, the banner shows the next turn, and the voice reads it out. If anything fails, Google Maps is one tap away.
+    // blue dot, the banner shows the next turn, and the voice reads it out. If anything fails, the phone's Maps app is one tap away.
     const nav = { stop: null, dir: null, step: 1, watch: null, map: null, me: null, voice: true, warned: new Set(),
                   offCount: 0, lastFetch: 0, wake: null, pos: null, arrivedNear: false };
     try { nav.voice = store.get("navVoice") !== "off"; } catch {}
@@ -594,7 +901,7 @@
     async function startNav(stop) {
       nav.stop = stop; nav.dir = null; nav.step = 1; nav.warned = new Set(); nav.offCount = 0; nav.arrivedNear = false;
       $("nav-view").hidden = false; document.body.style.overflow = "hidden";
-      $("nav-gmaps").href = stop.google_maps_url;
+      $("nav-gmaps").href = mapsUrl(stop);
       $("nav-voice").textContent = nav.voice ? "🔊 Voice on" : "🔇 Voice off";
       $("nav-dist").textContent = "Finding you…"; $("nav-text").textContent = "Getting your GPS location"; $("nav-then").hidden = true;
       $("nav-arrow").textContent = "📡"; $("nav-left").textContent = "–"; $("nav-eta").textContent = "–";
@@ -610,13 +917,14 @@
             nav.map.addSource("nav-dest", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
             nav.map.addLayer({ id: "nav-dest", type: "circle", source: "nav-dest",
               paint: { "circle-radius": 11, "circle-color": "#b45309", "circle-stroke-color": "#fff", "circle-stroke-width": 3 } });
+            nav.map.getContainer().querySelector(".maplibregl-ctrl-attrib")?.classList.remove("maplibregl-compact-show");
             if (nav.dir) drawNavRoute();
           });
         } catch { $("nav-map").hidden = true; }
       } else if (nav.map) { setTimeout(() => nav.map.resize(), 50); }
-      if (!navigator.geolocation) return navProblem("This phone can't share its location. Use Google Maps instead.");
+      if (!navigator.geolocation) return navProblem("This phone can't share its location. Tap Open in Maps instead.");
       nav.watch = navigator.geolocation.watchPosition(onNavFix, (e) => {
-        if (e.code === 1) navProblem("Location is off for this site. Turn it on in your browser settings, or use Google Maps.");
+        if (e.code === 1) navProblem("Location is off for this site. Turn it on in your browser settings, or tap Open in Maps.");
         else if (!nav.pos) { $("nav-dist").textContent = "Looking for GPS…"; $("nav-text").textContent = "Step outside or wait a moment."; }
       }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
     }
@@ -643,7 +951,7 @@
         const first = nav.dir.steps[0];
         if (first) say(`${first.instruction}. ${fmtDist(nav.dir.distance_m).replace("mi", "miles").replace("ft", "feet")} to go.`);
       } catch (err) {
-        if (!nav.dir) navProblem(`${err.message} Tap Google Maps to go now.`);
+        if (!nav.dir) navProblem(`${err.message} Tap Open in Maps to go now.`);
       }
     }
 
@@ -697,7 +1005,7 @@
 
       const atStop = left < 60 || meters(p, nav.dir.destination) < 100;
       $("nav-arrive").classList.toggle("near", atStop);
-      if (atStop && !nav.arrivedNear) { nav.arrivedNear = true; say("You have arrived. Tap arrived at property."); }
+      if (atStop && !nav.arrivedNear) { nav.arrivedNear = true; say("You have arrived. Tap arrived on site."); }
     }
 
     $("nav-voice").addEventListener("click", () => {
@@ -713,6 +1021,12 @@
     });
 
     $("cta").addEventListener("click", onCta);
+    $("map-fit").addEventListener("click", () => fitMap(true));
+    $("route-map").addEventListener("keydown", (e) => {
+      if (e.target !== e.currentTarget || (e.key !== "Enter" && e.key !== " ")) return;
+      e.preventDefault();
+      const c = current(); if (c) startNav(c);
+    });
     $("build-btn").addEventListener("click", async () => {
       $("build-btn").disabled = true;
       try { await replan(); render(); } catch (err) { $("no-route-msg").textContent = err.message; }
