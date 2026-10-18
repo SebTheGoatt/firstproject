@@ -45,6 +45,9 @@ services:
         sync: false
       - key: PUBLIC_BASE_URL
         sync: false
+      # Business contact email shown on the site footer and policy pages (blank = not shown).
+      - key: BUSINESS_EMAIL
+        sync: false
       # Optional: Google review link (Google Business Profile → "Ask for reviews"). Blank = no review requests.
       - key: GOOGLE_REVIEW_URL
         sync: false
