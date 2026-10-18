@@ -46,7 +46,7 @@ from .crew_routes import register_crew_routes
 from .models import (SERVICE_LABELS, order_label, AddressCheck, CompleteStopRequest, GeoPoint, JobCreated,
                      JobRequest, OptimizeRouteRequest, QuoteRequest, RouteView, Service, StopNote, StopView)
 from .charity import causes as charity_causes, chosen_cause, charity_names, describe as describe_charities, route_donation
-from .pricing import (ADD_ONS, FEATURED_PACKAGE, PRICE_BRACKETS, mow_minutes, scope_of, MAX_SQFT, MIN_SQFT, PACKAGES, LawnSizeError, check_sqft, in_season, package_for_rate,
+from .pricing import (ADD_ONS, BRACKET_PROFILES, FEATURED_PACKAGE, PRICE_BRACKETS, mow_minutes, scope_of, MAX_SQFT, MIN_SQFT, PACKAGES, LawnSizeError, check_sqft, in_season, package_for_rate,
                       quote, season_text)
 from .routing.matrix import haversine_m
 from .nightly import run_nightly
@@ -316,7 +316,8 @@ def create_app(
             "packages": [{"key": k, "label": p["label"], "description": p["description"],
                           "charity_rate": float(p["giving"]),
                           # flat price per visit by lawn size (base included); no per-sq-ft rate is shown
-                          "brackets": [{"max_sqft": limit, "price": float(prices[k])} for limit, prices in PRICE_BRACKETS]}
+                          "brackets": [{"max_sqft": limit, "price": float(prices[k]), "profile": name}
+                                       for (limit, prices), name in zip(PRICE_BRACKETS, BRACKET_PROFILES)]}
                          for k, p in PACKAGES.items()],
             "featured_package": FEATURED_PACKAGE,
             "lawn_sqft_limits": {"min": MIN_SQFT, "max": MAX_SQFT},
@@ -374,7 +375,8 @@ def create_app(
             "zone_name": zone.name if zone else None,
             "mow_rate": zone.mow_rate if zone else None,
             "matched_address": geo.formatted_address if geo.precision == "address" else body.address.strip(),
-            "message": (f"Good news: you're in our {zone.name} area. Mowing is ${zone.mow_rate:,.2f} per visit plus a small per-sq-ft rate."
+            "message": (f"Good news: you're in our {zone.name} area. Mowing is a flat price per visit by lawn size, "
+                        f"from ${min(min(p.values()) for _, p in PRICE_BRACKETS):,.0f}."
                         if zone else outside_message()),
             # So the customer doesn't have to guess: an estimate for this area (they can change it; the crew confirms on site).
             "lawn_estimate": estimate_lawn(repo, zone) if zone else None,

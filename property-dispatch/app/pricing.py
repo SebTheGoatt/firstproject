@@ -48,6 +48,9 @@ PRICE_BRACKETS: tuple[tuple[int | None, dict[str, Decimal]], ...] = (
     (15_000, {"standard": Decimal("138.00"), "supporter": Decimal("151.00"), "hero": Decimal("184.00")}),
     (None,   {"standard": Decimal("192.00"), "supporter": Decimal("211.00"), "hero": Decimal("232.00")}),
 )
+# Name of each size bracket, in the same order (shown on the booking summary and sent to Stripe).
+BRACKET_PROFILES = ("Compact Lot Profile", "Standard Suburb Profile", "Large Lot Profile", "Estate Parcel Profile")
+assert len(BRACKET_PROFILES) == len(PRICE_BRACKETS)
 
 
 def bracket_label(lawn_sqft: int | None) -> str:
@@ -62,6 +65,13 @@ def bracket_label(lawn_sqft: int | None) -> str:
             return f"Up to {limit:,} sq ft" if low == 0 else f"{low + 1:,}-{limit:,} sq ft"
         low = limit
     raise AssertionError("unreachable")
+
+
+def bracket_profile(lawn_sqft: int | None) -> str:
+    """The lawn-size bracket by name ("Standard Suburb Profile")."""
+    if not lawn_sqft:
+        return "Size set on site"
+    return next(name for (limit, _), name in zip(PRICE_BRACKETS, BRACKET_PROFILES) if limit is None or lawn_sqft <= limit)
 
 
 def bracket_price(lawn_sqft: int, package: str) -> Decimal:
@@ -172,6 +182,7 @@ class Quote:
         return {"subtotal": f(self.subtotal), "tax_rate": float(self.tax_rate), "tax": f(self.tax),
                 "total": f(self.total), "lawn_sqft": self.lawn_sqft, "basis": self.basis,
                 "package": self.package, "package_label": PACKAGES[self.package]["label"] if self.package else None,
+                "lot_profile": bracket_profile(self.lawn_sqft) if self.lawn_sqft else None,
                 "sqft_rate": f(self.sqft_rate), "base_fee": f(self.base_fee),
                 "charity_rate": f(self.charity_rate), "charity_amount": f(self.charity_amount),
                 "business_net": f(self.business_net), "mow_price": f(self.mow_price),

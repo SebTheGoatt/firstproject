@@ -359,3 +359,28 @@ def test_no_per_square_foot_rate_on_customer_pages():
         text = static.joinpath(page).read_text(encoding="utf-8")
         for leak in ("/ sq. ft.", "0.009", "0.012", "sqft_rate", "Lawn size charge ("):
             assert leak not in text, (page, leak)
+
+
+@pytest.mark.parametrize("sqft, profile, bracket", [
+    (None, "Size set on site", "Size set on site"),
+    (100, "Compact Lot Profile", "Up to 3,500 sq ft"), (3_500, "Compact Lot Profile", "Up to 3,500 sq ft"),
+    (3_501, "Standard Suburb Profile", "3,501-7,500 sq ft"), (4_500, "Standard Suburb Profile", "3,501-7,500 sq ft"),
+    (7_500, "Standard Suburb Profile", "3,501-7,500 sq ft"), (7_501, "Large Lot Profile", "7,501-15,000 sq ft"),
+    (15_000, "Large Lot Profile", "7,501-15,000 sq ft"), (15_001, "Estate Parcel Profile", "Over 15,000 sq ft"),
+])
+def test_each_size_bracket_has_a_profile_name(sqft, profile, bracket):
+    from app.pricing import bracket_label, bracket_profile
+    assert (bracket_profile(sqft), bracket_label(sqft)) == (profile, bracket)
+
+
+def test_booking_page_profile_names_match_the_server(client):
+    """book.html's offline fallback table carries the same prices and profile names as app/pricing.py."""
+    import re
+    from pathlib import Path
+    from app.pricing import BRACKET_PROFILES
+    info = client.get("/api/booking-info").json()
+    assert all([b["profile"] for b in p["brackets"]] == list(BRACKET_PROFILES) for p in info["packages"])
+    src = Path(__file__).resolve().parents[1].joinpath("static", "book.html").read_text(encoding="utf-8")
+    fallback = re.findall(r'\{ max_sqft: (\d+|null), price: (\d+), profile: "([^"]+)" \}', src)
+    assert [(None if m == "null" else int(m), int(pr), name) for m, pr, name in fallback] == \
+        [(b["max_sqft"], b["price"], b["profile"]) for p in info["packages"] for b in p["brackets"]]

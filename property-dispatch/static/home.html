@@ -271,7 +271,7 @@
 
     // Realtor-style service-area map: shaded areas, price pins, and a list that
     // highlights the matching area on hover/tap (and vice versa).
-    function drawAreaMap(zones) {
+    function drawAreaMap(zones, fromPrice) {
       const wrap = document.getElementById("area-map-wrap");
       if (!window.maplibregl || !zones.length) { wrap.hidden = true; return; }
 
@@ -279,7 +279,8 @@
         const [w, s, e, n] = z.bbox;
         return {
           type: "Feature", id: i,
-          properties: { key: z.key, name: z.name, price: money(z.mow_rate), color: ZONE_COLORS[i % ZONE_COLORS.length] },
+          // Lowest flat price per visit (the same in every area); the $35 base alone is not a price anyone pays.
+          properties: { key: z.key, name: z.name, price: money(fromPrice).replace(/\.00$/, ""), color: ZONE_COLORS[i % ZONE_COLORS.length] },
           // A zone can cover several boxes (e.g. Cleveland + Plum Grove).
           geometry: { type: "MultiPolygon", coordinates: (z.boxes || [z.bbox]).map(([bw, bs, be, bn]) =>
             [[[bw, bs], [be, bs], [be, bn], [bw, bn], [bw, bs]]]) },
@@ -336,7 +337,7 @@
           pin.innerHTML = "<span></span><b></b>";
           pin.querySelector("span").textContent = f.properties.name.split(/ [\/&] /)[0];
           pin.querySelector("b").textContent = `from ${f.properties.price}`;
-          pin.setAttribute("aria-label", `${f.properties.name}: mowing ${f.properties.price} per visit plus a per-sq-ft rate`);
+          pin.setAttribute("aria-label", `${f.properties.name}: mowing from ${f.properties.price} per visit`);
           pin.addEventListener("mouseenter", () => setActive(i));
           pin.addEventListener("mouseleave", () => setActive(null));
           pin.addEventListener("click", () => openPopup(i, [(w + e) / 2, (s + n) / 2]));
@@ -436,7 +437,7 @@
         li.append(name);
         list.append(li);
       });
-      drawAreaMap(info.zones);
+      if (isFinite(lowest)) drawAreaMap(info.zones, lowest); else document.getElementById("area-map-wrap").hidden = true;
       if (isFinite(lowest)) document.getElementById("mow-from").textContent = `Starting at ${money(lowest).replace(/\.00$/, "")} per visit`;
       // Google address dropdown on "Check your address" when the owner set the Maps key in Render.
       if (info.google_maps_key) {
