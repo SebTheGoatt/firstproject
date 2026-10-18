@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Go-Live Checklist | {{BUSINESS_NAME}}</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="/static/styles.css?v={{V}}">
+  <style>
+    .ready-wrap { max-width: 640px; margin: 0 auto; padding: 24px 16px 48px; }
+    .ready-banner { padding: 16px; border-radius: 14px; font-weight: 800; font-size: 1.15rem; margin: 12px 0 20px; }
+    .ready-banner.yes { background: #e7f6ec; border: 2px solid #1e7a43; color: #0f4a27; }
+    .ready-banner.no { background: #fff4d6; border: 2px solid #b45309; color: #5c2c00; }
+    .checks { list-style: none; margin: 0; padding: 0; }
+    .checks li { display: grid; grid-template-columns: 32px 1fr; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .checks .mark { font-size: 1.3rem; line-height: 1.2; }
+    .checks .fix { display: block; color: var(--muted); font-size: 0.95rem; margin-top: 2px; overflow-wrap: anywhere; }
+    .checks .opt { font-size: 0.8rem; color: var(--muted); margin-left: 6px; }
+  </style>
+</head>
+<body>
+  <main class="ready-wrap">
+    <p><a href="/crew">← Crew app</a></p>
+    <h1>Go-live checklist</h1>
+    <p class="muted">Everything the business needs before real customers book. Secrets are never shown, only whether they're set.</p>
+    <div id="banner" class="ready-banner" hidden></div>
+    <ul class="checks" id="checks"></ul>
+    <p id="msg" class="muted"></p>
+  </main>
+  <script>
+    let token = null;
+    try { token = localStorage.getItem("crewToken"); } catch {}
+    const $ = (id) => document.getElementById(id);
+    (async () => {
+      if (!token) { $("msg").innerHTML = 'Sign in as the owner in the <a href="/crew">crew app</a> first.'; return; }
+      const res = await fetch("/api/owner/readiness", { headers: { "X-Crew-Token": token } }).catch(() => null);
+      if (!res || !res.ok) { $("msg").textContent = res && res.status === 403 ? "Only the owner can see this." : "Couldn't load the checklist. Sign in again in the crew app."; return; }
+      const d = await res.json();
+      const left = d.checks.filter((c) => c.required && !c.ok).length;
+      $("banner").hidden = false;
+      $("banner").className = "ready-banner " + (d.ready ? "yes" : "no");
+      $("banner").textContent = d.ready ? "✓ Ready to go live." : `${left} required ${left === 1 ? "item" : "items"} left before going live.`;
+      $("checks").replaceChildren(...d.checks.map((c) => {
+        const li = document.createElement("li");
+        const mark = Object.assign(document.createElement("span"), { className: "mark", textContent: c.ok ? "✅" : c.required ? "❌" : "⚪" });
+        const text = document.createElement("div");
+        text.append(Object.assign(document.createElement("strong"), { textContent: c.label }));
+        if (!c.required) text.append(Object.assign(document.createElement("span"), { className: "opt", textContent: "optional" }));
+        if (c.fix) text.append(Object.assign(document.createElement("span"), { className: "fix", textContent: c.fix }));
+        li.append(mark, text);
+        return li;
+      }));
+    })();
+  </script>
+</body>
+</html>

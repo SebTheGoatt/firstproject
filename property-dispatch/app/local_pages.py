@@ -166,23 +166,49 @@ def script_json(data: dict) -> str:
     return json.dumps(data).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
 
 
+def e164(phone: str) -> str:
+    digits = "".join(c for c in phone if c.isdigit())
+    return "+1" + digits if len(digits) == 10 else ("+" + digits if digits else "")
+
+
+def business_node(settings: Settings, site: str) -> dict:
+    """The business itself (home page and every area page share this @id). No street address or exact location:
+    we're a service-area business and don't publish where the crew starts from."""
+    low, high = price_range()
+    node = {"@type": "HomeAndConstructionBusiness", "@id": f"{site}/#business", "name": settings.business_name,
+            "legalName": settings.legal_name, "url": f"{site}/",
+            "description": "Veteran-owned lawn mowing with bin and gutter cleaning add-ons, booked online, "
+                           "on planned neighborhood routes north and northeast of Houston.",
+            "image": f"{site}/static/icons/social.jpg",
+            "address": {"@type": "PostalAddress", "addressLocality": "Spring", "addressRegion": "TX",
+                        "postalCode": "77373", "addressCountry": "US"},
+            "areaServed": [{"@type": "AdministrativeArea", "name": f"{a.city}, TX"} for a in AREAS],
+            "priceRange": f"{dollars(low)}-{dollars(high)}",
+            "openingHoursSpecification": [{"@type": "OpeningHoursSpecification",
+                                           "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+                                           "opens": "07:00", "closes": "17:00"}],
+            "knowsAbout": ["Lawn Mowing", "Gutter Cleaning", "Trash Bin Sanitization", "Holiday Lighting Installation"]}
+    if settings.business_phone:
+        node["telephone"] = e164(settings.business_phone)
+    if settings.business_email:
+        node["email"] = settings.business_email
+    return node
+
+
+def home_structured_data(settings: Settings, site: str) -> str:
+    return f'<script type="application/ld+json">{script_json({"@context": "https://schema.org", **business_node(settings, site)})}</script>'
+
+
 def structured_data(settings: Settings, area: Area, site: str) -> dict:
     """LocalBusiness + this area's mowing Service with every price + breadcrumbs. No street address,
     phone or ratings: we don't publish an address, have no business phone setting, and Google
     forbids self-serving review markup."""
     business_id = f"{site}/#business"
     page_url = f"{site}/local/{area.slug}"
-    low, high = price_range()
     offers = [{"@type": "Offer", "name": f"{y['label']}: {size}", "price": f"{prices[k]:.2f}", "priceCurrency": "USD"}
               for size, _, prices in price_rows() for k, y in YARD_TYPES.items()]
     return {"@context": "https://schema.org", "@graph": [
-        {"@type": "LocalBusiness", "@id": business_id, "name": settings.business_name, "url": f"{site}/",
-         "description": "Veteran-owned lawn mowing with bin and gutter cleaning add-ons, booked online, "
-                        "on planned neighborhood routes north and northeast of Houston.",
-         "image": f"{site}/static/icons/social.jpg",
-         "address": {"@type": "PostalAddress", "addressLocality": "Spring", "addressRegion": "TX", "addressCountry": "US"},
-         "areaServed": [{"@type": "City", "name": f"{a.city}, TX"} for a in AREAS],
-         "priceRange": f"{dollars(low)}-{dollars(high)}"},
+        business_node(settings, site),
         {"@type": "Service", "@id": f"{page_url}#service", "serviceType": "Lawn mowing",
          "name": f"Lawn mowing in {area.city}, TX", "url": page_url, "provider": {"@id": business_id},
          "areaServed": {"@type": "City", "name": f"{area.city}, TX"},

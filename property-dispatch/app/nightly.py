@@ -17,6 +17,7 @@ import logging
 import sys
 from datetime import date, datetime, time, timedelta
 
+from .manifest import send_manifest_for
 from .booking import local_now, next_service_day
 from .config import Settings, get_settings
 from .db import Repository, make_repository
@@ -92,6 +93,11 @@ def run_nightly(
         "matrix_source": result.matrix_source,
     }
     log.info("Route built: %s", summary)
+    try:     # paper backup of the day in the owner's inbox (only when Resend is set up); never blocks the route
+        summary["manifest_emailed"] = send_manifest_for(repo, settings, day)
+    except Exception:
+        log.exception("Manifest email step failed")
+        summary["manifest_emailed"] = False
     return summary
 
 

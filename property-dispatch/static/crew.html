@@ -108,6 +108,8 @@
           <h2 class="tab-title">Dashboard</h2>
           <button class="btn btn-sm" type="button" id="dash-refresh">Refresh</button>
         </div>
+        <p class="owner-links"><a class="btn btn-sm" href="/owner/readiness">Go-live checklist</a>
+          <button class="btn btn-sm" type="button" id="print-manifest">Print manifest</button></p>
         <div class="week" id="week" role="tablist" aria-label="Next 7 days"></div>
         <div id="dash-err" class="alert alert-error" role="alert" hidden></div>
         <div class="kpis" id="kpis"></div>
@@ -888,6 +890,19 @@
       }
     }
     $("dash-refresh").addEventListener("click", loadDash);
+    // The selected day's dispatch manifest, opened as plain text ready to print (it has customer details: owner only).
+    $("print-manifest").addEventListener("click", async () => {
+      const w = window.open("", "_blank");
+      try {
+        const res = await fetch(`/api/owner/manifest/${dashDay}`, { headers: { "X-Crew-Token": token } });
+        const text = res.ok ? await res.text() : (await res.json().catch(() => ({}))).detail || "Couldn't load the manifest.";
+        if (!w) return;
+        w.document.title = `Manifest ${dashDay}`;
+        const pre = w.document.createElement("pre"); pre.textContent = text; pre.style.cssText = "font: 13px/1.4 ui-monospace, Menlo, monospace; white-space: pre-wrap";
+        w.document.body.append(pre);
+        if (res.ok) w.print();
+      } catch { w?.close(); }
+    });
 
     if (token) start(); else showSignin();
   </script>

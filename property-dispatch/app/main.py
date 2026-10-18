@@ -44,8 +44,9 @@ from .agent import register_agent_routes
 from .agent_api import register_agent_api
 from .live_feed import record_booking, register_live_routes
 from .legal_pages import SMS_CONSENT, legal_footer_html, register_legal_pages
-from .local_pages import register_local_pages
+from .local_pages import home_structured_data, register_local_pages
 from .yield_engine import register_yield_engine
+from .readiness import register_readiness
 from .crew_auth import CrewIdentity
 from .crew_routes import register_crew_routes
 from .models import (SERVICE_LABELS, order_label, AddressCheck, CompleteStopRequest, GeoPoint, JobCreated,
@@ -224,8 +225,10 @@ def create_app(
         return HTMLResponse(render(name), headers={"Cache-Control": "no-cache"})
 
     @app.get("/", include_in_schema=False)
-    def home_page():
-        return page("home.html")
+    def home_page(request: Request):
+        # The business's structured data for Google, with this site's own address.
+        text = render("home.html").replace("{{HOME_JSONLD}}", home_structured_data(settings, site_url(settings, request)))
+        return HTMLResponse(text, headers={"Cache-Control": "no-cache"})
 
     @app.get("/book", include_in_schema=False)
     def book_page():
@@ -262,7 +265,8 @@ def create_app(
     crew_auth = register_crew_routes(app, settings)
     register_live_routes(app, settings, crew_auth)   # owner-only live station: /api/track, /api/live/stats (dashboard lives in the crew app's owner tab)
     register_pay_routes(app, settings, app.state.stripe)
-    register_visit_routes(app, settings, crew_auth)
+    owner_auth = register_visit_routes(app, settings, crew_auth)
+    register_readiness(app, settings, owner_auth, page)   # owner's go-live checklist: /owner/readiness
     register_agent_api(app, settings, build={"static_version": version, "commit": os.environ.get("RENDER_GIT_COMMIT", "")[:7]})   # scoped, audited keys for StarNet agents (off unless AGENT_KEY_READ / AGENT_KEY_OPS are set)
     register_agent_routes(app, settings, crew_auth)   # owner-only Ollama dispatch assistant (off unless OLLAMA_BASE_URL is set)
     register_local_pages(app, settings, version)      # server-rendered /local area pages + /sitemap.xml for search engines

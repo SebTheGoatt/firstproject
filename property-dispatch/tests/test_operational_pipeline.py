@@ -334,12 +334,12 @@ def test_m4_local_area_page_carries_json_ld_and_no_customer_data(ops):
     assert len(blocks) == 1
     graph = json.loads(blocks[0])["@graph"]
     types = {n["@type"] for n in graph}
-    assert {"LocalBusiness", "Service", "BreadcrumbList"} <= types
-    business = next(n for n in graph if n["@type"] == "LocalBusiness")
+    assert {"HomeAndConstructionBusiness", "Service", "BreadcrumbList"} <= types
+    business = next(n for n in graph if n["@type"] == "HomeAndConstructionBusiness")
     low, high = price_range()
     assert business["priceRange"] == f"{dollars(low)}-{dollars(high)}" and low == Decimal("75.00")
     assert any("Spring" in a["name"] for a in business["areaServed"])
-    for forbidden in ("aggregateRating", "review", "telephone", "streetAddress"):
+    for forbidden in ("aggregateRating", "review", "streetAddress", '"geo"'):
         assert forbidden not in blocks[0]
     for private in ("Customer 01", "Bridgemont", "555-0101"):
         assert private not in html_text
