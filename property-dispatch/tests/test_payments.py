@@ -197,7 +197,8 @@ def test_checkout_charges_the_bracket_total_and_tags_it_for_the_audit(card_clien
     s = stripe.sessions[-1]
     # 5,000 sq ft on Operational Target: $114.00 flat + 8.25% tax ($9.41) = $123.41 → 12341 cents
     assert (s["amount_due"], s["subtotal"], s["tax"]) == (123.41, 114.0, 9.41)
-    assert s["audit"] == {"property_profile": "3,501-7,500 sq ft", "service_track": "Operational Target",
+    assert s["audit"] == {"property_profile": "Standard Suburb Profile", "size_bracket": "3,501-7,500 sq ft",
+                          "service_track": "Operational Target",
                           "charity_lane": "vfw", "crew_route_id": f"{TOMORROW}#not-routed"}
 
     route_stops(card_client, repo, settings)          # once the route is built, the stop number is known
@@ -217,7 +218,7 @@ def test_audit_metadata_goes_on_the_session_and_the_payment_intent(settings):
         return httpx.Response(200, json={"id": "cs_1", "url": "https://checkout.stripe.test/1"})
 
     settings.stripe_secret_key = "sk_test"
-    audit = {"property_profile": "3,501-7,500 sq ft", "service_track": "Operational Target",
+    audit = {"property_profile": "Standard Suburb Profile", "size_bracket": "3,501-7,500 sq ft", "service_track": "Operational Target",
              "charity_lane": "vfw", "crew_route_id": "2026-10-20#3"}
     StripeClient(settings, httpx.Client(transport=httpx.MockTransport(handler))).create_checkout(
         job_id="j1", service_label="Mowing", service_date="2026-10-20", amount_due=123.41, donation=0,

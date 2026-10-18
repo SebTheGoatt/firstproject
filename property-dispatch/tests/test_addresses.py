@@ -142,7 +142,8 @@ def app_with(settings, repo, geocoder):
 
 def test_check_address_answers_without_saving(client, repo):
     r = client.post("/api/check-address", json={"address": "100 A Example Rd"}).json()
-    assert r["in_area"] is True and r["mow_rate"] == 35.0 and "$35.00 per visit" in r["message"]
+    assert r["in_area"] is True and r["mow_rate"] == 35.0 and "flat price per visit by lawn size, from $75." in r["message"]
+    assert "sq-ft" not in r["message"] and "sq ft rate" not in r["message"]      # no per-sq-ft formula anywhere
     r = client.post("/api/check-address", json={"address": "100 Old Town Rd"}).json()
     assert r["in_area"] is False and "outside our current service areas" in r["message"]
     assert repo.jobs == {} and repo.customers == {}

@@ -18,7 +18,7 @@ from .charity import causes as charity_causes, chosen_cause, describe as describ
 from .config import Settings, site_url
 from .models import SERVICE_LABELS, Service, order_label
 from . import push
-from .pricing import PACKAGES, bracket_label
+from .pricing import PACKAGES, bracket_label, bracket_profile
 from .payments import PaymentError, StripeClient, clean_donation, verify_webhook
 
 log = logging.getLogger(__name__)
@@ -93,12 +93,13 @@ def register_pay_routes(app: FastAPI, settings: Settings, stripe: StripeClient |
         return {"url": session["url"]}
 
     def payment_audit(repo, p: dict) -> dict:
-        """What Stripe records with the payment: size bracket (+ yard/full), tier, giving lane, route stop."""
+        """What Stripe records with the payment: lot profile (+ yard/full), size bracket, tier, giving lane, route stop."""
         scope = next((a["label"] for a in p.get("add_ons") or [] if a.get("scope")), None)
         stop_id = repo.stop_id_for_job(p["job_id"])
         stop = repo.get_stop(stop_id) if stop_id else None
         return {
-            "property_profile": bracket_label(p.get("lawn_sqft")) + (f" · {scope}" if scope else ""),
+            "property_profile": bracket_profile(p.get("lawn_sqft")) + (f" · {scope}" if scope else ""),
+            "size_bracket": bracket_label(p.get("lawn_sqft")),
             "service_track": PACKAGES[p["package"]]["label"] if p.get("package") in PACKAGES else "Older booking",
             "charity_lane": chosen_cause(p.get("giving_split")) or "split_33_33_34",
             "crew_route_id": f"{p['scheduled_date']}#{stop['sequence']}" if stop else f"{p['scheduled_date']}#not-routed",
