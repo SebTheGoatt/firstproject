@@ -262,6 +262,7 @@ def layout(settings: Settings, version: str, *, title: str, description: str, bo
         <a href="/#services">Services</a>
         <a href="/local">Service areas</a>
         <a href="/team">Meet the crew</a>
+        <a href="/about">About</a>
       </nav>
       <a class="btn btn-primary btn-sm header-cta" href="/book">Book now</a>
     </div>
@@ -285,6 +286,7 @@ def layout(settings: Settings, version: str, *, title: str, description: str, bo
         <a href="/#services">Services</a>
         <a href="/local">Service areas</a>
         <a href="/team">Meet the crew</a>
+        <a href="/about">About</a>
         <a href="/visit">View my visit</a>
       </nav>
       <nav class="footer-areas" aria-label="Areas we serve">
@@ -552,7 +554,7 @@ def register_local_pages(app: FastAPI, settings: Settings, version: str = "") ->
     @app.get("/sitemap.xml", include_in_schema=False)
     def sitemap(request: Request):
         site = site_url(settings, request)
-        paths = ["/", "/book", "/team", "/local", *(f"/local/{a.slug}" for a in AREAS), "/privacy", "/terms", "/refunds"]
+        paths = ["/", "/book", "/team", "/local", *(f"/local/{a.slug}" for a in AREAS), "/about", "/privacy", "/terms", "/refunds"]
         urls = "".join(f"  <url><loc>{xml_escape(site + p)}</loc></url>\n" for p in paths)
         body = ('<?xml version="1.0" encoding="UTF-8"?>\n'
                 f'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n{urls}</urlset>\n')
