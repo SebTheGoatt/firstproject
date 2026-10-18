@@ -642,7 +642,7 @@
           const nudgeBtn = document.createElement("button"); nudgeBtn.type = "button"; nudgeBtn.className = "btn btn-outline";
           nudgeBtn.textContent = "Get updates on this phone";
           const nudgeNote = document.createElement("p"); nudgeNote.className = "muted small";
-          nudgeNote.textContent = "We'll notify you when the crew is on the way and when your visit is done. Nothing else.";
+          nudgeNote.textContent = "We'll notify you when the crew is on the way, when your visit is done and when your card payment goes through, plus one note afterward asking how we did. Nothing else.";
           nudge.append(nudgeTitle, nudgeBtn, nudgeNote);
           ok.append(nudge);
           window.SGPush?.setup(body.access_code, { box: nudge, btn: nudgeBtn, note: nudgeNote });

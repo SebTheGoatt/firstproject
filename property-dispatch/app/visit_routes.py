@@ -27,6 +27,7 @@ from . import push
 from .booking import local_now
 from .charity import all_causes, describe as describe_charities, ledger
 from .pricing import PACKAGES
+from .reviews import review_link
 from .config import Settings
 from .crew_auth import CrewIdentity
 from .crew_routes import photo_url
@@ -141,6 +142,8 @@ def register_visit_routes(app: FastAPI, settings: Settings, crew_auth):
             } if member else None,
             "photos": [{"id": p["id"], "kind": p["kind"], "created_at": p["created_at"],
                         "url": f"/media/visit/{p['id']}?code={code}"} for p in v["photos"]],
+            # Same ask for every customer, only once the work is done (app/reviews.py has the rules).
+            "review_url": (review_link(settings) or None) if v["status"] == "completed" else None,
         }
 
     @app.get("/api/push-config")

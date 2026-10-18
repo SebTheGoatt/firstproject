@@ -347,4 +347,9 @@ grant select, insert, update, delete on push_subscriptions to service_role;
 alter table route_stops add column if not exists crew_note text
     check (crew_note is null or length(crew_note) <= 500);
 
+-- ===== migrations/20261027000000_review_requests.sql =====
+-- Google review follow-up: when we asked this customer for a review (once per job, ~20 min after the crew leaves).
+alter table jobs add column if not exists review_requested_at timestamptz;
+create index if not exists jobs_review_due_idx on jobs (completed_at) where review_requested_at is null and status = 'completed';
+
 notify pgrst, 'reload schema';

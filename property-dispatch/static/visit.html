@@ -50,11 +50,17 @@
         <p class="visit-eta" id="v-eta" hidden></p>
         <div class="push-box" id="v-push" hidden>
           <button class="btn btn-outline" type="button" id="push-btn">Get updates on this phone</button>
-          <p class="muted small" id="push-note">We'll notify you when the crew is on the way and when your visit is done. Nothing else.</p>
+          <p class="muted small" id="push-note">We'll notify you when the crew is on the way, when your visit is done and when your card payment goes through, plus one note afterward asking how we did. Nothing else.</p>
         </div>
       </section>
 
       <section class="card visit-crew" id="v-crew" hidden></section>
+
+      <section class="card review-card" id="v-review" hidden>
+        <h2 class="card-title">How did we do?</h2>
+        <p class="muted">If we did a good job, a quick Google review helps a veteran-owned local business. It takes about a minute.</p>
+        <a class="btn btn-primary" id="v-review-link" target="_blank" rel="noopener">Leave a Google review</a>
+      </section>
 
       <section class="card" id="v-pay"></section>
 
@@ -78,6 +84,7 @@
   <script>
     const $ = (id) => document.getElementById(id);
     const KEY = "visitCode";
+    let reviewShown = false;
     const money = (n) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
     const fmtDay = (iso) => new Date(iso + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
     let tz;
@@ -186,6 +193,14 @@
           el("div", {}, el("a", { href: `/team/${m.slug}` }, "See their profile and work"))));
         crew.hidden = false;
       } else crew.hidden = true;
+
+      // Google review (only after the visit is done, and only if the owner set the review link)
+      const review = $("v-review");
+      review.hidden = !v.review_url;
+      if (v.review_url) {
+        $("v-review-link").href = v.review_url;
+        if (new URLSearchParams(location.search).has("review") && !reviewShown) { reviewShown = true; setTimeout(() => review.scrollIntoView({ behavior: "smooth", block: "center" }), 300); }
+      }
 
       // Payment
       const p = v.payment, pay = $("v-pay");

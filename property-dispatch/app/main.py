@@ -13,16 +13,19 @@
     POST /api/stops/{id}/complete   crew: mark done → text next customer
     POST /webhooks/job-completed    external systems: same as above
     POST /internal/nightly          HTTP trigger for the 5 PM route build
+    POST /internal/review-requests  send any Google review requests that are due (also runs on its own)
     GET  /healthz
 """
 
+import asyncio
 import hashlib
 import hmac
 import html
 import logging
 import os
 import secrets
-from datetime import date, timedelta
+from contextlib import asynccontextmanager
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
@@ -30,7 +33,7 @@ from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Res
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import deeplinks, push
+from . import deeplinks, push, reviews
 from .booking import BookingRejected, earliest_bookable_day, local_now, next_service_day, validate_booking
 from .config import Settings, get_settings, site_url
 from .db import Repository, make_repository
@@ -151,6 +154,24 @@ def build_route_view(route: dict, settings: Settings) -> RouteView:
     )
 
 
+def send_review_requests(app: FastAPI, base_url: str) -> dict:
+    s = app.state.settings
+    return reviews.send_due_review_requests(app.state.repo, s, app.state.sms, datetime.now(timezone.utc), base_url,
+                                            app.state.reviews_asked)
+
+
+async def review_loop(app: FastAPI) -> None:
+    """Every few minutes, off the request path: ask for Google reviews ~20 min after each job is done."""
+    s = app.state.settings
+    base_url = (s.public_base_url or os.environ.get("RENDER_EXTERNAL_URL", "")).rstrip("/")
+    while True:
+        await asyncio.sleep(s.review_requests_every_min * 60)
+        try:
+            await asyncio.to_thread(send_review_requests, app, base_url)   # database + texts run in a worker thread
+        except Exception:
+            log.exception("Review request run failed")
+
+
 def create_app(
     settings: Settings | None = None,
     repo: Repository | None = None,
@@ -164,8 +185,16 @@ def create_app(
         if weak:
             raise RuntimeError(f"Set real values for: {', '.join(n.upper() for n in weak)}")
 
-    app = FastAPI(title="Property Dispatch")
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        task = asyncio.create_task(review_loop(app)) if reviews.review_link(settings) and settings.review_requests_every_min > 0 else None
+        yield
+        if task:
+            task.cancel()
+
+    app = FastAPI(title="Property Dispatch", lifespan=lifespan)
     app.state.settings = settings
+    app.state.reviews_asked = set()      # only used until the review_requested_at column exists
     app.state.repo = repo or make_repository(settings)
     app.state.geocoder = geocoder or NominatimGeocoder(settings)
     app.state.sms = sms if sms is not None else (TwilioClient(settings) if settings.twilio_enabled else None)
@@ -639,6 +668,11 @@ def create_app(
     ):
         _check_secret(x_cron_secret, settings.cron_secret)
         return run_nightly(repo, settings, day or next_service_day(local_now(settings)))
+
+    @app.post("/internal/review-requests")
+    def review_requests(request: Request, x_cron_secret: str | None = Header(default=None)):
+        _check_secret(x_cron_secret, settings.cron_secret)
+        return send_review_requests(request.app, site_url(settings, request))
 
     return app
 

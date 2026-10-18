@@ -86,6 +86,9 @@ class Settings(BaseSettings):
     charity_youth_name: str = "At-risk youth programs"
     # Set the official name only once the local program has said yes (e.g. "Marine Toys for Tots, Liberty County").
     charity_toys_name: str = "Holiday toy drive for local kids"
+    # Google review link (Google Business Profile → "Ask for reviews"). Blank = no review requests are sent.
+    google_review_url: str = ""
+    review_requests_every_min: int = 5     # how often the web process looks for jobs to follow up on (0 = off)
 
     # --- Stripe card payments (leave blank to take cash only) ---------
     stripe_secret_key: str = ""

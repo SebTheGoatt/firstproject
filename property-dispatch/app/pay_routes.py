@@ -17,7 +17,8 @@ from pydantic import BaseModel, Field
 from .charity import causes as charity_causes, chosen_cause, describe as describe_charities, ledger, route_donation
 from .config import Settings, site_url
 from .models import SERVICE_LABELS, Service, order_label
-from .pricing import PACKAGES
+from . import push
+from .pricing import PACKAGES, bracket_label
 from .payments import PaymentError, StripeClient, clean_donation, verify_webhook
 
 log = logging.getLogger(__name__)
@@ -82,6 +83,7 @@ def register_pay_routes(app: FastAPI, settings: Settings, stripe: StripeClient |
                 subtotal=p.get("subtotal"), tax=p.get("tax_amount"), tax_rate=p.get("tax_rate"),
                 charities=charity_causes(settings) if chosen_cause(p.get("giving_split")) else describe_charities(settings),
                 charity_choice=chosen_cause(p.get("giving_split")),
+                audit=payment_audit(request.app.state.repo, p),
                 package_label=PACKAGES[p["package"]]["label"] if p.get("package") in PACKAGES else None,
                 charity_rate=p.get("charity_rate"), charity_amount=p.get("charity_amount"),
             )
@@ -89,6 +91,31 @@ def register_pay_routes(app: FastAPI, settings: Settings, stripe: StripeClient |
             raise HTTPException(status_code=503 if "unavailable" in str(exc) else 422, detail=str(exc))
         request.app.state.repo.record_checkout(p["job_id"], session["id"])
         return {"url": session["url"]}
+
+    def payment_audit(repo, p: dict) -> dict:
+        """What Stripe records with the payment: size bracket (+ yard/full), tier, giving lane, route stop."""
+        scope = next((a["label"] for a in p.get("add_ons") or [] if a.get("scope")), None)
+        stop_id = repo.stop_id_for_job(p["job_id"])
+        stop = repo.get_stop(stop_id) if stop_id else None
+        return {
+            "property_profile": bracket_label(p.get("lawn_sqft")) + (f" · {scope}" if scope else ""),
+            "service_track": PACKAGES[p["package"]]["label"] if p.get("package") in PACKAGES else "Older booking",
+            "charity_lane": chosen_cause(p.get("giving_split")) or "split_33_33_34",
+            "crew_route_id": f"{p['scheduled_date']}#{stop['sequence']}" if stop else f"{p['scheduled_date']}#not-routed",
+        }
+
+    def record_card_payment(request: Request, job_id: str, amount_cents, meta: dict) -> None:
+        donation = round(int(meta.get("donation_cents") or 0) / 100, 2)
+        repo = request.app.state.repo
+        try:
+            newly = repo.mark_paid(job_id, method="card", amount_paid=round(int(amount_cents or 0) / 100, 2),
+                                   donation=donation, donation_split=route_donation(donation, meta.get("charity_choice") or None))
+        except KeyError:
+            log.warning("Stripe payment for unknown job %s", job_id)
+            return
+        log.info("Stripe payment for job %s recorded (new=%s)", job_id, newly)
+        if newly:      # first time only: Stripe sends both checkout.session.completed and payment_intent.succeeded
+            push.send_to_job(repo, settings, job_id, "paid")
 
     @app.post("/webhooks/stripe", include_in_schema=False)
     async def stripe_webhook(request: Request, stripe_signature: str | None = Header(default=None)):
@@ -103,14 +130,10 @@ def register_pay_routes(app: FastAPI, settings: Settings, stripe: StripeClient |
             meta = obj.get("metadata") or {}
             job_id = meta.get("job_id") or obj.get("client_reference_id")
             if obj.get("payment_status") == "paid" and job_id:
-                donation = round(int(meta.get("donation_cents") or 0) / 100, 2)
-                try:
-                    newly = request.app.state.repo.mark_paid(
-                        job_id, method="card",
-                        amount_paid=round(int(obj.get("amount_total") or 0) / 100, 2),
-                        donation=donation, donation_split=route_donation(donation, meta.get("charity_choice") or None),
-                    )
-                    log.info("Stripe payment for job %s recorded (new=%s)", job_id, newly)
-                except KeyError:
-                    log.warning("Stripe payment for unknown job %s", job_id)
+                record_card_payment(request, job_id, obj.get("amount_total"), meta)
+        elif event.get("type") == "payment_intent.succeeded":
+            obj = event.get("data", {}).get("object", {})
+            meta = obj.get("metadata") or {}
+            if meta.get("job_id"):          # only our own payments carry a job id
+                record_card_payment(request, meta["job_id"], obj.get("amount_received"), meta)
         return {"received": True}

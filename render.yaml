@@ -45,6 +45,9 @@ services:
         sync: false
       - key: PUBLIC_BASE_URL
         sync: false
+      # Optional: Google review link (Google Business Profile → "Ask for reviews"). Blank = no review requests.
+      - key: GOOGLE_REVIEW_URL
+        sync: false
       - key: CREW_ACCESS_TOKEN
         generateValue: true
       - key: WEBHOOK_SECRET
