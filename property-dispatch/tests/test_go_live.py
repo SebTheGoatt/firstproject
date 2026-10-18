@@ -12,6 +12,7 @@ from app.nightly import run_nightly
 from app.readiness import checks
 
 from .test_api_flow import CREW, NOW, TOMORROW, book
+from .test_local_pages import app_with
 
 
 def test_production_matrix_names_are_understood(monkeypatch):
@@ -77,7 +78,8 @@ def test_readiness_lists_what_is_missing(client, settings):
     by = {c["key"]: c for c in r["checks"]}
     assert by["database"]["ok"] is False and "DATA_BACKEND" in by["database"]["fix"]
     assert by["stripe_live"]["ok"] is False and by["twilio"]["ok"] is False and by["secrets"]["ok"] is False
-    assert by["reviews"]["required"] is False
+    assert by["contact"]["ok"] is False and "BUSINESS_EMAIL" in by["contact"]["fix"]
+    assert by["reviews"]["required"] is False and by["phone"]["required"] is False    # a phone line is optional
     assert all("sk_" not in c["fix"] or "…" in c["fix"] for c in r["checks"])    # never echoes a secret
     assert client.get("/api/owner/readiness").status_code == 401
     page = client.get("/owner/readiness")
@@ -89,7 +91,7 @@ def test_fully_configured_business_is_ready(settings, repo):
                      twilio_account_sid="AC1", twilio_auth_token="t", twilio_from_number="+19365550100",
                      public_base_url="https://example.com", crew_access_token="c" * 30, webhook_secret="w" * 30,
                      cron_secret="x" * 30, business_email="biz@example.com").items():
-        setattr(settings, k, v)
+        setattr(settings, k, v)    # no BUSINESS_PHONE: a phone line is optional
 
     class Live:                                # a reachable database with the new columns and no test data
         def __getattr__(self, name):
@@ -99,12 +101,15 @@ def test_fully_configured_business_is_ready(settings, repo):
     assert missing == []
 
 
-def test_home_page_carries_the_business_structured_data(client):
+def test_home_page_carries_the_business_structured_data(client, settings, repo):
     t = client.get("/").text
     block = re.search(r'<script type="application/ld\+json">(.*?)</script>', t, re.S).group(1)
     d = json.loads(block)
-    assert d["@type"] == "HomeAndConstructionBusiness" and d["telephone"] == "+19364330447"
+    assert d["@type"] == "HomeAndConstructionBusiness" and "telephone" not in d     # no phone until BUSINESS_PHONE is set
     assert d["url"] == "http://testserver/" and d["address"]["postalCode"] == "77373"
     assert [a["name"] for a in d["areaServed"]] == ["Spring, TX", "Klein, TX", "New Caney, TX", "Cleveland, TX", "Colony Ridge, TX"]
     assert d["openingHoursSpecification"][0]["opens"] == "07:00"
     assert "streetAddress" not in d["address"] and "geo" not in d and "{{" not in t
+    t = app_with(settings, repo, business_phone="(281) 555-0199").get("/").text
+    d = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', t, re.S).group(1))
+    assert d["telephone"] == "+12815550199"

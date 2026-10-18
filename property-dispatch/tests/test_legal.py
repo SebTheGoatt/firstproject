@@ -29,7 +29,8 @@ def test_policy_pages_name_the_business_and_how_to_reach_it(client, settings):
         assert r.status_code == 200 and "noindex" not in r.text and "{{" not in r.text
         t = r.text
         assert words in t and "Semper Green LLC" in t
-        assert 'href="mailto:' not in t and 'href="tel:9364330447">(936) 433-0447</a>' in t     # email only once it's set
+        assert 'href="mailto:' not in t and 'href="tel:' not in t     # email and phone only once they're set
+        assert "reply to any of our text messages" in t
     t = app_with(settings, client.app.state.repo, business_phone="(281) 555-0199",
                  business_email="hello@example.com").get("/refunds").text
     assert 'href="tel:2815550199">(281) 555-0199</a>' in t and 'href="mailto:hello@example.com"' in t
@@ -55,10 +56,14 @@ def test_privacy_policy_matches_what_the_app_does(client):
 def test_every_customer_page_links_the_policies_and_contact(client, settings):
     with patch("app.main.local_now", return_value=NOW):
         job = book(client, "A", "0100").json()
-    for path in ("/", "/book", "/team", "/visit", f"/pay/{'x' * 20}", "/local/spring"):
+    paths = ("/", "/book", "/team", "/visit", f"/pay/{'x' * 20}", "/local/spring")
+    for path in paths:
         t = client.get(path).text
         assert all(f'href="/{p}"' in t for p in ("privacy", "terms", "refunds")), path
-        assert "Semper Green LLC" in t and "(936) 433-0447" in t, path
+        assert "Semper Green LLC" in t and 'href="tel:' not in t, path     # no phone until BUSINESS_PHONE is set
+    c = app_with(settings, client.app.state.repo, business_phone="(281) 555-0199")
+    for path in paths:
+        assert 'href="tel:2815550199">(281) 555-0199</a>' in c.get(path).text, path
     assert job["access_code"]
 
 

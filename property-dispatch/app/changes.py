@@ -102,7 +102,8 @@ def register_change_routes(app: FastAPI, settings: Settings, owner, throttle, no
         b = repo().job_brief(v["job_id"])
         if b["status"] not in ("pending", "scheduled") or b.get("notified_at") or b.get("stop_completed_at"):
             raise HTTPException(status_code=409, detail=("The crew is already on the way, so this visit can't be "
-                                                         "cancelled online. Call or text us and we'll sort it out."))
+                                                         "cancelled online. Reply to any of our text messages "
+                                                         "and we'll sort it out."))
         return cancel(b)
 
     # ---------- Owner ----------

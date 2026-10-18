@@ -44,8 +44,8 @@
     "Your visit is cancelled. We'll refund your card by hand within a few days.": "Tu visita fue cancelada. Te devolveremos el pago con tarjeta en unos días.",
     "Your visit is cancelled.": "Tu visita fue cancelada.",
     "This visit was cancelled.": "Esta visita fue cancelada.",
-    "The crew is already on the way, so this visit can't be cancelled online. Call or text us and we'll sort it out.":
-      "El equipo ya va en camino, así que esta visita no se puede cancelar en línea. Llámanos o escríbenos y lo resolvemos.",
+    "The crew is already on the way, so this visit can't be cancelled online. Reply to any of our text messages and we'll sort it out.":
+      "El equipo ya va en camino, así que esta visita no se puede cancelar en línea. Responde a cualquiera de nuestros mensajes de texto y lo resolvemos.",
     "Delete your name, phone number, address, photos and notes from our records? This can't be undone, and this access code will stop working.":
       "¿Eliminar tu nombre, teléfono, dirección, fotos y notas de nuestros registros? No se puede deshacer y este código de acceso dejará de funcionar.",
     "Done. Your information has been deleted. Thank you for choosing us.": "Listo. Tus datos fueron eliminados. Gracias por elegirnos.",
