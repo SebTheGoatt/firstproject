@@ -29,9 +29,10 @@ def test_policy_pages_name_the_business_and_how_to_reach_it(client, settings):
         assert r.status_code == 200 and "noindex" not in r.text and "{{" not in r.text
         t = r.text
         assert words in t and "Semper Green LLC" in t
-        assert f'href="mailto:{settings.business_email}"' in t and 'href="tel:9364330447">(936) 433-0447</a>' in t
-    t = app_with(settings, client.app.state.repo, business_phone="(281) 555-0199").get("/refunds").text
-    assert 'href="tel:2815550199">(281) 555-0199</a>' in t
+        assert 'href="mailto:' not in t and 'href="tel:9364330447">(936) 433-0447</a>' in t     # email only once it's set
+    t = app_with(settings, client.app.state.repo, business_phone="(281) 555-0199",
+                 business_email="hello@example.com").get("/refunds").text
+    assert 'href="tel:2815550199">(281) 555-0199</a>' in t and 'href="mailto:hello@example.com"' in t
 
 
 def test_damage_policy_is_specific_and_only_claims_insurance_when_set(client, settings, repo):
@@ -57,7 +58,7 @@ def test_every_customer_page_links_the_policies_and_contact(client, settings):
     for path in ("/", "/book", "/team", "/visit", f"/pay/{'x' * 20}", "/local/spring"):
         t = client.get(path).text
         assert all(f'href="/{p}"' in t for p in ("privacy", "terms", "refunds")), path
-        assert "Semper Green LLC" in t and settings.business_email in t, path
+        assert "Semper Green LLC" in t and "(936) 433-0447" in t, path
     assert job["access_code"]
 
 
