@@ -11,20 +11,20 @@ from fastapi.responses import HTMLResponse
 
 from .config import Settings
 from .local_pages import cause_names, joined, layout
-from .pricing import density_pct
 
 esc = html.escape
 
 FOUNDERS = (
-    ("Raymundo Alvarez", "Co-Founder · Director of Operations", "USMC Veteran",
-     "Brings over a half-decade of strict operational command and asset protection from the U.S. Marine Corps, "
-     "managing security protocols across global diplomatic infrastructure and U.S. Embassies. Finishes an MBA with a "
-     "4.0 GPA and carries foundational certification in NVIDIA AI Infrastructure & Operations to optimize data "
-     "matrices on the ground."),
-    ("Ciro Marabillo-Arreguin", "Co-Founder · Fleet Supply Chain Manager", "Logistics Lead",
-     "An accomplished enterprise logistics supervisor with a background leading regional multi-stop distribution "
-     "systems and warehouse KPI pipelines at RXO Logistics. Specializes in Lean Six Sigma principles, strict risk "
-     "mitigation planning, and tight scheduling constraints to minimize operational downtime."),
+    ("Raymundo S. Alvarez", "Co-Founder · Director of Operations", "USMC VET / MBA",
+     "Forged through nearly a decade of strict tactical infantry leadership and high-value asset protection within "
+     "the U.S. Marine Corps Security Guard Program, securing vital federal architecture and diplomatic infrastructure "
+     "across global U.S. Embassies. Combines an immaculate 4.0 graduate business background with specialized NVIDIA "
+     "AI Infrastructure tracking to ensure flawless routing execution on the ground."),
+    ("Ciro Marabillo-Arreguin", "Co-Founder · Supply Chain Manager", "LOGISTICS CORE",
+     "An accomplished enterprise shipping, inventory control, and multi-stop operations supervisor with a proven "
+     "record managing complex commercial fleet dispatch paths and strict KPI tracking logs at RXO Logistics. "
+     "Specializes in Lean Six Sigma process improvements, tight resource scheduling, and asset risk mitigation to "
+     "completely eliminate unbilled downtime across target deployment zones."),
 )
 
 
@@ -34,30 +34,32 @@ def about_html(settings: Settings, version: str) -> str:
             <header><div><h3>{esc(name)}</h3><p class="about-role">{esc(role)}</p></div><span class="about-tag">{esc(tag)}</span></header>
             <p>{esc(bio)}</p>
           </article>""" for name, role, tag, bio in FOUNDERS)
-    small, big = int(density_pct(2) * 100), int(density_pct(5) * 100)
     pillars = (
-        ("01 / Absolute Certainty",
-         "We don't guess pricing or schedules via drive-bys. Our system prices your visit from your lot size and yard "
-         "type, and shows the full checkout total with tax before you book. Pick yard only or full property and that "
-         "total is locked."),
-        ("02 / Route Architecture",
-         "Routes are planned every evening, stop by stop, around tight neighborhood clusters to keep travel overhead "
-         f"low. We pass that efficiency back: with 2 or more of our customers booked within half a mile, your mow "
-         f"costs {small}% less ({big}% with 5 or more)."),
-        ("03 / Noble Purpose Impact",
-         "Our mission extends past residential boundaries. Part of every checkout goes to the local cause each client "
-         f"picks: {joined(cause_names(settings))}."),
+        ("01 / Frictionless Autonomy", "The Power of Choice",
+         "We systematically rejected the rigid, forced corporate subscription structures that fatigue modern consumers. "
+         "Instead, we built a streamlined, self-serve transaction shell. You select your exact property coordinates, "
+         "layer high-margin add-ons instantly with zero personal friction, and manage your asset timeline your way."),
+        ("02 / Dynamic Geofences", "Route Density Optimization",
+         f"By locking down our daily regional manifests at {settings.freeze_hour - 12 if settings.freeze_hour > 12 else settings.freeze_hour}:00 PM sharp, "
+         "we treat every morning deployment like a controlled tactical insertion. We map spatial density patterns across "
+         "target ZIP networks, cutting down the fuel and drive-time leakages that drive low-class starters into bankruptcy."),
+        ("03 / Generational Moats", "The Purpose Pledge",
+         "As dedicated Texas homeowners and land stewards, we approach your property boundary with genuine peer "
+         "perspective and oversight. Every mission completed allows you to allocate part of your payment directly to "
+         f"the local cause you pick: {joined(cause_names(settings))}."),
     )
-    cols = "".join(f'<div class="about-pillar"><h4>{esc(t)}</h4><p>{esc(d)}</p></div>' for t, d in pillars)
+    cols = "".join(f'<div class="about-pillar"><p class="about-kicker">{esc(k)}</p><h4>{esc(t)}</h4><p>{esc(d)}</p></div>'
+                   for k, t, d in pillars)
     body = f"""
     <section class="about-hero" aria-labelledby="about-title">
       <div class="site-wrap about-wrap">
         <div class="about-intro">
-          <p class="about-chips"><span>🛡️ Marine-Led Operations</span><span class="dot" aria-hidden="true"></span><span>⚡ AI-Backed Logistics</span></p>
-          <h1 id="about-title">Lawn Care, Run Like an <span>Operation.</span></h1>
-          <p class="about-lede">Most home services suffer from fragmented logistics, unreturned messages, and volatile pricing.
-            We engineered {esc(settings.business_name)} to treat residential asset management with the same precision, security,
-            and technology accountability expected in corporate supply chains and high-stakes operations.</p>
+          <p class="about-chips"><span>🛡️ Veteran-Owned &amp; Managed</span><span class="dot" aria-hidden="true"></span><span>⚡ NVIDIA AI Infrastructure Trained</span></p>
+          <h1 id="about-title">Built on Pedigree. Driven by <span>Discernment.</span></h1>
+          <p class="about-lede">Anyone can deploy a lawn mower or purchase an automated robot. But a machine cannot exercise
+            situational judgment, and unmanaged contractors lack operational accountability. We engineered
+            {esc(settings.business_name.split(" Lawn")[0])} around a single core tenet: bringing elite operational legacy,
+            institutional discipline, and data-driven logistics to home asset preservation.</p>
         </div>
         <div class="about-grid">{people}
         </div>
@@ -66,8 +68,8 @@ def about_html(settings: Settings, version: str) -> str:
       </div>
     </section>"""
     return layout(settings, version, title=f"About | {settings.business_name}",
-                  description="Marine-led, veteran-owned lawn care around Spring, TX, run with logistics discipline: "
-                              "upfront prices, planned routes, and a local cause on every order.",
+                  description="Veteran-owned lawn care around Spring, TX, run with operational discipline: "
+                              "self-serve booking, planned routes, and a local cause on every order.",
                   body=body, canonical=None)
 
 

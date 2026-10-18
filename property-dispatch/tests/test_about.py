@@ -9,10 +9,10 @@ def test_about_page_has_both_founders_and_true_pillars(client, settings):
     t = r.text
     for name, role, tag, _ in FOUNDERS:
         assert name in t and role in t and tag in t
-    assert "Lawn Care, Run Like an <span>Operation.</span>" in t
-    assert "5% less (10% with 5 or more)" in t                                  # the real density discount
+    assert "Built on Pedigree. Driven by <span>Discernment.</span>" in t
+    assert "5:00 PM sharp" in t and "cutting down the fuel" in t
     assert "Holiday toy drive for local kids" in t and "Local veterans and their families" in t   # real causes
-    for false_claim in ("to zero", "service dogs", "recurring users", "fleet tracking points"):
+    for false_claim in ("completely erasing", "verified, local combat veteran", "encrypted payment rails", "service dogs"):
         assert false_claim not in t
 
 
