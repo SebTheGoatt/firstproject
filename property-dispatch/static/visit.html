@@ -70,6 +70,7 @@
         <div class="ba-grid" id="v-photos"></div>
       </section>
 
+      <p class="center" id="cancel-row" hidden><button class="btn btn-outline" type="button" id="cancel-btn">Cancel this visit</button></p>
       <p class="center hint"><button class="link-btn" type="button" id="other-code">Use a different code</button></p>
       <p class="center hint"><button class="link-btn" type="button" id="forget-btn">Delete my information</button></p>
     </article>
@@ -167,7 +168,9 @@
 
       const eta = $("v-eta");
       eta.hidden = true;
-      if (v.status === "completed" && v.completed_at) {
+      if (v.status === "cancelled") {
+        eta.textContent = "This visit was cancelled."; eta.hidden = false;
+      } else if (v.status === "completed" && v.completed_at) {
         eta.textContent = `Finished at ${fmtTime(new Date(v.completed_at))}. Thank you!`; eta.hidden = false;
       } else if (v.eta) {
         const t = new Date(v.eta);
@@ -195,6 +198,9 @@
           el("div", {}, el("a", { href: `/team/${m.slug}` }, "See their profile and work"))));
         crew.hidden = false;
       } else crew.hidden = true;
+
+      // Cancel: open until the crew is on the way (refund policy: full refund before they arrive).
+      $("cancel-row").hidden = !(["pending", "scheduled"].includes(v.status) && !v.on_the_way_at);
 
       // Google review (only after the visit is done, and only if the owner set the review link)
       const review = $("v-review");
@@ -274,6 +280,20 @@
       const c = clean($("code").value).slice(0, 8);
       $("code").value = c.length > 4 ? `${c.slice(0, 4)}-${c.slice(4)}` : c;
     });
+    $("cancel-btn").addEventListener("click", async () => {
+      const code = clean(location.pathname.split("/")[2]);
+      const t = (x) => window.I18N ? I18N.t(x) : x;
+      if (!code || !confirm(t("Cancel this visit? If you paid by card, you get a full refund."))) return;
+      const res = await fetch(`/api/visit/${code}/cancel`, { method: "POST", headers: { "Content-Type": "application/json" },
+                                                            body: JSON.stringify({ confirm: true }) }).catch(() => null);
+      const body = res ? await res.json().catch(() => ({})) : {};
+      if (!res || !res.ok) { alert(t(body.detail || "No connection. Please try again.")); return; }
+      alert(t(body.refund === "started" ? "Your visit is cancelled. Your full refund is on its way to your card."
+            : body.refund === "failed" ? "Your visit is cancelled. We'll refund your card by hand within a few days."
+            : "Your visit is cancelled."));
+      open(code);
+    });
+
     // Privacy request: erase name, phone, address, photos and notes (amounts stay for tax records; see /privacy).
     $("forget-btn").addEventListener("click", async () => {
       const code = clean(location.pathname.split("/")[2]);

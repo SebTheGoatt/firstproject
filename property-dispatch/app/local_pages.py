@@ -511,6 +511,23 @@ def not_found_html(settings: Settings, version: str) -> str:
                   description="See the areas we serve.", body=body)
 
 
+def not_found_page(settings: Settings, version: str) -> str:
+    """Site-wide 404 for a mistyped or old link."""
+    body = """
+    <section class="section" aria-labelledby="nf-title">
+      <div class="site-wrap">
+        <h1 class="page-title" id="nf-title">We couldn't find that page</h1>
+        <p class="section-lede">The link may be old or mistyped. Here's where most people are headed:</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary btn-lg" href="/book">Book a visit</a>
+          <a class="btn btn-lg btn-quiet" href="/visit">View my visit</a>
+          <a class="btn btn-lg btn-quiet" href="/">Home</a>
+        </div>
+      </div>
+    </section>"""
+    return layout(settings, version, title=f"Page not found | {settings.business_name}", description="Page not found.", body=body)
+
+
 def register_local_pages(app: FastAPI, settings: Settings, version: str = "") -> None:
     """/local pages and /sitemap.xml. `version` is the static-file hash for the stylesheet link."""
 

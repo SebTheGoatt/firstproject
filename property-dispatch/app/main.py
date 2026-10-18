@@ -45,7 +45,7 @@ from .agent_api import register_agent_api
 from .live_feed import record_booking, register_live_routes
 from .about_page import register_about_page
 from .legal_pages import SMS_CONSENT, legal_footer_html, register_legal_pages
-from .local_pages import home_structured_data, register_local_pages
+from .local_pages import home_structured_data, not_found_page, register_local_pages
 from .yield_engine import register_yield_engine
 from .readiness import register_readiness
 from .crew_auth import CrewIdentity
@@ -201,6 +201,29 @@ def create_app(
             task.cancel()
 
     app = FastAPI(title="Property Dispatch", lifespan=lifespan)
+
+    # Standard browser protections on every response (a route's own header wins, e.g. no-referrer on /pay).
+    @app.middleware("http")
+    async def security_headers(request: Request, call_next):
+        resp = await call_next(request)
+        for k, v in (("X-Content-Type-Options", "nosniff"), ("X-Frame-Options", "DENY"),
+                     ("Referrer-Policy", "strict-origin-when-cross-origin"),
+                     ("Permissions-Policy", "camera=(self), geolocation=(self), microphone=()")):
+            resp.headers.setdefault(k, v)
+        if request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https":
+            resp.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+        return resp
+
+    # A friendly page for people who follow a bad link; the API keeps answering in JSON.
+    from starlette.exceptions import HTTPException as StarletteHTTPException
+    from fastapi.exception_handlers import http_exception_handler
+
+    @app.exception_handler(StarletteHTTPException)
+    async def friendly_404(request: Request, exc: StarletteHTTPException):
+        wants_page = request.method == "GET" and "text/html" in request.headers.get("accept", "")
+        if exc.status_code == 404 and wants_page and not request.url.path.startswith(("/api/", "/media/", "/static/")):
+            return HTMLResponse(not_found_page(settings, static_version()), status_code=404)
+        return await http_exception_handler(request, exc)
     app.state.settings = settings
     app.state.reviews_asked = set()      # only used until the review_requested_at column exists
     app.state.repo = repo or make_repository(settings)

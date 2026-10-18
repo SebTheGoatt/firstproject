@@ -28,6 +28,7 @@ from pydantic import BaseModel, Field
 from . import push
 from .booking import local_now
 from .charity import all_causes, describe as describe_charities, ledger
+from .changes import register_change_routes
 from .manifest import build_manifest
 from .pricing import PACKAGES
 from .reviews import review_link
@@ -312,4 +313,5 @@ def register_visit_routes(app: FastAPI, settings: Settings, crew_auth):
             raise HTTPException(status_code=409, detail="There are no bookings to route for that day.")
         return run_nightly(r, settings, day)
 
+    register_change_routes(app, settings, owner, visit_throttle, normalize_code)   # cancel / move / rain day
     return owner

@@ -121,6 +121,23 @@ class StripeClient:
         return {"id": body["id"], "url": body["url"]}
 
 
+    def refund_checkout(self, session_id: str) -> str:
+        """Full refund of a paid Checkout Session (cancelled visit). Returns the Stripe refund id."""
+        auth = (self.settings.stripe_secret_key, "")
+        try:
+            session = self.client.get(f"{self.API}/checkout/sessions/{session_id}", auth=auth)
+            session.raise_for_status()
+            intent = session.json().get("payment_intent")
+            if not intent:
+                raise PaymentError("That payment has nothing to refund.")
+            r = self.client.post(f"{self.API}/refunds", auth=auth,
+                                 data={"payment_intent": intent, "metadata[reason]": "visit_cancelled"})
+            r.raise_for_status()
+            return r.json()["id"]
+        except httpx.HTTPError as exc:
+            raise PaymentError("The card refund didn't go through automatically.") from exc
+
+
 def verify_webhook(payload: bytes, signature_header: str | None, secret: str, now: float | None = None) -> dict:
     """Check Stripe's `Stripe-Signature` header and return the parsed event."""
     if not signature_header or not secret:
