@@ -95,6 +95,7 @@ def _visit(j: dict, cust: dict, stop: dict | None, member: dict | None, photos: 
 class Repository(Protocol):
     # Jobs & routes
     def count_active_jobs(self, day: date) -> int: ...
+    def active_job_points(self, since: date) -> list[tuple[float, float]]: ...   # (lat, lng) of upcoming bookings
     def create_job(self, *, name: str, phone: str, address: str, geo: GeoPoint, service: Service,
                    scheduled_date: date, service_minutes: int, zone_key: str, quoted_price: float | None,
                    payment_method: str = "cash", pay_token: str | None = None,
@@ -217,6 +218,11 @@ class SupabaseRepository:
             .eq("scheduled_date", day.isoformat()).in_("status", list(ACTIVE_STATUSES)).execute()
         )
         return res.count or 0
+
+    def active_job_points(self, since: date) -> list[tuple[float, float]]:
+        rows = (self.sb.table("jobs").select("lat, lng").gte("scheduled_date", since.isoformat())
+                .in_("status", list(ACTIVE_STATUSES)).execute()).data
+        return [(r["lat"], r["lng"]) for r in rows]
 
     def create_job(self, *, name, phone, address, geo, service, scheduled_date, service_minutes,
                    zone_key, quoted_price, payment_method="cash", pay_token=None, access_code=None,
@@ -593,6 +599,10 @@ class MemoryRepository:
 
     def count_active_jobs(self, day: date) -> int:
         return sum(1 for j in self.jobs.values() if j["scheduled_date"] == day and j["status"] in ACTIVE_STATUSES)
+
+    def active_job_points(self, since: date) -> list[tuple[float, float]]:
+        return [(j["lat"], j["lng"]) for j in self.jobs.values()
+                if j["status"] in ACTIVE_STATUSES and j["scheduled_date"] >= since]
 
     def create_job(self, *, name, phone, address, geo, service, scheduled_date, service_minutes,
                    zone_key, quoted_price, payment_method="cash", pay_token=None, access_code=None,

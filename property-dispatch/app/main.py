@@ -45,6 +45,7 @@ from .agent_api import register_agent_api
 from .live_feed import record_booking, register_live_routes
 from .legal_pages import SMS_CONSENT, legal_footer_html, register_legal_pages
 from .local_pages import register_local_pages
+from .yield_engine import register_yield_engine
 from .crew_auth import CrewIdentity
 from .crew_routes import register_crew_routes
 from .models import (SERVICE_LABELS, order_label, AddressCheck, CompleteStopRequest, GeoPoint, JobCreated,
@@ -265,6 +266,7 @@ def create_app(
     register_agent_routes(app, settings, crew_auth)   # owner-only Ollama dispatch assistant (off unless OLLAMA_BASE_URL is set)
     register_local_pages(app, settings, version)      # server-rendered /local area pages + /sitemap.xml for search engines
     register_legal_pages(app, settings, version)      # /privacy, /terms (with the damage policy), /refunds
+    register_yield_engine(app, settings, page)        # owner's yield pricing engine: /api/v1/calculate-yield-price + /estimate
 
     @app.get("/push-setup", include_in_schema=False)
     def push_setup_page():
