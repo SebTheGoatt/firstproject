@@ -808,3 +808,53 @@ label.check input { width: 18px; height: 18px; }
 .impact-options input:focus-visible + label { outline: 3px solid color-mix(in srgb, var(--brand) 45%, transparent); }
 .impact-promise { margin: 18px 0 10px; padding: 10px 12px; border-radius: 10px; background: var(--brand-soft); color: var(--brand);
   font-weight: 600; font-size: 0.88rem; line-height: 1.45; }
+
+/* ---------- Local area pages (/local, /local/{area}) ---------- */
+.local .section + .section { border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+.local .section.final-cta { border-top: 0; }
+.local-hero { padding-block: 40px 32px; }
+.crumbs ol { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0 8px; font-size: 0.88rem; color: var(--muted); }
+.crumbs li + li::before { content: "›"; margin-right: 8px; }
+.crumbs a { color: var(--muted); display: inline-block; padding-block: 4px; }
+.local h3 { margin: var(--space-5) 0 var(--space-2); font-size: 1.1rem; }
+.local-check { margin: var(--space-3) 0 0; }
+.local-check a { color: var(--brand); font-weight: 600; }
+.price-card { padding: 4px 20px; }
+.price-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.price-table th, .price-table td { padding: 12px 10px; text-align: right; border-bottom: 1px solid var(--border); }
+.price-table tbody tr:last-child th, .price-table tbody tr:last-child td { border-bottom: 0; }
+.price-table th:first-child { text-align: left; padding-left: 0; }
+.price-table th:last-child, .price-table td:last-child { padding-right: 0; }
+.price-table thead th { font-size: 0.9rem; vertical-align: bottom; }
+.price-table tbody th { font-weight: 600; }
+.price-table td { font-weight: 700; font-size: 1.1rem; }
+.tax-note { margin: 12px 0 0; font-weight: 600; }
+.local-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.local-list li { display: grid; gap: 2px; align-content: start; padding: 12px 14px;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.local-list span { color: var(--muted); font-size: 0.9rem; }
+.local-trust { margin-top: 0; }
+.area-links { list-style: none; margin: 0 0 var(--space-3); padding: 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.area-links a { display: block; padding: 12px 14px; border: 1px solid var(--border); border-left: 4px solid var(--brand); border-radius: 10px;
+  color: var(--text); font-weight: 600; text-decoration: none; }
+.area-links a:hover { background: var(--brand-soft); }
+.local-grid { list-style: none; margin: var(--space-4) 0 0; padding: 0; display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.local-card { display: grid; gap: 6px; height: 100%; align-content: start; color: var(--text); text-decoration: none; border-left: 4px solid var(--brand); }
+.local-card strong { font-size: 1.1rem; }
+.local-card span { color: var(--muted); font-size: 0.92rem; }
+.local-card .local-card-cta { color: var(--brand); font-weight: 650; }
+.local-card:hover { box-shadow: var(--shadow), 0 8px 24px rgb(0 0 0 / 0.06); }
+/* "Areas we serve" row in the footer */
+.footer-grid .footer-areas { grid-column: 1 / -1; justify-content: flex-start; gap: 0 16px; }
+.footer-areas .footer-areas-title { font-weight: 650; color: var(--text); }
+/* Phones: each lawn size becomes its own small block with one line per rate */
+@media (max-width: 600px) {
+  .price-card { padding: 4px 16px; }
+  .price-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .price-table, .price-table tbody, .price-table tr, .price-table th, .price-table td { display: block; }
+  .price-table tbody tr { padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .price-table tbody tr:last-child { border-bottom: 0; }
+  .price-table tbody th { padding: 0 0 4px; border: 0; }
+  .price-table td { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border: 0; font-size: 1rem; }
+  .price-table td::before { content: attr(data-label); font-weight: 500; color: var(--muted); text-align: left; }
+}

@@ -29,6 +29,7 @@
     "Main": "Principal",
     "Sections": "Secciones",
     "Footer": "Pie de página",
+    "Areas we serve": "Áreas que atendemos",
     "Book a service": "Reservar un servicio",
     "Book a Service": "Reservar un servicio",
     "View my visit": "Ver mi visita",
