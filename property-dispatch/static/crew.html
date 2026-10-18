@@ -109,7 +109,8 @@
           <button class="btn btn-sm" type="button" id="dash-refresh">Refresh</button>
         </div>
         <p class="owner-links"><a class="btn btn-sm" href="/owner/readiness">Go-live checklist</a>
-          <button class="btn btn-sm" type="button" id="print-manifest">Print manifest</button></p>
+          <button class="btn btn-sm" type="button" id="print-manifest">Print manifest</button>
+          <button class="btn btn-sm" type="button" id="rain-day">Rain day</button></p>
         <div class="week" id="week" role="tablist" aria-label="Next 7 days"></div>
         <div id="dash-err" class="alert alert-error" role="alert" hidden></div>
         <div class="kpis" id="kpis"></div>
@@ -866,6 +867,7 @@
         const ul = $("job-list"); ul.replaceChildren();
         if (!d.jobs.length) ul.append(el("li", { class: "empty" }, "No bookings for this day yet."));
         for (const j of d.jobs) {
+          const open = ["pending", "scheduled"].includes(j.status) && !j.completed_at;
           const copy = el("button", { type: "button", class: "code-chip", title: "Copy access code" }, j.access_code || "—");
           copy.addEventListener("click", async () => {
             try { await navigator.clipboard.writeText(j.access_code); toast("Access code copied."); } catch { toast(j.access_code); }
@@ -882,7 +884,9 @@
                 payChip(j))),
             el("div", { class: "job-side" },
               el("a", { href: `tel:${j.phone}`, class: "muted small" }, fmtPhone(j.phone)),
-              copy)));
+              copy,
+              open ? el("button", { type: "button", class: "btn btn-sm", onclick: () => changeJob(j, "move") }, "Move") : null,
+              open ? el("button", { type: "button", class: "btn btn-sm", onclick: () => changeJob(j, "cancel") }, "Cancel") : null)));
         }
       } catch (err) {
         $("dash-err").textContent = err instanceof TypeError ? "No signal. Pull to refresh when you're connected." : err.message;
@@ -890,6 +894,30 @@
       }
     }
     $("dash-refresh").addEventListener("click", loadDash);
+    // Change a booking: move it to another day, or cancel it (card payments are refunded automatically).
+    async function changeJob(j, what) {
+      try {
+        if (what === "move") {
+          const day = prompt(`Move ${j.customer_name}'s visit to which day? (YYYY-MM-DD)`, dashDay);
+          if (!day) return;
+          await api(`/api/owner/jobs/${j.job_id}/move`, { method: "POST", json: { day } });
+          toast(`Moved to ${day}. The customer was texted.`);
+        } else {
+          if (!confirm(`Cancel ${j.customer_name}'s visit? Card payments are refunded in full.`)) return;
+          const r = await api(`/api/owner/jobs/${j.job_id}/cancel`, { method: "POST" });
+          toast(r.refund === "failed" ? "Cancelled. The card refund didn't go through: refund it in Stripe." : "Cancelled. The customer was texted.");
+        }
+        loadDash();
+      } catch (err) { toast(err.message); }
+    }
+    $("rain-day").addEventListener("click", async () => {
+      if (!confirm("Rain day: move every visit that hasn't started on this day to the next day, and text each customer?")) return;
+      try {
+        const r = await api(`/api/owner/days/${dashDay}/rain`, { method: "POST" });
+        toast(`${r.moved} visit(s) moved to ${r.to}. Customers were texted.`);
+        loadDash();
+      } catch (err) { toast(err.message); }
+    });
     // The selected day's dispatch manifest, opened as plain text ready to print (it has customer details: owner only).
     $("print-manifest").addEventListener("click", async () => {
       const w = window.open("", "_blank");

@@ -152,6 +152,10 @@ class Repository(Protocol):
     def get_visit(self, access_code: str) -> dict | None: ...
     def forget_customer(self, access_code: str) -> str: ...   # "deleted" | "upcoming" | "not_found"
     def count_customers_named(self, prefix: str) -> int: ...  # test data check before going live
+    # Changes to a booking: cancel, move to another day (rain days). Both take it off any built route.
+    def job_brief(self, job_id: str) -> dict | None: ...
+    def cancel_job(self, job_id: str) -> bool: ...
+    def move_job(self, job_id: str, day: date) -> bool: ...
     def add_job_photo(self, job_id: str, member_id: str | None, kind: str, photo: str) -> dict: ...
     def list_job_photos(self, job_id: str) -> list[dict]: ...
     def job_photo(self, photo_id: str) -> dict | None: ...
@@ -547,6 +551,43 @@ class SupabaseRepository:
         self.sb.table("customers").update({"name": DELETED_NAME, "phone": _anonymous_phone()}).eq("id", cid).execute()
         return "deleted"
 
+    BRIEF_SELECT = ("id, status, scheduled_date, service, add_ons, payment_method, payment_status, amount_paid, amount_due, "
+                    "stripe_session_id, access_code, lang, customers(name, phone), route_stops(id, notified_at, completed_at)")
+
+    def job_brief(self, job_id: str) -> dict | None:
+        rows = self.sb.table("jobs").select(self.BRIEF_SELECT).eq("id", job_id).limit(1).execute().data
+        if not rows:
+            return None
+        r = rows[0]
+        stop = self._one(r.pop("route_stops", None)) or {}
+        cust = r.pop("customers")
+        return {**r, "scheduled_date": date.fromisoformat(str(r["scheduled_date"])), "customer_name": cust["name"],
+                "phone": cust["phone"], "notified_at": stop.get("notified_at"), "stop_completed_at": stop.get("completed_at")}
+
+    def _drop_stop(self, job_id: str) -> None:
+        """Take a job off its (unstarted) route and close the gap in the stop numbers."""
+        for r in self.sb.table("route_stops").select("id, route_id").eq("job_id", job_id).execute().data:
+            self.sb.table("route_stops").delete().eq("id", r["id"]).execute()
+            rest = (self.sb.table("route_stops").select("id, leg_distance_m, leg_duration_s, eta")
+                    .eq("route_id", r["route_id"]).order("sequence").execute().data)
+            self.resequence_stops(r["route_id"], [{"stop_id": s["id"], "sequence": i, "leg_distance_m": s["leg_distance_m"],
+                                                    "leg_duration_s": s["leg_duration_s"], "eta": s["eta"]}
+                                                   for i, s in enumerate(rest, start=1)])
+
+    def cancel_job(self, job_id: str) -> bool:
+        rows = (self.sb.table("jobs").update({"status": "cancelled"}).eq("id", job_id)
+                .in_("status", list(ACTIVE_STATUSES)).execute()).data
+        if rows:
+            self._drop_stop(job_id)
+        return bool(rows)
+
+    def move_job(self, job_id: str, day: date) -> bool:
+        rows = (self.sb.table("jobs").update({"scheduled_date": day.isoformat(), "status": "pending", "frozen_at": None})
+                .eq("id", job_id).in_("status", list(ACTIVE_STATUSES)).execute()).data
+        if rows:
+            self._drop_stop(job_id)
+        return bool(rows)
+
     def get_visit(self, access_code: str) -> dict | None:
         rows = (
             self.sb.table("jobs")
@@ -931,6 +972,44 @@ class MemoryRepository:
                          lat=round(x["lat"], 2), lng=round(x["lng"], 2))
             self.customers[j["customer_id"]].update(name=DELETED_NAME, phone=_anonymous_phone())
             return "deleted"
+
+    def job_brief(self, job_id: str) -> dict | None:
+        j = self.jobs.get(job_id)
+        if j is None:
+            return None
+        c, st = self.customers[j["customer_id"]], self._stop_for(job_id) or {}
+        return {**{k: j.get(k) for k in ("id", "status", "scheduled_date", "service", "add_ons", "payment_method",
+                                          "payment_status", "amount_paid", "amount_due", "stripe_session_id",
+                                          "access_code", "lang")},
+                "customer_name": c["name"], "phone": c["phone"], "notified_at": st.get("notified_at"),
+                "stop_completed_at": st.get("completed_at")}
+
+    def _drop_stop(self, job_id: str) -> None:
+        st = self._stop_for(job_id)
+        if st is None:
+            return
+        del self.stops[st["id"]]
+        rest = sorted((s for s in self.stops.values() if s["route_id"] == st["route_id"]), key=lambda s: s["sequence"])
+        for i, s in enumerate(rest, start=1):
+            s["sequence"] = i
+
+    def cancel_job(self, job_id: str) -> bool:
+        with self._lock:
+            j = self.jobs.get(job_id)
+            if j is None or j["status"] not in ACTIVE_STATUSES:
+                return False
+            j["status"] = "cancelled"
+            self._drop_stop(job_id)
+            return True
+
+    def move_job(self, job_id: str, day: date) -> bool:
+        with self._lock:
+            j = self.jobs.get(job_id)
+            if j is None or j["status"] not in ACTIVE_STATUSES:
+                return False
+            j.update(scheduled_date=day, status="pending", frozen_at=None)
+            self._drop_stop(job_id)
+            return True
 
     def get_visit(self, access_code: str) -> dict | None:
         j = next((j for j in self.jobs.values() if access_code and j.get("access_code") == access_code), None)
