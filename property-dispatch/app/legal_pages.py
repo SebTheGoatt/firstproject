@@ -31,14 +31,14 @@ def legal_footer_html(settings: Settings) -> str:
 
 
 def contact_words(settings: Settings) -> str:
-    """How to reach us, as HTML: email, and the phone once it's set."""
+    """How to reach us, as HTML: email and phone once they're set, else a reply to our texts (every booking gets them)."""
     parts = []
     if settings.business_email:
         parts.append(f'email <a href="mailto:{esc(settings.business_email)}">{esc(settings.business_email)}</a>')
     if settings.business_phone:
         digits = "".join(c for c in settings.business_phone if c.isdigit() or c == "+")
         parts.append(f'call or text <a href="tel:{esc(digits)}">{esc(settings.business_phone)}</a>')
-    return " or ".join(parts) or "contact us through your visit page"
+    return " or ".join(parts) or "reply to any of our text messages"
 
 
 def page(settings: Settings, version: str, title: str, description: str, sections: str) -> str:

@@ -68,7 +68,7 @@ class Settings(BaseSettings):
     # Who customers contract with, and how they reach us (footer, privacy policy, terms, refunds).
     legal_name: str = "Semper Green LLC"
     business_email: str = ""       # set BUSINESS_EMAIL in Render once the business Gmail exists; shown everywhere then
-    business_phone: str = "(936) 433-0447"
+    business_phone: str = ""       # optional BUSINESS_PHONE: a business line (e.g. Google Voice), never a personal cell
     # Shown under the "Operational Base & Liability Allocation" line at booking, ONLY when the owner sets them.
     # Put the real amount from your insurance certificate (e.g. "$2M"); leave blank if you don't carry it.
     liability_coverage: str = ""

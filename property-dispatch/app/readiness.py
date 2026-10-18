@@ -64,8 +64,9 @@ def checks(settings: Settings, repo, stripe_enabled: bool) -> list[dict]:
         all(len(getattr(settings, n)) >= STRONG and getattr(settings, n) != "change-me"
             for n in ("crew_access_token", "webhook_secret", "cron_secret")),
         f"Render: CREW_ACCESS_TOKEN, WEBHOOK_SECRET, CRON_SECRET at least {STRONG} random characters each")
-    add("contact", "Business phone and email on the site", settings.business_phone and settings.business_email,
-        "Render: BUSINESS_EMAIL (and BUSINESS_PHONE if it changes)")
+    add("contact", "Business email on the site", settings.business_email, "Render: BUSINESS_EMAIL (your business Gmail)")
+    add("phone", "Business phone line on the site", settings.business_phone,
+        "Render: BUSINESS_PHONE (a business line such as Google Voice, never a personal cell)", required=False)
     add("maps", "Google address dropdown", settings.google_maps_browser_key, "Render: GOOGLE_MAPS_API_KEY", required=False)
     add("reviews", "Google review link", review_link(settings), "Render: GOOGLE_REVIEW_URL (Google Business Profile → Ask for reviews)",
         required=False)

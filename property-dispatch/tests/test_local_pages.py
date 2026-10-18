@@ -131,9 +131,12 @@ def test_json_ld_never_has_ratings_phone_or_street(settings, repo):
     c = app_with(settings, repo, twilio_from_number="+12815550000")    # a texting number is not a business phone
     for path in AREA_PATHS:
         raw = LD_JSON.findall(c.get(path).text)[0]
-        assert '"telephone": "+19364330447"' in raw     # the business phone, never the texting number
-        for banned in ("aggregateRating", "review", "streetAddress", "2815550000", '"geo"'):
+        for banned in ("aggregateRating", "review", "streetAddress", "2815550000", '"geo"', '"telephone"'):
             assert banned not in raw, (path, banned)
+    c = app_with(settings, repo, business_phone="(281) 555-0199")      # a phone only once BUSINESS_PHONE is set
+    for path in AREA_PATHS:
+        raw = LD_JSON.findall(c.get(path).text)[0]
+        assert '"telephone": "+12815550199"' in raw and "2815550000" not in raw, path   # never the texting number
 
 
 def test_index_lists_every_area(client):
