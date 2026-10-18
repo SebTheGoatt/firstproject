@@ -13,7 +13,7 @@ import json
 from . import push
 from .charity import CHARITY_SPLIT
 from .config import Settings
-from .pricing import ADD_ONS, MAX_SQFT, MIN_SQFT, PACKAGES
+from .pricing import ADD_ONS, MAX_SQFT, MIN_SQFT, PACKAGES, PRICE_BRACKETS
 from .zones import FLAT_FEE, SERVICE_ZONES
 
 MANIFEST_VERSION = 1
@@ -68,7 +68,8 @@ def facts(settings: Settings) -> dict:
         "pricing": {
             "base_fee": FLAT_FEE,
             "sqft_limits": {"min": MIN_SQFT, "max": MAX_SQFT},
-            "packages": {k: {"label": p["label"], "rate_per_sqft": _money(p["rate"]), "giving": _money(p["giving"])}
+            "packages": {k: {"label": p["label"], "giving": _money(p["giving"]),
+                             "price_by_size": [[limit, _money(prices[k])] for limit, prices in PRICE_BRACKETS]}
                          for k, p in PACKAGES.items()},
             "add_ons": {k: {"label": a["label"], "price": None if a["price"] is None else _money(a["price"]),
                             "quote_only": bool(a.get("quote")), "seasonal": bool(a.get("season"))}

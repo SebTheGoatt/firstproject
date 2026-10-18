@@ -94,7 +94,7 @@ def test_the_briefing_is_plain_english_and_private(box, client, settings):
     sg.KEY_FILE.write_text("k" * 40)
     with patch("app.agent_api.local_now", return_value=NOW):
         text = sg.briefing(sg.SemperGreenSite(), None)
-    assert "Next 7 days" in text and "$86.60" in text and "Rules for agents" in text
+    assert "Next 7 days" in text and "$113.66" in text and "Rules for agents" in text
     for private in ("Customer A", "555", "100 A Example", "access", "k" * 10):
         assert private not in text
     assert "No saved expectations" not in text            # the briefing only lists problems and differences

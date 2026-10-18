@@ -87,7 +87,7 @@
           <h3 class="order-title">Lawn Mowing estimate</h3>
           <dl class="price-lines" id="estimate-lines"></dl>
           <div class="impact-box" id="impact-box" hidden>
-            <span class="impact-kicker">Your order generates</span>
+            <span class="impact-kicker">✓ Package includes</span>
             <strong class="impact-amount" id="impact-amount"></strong>
             <span class="impact-for" id="impact-for">for the cause you pick in step 6</span>
           </div>
@@ -180,7 +180,9 @@
     const fmtDay = (iso) =>
       new Date(iso + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
     const pct = (r) => `${(r * 100).toFixed(2).replace(/\.?0+$/, "")}%`;
-    const rateText = (r) => `$${r.toFixed(3)} / sq. ft.`;
+    // Flat price per visit (before tax, $35 base included) for this lawn size in a tier's brackets.
+    const PROFILE_LABEL = "Precision Turf Maintenance Profile";
+    const priceFor = (pk, n) => n ? (pk.brackets.find((b) => b.max_sqft == null || n <= b.max_sqft) || {}).price ?? null : null;
     // The $35 per-visit base. Its note only states what the owner has confirmed in Render (insurance, background checks).
     const BASE_LABEL = "Operational Base & Liability Allocation";
     function baseRow(value, cls) {
@@ -200,9 +202,12 @@
     // ---------- Pricing settings (from /api/booking-info; these are only fallbacks) ----------
     let baseFee = 35, limits = { min: 100, max: 87120 };
     let packages = [
-      { key: "standard", label: "Neighborhood Block Lock", sqft_rate: 0.009, charity_rate: 0.02, description: "Our most affordable per-visit rate." },
-      { key: "supporter", label: "Operational Target", sqft_rate: 0.01, charity_rate: 0.07, description: "Our standard per-visit rate for most lawns." },
-      { key: "hero", label: "Bi-Weekly Demand", sqft_rate: 0.012, charity_rate: 0.12, description: "For lawns that need a visit every two weeks in peak season. Still billed per visit." },
+      { key: "standard", label: "Neighborhood Block Lock", charity_rate: 0.02, description: "Our most affordable per-visit rate.",
+        brackets: [{ max_sqft: 3500, price: 75 }, { max_sqft: 7500, price: 105 }, { max_sqft: 15000, price: 138 }, { max_sqft: null, price: 192 }] },
+      { key: "supporter", label: "Operational Target", charity_rate: 0.07, description: "Our standard per-visit rate for most lawns.",
+        brackets: [{ max_sqft: 3500, price: 83 }, { max_sqft: 7500, price: 114 }, { max_sqft: 15000, price: 151 }, { max_sqft: null, price: 211 }] },
+      { key: "hero", label: "Bi-Weekly Demand", charity_rate: 0.12, description: "For lawns that need a visit every two weeks in peak season. Still billed per visit.",
+        brackets: [{ max_sqft: 3500, price: 94 }, { max_sqft: 7500, price: 131 }, { max_sqft: 15000, price: 184 }, { max_sqft: null, price: 232 }] },
     ];
     let addOnCatalog = [
       { key: "bin_cleaning", label: "Bin cleaning", price: 15, quote: false, season: null, season_range: null },
@@ -252,7 +257,6 @@
       return { value: n };
     }
     // Exact cents, half up, like the server's Decimal math: sq ft × rate in thousandths of a dollar.
-    const sizeChargeCents = (n, rate) => Math.floor((n * Math.round(rate * 1000) + 5) / 10);
     const pkg = () => packages.find((p) => p.key === pkgKey) || null;
 
     function addOnInSeason(a, iso) {
@@ -317,10 +321,9 @@
           label.append(badge);
         }
         const name = document.createElement("strong"); name.textContent = pk.label;
-        const rate = document.createElement("span"); rate.className = "tier-rate"; rate.textContent = rateText(pk.sqft_rate);
+        const rate = document.createElement("span"); rate.className = "tier-rate"; rate.id = `est-${pk.key}`;
         const desc = document.createElement("small"); desc.textContent = pk.description || "";
-        const est = document.createElement("em"); est.id = `est-${pk.key}`;
-        label.append(name, rate, desc, est);
+        label.append(name, rate, desc);
         input.addEventListener("change", () => {
           pkgKey = pk.key; $("rate-error").hidden = true; renderEstimate(); updateServer();
         });
@@ -328,11 +331,11 @@
       }));
       updateRateCards();
     }
-    // Each card shows what this lawn costs at that rate (text only, so focus stays put).
+    // Each card shows only its price per visit for this lawn (text only, so focus stays put).
     function updateRateCards() {
       for (const pk of packages) {
         const est = $(`est-${pk.key}`);
-        if (est) est.textContent = sqft ? `${money(baseFee + sizeChargeCents(sqft, pk.sqft_rate) / 100)} before tax` : "";
+        if (est) est.textContent = sqft ? `${money(priceFor(pk, sqft))} / visit` : `From ${money(pk.brackets[0].price)} / visit`;
       }
     }
 
@@ -341,15 +344,15 @@
     function renderEstimate() {
       renderSize();
       const lines = $("estimate-lines"), p = pkg();
-      const charge = sqft && p ? sizeChargeCents(sqft, p.sqft_rate) / 100 : null;
-      const subtotal = charge != null ? Math.round((baseFee + charge) * 100) / 100 : null;
+      const subtotal = sqft && p ? priceFor(p, sqft) : null;
+      const charge = subtotal != null ? Math.round((subtotal - baseFee) * 100) / 100 : null;
       const serverTax = lastQuote && lastQuote.in_area && lastQuote.package === pkgKey && lastQuote.lawn_sqft === sqft
         && !(lastQuote.add_on_total > 0) ? lastQuote.tax : null;
       lines.replaceChildren(
         baseRow(money(baseFee)),
         row("Lawn size", sqft ? `${sqft.toLocaleString()} sq ft${estimated() ? ` · ${SCOPE_LABEL[scope]}` : ""}` : "Add your address in step 1"),
-        row("Selected rate", p ? `${p.label} · ${rateText(p.sqft_rate)}` : "Choose above"),
-        row("Lawn size charge", charge != null ? money(charge) : "—"),
+        row("Selected rate", p ? p.label : "Choose above"),
+        row(PROFILE_LABEL, charge != null ? money(charge) : "—"),
         row("Estimated subtotal", subtotal != null ? money(subtotal) : "—", "sub-strong"),
         row("Sales tax", serverTax != null ? money(serverTax) : "Calculated at checkout"),
         row("Estimated total", subtotal == null ? "—" : serverTax != null ? money(subtotal + serverTax) : `${money(subtotal)} + tax`, "total"));
@@ -403,7 +406,7 @@
       priceLines.replaceChildren(
         row(`Lawn mowing · ${q.package_label} · ${lockedScope(q) ? `${lockedScope(q).label} · ` : ""}${q.lawn_sqft.toLocaleString()} sq ft`, ""),
         baseRow(money(q.base_fee), "sub"),
-        row(`Lawn size charge (${q.lawn_sqft.toLocaleString()} × ${rateText(q.sqft_rate)})`, money(charge), "sub"),
+        row(PROFILE_LABEL, money(charge), "sub"),
         ...(q.add_ons || []).filter((a) => !a.scope).map((a) => row(a.price == null ? a.label : `Add-on: ${a.label}`, a.price == null ? "No charge" : money(a.price))),
         row("Subtotal", money(q.subtotal), "sub-strong"),
         row(`Sales tax (${pct(q.tax_rate)})`, money(q.tax)),
@@ -609,16 +612,16 @@
           dl.append(
             row("Service", "Lawn mowing"),
             row("Lawn size", `${body.lawn_sqft.toLocaleString()} sq ft${lockedScope(body) ? ` · ${lockedScope(body).label} (price locked)` : ""}`),
-            row("Selected rate", tier ? `${tier.label} · ${rateText(body.sqft_rate)}` : rateText(body.sqft_rate)),
+            row("Selected rate", tier ? tier.label : "—"),
             baseRow(money(baseFee)),
-            row("Lawn size charge", money(charge)),
+            row(PROFILE_LABEL, money(charge)),
             ...(body.add_ons || []).filter((a) => !a.scope).map((a) => row(a.price == null ? a.label : `Add-on: ${a.label}`, a.price == null ? "No charge" : money(a.price))),
             row(`Sales tax (${pct(body.tax_rate)})`, money(body.tax)),
             row("Total", money(body.total), "total"));
           ok.append(dl);
           if (body.charity_amount) {
             const g = document.createElement("div"); g.className = "hint";
-            g.textContent = `Your order generates ${money(body.charity_amount)} for ${causeName(body.charity_choice)}. Thank you!`;
+            g.textContent = `✓ Package includes ${money(body.charity_amount)} for ${causeName(body.charity_choice)}. Thank you!`;
             ok.append(g);
           }
         }

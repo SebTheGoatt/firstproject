@@ -42,9 +42,9 @@ def test_validation_rejects_overlap():
 
 # Same price in every area: $35 + 5,000 sq ft × 0.9¢ (Standard) = $80.00
 @pytest.mark.parametrize("letter, zone_key, price", [
-    ("A", "SPRING_LUXURY_LOOP", 80.0),
-    ("Spl", "I69_HIGH_DENSITY_SPINE", 80.0),
-    ("Clv", "CLEVELAND_HUB", 80.0),
+    ("A", "SPRING_LUXURY_LOOP", 105.0),
+    ("Spl", "I69_HIGH_DENSITY_SPINE", 105.0),
+    ("Clv", "CLEVELAND_HUB", 105.0),
 ])
 def test_intake_stores_zone_and_mow_price(client, repo, letter, zone_key, price):
     with patch("app.main.local_now", return_value=NOW):

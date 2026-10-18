@@ -538,9 +538,14 @@
       const cashIn = isCash ? el("input", { type: "text", inputmode: "decimal", value: s.amount_due ?? "", id: `fc-${s.stop_id}` }) : null;
       const totalLine = el("p", { class: "finish-total" });
       const cents = (x) => Math.round(x * 100) / 100;
-      // The customer's package: $base + rate × sq ft, and a share of the price to charity.
-      const PKG = { standard: [0.009, 0.02], supporter: [0.01, 0.07], hero: [0.012, 0.12] };
-      const [perSqft, giving] = PKG[s.package] || (s.sqft_rate ? [s.sqft_rate, s.charity_rate || 0] : PKG.standard);
+      // The customer's tier: a flat price per visit by lawn size ($35 base included; same table as app/pricing.py
+      // PRICE_BRACKETS), and a share of the price to charity.
+      const BRACKETS = [[3500, { standard: 75, supporter: 83, hero: 94 }], [7500, { standard: 105, supporter: 114, hero: 131 }],
+                        [15000, { standard: 138, supporter: 151, hero: 184 }], [null, { standard: 192, supporter: 211, hero: 232 }]];
+      const GIVING = { standard: 0.02, supporter: 0.07, hero: 0.12 };
+      const tier = GIVING[s.package] != null ? s.package : "standard";
+      const giving = GIVING[s.package] ?? (s.charity_rate || 0);
+      const flatPrice = (sq) => BRACKETS.find(([max]) => max == null || sq <= max)[1][tier];
       const pkgName = { standard: "Neighborhood Block Lock", supporter: "Operational Target", hero: "Bi-Weekly Demand" }[s.package] || "Neighborhood Block Lock";
       const donationLine = el("p", { class: "hint donation-line", hidden: true });
       let cashEdited = false;
@@ -551,7 +556,7 @@
         if (isMow && s.flat_fee != null) {
           const sq = parseInt(sqftIn?.value, 10);
           const extras = s.add_on_total || 0;   // fixed-price add-ons ride along with the mow
-          sub = sq >= 200 ? cents(cents(s.flat_fee + perSqft * sq) + extras) : (s.subtotal ?? cents(cents(s.flat_fee + perSqft * 4500) + extras));
+          sub = sq >= 200 ? cents(flatPrice(sq) + extras) : (s.subtotal ?? cents(flatPrice(4500) + extras));
         } else if (priceIn) {
           const p = parseFloat((priceIn.value || "").replace(/[^0-9.]/g, ""));
           sub = isFinite(p) && p > 0 ? cents(p) : null;
@@ -583,7 +588,7 @@
       const cancelBtn = el("button", { class: "btn", type: "button" }, "Cancel");
       const panel = el("form", { class: "finish" },
         el("strong", {}, `Finishing stop ${s.sequence}: ${s.customer_name}`),
-        sqftIn ? el("div", { class: "field" }, el("label", { for: sqftIn.id }, `Lawn size (sq ft): confirm or correct · ${pkgName}, ${(perSqft * 100).toFixed(1)}¢/sq ft`), sqftIn) : null,
+        sqftIn ? el("div", { class: "field" }, el("label", { for: sqftIn.id }, `Lawn size (sq ft): confirm or correct · ${pkgName}`), sqftIn) : null,
         locked ? el("p", { class: "hint" }, `Price locked: ${locked.label} (${(s.lawn_sqft || 0).toLocaleString()} sq ft) · ${pkgName}. Mow the area booked.`) : null,
         needsPrice ? el("div", { class: "field" }, el("label", { for: priceIn.id }, "Price before tax ($)"), priceIn) : null,
         totalLine,

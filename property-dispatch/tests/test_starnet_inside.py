@@ -23,10 +23,10 @@ def test_the_briefing_gives_the_week_total_so_agents_copy_it(box, client, settin
     with patch("app.agent_api.local_now", return_value=NOW):
         text = sg.briefing(sg.SemperGreenSite(), None)
         practice = sg.briefing(sg.SemperGreenSite(), None, as_of=date(2026, 10, 14), clock="7:00 AM")
-    assert "  Week total: 2 bookings, $173.20 expected" in text and "  Week total: 2 bookings, $173.20 expected" in practice
+    assert "  Week total: 2 bookings, $227.32 expected" in text and "  Week total: 2 bookings, $227.32 expected" in practice
     assert text.index("Next 7 days:") < text.index("Week total:") < text.index("Same page as StarNet")
     # ...and an agent that copies it is not accused of inventing a number
-    assert sg.check_output("Recon Radar", "BUSY DAYS: none\nQUIET DAYS: none\nEXPECTED THIS WEEK: $173.20", text) == (True, [])
+    assert sg.check_output("Recon Radar", "BUSY DAYS: none\nQUIET DAYS: none\nEXPECTED THIS WEEK: $227.32", text) == (True, [])
 
 
 def test_the_playbook_tells_recon_radar_to_copy_not_add():

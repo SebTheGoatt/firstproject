@@ -75,20 +75,20 @@ def test_cash_booking_and_crew_records_cash_with_donation(client, repo, settings
     r = book_with(client, "A", "0100")
     assert r.status_code == 201 and r.json()["payment_method"] == "cash" and r.json()["pay_url"] is None
     stop = route_stops(client, repo, settings)[0]
-    # 5,000 sq ft on Standard: $35 + 5,000 × 0.9¢ = $80.00 + 8.25% tax ($6.60) = $86.60
-    assert (stop["payment_method"], stop["payment_status"], stop["amount_due"]) == ("cash", "unpaid", 86.6)
-    assert (stop["subtotal"], stop["tax_amount"], stop["tax_rate"]) == (80.0, 6.6, 0.0825)
+    # 5,000 sq ft on Block Lock: $105.00 flat + 8.25% tax ($8.66) = $113.66
+    assert (stop["payment_method"], stop["payment_status"], stop["amount_due"]) == ("cash", "unpaid", 113.66)
+    assert (stop["subtotal"], stop["tax_amount"], stop["tax_rate"]) == (105.0, 8.66, 0.0825)
 
-    short = client.post(f"/api/stops/{stop['stop_id']}/complete", headers=CREW, json={"cash_collected": 86})
-    assert short.status_code == 422  # less than the $86.60 total
+    short = client.post(f"/api/stops/{stop['stop_id']}/complete", headers=CREW, json={"cash_collected": 113})
+    assert short.status_code == 422  # less than the $113.66 total
     # ...and a rejected cash amount must not mark the job done.
     assert client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]["completed_at"] is None
 
-    r = client.post(f"/api/stops/{stop['stop_id']}/complete", headers=CREW, json={"cash_collected": 100}).json()
-    assert r["payment"] == {"status": "paid", "method": "cash", "amount_paid": 100.0, "donation": 13.4, "total": 86.6,
-                            "donation_split": {"vfw": 4.42, "nicu": 4.42, "at_risk_youth": 4.56}}
+    r = client.post(f"/api/stops/{stop['stop_id']}/complete", headers=CREW, json={"cash_collected": 127}).json()
+    assert r["payment"] == {"status": "paid", "method": "cash", "amount_paid": 127.0, "donation": 13.34, "total": 113.66,
+                            "donation_split": {"vfw": 4.4, "nicu": 4.4, "at_risk_youth": 4.54}}
     stop = client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]
-    assert (stop["payment_status"], stop["amount_paid"], stop["donation"]) == ("paid", 100.0, 13.4)
+    assert (stop["payment_status"], stop["amount_paid"], stop["donation"]) == ("paid", 127.0, 13.34)
 
 
 def test_card_prepay_with_donation_through_stripe(card_client, repo, stripe):
@@ -98,21 +98,21 @@ def test_card_prepay_with_donation_through_stripe(card_client, repo, stripe):
 
     info = card_client.get(f"/api/pay/{token}").json()
     assert (info["first_name"], info["amount_due"], info["payment_status"], info["card_enabled"]) == \
-        ("Customer", 86.6, "unpaid", True)
+        ("Customer", 113.66, "unpaid", True)
 
     assert card_client.post(f"/api/pay/{token}/checkout", json={"donation": 600}).status_code == 422
     assert card_client.post(f"/api/pay/{token}/checkout", json={"donation": -1}).status_code == 422
     out = card_client.post(f"/api/pay/{token}/checkout", json={"donation": 10}).json()
     assert out["url"].startswith("https://checkout.stripe.test/")
     s = stripe.sessions[-1]
-    assert (s["amount_due"], s["subtotal"], s["tax"], s["tax_rate"], s["donation"]) == (86.6, 80.0, 6.6, 0.0825, 10.0)
+    assert (s["amount_due"], s["subtotal"], s["tax"], s["tax_rate"], s["donation"]) == (113.66, 105.0, 8.66, 0.0825, 10.0)
     assert stripe.sessions[-1]["success_url"].endswith(f"/pay/{token}?done=1")
 
     job_id = r["id"]
-    payload, sig = signed(paid_event(job_id, 9660, 1000))
+    payload, sig = signed(paid_event(job_id, 12366, 1000))
     assert card_client.post("/webhooks/stripe", content=payload, headers={"Stripe-Signature": sig}).status_code == 200
     info = card_client.get(f"/api/pay/{token}").json()
-    assert (info["payment_status"], info["amount_paid"], info["donation"]) == ("paid", 96.6, 10.0)
+    assert (info["payment_status"], info["amount_paid"], info["donation"]) == ("paid", 123.66, 10.0)
     assert [(c["key"], c["percent"], c["amount"]) for c in info["donation_ledger"]] == \
         [("vfw", 33, 3.3), ("nicu", 33, 3.3), ("at_risk_youth", 34, 3.4)]
     assert card_client.post(f"/api/pay/{token}/checkout", json={}).status_code == 409  # can't pay twice
@@ -120,7 +120,7 @@ def test_card_prepay_with_donation_through_stripe(card_client, repo, stripe):
     # Stripe retries webhooks; a replay must not change anything.
     payload, sig = signed(paid_event(job_id, 9900, 0))
     card_client.post("/webhooks/stripe", content=payload, headers={"Stripe-Signature": sig})
-    assert card_client.get(f"/api/pay/{token}").json()["amount_paid"] == 96.6
+    assert card_client.get(f"/api/pay/{token}").json()["amount_paid"] == 123.66
 
 
 def test_webhook_rejects_bad_or_stale_signatures(card_client):

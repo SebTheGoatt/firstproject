@@ -50,7 +50,8 @@ def test_manifest_needs_the_agent_key_and_holds_no_secrets(client, on, manifest)
 def test_manifest_facts_match_the_pricing_code(manifest):
     f = manifest()["facts"]
     assert f["pricing"]["base_fee"] == 35.0 and f["pricing"]["sqft_limits"] == {"min": 100, "max": 87120}
-    assert f["pricing"]["packages"]["supporter"] == {"label": "Operational Target", "rate_per_sqft": 0.01, "giving": 0.07}
+    assert f["pricing"]["packages"]["supporter"] == {"label": "Operational Target", "giving": 0.07,
+                                                      "price_by_size": [[3500, 83.0], [7500, 114.0], [15000, 151.0], [None, 211.0]]}
     assert f["pricing"]["add_ons"]["holiday_lights"]["quote_only"] is True and f["pricing"]["add_ons"]["gutters"]["price"] == 15.0
     assert "COLONY_RIDGE" in f["areas"] and f["areas"]["COLONY_RIDGE"]["tax_rate"] == 0.0825
     assert sum(f["giving_split"].values()) == pytest.approx(1.0)
@@ -96,15 +97,15 @@ def test_accepting_the_site_puts_both_sides_on_the_same_page(manifest, tmp_path)
 def test_it_notices_when_the_site_changes_a_price_or_a_feature(client, on, manifest, tmp_path, monkeypatch):
     m = manifest()
     expected = sg.load_expectations(sg.save_expectations(m, str(tmp_path / "exp.json")))
-    packages = copy.deepcopy(pricing.PACKAGES)
-    packages["standard"]["rate"] = pricing.Decimal("0.011")
-    monkeypatch.setattr(pricing, "PACKAGES", packages)
-    monkeypatch.setattr("app.agent_manifest.PACKAGES", packages)
+    brackets = copy.deepcopy(pricing.PRICE_BRACKETS)
+    brackets[0][1]["standard"] = pricing.Decimal("80.00")           # the smallest-lawn Block Lock price goes up $5
+    monkeypatch.setattr(pricing, "PRICE_BRACKETS", brackets)
+    monkeypatch.setattr("app.agent_manifest.PRICE_BRACKETS", brackets)
     on.ollama_base_url = "https://agent.example.com/v1"
     report = sg.compare(manifest(), expected)
     assert report["in_sync"] is False
     joined = " ".join(report["differences"])
-    assert "facts.pricing.packages.standard.rate_per_sqft: StarNet has 0.009, the site says 0.011" in joined
+    assert "facts.pricing.packages.standard.price_by_size" in joined and "80.0" in joined
     assert "features.dispatch_assistant: StarNet has False, the site says True" in joined
     assert sg.format_report(report).startswith("⚠️")
 

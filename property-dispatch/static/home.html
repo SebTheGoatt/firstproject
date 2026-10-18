@@ -91,7 +91,7 @@
             <h3>Lawn Mowing</h3>
             <p>Clean cuts. Crisp edges. A lawn you're proud of.</p>
             <div class="service-foot">
-              <p class="price" id="mow-from">Starting at $35 per visit</p>
+              <p class="price" id="mow-from">Starting at $75 per visit</p>
               <p class="hint">Your final price depends on lawn size and the rate you select.</p>
               <a class="btn btn-primary btn-block" href="/book#step-where">Calculate My Price</a>
             </div>
@@ -416,10 +416,10 @@
       }
 
       // Neighborhoods: one price note when every area costs the same, otherwise a price per area.
-      const rates = [...new Set(info.zones.map((z) => z.mow_rate))];
-      const samePrice = rates.length === 1;
-      document.getElementById("area-price-note").textContent = samePrice && info.zones.length
-        ? `Mowing starts at ${money(rates[0])} per visit in every area.` : "";
+      // Prices are flat per visit by lawn size and tier, the same in every area: show the lowest one.
+      const lowest = Math.min(...(info.packages || []).map((p) => p.brackets[0].price));
+      document.getElementById("area-price-note").textContent = isFinite(lowest) && info.zones.length
+        ? `Mowing starts at ${money(lowest).replace(/\.00$/, "")} per visit in every area.` : "";
       const list = document.getElementById("area-list");
       list.replaceChildren();
       info.zones.forEach((z, i) => {
@@ -434,19 +434,10 @@
         name.className = "area-name";
         name.textContent = z.name;
         li.append(name);
-        if (!samePrice) {
-          const price = document.createElement("span");
-          price.className = "area-price";
-          price.textContent = `${money(z.mow_rate)} per visit + sq ft rate`;
-          li.append(price);
-        }
         list.append(li);
       });
       drawAreaMap(info.zones);
-      if (info.zones.length) {
-        const low = Math.min(...rates);
-        document.getElementById("mow-from").textContent = `Starting at ${money(low).replace(/\.00$/, "")} per visit`;
-      }
+      if (isFinite(lowest)) document.getElementById("mow-from").textContent = `Starting at ${money(lowest).replace(/\.00$/, "")} per visit`;
       // Google address dropdown on "Check your address" when the owner set the Maps key in Render.
       if (info.google_maps_key) {
         const input = document.getElementById("check-address"), slot = document.getElementById("check-picker");

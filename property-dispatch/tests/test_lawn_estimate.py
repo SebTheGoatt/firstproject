@@ -74,17 +74,17 @@ def test_every_area_has_sensible_yard_and_full_sizes():
 def test_quote_prices_the_area_size_not_the_browsers_number(client):
     q = client.post("/api/quote", json={"address": "100 A Example Rd", "service": "mowing", "package": "supporter",
                                          "lawn_sqft": 200, "add_ons": ["scope_full"]}).json()
-    assert q["lawn_sqft"] == 8000 and q["subtotal"] == 115.0 and q["total"] == round(115 * 1.0825, 2)   # $35 + 8,000 × $0.010
+    assert q["lawn_sqft"] == 8000 and q["subtotal"] == 151.0 and q["total"] == 163.46   # 7,501-15,000 bracket, Operational
     q = client.post("/api/quote", json={"address": "100 A Example Rd", "service": "mowing", "package": "supporter",
                                          "add_ons": ["scope_yard"]}).json()
-    assert q["lawn_sqft"] == 4500 and q["total"] == 86.6
+    assert q["lawn_sqft"] == 4500 and q["total"] == 123.41
 
 
 def test_booking_with_full_property_is_sized_by_the_server(client, repo):
     r = scoped_booking(client, "scope_full", lawn_sqft=500)
     assert r.status_code == 201, r.text
     body = r.json()
-    assert body["lawn_sqft"] == 8000 and body["subtotal"] == 115.0
+    assert body["lawn_sqft"] == 8000 and body["subtotal"] == 151.0
     assert [a["key"] for a in body["add_ons"]] == ["scope_full"] and body["add_on_total"] == 0
 
 
@@ -100,9 +100,9 @@ def test_locked_bookings_are_not_re_priced_on_site(client, repo, settings):
     run_nightly(repo, settings, TOMORROW)
     stop = client.get(f"/api/routes/{TOMORROW}", headers=CREW).json()["stops"][0]
     assert stop["service_label"] == "Mowing + Yard only"                       # the crew sees what was booked
-    r = client.post(f"/api/stops/{stop['stop_id']}/complete", json={"lawn_sqft": 12000, "cash_collected": 86.60}, headers=CREW)
+    r = client.post(f"/api/stops/{stop['stop_id']}/complete", json={"lawn_sqft": 12000, "cash_collected": 123.41}, headers=CREW)
     assert r.status_code == 200, r.text
-    assert r.json()["payment"]["total"] == 86.6                                 # locked: still the booked price
+    assert r.json()["payment"]["total"] == 123.41                               # locked: still the booked price
     assert repo.get_stop(stop["stop_id"])["lawn_sqft"] == 4500
 
 
