@@ -126,7 +126,7 @@ def test_live_quote_endpoint(client):
 
 
 @pytest.mark.parametrize("missing, message", [
-    ({"package": None}, "Choose a rate"), ({"lawn_sqft": None}, "Enter your lawn size"),
+    ({"package": None}, "Choose your yard type"), ({"lawn_sqft": None}, "Enter your lawn size"),
     ({"lawn_sqft": 0}, "greater than zero"), ({"lawn_sqft": 50}, "smallest lawn"),
     ({"lawn_sqft": 500_000}, "quoted in person"),
 ])

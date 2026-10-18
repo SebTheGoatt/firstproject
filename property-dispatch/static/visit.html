@@ -218,10 +218,15 @@
           pay.append(el("p", {}, "Your price is set on site when the job is done. Texas sales tax is added."));
         } else if (p.subtotal != null && p.tax != null) {
           const rate = p.tax_rate ? ` (${(p.tax_rate * 100).toFixed(2).replace(/\.?0+$/, "")}%)` : "";
+          // Yield-priced bookings carry their yard type and route-density discount as notes.
+          const notes = Object.fromEntries((p.add_ons || []).filter((a) => a.info).map((a) => [a.key, a]));
+          const discount = -(notes.route_density?.amount || 0);
+          const kind = notes.yard_type ? notes.yard_type.label.replace(/^Yard type: /, "") : p.package_label;
           pay.append(el("dl", { class: "price-lines" },
-            el("div", {}, el("dt", {}, p.lawn_sqft ? `Mowing${p.package_label ? `, ${p.package_label}` : ""} · ${p.lawn_sqft.toLocaleString()} sq ft` : v.service_label),
-              el("dd", {}, money(Math.round((p.subtotal - (p.add_on_total || 0)) * 100) / 100))),
-            ...(p.add_ons || []).map((a) => el("div", {}, el("dt", {}, a.scope ? `Area mowed: ${a.label}` : a.price == null ? a.label : `Add-on: ${a.label}`),
+            el("div", {}, el("dt", {}, p.lawn_sqft ? `Mowing${kind ? `, ${kind}` : ""} · ${p.lawn_sqft.toLocaleString()} sq ft` : v.service_label),
+              el("dd", {}, money(Math.round((p.subtotal - (p.add_on_total || 0) + discount) * 100) / 100))),
+            discount > 0 ? el("div", {}, el("dt", {}, `⚡ ${notes.route_density.label}`), el("dd", {}, `-${money(discount)}`)) : null,
+            ...(p.add_ons || []).filter((a) => !a.info).map((a) => el("div", {}, el("dt", {}, a.scope ? `Area mowed: ${a.label}` : a.price == null ? a.label : `Add-on: ${a.label}`),
               el("dd", {}, a.scope ? "Included" : a.price == null ? "No charge" : money(a.price)))),
             p.tax > 0 ? el("div", {}, el("dt", {}, `Texas sales tax${rate}`), el("dd", {}, money(p.tax))) : null,
             el("div", { class: "total" }, el("dt", {}, "Total"), el("dd", {}, money(p.amount_due)))));

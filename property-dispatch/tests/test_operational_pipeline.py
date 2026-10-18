@@ -1,6 +1,6 @@
 """End-to-end operational pipeline: one booking followed from the address box to the Google review ask.
 
-Milestone 1  address → lot profile → flat bracket price → 8.25% Texas tax, to the cent
+Milestone 1  address → lot size → yield engine price (the booking form's price) → 8.25% Texas tax, to the cent
 Milestone 2  Stripe: the exact cents and the audit tags travel on the Checkout Session and its PaymentIntent
 Milestone 3  ten stops across Spring, Klein, New Caney and Cleveland: 5 PM cutoff → nightly route that is
              provably the shortest loop, and the crew dashboard data (scope lock, time on site by lawn size)
@@ -26,7 +26,8 @@ from unittest.mock import patch
 from app.main import create_app, review_loop
 from app.models import GeoPoint
 from app.payments import StripeClient
-from app.pricing import PRICE_BRACKETS, bracket_price, mow_minutes
+from app.local_pages import dollars, price_range
+from app.pricing import mow_minutes, yield_mow_fee
 from app.reviews import send_due_review_requests
 from app.routing.matrix import haversine_matrix
 from app.zones import find_zone, zone_by_key
@@ -95,11 +96,11 @@ def ops(settings, repo, stripe_api):
     return client
 
 
-def book(client, address, i, *, package="supporter", scope="scope_yard", method="cash", charity="toys_for_tots", at=NOW):
+def book(client, address, i, *, yard_type="STANDARD", scope="scope_yard", method="cash", charity="toys_for_tots", at=NOW):
     with patch("app.main.local_now", return_value=at):
         return client.post("/api/jobs", json={
             "name": f"Customer {i:02d}", "phone": f"(281) 555-01{i:02d}", "address": address,
-            "service": "mowing", "package": package, "add_ons": [scope] if scope else [],
+            "service": "mowing", "yard_type": yard_type, "add_ons": [scope] if scope else [],
             "lawn_sqft": None if scope else 5_000, "charity_choice": charity,
             "scheduled_date": TOMORROW.isoformat(), "payment_method": method})
 
@@ -123,15 +124,16 @@ def test_m1_address_check_sizes_the_lot_without_asking_for_square_feet(ops):
     assert "sq-ft" not in r["message"] and "from $75." in r["message"]
 
 
-def test_m1_yard_pick_lands_in_the_standard_suburb_profile_at_114_plus_tax(ops):
-    q = ops.post("/api/quote", json={"address": BRIDGEMONT, "service": "mowing", "package": "supporter",
+def test_m1_yard_pick_is_priced_by_the_yield_engine_at_75_plus_tax(ops):
+    q = ops.post("/api/quote", json={"address": BRIDGEMONT, "service": "mowing", "yard_type": "STANDARD",
                                      "add_ons": ["scope_yard"], "lawn_sqft": 99_999}).json()   # browser's number is ignored
     assert q["lawn_sqft"] == 4_500 and q["lot_profile"] == "Standard Suburb Profile"
-    assert (q["package_label"], q["basis"], q["sqft_rate"]) == ("Operational Target", "bracket", None)
-    assert q["subtotal"] == 114.00 and q["tax_rate"] == 0.0825 and q["tax"] == 9.41 and q["total"] == 123.41
+    assert (q["yard_type_label"], q["basis"], q["sqft_rate"], q["package"]) == ("Standard yard", "yield", None, None)
+    assert (q["mow_fee"], q["density_stops"], q["density_discount"], q["price_locked"]) == (75.0, 0, 0.0, True)
+    assert q["subtotal"] == 75.00 and q["tax_rate"] == 0.0825 and q["tax"] == 6.19 and q["total"] == 81.19
     # The flat bracket price, not a per-square-foot multiplication: the same price anywhere in the bracket.
-    assert {bracket_price(s, "supporter") for s in (3_501, 4_500, 7_500)} == {Decimal("114.00")}
-    assert Decimal("114.00") * Decimal("0.0825") == Decimal("9.405000")     # rounds half-up to $9.41
+    assert {yield_mow_fee(s, "STANDARD") for s in (100, 4_500, 5_000)} == {Decimal("75.00")}   # base covers 5,000
+    assert Decimal("75.00") * Decimal("0.0825") == Decimal("6.187500")     # rounds half-up to $6.19
     # Nothing on the wire hints at a formula.
     text = json.dumps(q)
     for leak in ("per sq", "sq-ft", "0.009", "0.010", "0.012", "×"):
@@ -142,8 +144,8 @@ def test_m1_booking_charges_exactly_what_was_quoted(ops):
     r = book(ops, BRIDGEMONT, 1)
     assert r.status_code == 201, r.text
     j = r.json()
-    assert (j["lawn_sqft"], j["subtotal"], j["tax"], j["total"]) == (4_500, 114.0, 9.41, 123.41)
-    assert j["charity_choice"] == "toys_for_tots" and j["charity_amount"] == 7.98      # 7% of $114, all to their pick
+    assert (j["lawn_sqft"], j["subtotal"], j["tax"], j["total"]) == (4_500, 75.0, 6.19, 81.19)
+    assert j["charity_choice"] == "toys_for_tots" and j["charity_amount"] == 1.5       # 2% of $75, all to their pick
     info = ops.get("/api/booking-info").json()
     assert all("sqft_rate" not in p and "rate" not in p for p in info["packages"])
     assert [b["profile"] for b in info["packages"][0]["brackets"]][1] == "Standard Suburb Profile"
@@ -152,7 +154,7 @@ def test_m1_booking_charges_exactly_what_was_quoted(ops):
 # ======================================================================
 #  MILESTONE 2: Stripe gets integer cents and the audit tags
 # ======================================================================
-def test_m2_checkout_sends_12341_cents_with_audit_tags_on_session_and_payment_intent(ops, stripe_api, repo):
+def test_m2_checkout_sends_8119_cents_with_audit_tags_on_session_and_payment_intent(ops, stripe_api, repo):
     j = book(ops, BRIDGEMONT, 1, method="card").json()
     stops = build_route(ops)["stops"]
     seq = next(s["sequence"] for s in stops if s["job_id"] == j["id"])
@@ -160,12 +162,13 @@ def test_m2_checkout_sends_12341_cents_with_audit_tags_on_session_and_payment_in
     assert ops.post(f"/api/pay/{token}/checkout", json={}).status_code == 200
 
     sent = stripe_api.payloads[-1]
-    assert sent["mode"] == "payment" and sent["metadata[amount_due_cents]"] == "12341"
+    assert sent["mode"] == "payment" and sent["metadata[amount_due_cents]"] == "8119"
     lines = [int(sent[f"line_items[{i}][price_data][unit_amount]"]) for i in range(2)]
-    assert lines == [11400, 941] and sum(lines) == 12341 and "line_items[2][quantity]" not in sent
+    assert lines == [7500, 619] and sum(lines) == 8119 and "line_items[2][quantity]" not in sent
+    assert sent["line_items[0][price_data][product_data][name]"].startswith("Mowing, Standard yard (")
     assert all(re.fullmatch(r"\d+", sent[k]) for k in sent if k.endswith("[unit_amount]"))   # whole cents only
     tags = {"property_profile": "Standard Suburb Profile · Yard only", "size_bracket": "3,501-7,500 sq ft",
-            "service_track": "Operational Target", "charity_lane": "toys_for_tots",
+            "service_track": "Yield engine · Standard yard", "charity_lane": "toys_for_tots",
             "crew_route_id": f"{TOMORROW}#{seq}", "job_id": j["id"]}
     for key, value in tags.items():
         assert sent[f"metadata[{key}]"] == sent[f"payment_intent_data[metadata][{key}]"] == value
@@ -174,12 +177,12 @@ def test_m2_checkout_sends_12341_cents_with_audit_tags_on_session_and_payment_in
 
 def test_m2_payment_intent_succeeded_marks_the_job_paid(ops):
     j = book(ops, BRIDGEMONT, 1, method="card").json()
-    event = {"type": "payment_intent.succeeded", "data": {"object": {"amount_received": 12341, "metadata": {
+    event = {"type": "payment_intent.succeeded", "data": {"object": {"amount_received": 8119, "metadata": {
         "job_id": j["id"], "donation_cents": "0", "charity_choice": "toys_for_tots"}}}}
     payload, sig = signed(event)
     assert ops.post("/webhooks/stripe", content=payload, headers={"Stripe-Signature": sig}).status_code == 200
     v = ops.get(f"/api/visit/{j['access_code']}").json()["payment"]
-    assert (v["status"], v["method"], v["amount_paid"]) == ("paid", "card", 123.41)
+    assert (v["status"], v["method"], v["amount_paid"]) == ("paid", "card", 81.19)
 
 
 # ======================================================================
@@ -272,7 +275,7 @@ def test_m3_crew_dashboard_data_carries_the_scope_lock_and_time_by_lawn_size(ops
 def complete_bridgemont(ops):
     j = book(ops, BRIDGEMONT, 1).json()
     stop = next(s for s in build_route(ops)["stops"] if s["job_id"] == j["id"])
-    r = ops.post(f"/api/stops/{stop['stop_id']}/complete", headers=CREW, json={"cash_collected": 123.41})
+    r = ops.post(f"/api/stops/{stop['stop_id']}/complete", headers=CREW, json={"cash_collected": 81.19})
     assert r.status_code == 200 and r.json()["payment"]["status"] == "paid"
     return j
 
@@ -333,9 +336,8 @@ def test_m4_local_area_page_carries_json_ld_and_no_customer_data(ops):
     types = {n["@type"] for n in graph}
     assert {"LocalBusiness", "Service", "BreadcrumbList"} <= types
     business = next(n for n in graph if n["@type"] == "LocalBusiness")
-    low = min(min(p.values()) for _, p in PRICE_BRACKETS)
-    high = max(max(p.values()) for _, p in PRICE_BRACKETS)
-    assert business["priceRange"] == f"${low:.0f}-${high:.0f}"
+    low, high = price_range()
+    assert business["priceRange"] == f"{dollars(low)}-{dollars(high)}" and low == Decimal("75.00")
     assert any("Spring" in a["name"] for a in business["areaServed"])
     for forbidden in ("aggregateRating", "review", "telephone", "streetAddress"):
         assert forbidden not in blocks[0]
@@ -349,20 +351,20 @@ def test_m4_local_area_page_carries_json_ld_and_no_customer_data(ops):
 # ======================================================================
 def test_m5_one_booking_end_to_end(ops, repo, settings, stripe_api):
     j = book(ops, BRIDGEMONT, 1, method="card").json()
-    assert j["total"] == 123.41
+    assert j["total"] == 81.19
     stop = next(s for s in build_route(ops)["stops"] if s["job_id"] == j["id"])
-    assert stop["scope"] == "scope_yard" and stop["amount_due"] == 123.41
+    assert stop["scope"] == "scope_yard" and stop["amount_due"] == 81.19
     done = ops.post(f"/api/stops/{stop['stop_id']}/complete", headers=CREW, json={}).json()
     assert done["payment"]["status"] == "unpaid"                     # card customer pays through Stripe
     token = j["pay_url"].rsplit("/", 1)[1]
     ops.post(f"/api/pay/{token}/checkout", json={})
-    assert stripe_api.payloads[-1]["metadata[amount_due_cents]"] == "12341"
+    assert stripe_api.payloads[-1]["metadata[amount_due_cents]"] == "8119"
     payload, sig = signed({"type": "checkout.session.completed", "data": {"object": {
-        "payment_status": "paid", "amount_total": 12341, "client_reference_id": j["id"],
+        "payment_status": "paid", "amount_total": 8119, "client_reference_id": j["id"],
         "metadata": {"job_id": j["id"], "donation_cents": "0", "charity_choice": "toys_for_tots"}}}})
     ops.post("/webhooks/stripe", content=payload, headers={"Stripe-Signature": sig})
     finished = datetime.fromisoformat(repo.jobs[j["id"]]["completed_at"])
     assert send_due_review_requests(repo, settings, ops.sms, finished + timedelta(minutes=20), "https://x")["asked"] == 1
     v = ops.get(f"/api/visit/{j['access_code']}").json()
     assert (v["status"], v["payment"]["status"], v["payment"]["amount_paid"], v["review_url"]) == \
-        ("completed", "paid", 123.41, REVIEW_URL)
+        ("completed", "paid", 81.19, REVIEW_URL)

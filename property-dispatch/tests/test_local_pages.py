@@ -13,7 +13,8 @@ from fastapi.testclient import TestClient
 
 from app.local_pages import AREAS
 from app.main import create_app
-from app.pricing import PACKAGES, PRICE_BRACKETS
+from app.local_pages import SAMPLE_SIZES, dollars
+from app.pricing import MAX_SQFT, YARD_TYPES, yield_mow_fee
 from app.zones import zone_by_key
 
 from .conftest import FakeGeocoder
@@ -40,7 +41,8 @@ def by_type(data: dict) -> dict:
 
 
 def all_prices() -> list[Decimal]:
-    return [prices[k] for _, prices in PRICE_BRACKETS for k in PACKAGES]
+    """The table: the yield engine's mowing price for each sample size and yard type."""
+    return [yield_mow_fee(n, k) for n in SAMPLE_SIZES for k in YARD_TYPES]
 
 
 def test_every_area_page_renders_for_crawlers(client):
@@ -80,46 +82,46 @@ def test_next_day_follows_the_5pm_cutoff(client):
     assert "Friday, October 16" in t and "Next-day booking closes at 5 PM." in t
 
 
-def test_price_table_lists_every_tier_and_size(client):
+def test_price_table_lists_every_yard_type_and_size(client):
     t = client.get("/local/spring").text
-    for p in PACKAGES.values():
-        assert f'<th scope="col">{p["label"]}</th>' in t
-    for size in ("Up to 3,500 sq ft", "3,501-7,500 sq ft", "7,501-15,000 sq ft", "Over 15,000 sq ft"):
+    for y in YARD_TYPES.values():
+        assert f'<th scope="col">{y["label"]}</th>' in t
+    for size in ("Up to 5,000 sq ft", "7,500 sq ft", "10,000 sq ft", "15,000 sq ft", "20,000 sq ft"):
         assert f'<th scope="row">{size}<small>' in t
     for price in all_prices():
-        assert f">${price:,.0f}</td>" in t
+        assert f">{dollars(price)}</td>" in t
+    assert ">$75</td>" in t and ">$131.25</td>" in t      # 10,000 sq ft steep slopes: 75 x 1.40 x 1.25
+    assert "5% off the mowing (10% with 5 or more)" in t
     # Add-ons with a price, quote-only ones as a free quote; the yard / full property picks are not add-ons.
     assert "Bin cleaning" in t and "Gutter cleaning" in t and "+$15 per visit" in t and "Free quote" in t
     assert "<strong>Yard only</strong>" not in t and "<strong>Full property</strong>" not in t
 
 
 def test_prices_and_tax_are_read_live(client, monkeypatch):
-    bumped = tuple((limit, {k: v + 1 for k, v in prices.items()}) for limit, prices in PRICE_BRACKETS)
-    monkeypatch.setattr("app.local_pages.PRICE_BRACKETS", bumped)
+    monkeypatch.setattr("app.pricing.YIELD_BASE", Decimal("80.00"))
     zone = zone_by_key("KLEIN_CORE")
     monkeypatch.setattr("app.local_pages.zone_by_key", lambda key: dataclasses.replace(zone, tax_rate=0.0725))
     t = client.get("/local/klein").text
-    assert ">$76</td>" in t and ">$233</td>" in t and "7.25% Texas sales tax added" in t
-    assert by_type(json_ld(t))["LocalBusiness"]["priceRange"] == "$76-$233"
+    assert ">$80</td>" in t and "7.25% Texas sales tax added" in t
+    assert by_type(json_ld(t))["LocalBusiness"]["priceRange"].startswith("$80-")
 
 
 def test_json_ld_business_service_and_breadcrumbs(client):
-    low, high = min(all_prices()), max(all_prices())
     for a in AREAS:
         nodes = by_type(json_ld(client.get(f"/local/{a.slug}").text))
         assert set(nodes) == {"LocalBusiness", "Service", "BreadcrumbList"}
         biz, svc, crumbs = nodes["LocalBusiness"], nodes["Service"], nodes["BreadcrumbList"]
         assert biz["@id"] == "http://testserver/#business" and biz["name"] == "Semper Green Lawn Care"
-        assert biz["priceRange"] == f"${low:,.0f}-${high:,.0f}" == "$75-$232"
+        assert biz["priceRange"] == f"$75-{dollars(yield_mow_fee(MAX_SQFT, 'STEEP_SLOPES'))}"
         assert {c["name"] for c in biz["areaServed"]} == {f"{x.city}, TX" for x in AREAS}
         assert svc["serviceType"] == "Lawn mowing" and svc["provider"] == {"@id": biz["@id"]}
         assert svc["areaServed"] == {"@type": "City", "name": f"{a.city}, TX"}
         offers = svc["hasOfferCatalog"]["itemListElement"]
-        assert len(offers) == len(PRICE_BRACKETS) * len(PACKAGES)
+        assert len(offers) == len(SAMPLE_SIZES) * len(YARD_TYPES)
         assert all(o["@type"] == "Offer" and o["priceCurrency"] == "USD" and o["name"] for o in offers)
         assert sorted(Decimal(o["price"]) for o in offers) == sorted(all_prices())
-        for p in PACKAGES.values():   # one offer per tier per size bracket
-            assert sum(o["name"].startswith(p["label"] + ":") for o in offers) == len(PRICE_BRACKETS)
+        for y in YARD_TYPES.values():   # one offer per yard type per size
+            assert sum(o["name"].startswith(y["label"] + ":") for o in offers) == len(SAMPLE_SIZES)
         items = crumbs["itemListElement"]
         assert [i["name"] for i in items] == ["Home", "Areas we serve", f"{a.city}, TX"]
         assert items[-1]["item"] == f"http://testserver/local/{a.slug}"
@@ -206,7 +208,7 @@ def test_insured_and_background_lines_only_when_set(client, settings, repo):
 def test_causes_come_from_settings(client, settings, repo):
     t = client.get("/local/cleveland").text
     assert html.escape(settings.charity_toys_name) in t and html.escape(settings.charity_nicu_name) in t
-    assert "2% on Neighborhood Block Lock" in t and "12% on Bi-Weekly Demand" in t
+    assert "2% of every visit's price goes to the cause you pick" in t
     t = app_with(settings, repo, charity_vfw_name="VFW Post 0000 (test)").get("/local/cleveland").text
     assert "VFW Post 0000 (test)" in t
 
@@ -247,11 +249,11 @@ def test_area_pages_share_no_city_swapped_headings(client):
 
 
 def test_each_area_states_its_own_full_property_size_and_county(client):
-    from app.pricing import bracket_price, bracket_profile
+    from app.pricing import bracket_profile
     for a in AREAS:
         t = client.get(f"/local/{a.slug}").text
         full = zone_by_key(a.zone_key).full_property_sqft
-        prices = " / ".join(f"${bracket_price(full, k):,.0f}" for k in PACKAGES)
+        prices = " / ".join(dollars(yield_mow_fee(full, k)) for k in YARD_TYPES)
         assert f"about {full:,} sq ft ({bracket_profile(full)}): {prices} before tax" in t
         assert f"<span>{a.county}</span>" in t
     assert "about 14,500 sq ft" in client.get("/local/cleveland").text and "about 8,000 sq ft" in client.get("/local/spring").text

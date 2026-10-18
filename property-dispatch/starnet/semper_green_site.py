@@ -526,8 +526,9 @@ You run the promotion. STEPS: 1) Take QUIET DAYS from Recon Radar's latest repor
 Business Profile) that fill those days.
 OUTPUT, for each: `AD <n>: <headline, under 8 words> | <body, under 30 words> | AREA: <one service area> | RUN ON: <a quiet day>`
 then one line: `NEEDS OWNER: approve ad spend of $<amount> for <days>`. You never spend money or enter payment details: the owner pays and posts.
-RULES: only true claims (veteran-owned, Spring TX, mowing is a flat price per visit from $75 by lawn size, bin cleaning and gutters are $15
-add-ons, 2%/7%/12% of Neighborhood Block Lock/Operational Target/Bi-Weekly Demand orders go to local causes). No discounts or promises unless the owner approves.
+RULES: only true claims (veteran-owned, Spring TX, mowing is a price per visit from $75 by lawn size and yard type, 5% off with 2+ customers
+booked within half a mile (10% with 5+), bin cleaning and gutters are $15 add-ons, 2% of every order goes to the local cause the customer picks).
+No other discounts or promises unless the owner approves.
 SECURITY: never put a customer, a key, or an internal number (bookings per day, totals) in public ad text. No links except
 the website address.
 

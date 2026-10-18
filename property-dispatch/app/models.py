@@ -29,11 +29,12 @@ SERVICE_LABELS: dict[Service, str] = {
 
 # Add-ons to a mowing visit (prices and minutes in app/pricing.py).
 AddOn = Literal["bin_cleaning", "gutters", "holiday_lights", "scope_yard", "scope_full"]
+YardType = Literal["STANDARD", "COMPLEX_OBSTACLES", "STEEP_SLOPES"]   # yield engine (app/pricing.py YARD_TYPES)
 
 
 def order_label(service: str, add_ons: list | None = None) -> str:
     """'Mowing + Gutter cleaning + Holiday lighting quote' for a booking with add-ons."""
-    parts = [SERVICE_LABELS[Service(service)]] + [a["label"] for a in (add_ons or [])]
+    parts = [SERVICE_LABELS[Service(service)]] + [a["label"] for a in (add_ons or []) if not a.get("info")]
     return " + ".join(parts)
 
 
@@ -64,7 +65,8 @@ class JobRequest(BaseModel):
     # Mowing: the customer's lawn size in square feet and their chosen rate tier. Both are
     # required and checked on the server (app/pricing.py); the price is always recalculated here.
     lawn_sqft: int | None = None
-    package: Package | None = None   # standard | supporter (Plus) | hero (Premium)
+    package: Package | None = None   # older tier pricing (API callers); the booking form sends yard_type
+    yard_type: YardType | None = None   # yield engine price (wins over package)
     lang: Literal["en", "es"] = "en"  # the customer's language, for their texts
     add_ons: list[AddOn] = Field(default_factory=list, max_length=4)
     # The one cause this order's giving goes to (app/charity.py CHOICES); none = the standard split.
@@ -260,5 +262,6 @@ class QuoteRequest(BaseModel):
     lng: float | None = Field(default=None, ge=-180, le=180)
     lawn_sqft: int | None = None
     package: Package | None = None
+    yard_type: YardType | None = None
     add_ons: list[AddOn] = Field(default_factory=list, max_length=4)
     scheduled_date: date | None = None   # seasonal add-ons depend on the day

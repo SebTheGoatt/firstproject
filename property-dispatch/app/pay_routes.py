@@ -18,7 +18,7 @@ from .charity import causes as charity_causes, chosen_cause, describe as describ
 from .config import Settings, site_url
 from .models import SERVICE_LABELS, Service, order_label
 from . import push
-from .pricing import PACKAGES, bracket_label, bracket_profile
+from .pricing import PACKAGES, YARD_TYPES, bracket_label, bracket_profile, yield_choice
 from .payments import PaymentError, StripeClient, clean_donation, verify_webhook
 
 log = logging.getLogger(__name__)
@@ -100,7 +100,8 @@ def register_pay_routes(app: FastAPI, settings: Settings, stripe: StripeClient |
         return {
             "property_profile": bracket_profile(p.get("lawn_sqft")) + (f" · {scope}" if scope else ""),
             "size_bracket": bracket_label(p.get("lawn_sqft")),
-            "service_track": PACKAGES[p["package"]]["label"] if p.get("package") in PACKAGES else "Older booking",
+            "service_track": (f"Yield engine · {YARD_TYPES[saved[0]]['label']}" if (saved := yield_choice(p.get("add_ons")))
+                              else PACKAGES[p["package"]]["label"] if p.get("package") in PACKAGES else "Older booking"),
             "charity_lane": chosen_cause(p.get("giving_split")) or "split_33_33_34",
             "crew_route_id": f"{p['scheduled_date']}#{stop['sequence']}" if stop else f"{p['scheduled_date']}#not-routed",
         }

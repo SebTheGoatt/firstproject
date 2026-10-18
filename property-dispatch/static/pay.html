@@ -97,17 +97,23 @@
       $("svc").textContent = info.service_label;
       $("when").textContent = fmtDay(info.scheduled_date);
       const hasBreakdown = info.subtotal != null && info.tax != null && info.amount_due != null;
-      const extras = info.add_ons || [], extraTotal = info.add_on_total || 0;
+      // Yield-priced bookings carry their yard type and route-density discount as notes.
+      const notes = Object.fromEntries((info.add_ons || []).filter((a) => a.info).map((a) => [a.key, a]));
+      const discount = -(notes.route_density?.amount || 0);
+      const kind = notes.yard_type ? notes.yard_type.label.replace(/^Yard type: /, "") : info.package_label;
+      const extras = [...(discount > 0 ? [{ label: `⚡ ${notes.route_density.label}`, discount }] : []),
+                      ...(info.add_ons || []).filter((a) => !a.info)];
+      const extraTotal = info.add_on_total || 0;
       $("price-label").textContent = info.lawn_sqft
-        ? `Mowing (${info.package_label ? info.package_label + ", " : ""}${info.lawn_sqft.toLocaleString()} sq ft)` : "Price";
+        ? `Mowing (${kind ? kind + ", " : ""}${info.lawn_sqft.toLocaleString()} sq ft)` : "Price";
       $("price").textContent = info.amount_due == null ? "Set on site"
-        : money(hasBreakdown ? Math.round((info.subtotal - extraTotal) * 100) / 100 : info.amount_due);
+        : money(hasBreakdown ? Math.round((info.subtotal - extraTotal + discount) * 100) / 100 : info.amount_due);
       document.querySelectorAll(".addon-row").forEach((r) => r.remove());
       if (hasBreakdown) {
         $("tax-row").before(...extras.map((a) => {
           const d = document.createElement("div"); d.className = "addon-row";
-          d.append(Object.assign(document.createElement("dt"), { textContent: a.scope ? `Area mowed: ${a.label}` : a.price == null ? a.label : `Add-on: ${a.label}` }),
-                   Object.assign(document.createElement("dd"), { textContent: a.scope ? "Included" : a.price == null ? "No charge" : money(a.price) }));
+          d.append(Object.assign(document.createElement("dt"), { textContent: a.discount ? a.label : a.scope ? `Area mowed: ${a.label}` : a.price == null ? a.label : `Add-on: ${a.label}` }),
+                   Object.assign(document.createElement("dd"), { textContent: a.discount ? `-${money(a.discount)}` : a.scope ? "Included" : a.price == null ? "No charge" : money(a.price) }));
           return d;
         }));
       }
@@ -118,7 +124,7 @@
       }
       if (info.charity_amount > 0) {
         $("giving").textContent = `★ Your order generates ${money(info.charity_amount)} for ${info.charity_choice_name || "local VFW, NICU & at-risk youth programs"} ` +
-          `(${info.package_label ? info.package_label + ", " : ""}${Math.round((info.charity_rate || 0) * 100)}% of your price). It's included in your total, not added on.`;
+          `(${kind ? kind + ", " : ""}${Math.round((info.charity_rate || 0) * 100)}% of your price). It's included in your total, not added on.`;
         show("giving");
       }
       ["paid", "pending-price", "no-card", "pay-form", "confirming"].forEach((id) => show(id, false));
