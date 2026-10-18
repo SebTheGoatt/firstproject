@@ -85,12 +85,12 @@ def test_price_table_lists_every_tier_and_size(client):
     for p in PACKAGES.values():
         assert f'<th scope="col">{p["label"]}</th>' in t
     for size in ("Up to 3,500 sq ft", "3,501-7,500 sq ft", "7,501-15,000 sq ft", "Over 15,000 sq ft"):
-        assert f'<th scope="row">{size}</th>' in t
+        assert f'<th scope="row">{size}<small>' in t
     for price in all_prices():
         assert f">${price:,.0f}</td>" in t
     # Add-ons with a price, quote-only ones as a free quote; the yard / full property picks are not add-ons.
     assert "Bin cleaning" in t and "Gutter cleaning" in t and "+$15 per visit" in t and "Free quote" in t
-    assert "Yard only" not in t
+    assert "<strong>Yard only</strong>" not in t and "<strong>Full property</strong>" not in t
 
 
 def test_prices_and_tax_are_read_live(client, monkeypatch):
@@ -222,3 +222,64 @@ def test_business_name_cannot_break_out_of_json_ld(settings, repo):
 def test_home_footer_links_every_area(client):
     t = client.get("/").text
     assert 'href="/local"' in t and all(f'href="/local/{a.slug}"' in t for a in AREAS)
+
+
+# ---------- Review fixes: full days, duplicate text, wording, Spanish ----------
+def test_next_day_skips_days_that_are_already_full(client, repo, settings):
+    from .test_api_flow import book
+    settings.daily_job_quota = 2
+    with patch("app.main.local_now", return_value=NOW):
+        assert book(client, "A", "0100").status_code == 201 and book(client, "B", "0101").status_code == 201
+    with patch("app.local_pages.local_now", return_value=NOW):
+        t = client.get("/local/spring").text
+    assert "Thursday, October 15" not in t and "Friday, October 16" in t      # the 15th is full
+    for private in ("Customer A", "100 A Example Rd"):
+        assert private not in t
+
+
+def test_area_pages_share_no_city_swapped_headings(client):
+    for a in AREAS:
+        t = client.get(f"/local/{a.slug}").text
+        assert f"Why {a.city} homeowners" not in t and f"Mowing prices in {a.city}" not in t
+        assert f"Book your {a.city} mow" not in t and f"Where we mow in {a.city}" not in t
+        assert f"Veteran-owned · Based in Spring, TX · Serving {a.city}" in t
+        assert "you never pay extra" not in t and "not added on top" in t
+
+
+def test_each_area_states_its_own_full_property_size_and_county(client):
+    from app.pricing import bracket_price, bracket_profile
+    for a in AREAS:
+        t = client.get(f"/local/{a.slug}").text
+        full = zone_by_key(a.zone_key).full_property_sqft
+        prices = " / ".join(f"${bracket_price(full, k):,.0f}" for k in PACKAGES)
+        assert f"about {full:,} sq ft ({bracket_profile(full)}): {prices} before tax" in t
+        assert f"<span>{a.county}</span>" in t
+    assert "about 14,500 sq ft" in client.get("/local/cleveland").text and "about 8,000 sq ft" in client.get("/local/spring").text
+
+
+def test_meta_descriptions_fit_in_search_results(client):
+    for a in AREAS:
+        t = client.get(f"/local/{a.slug}").text
+        d = html.unescape(re.search(r'<meta name="description" content="([^"]+)"', t).group(1))
+        assert len(d) <= 160, (a.slug, len(d))
+
+
+def test_real_charity_names_appear_only_once_the_owner_sets_them(client, settings, repo):
+    t = client.get("/local/spring").text
+    assert "Veterans of Foreign Wars" not in t and "Local veterans and their families" in t
+    t = app_with(settings, repo, charity_vfw_name="VFW Post 0000 (test)").get("/local/spring").text
+    assert "VFW Post 0000 (test)" in t and "Local veterans and their families" not in t
+
+
+def test_trailing_slash_and_odd_paths(client):
+    r = client.get("/local/", follow_redirects=False)
+    assert r.status_code == 301 and r.headers["location"] == "/local"
+    r = client.get("/local//spring", follow_redirects=False)
+    assert r.status_code == 301 and r.headers["location"] == "/local/spring"
+    r = client.get("/local//nowhere", follow_redirects=False)
+    assert r.status_code == 404 and "text/html" in r.headers["content-type"] and "nowhere" not in r.text
+
+
+def test_area_pages_load_the_spanish_switch(client):
+    assert '<script src="/static/i18n.js?v=' in client.get("/local/klein").text
+    assert '<script src="/static/i18n.js?v=' in client.get("/local").text

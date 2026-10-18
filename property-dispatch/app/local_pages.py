@@ -11,7 +11,8 @@ change as soon as they do.
 
 Privacy and search policy: these pages NEVER contain customer names, addresses, street names
 from bookings, phone numbers or anything about a single job. They are built only from the
-hand-written AREAS table below, the price list and settings, and never read the database.
+hand-written AREAS table below, the price list and settings. The only thing they read from the
+database is how many jobs are booked on a day (so "next day you can book" skips full days).
 We also do NOT make a page per street from bookings: that would publish where customers live,
 and Google treats mass-produced, near-duplicate location pages as doorway pages (scaled
 content abuse). One real page per area we actually serve.
@@ -20,6 +21,7 @@ content abuse). One real page per area we actually serve.
 import html
 import json
 from dataclasses import dataclass
+from datetime import date, timedelta
 from decimal import Decimal
 from xml.sax.saxutils import escape as xml_escape
 
@@ -29,7 +31,8 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from .booking import earliest_bookable_day, local_now
 from .charity import causes
 from .config import Settings, site_url
-from .pricing import ADD_ONS, MAX_SQFT, PACKAGES, PRICE_BRACKETS, bracket_label, season_text
+from .pricing import (ADD_ONS, BRACKET_PROFILES, MAX_SQFT, PACKAGES, PRICE_BRACKETS, bracket_label, bracket_price,
+                      bracket_profile, season_text)
 from .zones import zone_by_key
 
 esc = html.escape
@@ -40,31 +43,32 @@ class Area:
     slug: str
     zone_key: str               # the service zone in app/zones.py
     city: str
+    county: str
     zips: tuple[str, ...]       # only ZIPs named in that zone's comments
     places: tuple[str, ...]     # neighborhoods and roads named in that zone's comments
     intro: str                  # written for this page only: plain facts, no superlatives
 
 
 AREAS: tuple[Area, ...] = (
-    Area("spring", "SPRING_LUXURY_LOOP", "Spring", (),
+    Area("spring", "SPRING_LUXURY_LOOP", "Spring", "Montgomery County", (),
          ("Woodson's Reserve", "SH-99", "Rayford Rd"),
          "We mow in Woodson's Reserve and the developments along SH-99 and Rayford Rd in Spring. "
          "These neighborhoods are on a set rotation, and every visit is booked and priced on its own."),
-    Area("klein", "KLEIN_CORE", "Klein", ("77379", "77388"),
+    Area("klein", "KLEIN_CORE", "Klein", "Harris County", ("77379", "77388"),
          ("FM 1960", "Champion Forest"),
          "Our Klein route covers the 77379 and 77388 ZIP codes, from FM 1960 north and from Champion Forest Dr "
          "east toward I-45. Stops are grouped by neighborhood, so the crew's time goes into lawns, not driving."),
-    Area("new-caney", "I69_HIGH_DENSITY_SPINE", "New Caney", (),
+    Area("new-caney", "I69_HIGH_DENSITY_SPINE", "New Caney", "Montgomery County", (),
          ("The Canopies", "Gemini", "Porters Mill", "Splendora"),
          "We mow in The Canopies, Gemini and Porters Mill in New Caney, and in Splendora to the north along I-69. "
          "Homes in these developments sit close together, so the crew can finish several lawns on a street "
          "before moving on."),
-    Area("cleveland", "CLEVELAND_HUB", "Cleveland", (),
+    Area("cleveland", "CLEVELAND_HUB", "Cleveland", "Liberty County", (),
          ("Grand Oaks Reserve", "Plum Grove", "FM 1010", "SH-105"),
          "Our Cleveland route covers Grand Oaks Reserve, the new construction off FM 1010 and SH-105, and "
          "Plum Grove in Liberty County. Lots here often run larger, so check the price table for your lawn "
          "size before you book."),
-    Area("colony-ridge", "COLONY_RIDGE", "Colony Ridge", (),
+    Area("colony-ridge", "COLONY_RIDGE", "Colony Ridge", "Liberty County", (),
          ("Santa Fe", "Grand San Jacinto", "Montebello", "Camino Real", "Bella Vista"),
          "We mow in Colony Ridge in Liberty County, east of Plum Grove off FM 1010 and FM 2100, including the "
          "Santa Fe, Grand San Jacinto, Montebello, Camino Real and Bella Vista sections. When you book you can "
@@ -104,6 +108,27 @@ def price_rows() -> list[tuple[str, dict[str, Decimal]]]:
         rows.append((bracket_label(limit if limit is not None else low + 1), prices))
         low = limit if limit is not None else low
     return rows
+
+
+def next_open_day(settings: Settings, repo) -> date:
+    """The first day after the 5 PM cutoff that still has room. Reads only how many jobs a day has."""
+    now = local_now(settings)
+    day = earliest_bookable_day(now, settings.freeze_hour)
+    last = now.date() + timedelta(days=settings.booking_horizon_days)
+    try:
+        while day < last and repo.count_active_jobs(day) >= settings.daily_job_quota:
+            day += timedelta(days=1)
+    except Exception:          # never fail the page over this
+        pass
+    return day
+
+
+def cause_names(settings: Settings) -> list[str]:
+    """The causes by name. A real organization is named only once the owner has set its name;
+    until then it gets a plain description (these pages are public and indexed)."""
+    generic = {"vfw": "Local veterans and their families"}
+    return [generic[c["key"]] if c["key"] in generic and c["name"] == Settings.model_fields[f"charity_{c['key']}_name"].default
+            else c["name"] for c in causes(settings)]
 
 
 def price_range() -> tuple[Decimal, Decimal]:
@@ -196,7 +221,8 @@ def layout(settings: Settings, version: str, *, title: str, description: str, bo
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="/static/styles.css?v={esc(version)}">{head_extra}
+  <link rel="stylesheet" href="/static/styles.css?v={esc(version)}">
+  <script src="/static/i18n.js?v={esc(version)}"></script>{head_extra}
 </head>
 <body class="site local">
   <a class="skip-link" href="#main">Skip to content</a>
@@ -284,23 +310,30 @@ def trust_items(settings: Settings) -> list[tuple[str, str]]:
 
 
 # ---------- Pages ------------------------------------------------------
-def area_html(settings: Settings, version: str, area: Area, site: str) -> str:
+def area_html(settings: Settings, version: str, area: Area, site: str, day: date) -> str:
     zone = zone_by_key(area.zone_key)
     city = esc(area.city)
     page_url = f"{site}/local/{area.slug}"
     low, _ = price_range()
-    day = earliest_bookable_day(local_now(settings), settings.freeze_hour)
 
     tiers = list(PACKAGES.items())
     head = "".join(f'<th scope="col">{esc(p["label"])}</th>' for _, p in tiers)
-    rows = "".join(f'\n              <tr><th scope="row">{esc(size)}</th>'
+    rows = "".join(f'\n              <tr><th scope="row">{esc(size)}<small>{esc(profile)}</small></th>'
                    + "".join(f'<td data-label="{esc(p["label"])}">{dollars(prices[k])}</td>' for k, p in tiers)
-                   + "</tr>" for size, prices in price_rows())
+                   + "</tr>" for (size, prices), profile in zip(price_rows(), BRACKET_PROFILES))
     add_ons = "".join(f"<li><strong>{esc(label)}</strong><span>{esc(price)}</span></li>" for label, price in add_on_rows())
     giving = joined(f"{percent(p['giving'])}% on {p['label']}" for p in PACKAGES.values())
-    cause_list = "".join(f"<li>{esc(c['name'])}</li>" for c in causes(settings))
+    cause_list = "".join(f"<li>{esc(name)}</li>" for name in cause_names(settings))
+    # Facts that really differ by area: the size "Full property" is priced at, county, ZIPs, tax.
+    full = zone.full_property_sqft
+    full_prices = " / ".join(dollars(bracket_price(full, k)) for k in PACKAGES)
+    facts = "".join(f"<li><strong>{esc(k)}</strong><span>{esc(v)}</span></li>" for k, v in (
+        ("County", area.county),
+        *((("ZIP codes", ", ".join(area.zips)),) if area.zips else ()),
+        ("“Full property” is priced at", f"about {full:,} sq ft ({bracket_profile(full)}): {full_prices} before tax"),
+        ("“Yard only” is priced at", "the typical yard size here; the booking form shows it for your address"),
+        ("Sales tax", f"{percent(zone.tax_rate)}%")))
     places = "".join(f"<li>{esc(p)}</li>" for p in area.places)
-    zips = f'\n        <p class="hint">ZIP codes: {esc(", ".join(area.zips))}</p>' if area.zips else ""
     trust = "".join(f"<li><div><strong>{esc(t)}</strong><span>{esc(d)}</span></div></li>" for t, d in trust_items(settings))
     others = "".join(f'<li><a href="/local/{a.slug}">Lawn mowing in {esc(a.city)}, TX</a></li>' for a in AREAS if a is not area)
     acres = f"{MAX_SQFT / 43_560:g}"
@@ -310,7 +343,7 @@ def area_html(settings: Settings, version: str, area: Area, site: str) -> str:
       <div class="site-wrap hero-grid">
         <div class="hero-copy">
           {crumbs([("Home", "/"), ("Areas we serve", "/local"), (area.city, None)])}
-          <p class="eyebrow">Veteran-owned · {city}, TX</p>
+          <p class="eyebrow">Veteran-owned · Based in Spring, TX · Serving {city}</p>
           <h1 id="area-title">Lawn mowing in {city}, TX</h1>
           <p class="lede">{esc(area.intro)}</p>
           <div class="hero-actions">
@@ -329,8 +362,10 @@ def area_html(settings: Settings, version: str, area: Area, site: str) -> str:
 
     <section class="section" aria-labelledby="where-title">
       <div class="site-wrap">
-        <h2 id="where-title">Where we mow in {city}</h2>
-        <ul class="spec-list">{places}</ul>{zips}
+        <h2 id="where-title">Where we mow</h2>
+        <ul class="spec-list">{places}</ul>
+        <h3>{city} at a glance</h3>
+        <ul class="local-list local-facts">{facts}</ul>
         <p class="section-lede local-check">Not sure you're on our route? The booking form checks your address before
           you book, or you can <a href="/#areas">check your address</a> on the home page.</p>
       </div>
@@ -338,7 +373,7 @@ def area_html(settings: Settings, version: str, area: Area, site: str) -> str:
 
     <section class="section" id="prices" aria-labelledby="prices-title">
       <div class="site-wrap">
-        <h2 id="prices-title">Mowing prices in {city}</h2>
+        <h2 id="prices-title">Mowing prices (the same in every area we serve)</h2>
         <p class="section-lede">A flat price per visit, set by your lawn size and the rate you pick. Prices are before tax.</p>
         <div class="card price-card">
           <table class="price-table">
@@ -361,18 +396,18 @@ def area_html(settings: Settings, version: str, area: Area, site: str) -> str:
       <div class="site-wrap">
         <h2 id="giving-title">Giving back</h2>
         <p class="section-lede">Part of every visit's price goes to the cause you pick when you book: {esc(giving)}.
-          It comes out of what we keep, so you never pay extra.</p>
+          It's included in the price shown, not added on top. Higher rates cost more and give a bigger share.</p>
         <ul class="spec-list">{cause_list}</ul>
       </div>
     </section>
 
     <section class="section" aria-labelledby="why-title">
       <div class="site-wrap">
-        <h2 id="why-title">Why {city} homeowners book with us</h2>
+        <h2 id="why-title">Why book with us</h2>
         <ul class="trust-strip local-trust">{trust}</ul>
       </div>
     </section>
-{cta_band(f"Book your {area.city} mow online.")}
+{cta_band("Book your mow online.")}
 
     <section class="section" aria-labelledby="other-title">
       <div class="site-wrap">
@@ -383,8 +418,8 @@ def area_html(settings: Settings, version: str, area: Area, site: str) -> str:
     </section>"""
 
     title = f"Lawn Mowing in {area.city}, TX | {settings.business_name}"
-    description = (f"Veteran-owned lawn mowing in {area.city}, TX: {joined(area.places)}. "
-                   f"Flat prices from {dollars(low)} per visit before tax, by lawn size. Book online.")
+    description = (f"Lawn mowing in {area.city}, TX: {joined(area.places[:3])}. "
+                   f"Flat prices from {dollars(low)} a visit before tax. Veteran-owned. Book online.")
     ld = f'\n  <script type="application/ld+json">{script_json(structured_data(settings, area, site))}</script>'
     return layout(settings, version, title=title, description=description, body=body, canonical=page_url,
                   og_image=f"{site}/static/icons/social.jpg", head_extra=ld)
@@ -445,6 +480,10 @@ def register_local_pages(app: FastAPI, settings: Settings, version: str = "") ->
     def areas_index(request: Request):
         return html_page(index_html(settings, version, site_url(settings, request)))
 
+    @app.get("/local/", include_in_schema=False)
+    def areas_index_slash():
+        return RedirectResponse("/local", status_code=301)
+
     @app.get("/local/{slug}", include_in_schema=False)
     def area_page(slug: str, request: Request):
         target = resolve(slug)
@@ -452,12 +491,21 @@ def register_local_pages(app: FastAPI, settings: Settings, version: str = "") ->
             return html_page(not_found_html(settings, version), 404)
         if target != slug:
             return RedirectResponse(f"/local/{target}", status_code=301)
-        return html_page(area_html(settings, version, AREA_BY_SLUG[target], site_url(settings, request)))
+        return html_page(area_html(settings, version, AREA_BY_SLUG[target], site_url(settings, request),
+                                   next_open_day(settings, request.app.state.repo)))
 
     @app.get("/local/{slug}/{rest:path}", include_in_schema=False)
     def street_page(slug: str, rest: str):
         # Street-level URLs fold into the area page: we never publish streets.
         target = resolve(slug)
+        if target is None:
+            return html_page(not_found_html(settings, version), 404)
+        return RedirectResponse(f"/local/{target}", status_code=301)
+
+    @app.get("/local/{rest:path}", include_in_schema=False)
+    def odd_local_path(rest: str):
+        # Anything else under /local (e.g. a doubled slash): the area page if one is named, else the friendly 404.
+        target = next((resolve(part) for part in rest.split("/") if part), None)
         if target is None:
             return html_page(not_found_html(settings, version), 404)
         return RedirectResponse(f"/local/{target}", status_code=301)

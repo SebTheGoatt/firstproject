@@ -827,6 +827,7 @@ label.check input { width: 18px; height: 18px; }
 .price-table th:last-child, .price-table td:last-child { padding-right: 0; }
 .price-table thead th { font-size: 0.9rem; vertical-align: bottom; }
 .price-table tbody th { font-weight: 600; }
+.price-table tbody th small { display: block; font-weight: 400; font-size: 0.82rem; color: var(--muted); }
 .price-table td { font-weight: 700; font-size: 1.1rem; }
 .tax-note { margin: 12px 0 0; font-weight: 600; }
 .local-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
