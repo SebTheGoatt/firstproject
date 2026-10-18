@@ -7,6 +7,7 @@
     GET  /team, /team/{slug}        public "Meet the crew" pages
     GET  /pay/{token}               customer payment page
     (crew sign-in/profiles: app/crew_routes.py · payments: app/pay_routes.py)
+    GET  /local, /local/{area}      service-area pages + /sitemap.xml (app/local_pages.py)
     GET  /api/booking-info          earliest bookable date, services
     POST /api/jobs                  intake: validate → geocode → store
     GET  /api/routes/{date}         crew: optimized route with map links
@@ -41,6 +42,7 @@ from .geocode import GeocodingError, GeocoderUnavailable, NominatimGeocoder
 from .agent import register_agent_routes
 from .agent_api import register_agent_api
 from .live_feed import record_booking, register_live_routes
+from .local_pages import register_local_pages
 from .crew_auth import CrewIdentity
 from .crew_routes import register_crew_routes
 from .models import (SERVICE_LABELS, order_label, AddressCheck, CompleteStopRequest, GeoPoint, JobCreated,
@@ -257,6 +259,7 @@ def create_app(
     register_visit_routes(app, settings, crew_auth)
     register_agent_api(app, settings, build={"static_version": version, "commit": os.environ.get("RENDER_GIT_COMMIT", "")[:7]})   # scoped, audited keys for StarNet agents (off unless AGENT_KEY_READ / AGENT_KEY_OPS are set)
     register_agent_routes(app, settings, crew_auth)   # owner-only Ollama dispatch assistant (off unless OLLAMA_BASE_URL is set)
+    register_local_pages(app, settings, version)      # server-rendered /local area pages + /sitemap.xml for search engines
 
     @app.get("/push-setup", include_in_schema=False)
     def push_setup_page():
@@ -285,8 +288,9 @@ def create_app(
         return FileResponse(STATIC_DIR / "favicon.ico", media_type="image/x-icon")
 
     @app.get("/robots.txt", include_in_schema=False)
-    def robots():
-        return PlainTextResponse("User-agent: *\nAllow: /\nDisallow: /crew\nDisallow: /api/\n")
+    def robots(request: Request):
+        return PlainTextResponse("User-agent: *\nAllow: /\nDisallow: /crew\nDisallow: /api/\n"
+                                 f"Sitemap: {site_url(settings, request)}/sitemap.xml\n")
 
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
