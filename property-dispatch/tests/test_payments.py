@@ -177,3 +177,78 @@ def test_public_base_url_wins_for_stripe_links(settings, repo, sms, stripe):
     token = book_with(c, "A", "0100", method="card").json()["pay_url"].rsplit("/", 1)[1]
     c.post(f"/api/pay/{token}/checkout", json={})
     assert stripe.sessions[-1]["success_url"].startswith("https://www.mandalawncare.example/pay/")
+
+
+# ---------- Stripe audit metadata + payment_intent.succeeded ----------
+def book_supporter(client, letter="A", phone="0100", charity_choice="vfw"):
+    with patch("app.main.local_now", return_value=NOW):
+        r = client.post("/api/jobs", json={
+            "name": f"Customer {letter}", "phone": f"(281) 555-{phone}", "address": f"100 {letter} Example Rd",
+            "service": "mowing", "lawn_sqft": 5000, "package": "supporter", "charity_choice": charity_choice,
+            "scheduled_date": TOMORROW.isoformat(), "payment_method": "card"})
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+def test_checkout_charges_the_bracket_total_and_tags_it_for_the_audit(card_client, repo, settings, stripe):
+    r = book_supporter(card_client)
+    token = r["pay_url"].rsplit("/", 1)[1]
+    card_client.post(f"/api/pay/{token}/checkout", json={})
+    s = stripe.sessions[-1]
+    # 5,000 sq ft on Operational Target: $114.00 flat + 8.25% tax ($9.41) = $123.41 → 12341 cents
+    assert (s["amount_due"], s["subtotal"], s["tax"]) == (123.41, 114.0, 9.41)
+    assert s["audit"] == {"property_profile": "3,501-7,500 sq ft", "service_track": "Operational Target",
+                          "charity_lane": "vfw", "crew_route_id": f"{TOMORROW}#not-routed"}
+
+    route_stops(card_client, repo, settings)          # once the route is built, the stop number is known
+    card_client.post(f"/api/pay/{token}/checkout", json={})
+    assert stripe.sessions[-1]["audit"]["crew_route_id"] == f"{TOMORROW}#1"
+    assert not any(v in str(stripe.sessions[-1]["audit"]) for v in ("Customer", "555", "Example Rd"))   # no personal info
+
+
+def test_audit_metadata_goes_on_the_session_and_the_payment_intent(settings):
+    import httpx
+    from urllib.parse import parse_qs
+    from app.payments import StripeClient
+    sent = {}
+
+    def handler(req):
+        sent.update({k: v[0] for k, v in parse_qs(req.content.decode()).items()})
+        return httpx.Response(200, json={"id": "cs_1", "url": "https://checkout.stripe.test/1"})
+
+    settings.stripe_secret_key = "sk_test"
+    audit = {"property_profile": "3,501-7,500 sq ft", "service_track": "Operational Target",
+             "charity_lane": "vfw", "crew_route_id": "2026-10-20#3"}
+    StripeClient(settings, httpx.Client(transport=httpx.MockTransport(handler))).create_checkout(
+        job_id="j1", service_label="Mowing", service_date="2026-10-20", amount_due=123.41, donation=0,
+        success_url="https://x/ok", cancel_url="https://x/no", subtotal=114.0, tax=9.41, tax_rate=0.0825,
+        charity_choice="vfw", audit=audit)
+    assert sent["metadata[amount_due_cents]"] == "12341"
+    assert [sent[f"line_items[{i}][price_data][unit_amount]"] for i in (0, 1)] == ["11400", "941"]
+    for key, value in {**audit, "job_id": "j1", "charity_choice": "vfw"}.items():
+        assert sent[f"metadata[{key}]"] == sent[f"payment_intent_data[metadata][{key}]"] == value
+
+
+def intent_event(job_id, cents, donation_cents=0, choice="vfw"):
+    return {"type": "payment_intent.succeeded", "data": {"object": {
+        "amount_received": cents, "metadata": {"job_id": job_id, "donation_cents": str(donation_cents),
+                                               "charity_choice": choice}}}}
+
+
+def test_payment_intent_succeeded_marks_paid_once_and_notifies_once(card_client, repo):
+    r = book_supporter(card_client)
+    token = r["pay_url"].rsplit("/", 1)[1]
+    with patch("app.pay_routes.push.send_to_job", return_value={"sent": 1}) as notify:
+        for event in (intent_event(r["id"], 13341, 1000), paid_event(r["id"], 13341, 1000), intent_event(r["id"], 13341, 1000)):
+            payload, sig = signed(event)
+            assert card_client.post("/webhooks/stripe", content=payload, headers={"Stripe-Signature": sig}).status_code == 200
+    assert [c.args[2:] for c in notify.call_args_list] == [(r["id"], "paid")]     # Stripe sends both events; one message
+    info = card_client.get(f"/api/pay/{token}").json()
+    assert (info["payment_status"], info["amount_paid"], info["donation"]) == ("paid", 133.41, 10.0)
+    assert [(c["key"], c["amount"]) for c in info["donation_ledger"]] == [("vfw", 10.0)]   # all to their pick
+
+
+def test_payment_intents_that_arent_ours_are_ignored(card_client):
+    event = {"type": "payment_intent.succeeded", "data": {"object": {"amount_received": 500, "metadata": {}}}}
+    payload, sig = signed(event)
+    assert card_client.post("/webhooks/stripe", content=payload, headers={"Stripe-Signature": sig}).status_code == 200

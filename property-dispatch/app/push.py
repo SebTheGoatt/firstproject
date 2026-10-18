@@ -27,6 +27,14 @@ MESSAGES = {
         "en": "All done! Tap to see your before & after photos and receipt.",
         "es": "¡Listo! Toca para ver tus fotos de antes y después y tu recibo.",
     },
+    "paid": {
+        "en": "Payment received. Thank you! Tap for your receipt and where your order's giving goes.",
+        "es": "Pago recibido. ¡Gracias! Toca para ver tu recibo y a dónde va la donación de tu pedido.",
+    },
+    "review": {
+        "en": "Thanks for choosing us! If we did a good job, would you leave a quick Google review?",
+        "es": "¡Gracias por elegirnos! Si hicimos un buen trabajo, ¿nos dejas una reseña rápida en Google?",
+    },
 }
 
 
@@ -83,8 +91,9 @@ def keys_status(settings: Settings) -> str:
     return "ok" if base64.urlsafe_b64encode(derived).decode().rstrip("=") == wanted.rstrip("=") else "key_mismatch"
 
 
-def send_to_job(repo, settings: Settings, job_id: str, kind: str) -> dict:
-    """Push `kind` ('on_the_way' or 'done') to every phone subscribed to this booking.
+def send_to_job(repo, settings: Settings, job_id: str, kind: str, link_suffix: str = "") -> dict:
+    """Push `kind` (a MESSAGES key) to every phone subscribed to this booking; `link_suffix` is added to
+    their visit link (e.g. "?review=1" opens the visit page at the review button).
 
     Returns {"sent": n, "failed": n, "problem": code or None}. Never raises."""
     report = {"sent": 0, "failed": 0, "problem": None}
@@ -112,7 +121,7 @@ def send_to_job(repo, settings: Settings, job_id: str, kind: str) -> dict:
 
     for sub in subs:
         lang = sub["lang"] if sub["lang"] in ("en", "es") else "en"
-        payload = json.dumps({"title": settings.business_name, "body": MESSAGES[kind][lang], "url": sub["visit_path"],
+        payload = json.dumps({"title": settings.business_name, "body": MESSAGES[kind][lang], "url": sub["visit_path"] + link_suffix,
                               "action": ACTION[lang]})
         try:
             webpush(subscription_info={"endpoint": sub["endpoint"], "keys": {"p256dh": sub["p256dh"], "auth": sub["auth"]}},

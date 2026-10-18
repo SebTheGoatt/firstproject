@@ -49,7 +49,7 @@ class StripeClient:
         success_url: str, cancel_url: str, subtotal: float | None = None, tax: float | None = None,
         tax_rate: float | None = None, charities: list[dict] | None = None,
         package_label: str | None = None, charity_rate: float | None = None, charity_amount: float | None = None,
-        add_ons: list | None = None, charity_choice: str | None = None,
+        add_ons: list | None = None, charity_choice: str | None = None, audit: dict | None = None,
     ) -> dict:
         """One Stripe line for the service, one for Texas sales tax, and one per cause an optional
         donation goes to (so the receipt shows exactly where it went).
@@ -63,8 +63,15 @@ class StripeClient:
             "metadata[amount_due_cents]": str(to_cents(amount_due)),
             "metadata[donation_cents]": str(to_cents(donation)),
             "metadata[charity_choice]": charity_choice or "",
+            # The same facts on the PaymentIntent, so payment_intent.succeeded and the Stripe Dashboard carry them too.
+            "payment_intent_data[metadata][job_id]": job_id,
+            "payment_intent_data[metadata][donation_cents]": str(to_cents(donation)),
+            "payment_intent_data[metadata][charity_choice]": charity_choice or "",
             "payment_intent_data[description]": f"{self.settings.business_name}: {service_label} on {service_date}",
         }
+        # Audit facts (no names, phones or addresses): size bracket, tier, giving lane, route stop.
+        for key, value in (audit or {}).items():
+            data[f"metadata[{key}]"] = data[f"payment_intent_data[metadata][{key}]"] = str(value)[:500]
         lines: list[tuple[str, float]] = []
         service_name = f"{service_label} ({service_date})"
         if package_label and charity_amount:

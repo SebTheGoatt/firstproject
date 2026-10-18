@@ -112,6 +112,10 @@ class Repository(Protocol):
     def set_stop_note(self, stop_id: str, note: str | None) -> None: ...
     def stop_notes(self, route_id: str) -> dict[str, str]: ...
     def claim_notification(self, stop_id: str) -> bool: ...
+    # Google review follow-up (app/reviews.py)
+    def jobs_due_review(self, since: datetime, until: datetime) -> list[dict]: ...
+    def mark_review_requested(self, job_id: str) -> bool: ...
+    def jobs_completed_between(self, since: datetime, until: datetime) -> list[dict]: ...
     def release_notification(self, stop_id: str) -> None: ...
     # Payments
     def get_payment(self, pay_token: str) -> dict | None: ...
@@ -340,6 +344,30 @@ class SupabaseRepository:
         ).data
         return bool(rows)
 
+    REVIEW_SELECT = "id, access_code, lang, completed_at, customers(name, phone)"
+
+    @staticmethod
+    def _review_rows(rows: list[dict]) -> list[dict]:
+        return [{"id": r["id"], "access_code": r.get("access_code"), "lang": r.get("lang") or "en",
+                 "completed_at": r.get("completed_at"), "customer_name": r["customers"]["name"],
+                 "phone": r["customers"]["phone"]} for r in rows]
+
+    def _completed(self, since: datetime, until: datetime):
+        return (self.sb.table("jobs").select(self.REVIEW_SELECT).eq("status", "completed")
+                .gte("completed_at", since.isoformat()).lte("completed_at", until.isoformat()))
+
+    def jobs_due_review(self, since: datetime, until: datetime) -> list[dict]:
+        # Fails if the review_requested_at column hasn't been added yet; app/reviews.py falls back.
+        return self._review_rows(self._completed(since, until).is_("review_requested_at", "null").execute().data)
+
+    def mark_review_requested(self, job_id: str) -> bool:
+        rows = (self.sb.table("jobs").update({"review_requested_at": _now_iso()})
+                .eq("id", job_id).is_("review_requested_at", "null").execute()).data
+        return bool(rows)
+
+    def jobs_completed_between(self, since: datetime, until: datetime) -> list[dict]:
+        return self._review_rows(self._completed(since, until).execute().data)
+
     def release_notification(self, stop_id: str) -> None:
         self.sb.table("route_stops").update({"notified_at": None}).eq("id", stop_id).execute()
 
@@ -560,7 +588,7 @@ class MemoryRepository:
                 "donation": 0.0, "amount_paid": None, "paid_at": None, "pay_token": pay_token,
                 "access_code": access_code,
                 "stripe_session_id": None,
-                "frozen_at": None, "completed_at": None, "created_at": _now_iso(),
+                "frozen_at": None, "completed_at": None, "review_requested_at": None, "created_at": _now_iso(),
             }
             self.jobs[job["id"]] = job
             return deepcopy(job)
@@ -677,6 +705,33 @@ class MemoryRepository:
                 return False
             s["notified_at"] = _now_iso()
             return True
+
+    def _completed(self, since: datetime, until: datetime, unasked: bool = False) -> list[dict]:
+        out = []
+        for j in self.jobs.values():
+            done = datetime.fromisoformat(j["completed_at"]) if j.get("completed_at") else None
+            if j["status"] != "completed" or done is None or not since <= done <= until:
+                continue
+            if unasked and j.get("review_requested_at"):
+                continue
+            cust = self.customers[j["customer_id"]]
+            out.append({"id": j["id"], "access_code": j.get("access_code"), "lang": j.get("lang") or "en",
+                        "completed_at": j["completed_at"], "customer_name": cust["name"], "phone": cust["phone"]})
+        return out
+
+    def jobs_due_review(self, since: datetime, until: datetime) -> list[dict]:
+        return self._completed(since, until, unasked=True)
+
+    def mark_review_requested(self, job_id: str) -> bool:
+        with self._lock:
+            j = self.jobs[job_id]
+            if j.get("review_requested_at"):
+                return False
+            j["review_requested_at"] = _now_iso()
+            return True
+
+    def jobs_completed_between(self, since: datetime, until: datetime) -> list[dict]:
+        return self._completed(since, until)
 
     def release_notification(self, stop_id: str) -> None:
         self.stops[stop_id]["notified_at"] = None

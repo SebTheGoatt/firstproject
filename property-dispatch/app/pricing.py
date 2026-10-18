@@ -50,6 +50,20 @@ PRICE_BRACKETS: tuple[tuple[int | None, dict[str, Decimal]], ...] = (
 )
 
 
+def bracket_label(lawn_sqft: int | None) -> str:
+    """The lawn-size bracket in words ("3,501-7,500 sq ft"), for receipts and payment records."""
+    if not lawn_sqft:
+        return "Size set on site"
+    low = 0
+    for limit, _ in PRICE_BRACKETS:
+        if limit is None:
+            return f"Over {low:,} sq ft"
+        if lawn_sqft <= limit:
+            return f"Up to {limit:,} sq ft" if low == 0 else f"{low + 1:,}-{limit:,} sq ft"
+        low = limit
+    raise AssertionError("unreachable")
+
+
 def bracket_price(lawn_sqft: int, package: str) -> Decimal:
     """The flat mowing price (before tax, base included) for this lawn size and tier."""
     for limit, prices in PRICE_BRACKETS:
