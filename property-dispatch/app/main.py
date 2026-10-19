@@ -255,7 +255,9 @@ def create_app(
     @app.get("/", include_in_schema=False)
     def home_page(request: Request):
         # The business's structured data for Google, with this site's own address.
-        text = render("home.html").replace("{{HOME_JSONLD}}", home_structured_data(settings, site_url(settings, request)))
+        # Link previews (texts, Facebook, Google) need the share image as a full https address.
+        site = site_url(settings, request)
+        text = render("home.html").replace("{{HOME_JSONLD}}", home_structured_data(settings, site)).replace("{{SITE}}", site)
         return HTMLResponse(text, headers={"Cache-Control": "no-cache"})
 
     @app.get("/book", include_in_schema=False)

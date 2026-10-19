@@ -117,3 +117,15 @@ def test_robots_hides_crew_and_api(client):
 
 def test_favicon(client):
     assert client.get("/favicon.ico").status_code == 200
+
+
+def test_link_preview_uses_the_post_one_share_image(client):
+    """Texts, Facebook and Google show the og:image when the link is shared. It must be a full address and a new
+    file name, so apps that saved the old Semper Green picture under the old name fetch the new one."""
+    t = client.get("/").text
+    m = re.search(r'<meta property="og:image" content="([^"]+)">', t)
+    assert m and m.group(1).startswith("http") and m.group(1).endswith("/static/icons/post-one-share.jpg")
+    assert '<meta name="twitter:card" content="summary_large_image">' in t and "social.jpg" not in t
+    assert client.get("/static/icons/post-one-share.jpg").status_code == 200
+    assert client.get("/static/icons/social.jpg").status_code == 404
+    assert "post-one-share.jpg" in client.get("/local/spring").text
