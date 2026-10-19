@@ -1,4 +1,4 @@
-# Going live: Semper Green Lawn Care
+# Going live: Post One Lawn Co.
 
 The app checks itself: sign in as the owner, open **Crew app → Dashboard → Go-live checklist**
 (`/owner/readiness`). Every ❌ shows exactly what to set. When it says **✓ Ready to go live**, you are.
@@ -21,6 +21,14 @@ The app checks itself: sign in as the owner, open **Crew app → Dashboard → G
 7. **Push notifications**: open `/push-setup`, copy the key pair into Render.
 8. **Legal**: have a Texas attorney review /privacy, /terms (damage policy) and /refunds. Set
    `LIABILITY_COVERAGE` / `CREW_BACKGROUND_CHECKED` only once they're true.
+
+## Brand
+The public name is **Post One Lawn Co.**; the legal name stays **Semper Green LLC** (the policy pages read
+"Semper Green LLC, doing business as Post One Lawn Co.").
+- **Render → Environment**: if `BUSINESS_NAME` was set, change it to `Post One Lawn Co.` (or delete it; that's the
+  default). The go-live checklist flags a leftover old name.
+- **Texas assumed name**: file an assumed name certificate (Form 503) with the Texas Secretary of State for
+  Semper Green LLC d/b/a Post One Lawn Co. (required when the LLC does business under another name).
 
 ## The day you open
 - Make one real test booking with your own card, refund it in Stripe, then delete it from your visit page.

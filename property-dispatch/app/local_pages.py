@@ -222,9 +222,41 @@ def structured_data(settings: Settings, area: Area, site: str) -> dict:
 
 
 # ---------- Page pieces (same header, footer and styles as the rest of the site) ----------
+# Logo A's small mark (shield and "1", no mow lines). Decorative: the name is always right next to it.
+BRAND_MARK = ('<svg class="brand-mark" viewBox="0 0 200 220" width="30" height="33" aria-hidden="true" focusable="false">'
+              '<path d="M100 10 L182 40 V110 C182 160 148 192 100 210 C52 192 18 160 18 110 V40 Z" fill="#0F2B22" '
+              'stroke="#C9A227" stroke-width="9" stroke-linejoin="round"/>'
+              '<path d="M92 166 V82 C84 88 74 92 62 94 V78 C80 74 94 62 101 46 H113 V166 Z" fill="#9BD15A"/></svg>')
+
+
+def brand_lines(name: str) -> tuple[str, str]:
+    """The wordmark's two lines: "Post One Lawn Co." -> ("Post One", "Lawn Co."). A name without "Lawn" stays on one line."""
+    name = " ".join(name.split())
+    head, sep, tail = name.rpartition(" Lawn ")
+    if head and sep:
+        return head, f"Lawn {tail}"
+    if name.endswith(" Lawn"):
+        return name[:-5], "Lawn"
+    return name, ""
+
+
+def brand_html(name: str) -> str:
+    """Mark + two-line wordmark for the header and footer links (and {{BRAND}} in the static pages).
+
+    Built from BUSINESS_NAME, so a new name still renders sensibly. The stylized lines are aria-hidden;
+    screen readers read the full name once from the visually hidden span."""
+    top, sub = brand_lines(name)
+    sub_html = f'<span class="wm-sub">{esc(sub)}</span>' if sub else ""
+    return (f'{BRAND_MARK}<span class="wordmark" aria-hidden="true" data-no-i18n>'
+            f'<span class="wm-top">{esc(top)}</span>{sub_html}</span>'
+            f'<span class="visually-hidden">{esc(name)}</span>')
+
+
 def layout(settings: Settings, version: str, *, title: str, description: str, body: str,
-           canonical: str | None = None, og_image: str | None = None, head_extra: str = "") -> str:
-    name = esc(settings.business_name)
+           canonical: str | None = None, og_image: str | None = None, head_extra: str = "", page: str = "") -> str:
+    """The page shell for every server-rendered page. `page` adds a body class (sp-about, sp-legal, ...)."""
+    brand = brand_html(settings.business_name)
+    body_class = "site local page-server-pages" + (f" sp-{page}" if page else "")
     meta = ""
     if canonical:
         meta += f"""
@@ -243,21 +275,20 @@ def layout(settings: Settings, version: str, *, title: str, description: str, bo
   <meta property="og:title" content="{esc(title)}">
   <meta property="og:description" content="{esc(description)}">
   <meta property="og:type" content="website">{meta}
-  <meta name="theme-color" content="#0b3d2e">
+  <meta name="theme-color" content="#0F2B22">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+  <link rel="preload" href="/static/fonts/big-shoulders-display-800.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/public-sans-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/styles.css?v={esc(version)}">
   <script src="/static/i18n.js?v={esc(version)}"></script>{head_extra}
 </head>
-<body class="site local">
+<body class="{body_class}">
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="site-header">
     <div class="site-wrap header-row">
-      <a class="brand" href="/">
-        <img src="/static/icons/logo-64.png" alt="" width="32" height="32">
-        <span>{name}</span>
-      </a>
+      <a class="brand" href="/">{brand}</a>
       <nav class="site-nav" aria-label="Main">
         <a href="/#services">Services</a>
         <a href="/local">Service areas</a>
@@ -274,12 +305,10 @@ def layout(settings: Settings, version: str, *, title: str, description: str, bo
   <footer class="site-footer">
     <div class="site-wrap footer-grid">
       <div>
-        <a class="brand footer-brand" href="/">
-          <img src="/static/icons/logo-64.png" alt="" width="28" height="28">
-          <span>{name}</span>
-        </a>
-        <p class="footer-tagline">Clean lawns. Stronger communities.</p>
+        <a class="brand footer-brand" href="/">{brand}</a>
+        <p class="footer-tagline">On post. On time.</p>
         <p>Veteran-owned · Spring, TX</p>
+        <p class="footer-trust">Clean lawns. Stronger communities.</p>
       </div>
       <nav aria-label="Footer">
         <a href="/book">Book a service</a>
@@ -293,8 +322,8 @@ def layout(settings: Settings, version: str, *, title: str, description: str, bo
         <a class="footer-areas-title" href="/local">Areas we serve</a>
 {areas}
       </nav>
-      <p class="footer-copy">© {local_now(settings).year} {esc(settings.legal_name)}{contact_line(settings)}
-        · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a></p>
+      <p class="footer-copy">© {local_now(settings).year} {esc(settings.business_name)}</p>
+      {legal_footer_html(settings)}
     </div>
   </footer>
 
@@ -314,6 +343,12 @@ def contact_line(settings: Settings) -> str:
         digits = "".join(c for c in settings.business_phone if c.isdigit() or c == "+")
         out += f' · <a href="tel:{esc(digits)}">{esc(settings.business_phone)}</a>'
     return out
+
+
+def legal_footer_html(settings: Settings) -> str:
+    """The footer line every customer page carries: who we are, how to reach us, the policies."""
+    return (f'<p class="legal-line">{esc(settings.legal_name)}{contact_line(settings)} · '
+            '<a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a></p>')
 
 
 def crumbs(trail: list[tuple[str, str | None]]) -> str:
@@ -337,15 +372,27 @@ def cta_band(heading: str) -> str:
     </section>"""
 
 
-def trust_items(settings: Settings) -> list[tuple[str, str]]:
-    """Why book with us. Insurance and background checks are listed ONLY when the owner has set them."""
-    items = [("Veteran-owned", "A local business owned and led by a veteran."),
-             ("Planned daily routes", "Each day's route is planned the evening before, stop by stop."),
-             ("Live visit page", "An alert when the crew is on the way, and a live page for every visit.")]
+# Line icons for the "Why book with us" row (24px grid, drawn with the stroke color from the stylesheet).
+ICONS = {"shield": "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z",
+         "pin": "M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z",
+         "chat": "M21 12a8 8 0 0 1-12 7l-5 1 1-4a8 8 0 1 1 16-4z",
+         "check": "M9 12l2 2 4-4M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z",
+         "covered": "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9 12l2 2 4-4"}
+
+
+def icon(name: str) -> str:
+    return f'<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="{ICONS[name]}"/></svg>'
+
+
+def trust_items(settings: Settings) -> list[tuple[str, str, str]]:
+    """Why book with us, as (icon, title, text). Insurance and background checks are listed ONLY when the owner has set them."""
+    items = [("shield", "Veteran-owned", "A local business owned and led by a veteran."),
+             ("pin", "Planned daily routes", "Each day's route is planned the evening before, stop by stop."),
+             ("chat", "Live visit page", "An alert when the crew is on the way, and a live page for every visit.")]
     if settings.crew_background_checked:
-        items.append(("Background-checked crew", "Every crew member has passed a background check."))
+        items.append(("check", "Background-checked crew", "Every crew member has passed a background check."))
     if coverage := settings.liability_coverage.strip():
-        items.append((f"{coverage} liability coverage", "Commercial liability coverage while we're on your property."))
+        items.append(("covered", f"{coverage} liability coverage", "Commercial liability coverage while we're on your property."))
     return items
 
 
@@ -373,29 +420,39 @@ def area_html(settings: Settings, version: str, area: Area, site: str, day: date
         ("“Yard only” is priced at", "the typical yard size here; the booking form shows it for your address"),
         ("Sales tax", f"{percent(zone.tax_rate)}%")))
     places = "".join(f"<li>{esc(p)}</li>" for p in area.places)
-    trust = "".join(f"<li><div><strong>{esc(t)}</strong><span>{esc(d)}</span></div></li>" for t, d in trust_items(settings))
-    others = "".join(f'<li><a href="/local/{a.slug}">Lawn mowing in {esc(a.city)}, TX</a></li>' for a in AREAS if a is not area)
+    trust = "".join(f"<li>{icon(i)}<div><strong>{esc(t)}</strong><span>{esc(d)}</span></div></li>"
+                    for i, t, d in trust_items(settings))
+    others = area_links(a for a in AREAS if a is not area)
     acres = f"{MAX_SQFT / 43_560:g}"
 
     body = f"""
-    <section class="hero local-hero" aria-labelledby="area-title">
-      <div class="site-wrap hero-grid">
-        <div class="hero-copy">
+    <section class="sp-hero" aria-labelledby="area-title">
+      <div class="site-wrap sp-hero-grid">
+        <div class="sp-hero-copy">
           {crumbs([("Home", "/"), ("Areas we serve", "/local"), (area.city, None)])}
           <p class="eyebrow">Veteran-owned · Based in Spring, TX · Serving {city}</p>
           <h1 id="area-title">Lawn mowing in {city}, TX</h1>
           <p class="lede">{esc(area.intro)}</p>
           <div class="hero-actions">
-            <a class="btn btn-primary btn-lg" href="/book">Book online</a>
-            <a class="btn btn-lg btn-quiet" href="#prices">See prices</a>
+            <a class="btn btn-lg sp-btn-fresh" href="/book">Book online</a>
+            <a class="btn btn-lg sp-btn-line" href="#prices">See prices</a>
           </div>
         </div>
-        <aside class="card next-open" aria-label="Next service day you can book">
-          <p class="eyebrow">Next day you can book</p>
+        <aside class="sp-card next-open" aria-label="Next service day you can book">
+          <p class="sp-kicker">Next day you can book</p>
           <p class="next-day">{day:%A, %B} {day.day}</p>
           <p class="hint">Next-day booking closes at {hour_words(settings.freeze_hour)}.</p>
           <a class="btn btn-primary btn-block" href="/book">Book this day</a>
         </aside>
+      </div>
+    </section>
+
+    <section class="sp-overlap" aria-labelledby="why-title">
+      <div class="site-wrap">
+        <div class="sp-trust">
+          <h2 class="sp-kicker" id="why-title">Why book with us</h2>
+          <ul class="sp-trust-list">{trust}</ul>
+        </div>
       </div>
     </section>
 
@@ -406,7 +463,7 @@ def area_html(settings: Settings, version: str, area: Area, site: str, day: date
         <h3>{city} at a glance</h3>
         <ul class="local-list local-facts">{facts}</ul>
         <p class="section-lede local-check">Not sure you're on our route? The booking form checks your address before
-          you book, or you can <a href="/#areas">check your address</a> on the home page.</p>
+          you book, or you can <a href="/#area-checker">check your address</a> on the home page.</p>
       </div>
     </section>
 
@@ -441,13 +498,6 @@ def area_html(settings: Settings, version: str, area: Area, site: str, day: date
         <ul class="spec-list">{cause_list}</ul>
       </div>
     </section>
-
-    <section class="section" aria-labelledby="why-title">
-      <div class="site-wrap">
-        <h2 id="why-title">Why book with us</h2>
-        <ul class="trust-strip local-trust">{trust}</ul>
-      </div>
-    </section>
 {cta_band("Book your mow online.")}
 
     <section class="section" aria-labelledby="other-title">
@@ -463,7 +513,11 @@ def area_html(settings: Settings, version: str, area: Area, site: str, day: date
                    f"Flat prices from {dollars(low)} a visit before tax. Veteran-owned. Book online.")
     ld = f'\n  <script type="application/ld+json">{script_json(structured_data(settings, area, site))}</script>'
     return layout(settings, version, title=title, description=description, body=body, canonical=page_url,
-                  og_image=f"{site}/static/icons/social.jpg", head_extra=ld)
+                  og_image=f"{site}/static/icons/social.jpg", head_extra=ld, page="area")
+
+
+def area_links(areas) -> str:
+    return "".join(f'<li><a href="/local/{a.slug}">Lawn mowing in {esc(a.city)}, TX</a></li>' for a in areas)
 
 
 def index_html(settings: Settings, version: str, site: str) -> str:
@@ -473,59 +527,79 @@ def index_html(settings: Settings, version: str, site: str) -> str:
             <strong>Lawn mowing in {esc(a.city)}, TX</strong>
             <span>{esc(" · ".join(a.places))}</span>
             <span class="local-card-cta">See prices and the next open day</span>
-          </a></li>""" for a in AREAS)
+          </a></li>""" for a in AREAS) + """
+          <li class="sp-check-card"><p>Not sure you're on our route? The booking form checks your address before
+            you book, or you can <a href="/#area-checker">check your address</a> on the home page.</p></li>"""
     body = f"""
-    <section class="section local-index" aria-labelledby="areas-title">
-      <div class="site-wrap">
+    <section class="sp-hero local-index" aria-labelledby="areas-title">
+      <div class="site-wrap sp-hero-copy">
         {crumbs([("Home", "/"), ("Areas we serve", None)])}
         <p class="eyebrow">Veteran-owned · Spring, TX area</p>
         <h1 class="page-title" id="areas-title">Areas we serve</h1>
-        <p class="section-lede">We mow on set neighborhood routes north and northeast of Houston. Pick your area to see
+        <p class="lede">We mow on set neighborhood routes north and northeast of Houston. Pick your area to see
           the neighborhoods we cover, flat prices from {dollars(low)} per visit before tax, and the next day you can book.</p>
-        <ul class="local-grid">{cards}
-        </ul>
       </div>
     </section>
+
+    <div class="sp-overlap">
+      <div class="site-wrap">
+        <ul class="local-grid" aria-labelledby="areas-title">{cards}
+        </ul>
+      </div>
+    </div>
 {cta_band("Put your lawn on the route.")}"""
     cities = joined(f"{a.city}" for a in AREAS)
     return layout(settings, version, title=f"Areas We Serve | {settings.business_name}",
                   description=f"Lawn mowing in {cities}, TX: the neighborhoods we cover and flat per-visit prices for each area.",
-                  body=body, canonical=f"{site}/local", og_image=f"{site}/static/icons/social.jpg")
+                  body=body, canonical=f"{site}/local", og_image=f"{site}/static/icons/social.jpg", page="index")
 
 
 def not_found_html(settings: Settings, version: str) -> str:
     # The requested name is never echoed back.
-    body = """
-    <section class="section" aria-labelledby="nf-title">
-      <div class="site-wrap">
+    body = f"""
+    <section class="sp-hero sp-hero-short" aria-labelledby="nf-title">
+      <div class="site-wrap sp-hero-copy">
         <h1 class="page-title" id="nf-title">We don't have a page for that area</h1>
-        <p class="section-lede">We may still mow there. See the areas we serve, or start a booking: the booking form
+        <p class="lede">We may still mow there. See the areas we serve, or start a booking: the booking form
           checks your address before you book.</p>
         <div class="hero-actions">
-          <a class="btn btn-primary btn-lg" href="/local">Areas we serve</a>
-          <a class="btn btn-lg btn-quiet" href="/book">Book online</a>
+          <a class="btn btn-lg sp-btn-fresh" href="/local">Areas we serve</a>
+          <a class="btn btn-lg sp-btn-line" href="/book">Book online</a>
         </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="nf-areas-title">
+      <div class="site-wrap">
+        <h2 id="nf-areas-title">Areas we serve</h2>
+        <ul class="area-links">{area_links(AREAS)}</ul>
       </div>
     </section>"""
     return layout(settings, version, title=f"Area not found | {settings.business_name}",
-                  description="See the areas we serve.", body=body)
+                  description="See the areas we serve.", body=body, page="404")
 
 
 def not_found_page(settings: Settings, version: str) -> str:
     """Site-wide 404 for a mistyped or old link."""
     body = """
-    <section class="section" aria-labelledby="nf-title">
-      <div class="site-wrap">
+    <section class="sp-hero sp-hero-short" aria-labelledby="nf-title">
+      <div class="site-wrap sp-hero-copy">
         <h1 class="page-title" id="nf-title">We couldn't find that page</h1>
-        <p class="section-lede">The link may be old or mistyped. Here's where most people are headed:</p>
+        <p class="lede">The link may be old or mistyped. Here's where most people are headed:</p>
+      </div>
+    </section>
+
+    <div class="section">
+      <div class="site-wrap">
         <div class="hero-actions">
           <a class="btn btn-primary btn-lg" href="/book">Book a visit</a>
           <a class="btn btn-lg btn-quiet" href="/visit">View my visit</a>
           <a class="btn btn-lg btn-quiet" href="/">Home</a>
         </div>
       </div>
-    </section>"""
-    return layout(settings, version, title=f"Page not found | {settings.business_name}", description="Page not found.", body=body)
+    </div>"""
+    return layout(settings, version, title=f"Page not found | {settings.business_name}", description="Page not found.",
+                  body=body, page="404")
 
 
 def register_local_pages(app: FastAPI, settings: Settings, version: str = "") -> None:

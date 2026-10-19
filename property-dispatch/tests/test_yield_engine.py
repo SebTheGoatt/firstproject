@@ -141,3 +141,18 @@ def test_add_on_cards_are_on_the_booking_and_estimate_pages(client):
     js = client.get("/static/addon-injector.js").text
     assert 'customElements.define("addon-injector", AddonInjector)' in js and 'role="checkbox"' in js
     assert "addonSelectionChange" in js
+
+
+def test_booking_and_estimate_pages_wear_the_brand(client):
+    # Both pages: the header logo, then a Post Green title band (scoped .page-booking styles), then the white step cards.
+    for path, title in (("/book", "<h1>Book a service</h1>"), ("/estimate", "<h1>Instant price estimate</h1>")):
+        t = client.get(path).text
+        assert 'class="site page-booking' in t and '<a class="brand" href="/"><svg class="brand-mark"' in t, path
+        assert '<header class="page-intro book-hero">' in t and title in t, path
+        assert '<footer class="mini-footer site-wrap"><p class="legal-line">' in t and "{{" not in t, path
+    book = client.get("/book").text
+    assert all(f'id="{i}"' in book for i in ("intake", "estimate-lines", "price-lines", "rates", "add-ons", "sms-consent", "submit"))
+    estimate = client.get("/estimate").text
+    assert "<style>" not in estimate and 'id="calculate-price-btn"' in estimate and 'id="checkout-total-anchor"' in estimate
+    css = client.get("/static/styles.css").text
+    assert "/* ===== booking (Post One) ===== */" in css and ".page-estimate .bg-zinc-900" in css

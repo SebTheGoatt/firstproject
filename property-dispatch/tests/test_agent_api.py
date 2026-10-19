@@ -39,7 +39,7 @@ def test_off_until_keys_are_set_and_bad_keys_are_refused(client, settings):
 
 def test_health_reports_features_not_secrets(client, settings, on):
     out = client.get("/api/agent/health", headers=READ).json()
-    assert out["business"] == "Semper Green Lawn Care" and set(out["features"]) == {
+    assert out["business"] == "Post One Lawn Co." and set(out["features"]) == {
         "card_payments", "texting", "visit_notifications", "notification_keys", "dispatch_assistant"}
     text = str(out)
     for secret in ("read-key-123", "ops-key-456", settings.vapid_private_key, settings.crew_access_token):

@@ -7,63 +7,55 @@
   {{HOME_JSONLD}}
   <meta name="description" content="Book lawn mowing, trash bin cleaning and gutter service online in Spring, Klein, New Caney, Splendora and Cleveland, TX. We text you when the crew is on the way.">
   <meta property="og:title" content="{{BUSINESS_NAME}}">
-  <meta property="og:description" content="Clean lawns. Stronger communities. Veteran-owned mowing, bin cleaning and gutters around Spring, TX. Book online in about a minute.">
+  <meta property="og:description" content="Every yard gets Post One attention. Veteran-owned mowing, bin cleaning and gutters around Spring, TX. Book online in about a minute.">
   <meta property="og:type" content="website">
   <meta property="og:image" content="/static/icons/social.jpg">
-  <meta name="theme-color" content="#0b3d2e">
+  <meta name="theme-color" content="#0F2B22">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Semper Green">
+  <meta name="apple-mobile-web-app-title" content="Post One">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <link rel="preload" href="/static/fonts/big-shoulders-display-800.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/public-sans-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/styles.css?v={{V}}">
   <script src="/static/i18n.js?v={{V}}"></script>
 </head>
-<body class="site home">
+<body class="site home page-home">
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="site-header">
     <div class="site-wrap header-row">
-      <a class="brand" href="/">
-        <img src="/static/icons/logo-64.png" alt="" width="32" height="32">
-        <span>{{BUSINESS_NAME}}</span>
-      </a>
+      <a class="brand" href="/">{{BRAND}}</a>
       <nav class="site-nav" aria-label="Main">
-        <a href="#services">Services</a>
-        <a href="#areas">Service areas</a>
-        <a href="#how">How it works</a>
-        <a href="/team">Meet the crew</a>
-        <a href="/about">About</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#areas">Areas</a>
+        <a href="#story">Our story</a>
+        <a href="/visit">My visit</a>
       </nav>
-      <a class="btn btn-primary btn-sm header-cta" href="/book">Book Now</a>
+      <a class="btn btn-primary btn-sm header-cta" href="/book">Book a mow</a>
     </div>
     <nav class="site-wrap mobile-nav" aria-label="Sections">
-      <a href="#services">Services</a>
-      <a href="#areas">Service areas</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#areas">Areas</a>
       <a href="#how">How it works</a>
-      <a href="/team">Crew</a>
+      <a href="#story">Our story</a>
+      <a href="/visit">My visit</a>
     </nav>
   </header>
 
   <main id="main">
-    <div class="route-banner" role="note">
-      <div class="site-wrap route-banner-row">
-        <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h5a3 3 0 0 0 0-6h-2a3 3 0 0 1 0-6h5"/></svg>
-        <p><strong>Tight route density.</strong> We work each neighborhood on a set rotation, so the crew's time goes into
-          your lawn, not the road. <span id="banner-cutoff">Next-day booking closes at 5 PM sharp.</span></p>
-      </div>
-    </div>
-
-    <section class="hero" aria-labelledby="hero-title">
-      <div class="site-wrap hero-grid">
-        <div class="hero-copy">
-          <p class="eyebrow">Veteran-owned · Spring, TX area</p>
-          <h1 id="hero-title">Lawn Care, Run Like an Operation.</h1>
-          <p class="lede">Every visit is scheduled, routed and tracked. We run tight neighborhood routes so
-            the crew's time goes into your lawn, not the road, and you get an alert when we're on the way.</p>
+    <!-- Hero: Post Green ground, the tagline, and the price card with the address check and next open day. -->
+    <section class="hero po-hero" aria-labelledby="hero-title">
+      <div class="site-wrap po-hero-grid">
+        <div class="po-hero-copy">
+          <p class="po-eyebrow">Veteran-owned · Spring, TX</p>
+          <h1 id="hero-title">Every yard gets Post&nbsp;One attention.</h1>
+          <p class="po-lede">Lawn mowing on planned neighborhood routes north and northeast of Houston. See your price
+            before you book, get a text when we're on the way, and cancel free until we are.</p>
           <div class="hero-actions" id="hero-actions">
-            <a class="btn btn-primary btn-lg" href="/book">Book a Service</a>
-            <a class="btn btn-lg btn-quiet" href="#services">Explore Services</a>
+            <a class="btn btn-lg po-btn-fresh" href="/book">Get my price</a>
+            <a class="btn btn-lg po-btn-line" href="#pricing">See pricing</a>
           </div>
           <div class="install-row">
             <button class="btn btn-ghost" id="install-btn" type="button" hidden>Install the app</button>
@@ -71,17 +63,102 @@
           </div>
         </div>
 
-        <aside class="card next-open" aria-live="polite" aria-label="Next available service day">
-          <p class="eyebrow">Next open day</p>
-          <p class="next-day" id="next-day">Checking…</p>
-          <p class="hint" id="cutoff">Next-day booking closes at 5 PM.</p>
-          <p class="spots-left" id="spots-left" hidden></p>
-          <a class="btn btn-primary btn-block" href="/book">Book this day</a>
+        <aside class="po-card" aria-labelledby="price-card-title">
+          <p class="po-kicker" id="price-card-title">Starting price</p>
+          <p class="po-price" id="hero-price-line"><strong class="po-price-num" id="hero-price">$–</strong> <span>per mow, before tax</span></p>
+          <p class="po-card-note" id="hero-price-note" hidden><span>Lawns up to <b id="hero-included"></b>.</span>
+            <span>Bigger lawns add <b id="hero-step"></b> per extra 1,000 sq ft.</span>
+            <span>Neighbors already on your route lower your price.</span></p>
+
+          <form class="area-checker po-checker" id="area-checker" novalidate>
+            <label for="check-address">Check your address</label>
+            <div class="checker-row">
+              <div id="check-picker" class="check-picker" hidden></div>
+              <input id="check-address" type="text" autocomplete="street-address" required
+                     placeholder="1234 Oak Forest Ln, Spring, TX 77386">
+              <button class="btn btn-primary" type="submit" id="check-btn">Check</button>
+            </div>
+            <p class="hint">House number, street, city and ZIP. We only check it; nothing is saved.</p>
+            <div class="area-check" id="check-result" role="status" aria-live="polite" hidden></div>
+          </form>
+
+          <div class="next-open po-next" aria-live="polite" aria-label="Next available service day">
+            <p class="po-kicker">Next open day</p>
+            <p class="next-day" id="next-day">Checking…</p>
+            <p class="hint" id="cutoff">Next-day booking closes at 5 PM.</p>
+            <p class="spots-left" id="spots-left" hidden></p>
+          </div>
         </aside>
       </div>
     </section>
 
-    <section id="services" class="section" aria-labelledby="services-title">
+    <div class="site-wrap po-trust-wrap">
+      <ul class="po-trust" aria-label="Why homeowners book with us">
+        <li>
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>
+          <div><strong>Veteran-owned</strong><span>Run by a U.S. Marine veteran.</span></div>
+        </li>
+        <li>
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+          <div><strong>Price before you book</strong><span>Tax included, shown up front.</span></div>
+        </li>
+        <li>
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-12 7l-5 1 1-4a8 8 0 1 1 16-4z"/></svg>
+          <div><strong>Text updates</strong><span>English or Spanish.</span></div>
+        </li>
+        <li>
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/></svg>
+          <div><strong>Free cancellation</strong><span>Until the crew is on the way.</span></div>
+        </li>
+      </ul>
+    </div>
+
+    <section id="how" class="section po-section" aria-labelledby="how-title">
+      <div class="site-wrap">
+        <h2 id="how-title">How it works</h2>
+        <ol class="steps po-steps">
+          <li class="card">
+            <span class="step-num" aria-hidden="true">01</span>
+            <h3>Get your price</h3>
+            <p>Enter your address and yard type. Your total, tax included, shows before you book.</p>
+          </li>
+          <li class="card">
+            <span class="step-num" aria-hidden="true">02</span>
+            <h3>Pick your day</h3>
+            <p>We mow each neighborhood on set route days, so the crew's time goes into lawns, not the road.</p>
+          </li>
+          <li class="card">
+            <span class="step-num" aria-hidden="true">03</span>
+            <h3>We stand our post</h3>
+            <p>You get a text when we're on the way, a live page for your visit, and a receipt when we're done.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- Pricing: every number comes from /api/booking-info (the yield engine the booking form charges with). -->
+    <section id="pricing" class="section po-section" aria-labelledby="pricing-title">
+      <div class="site-wrap po-pricing">
+        <div class="po-pricing-copy">
+          <h2 id="pricing-title">Straight pricing</h2>
+          <p class="section-lede">One clear formula, the same in every area we serve. Neighbors already on your route bring your price down.</p>
+          <p class="hint">Prices are before tax. The booking form shows your total before you book.</p>
+          <p class="hint">Your crew confirms the lawn size on site; the price only changes if it's different.</p>
+          <p class="hint" id="price-tax-note" hidden></p>
+          <p class="hint">Pay cash to the crew or by card through Stripe's encrypted checkout.</p>
+        </div>
+        <div class="po-table-card">
+          <table class="po-price-table">
+            <caption class="visually-hidden">Mowing and add-on prices per visit, before tax</caption>
+            <tbody id="price-rows">
+              <tr><th scope="row">Your price is on the booking form.</th><td><a href="/book">Get my price</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="services" class="section po-section" aria-labelledby="services-title">
       <div class="site-wrap">
         <header class="section-head">
           <h2 id="services-title">Our Services</h2>
@@ -93,8 +170,8 @@
             <h3>Lawn Mowing</h3>
             <p>Clean cuts. Crisp edges. A lawn you're proud of.</p>
             <div class="service-foot">
-              <p class="price" id="mow-from">Starting at $75 per visit</p>
-              <p class="hint">Your final price depends on lawn size and the rate you select.</p>
+              <p class="price" id="mow-from">Price shown before you book</p>
+              <p class="hint">Your final price depends on lawn size and yard type.</p>
               <a class="btn btn-primary btn-block" href="/book#step-where">Calculate My Price</a>
             </div>
           </article>
@@ -103,7 +180,7 @@
             <h3>Bin Cleaning</h3>
             <p>Trash bins build up bacteria like E. coli and Salmonella and draw flies, roaches and rodents to your door. A hose rinse doesn't remove that buildup. We clean and sanitize every bin.</p>
             <div class="service-foot">
-              <p class="price">+$15 per visit</p>
+              <p class="price" data-addon-price="bin_cleaning">Price shown before you book</p>
               <p class="hint">Add to any lawn mowing visit.</p>
               <a class="btn btn-outline btn-block" href="/book?addon=bin_cleaning#step-where">Add Bin Cleaning</a>
             </div>
@@ -113,7 +190,7 @@
             <h3>Gutter Cleaning</h3>
             <p>Clear gutters. Better water flow.</p>
             <div class="service-foot">
-              <p class="price">+$15 per visit</p>
+              <p class="price" data-addon-price="gutters">Price shown before you book</p>
               <p class="hint">Add to any lawn mowing visit.</p>
               <a class="btn btn-outline btn-block" href="/book?addon=gutters#step-where">Add Gutter Cleaning</a>
             </div>
@@ -132,44 +209,25 @@
             </div>
           </article>
         </div>
-
-        <ul class="trust-strip" aria-label="Why homeowners book with us">
-          <li>
-            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6"/></svg>
-            <div><strong>Neighborhood Routing</strong><span>Each day's route is planned the evening before, stop by stop.</span></div>
-          </li>
-          <li>
-            <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 9h16M8 3v4M16 3v4M9 14l2 2 4-4"/></svg>
-            <div><strong>Live Visit Tracking</strong><span>An alert when the crew is on the way, and a live page for every visit.</span></div>
-          </li>
-          <li>
-            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>
-            <div><strong>Secure Billing</strong><span>Cards are paid through Stripe's encrypted checkout. Every visit ends with a digital receipt and before &amp; after photos.</span></div>
-          </li>
-        </ul>
       </div>
     </section>
 
-    <section id="areas" class="section" aria-labelledby="areas-title">
+    <section id="areas" class="section po-section" aria-labelledby="areas-title">
       <div class="site-wrap">
         <header class="section-head">
-          <h2 id="areas-title">Do We Service Your Area?</h2>
+          <h2 id="areas-title">Where we stand post</h2>
           <p class="section-lede">We keep our routes tight so the crew spends time on lawns, not on the road.
-            Check your address, or find your neighborhood below.</p>
+            Pick your area for its neighborhoods and prices, or check your address at the top of the page.</p>
         </header>
+        <ul class="po-area-links" aria-label="Area pages">
+          <li><a href="/local/spring">Spring</a></li>
+          <li><a href="/local/klein">Klein</a></li>
+          <li><a href="/local/new-caney">New Caney &amp; Splendora</a></li>
+          <li><a href="/local/cleveland">Cleveland &amp; Plum Grove</a></li>
+          <li><a href="/local/colony-ridge">Colony Ridge</a></li>
+        </ul>
         <div class="area-layout">
           <div class="area-info">
-            <form class="card area-checker" id="area-checker" novalidate>
-              <label for="check-address">Check your address</label>
-              <div class="checker-row">
-                <div id="check-picker" class="check-picker" hidden></div>
-                <input id="check-address" type="text" autocomplete="street-address" required
-                       placeholder="1234 Oak Forest Ln, Spring, TX 77386">
-                <button class="btn btn-primary" type="submit" id="check-btn">Check</button>
-              </div>
-              <p class="hint">House number, street, city and ZIP. We only check it; nothing is saved.</p>
-              <div class="area-check" id="check-result" role="status" aria-live="polite" hidden></div>
-            </form>
             <h3 class="area-heading">Neighborhoods we serve</h3>
             <p class="hint area-price-note" id="area-price-note"></p>
             <ul class="area-list" id="area-list" aria-label="Service areas">
@@ -184,32 +242,7 @@
       </div>
     </section>
 
-    <section id="how" class="section" aria-labelledby="how-title">
-      <div class="site-wrap">
-        <header class="section-head">
-          <h2 id="how-title">How It Works</h2>
-        </header>
-        <ol class="steps">
-          <li class="card">
-            <span class="step-num" aria-hidden="true">01</span>
-            <h3>Choose Your Service</h3>
-            <p>Pick mowing, your lawn size and impact level, and any add-ons for the visit.</p>
-          </li>
-          <li class="card">
-            <span class="step-num" aria-hidden="true">02</span>
-            <h3>Confirm Your Details</h3>
-            <p>Enter your address and day. We check your area and show your full price with tax before you book.</p>
-          </li>
-          <li class="card">
-            <span class="step-num" aria-hidden="true">03</span>
-            <h3>Book Your Visit</h3>
-            <p>Pay cash to the crew or by card. We lock the route at 5 PM the day before and alert you when we're on the way.</p>
-          </li>
-        </ol>
-      </div>
-    </section>
-
-    <section id="crew" class="section" aria-labelledby="crew-title" hidden>
+    <section id="crew" class="section po-section" aria-labelledby="crew-title" hidden>
       <div class="site-wrap">
         <header class="section-head">
           <h2 id="crew-title">Meet the Crew</h2>
@@ -222,14 +255,29 @@
       </div>
     </section>
 
-    <section class="section final-cta" aria-labelledby="cta-title" id="final-cta">
+    <!-- Why "Post One": the name's story, on a dark band with the full shield. -->
+    <section id="story" class="section po-section po-story-section" aria-labelledby="story-title">
       <div class="site-wrap">
-        <div class="cta-band">
-          <div>
-            <h2 id="cta-title">Put your lawn on the route.</h2>
-            <p>Booking takes about a minute, and you'll see your full price before you book.</p>
+        <div class="po-story">
+          <svg class="po-story-mark" viewBox="0 0 200 220" aria-hidden="true" focusable="false">
+            <path d="M100 10 L182 40 V110 C182 160 148 192 100 210 C52 192 18 160 18 110 V40 Z" fill="#0F2B22" stroke="#C9A227" stroke-width="6" stroke-linejoin="round"/>
+            <path d="M46 160 H154" stroke="#1F5A3C" stroke-width="8" stroke-linecap="round"/>
+            <path d="M66 180 H134" stroke="#1F5A3C" stroke-width="8" stroke-linecap="round"/>
+            <path d="M92 166 V82 C84 88 74 92 62 94 V78 C80 74 94 62 101 46 H113 V166 Z" fill="#9BD15A"/>
+            <rect x="80" y="160" width="46" height="10" rx="2" fill="#9BD15A"/>
+          </svg>
+          <div class="po-story-copy">
+            <p class="po-eyebrow">Why “Post One”</p>
+            <h2 id="story-title">The post that's never left unmanned.</h2>
+            <p>At U.S. embassies around the world, Marine Security Guards stand Post One, the post that is never left unmanned.
+              Our co-founder, Raymundo, served as a Marine Security Guard. Now he brings that standard home to Spring:
+              show up on time, do it right, and treat every yard like it matters.</p>
+            <p>Clean lawns. Stronger communities. Part of every mow goes to a cause you pick when you book.</p>
+            <div class="po-story-actions" id="final-cta">
+              <a class="btn btn-lg po-btn-fresh" href="/book">Get my price</a>
+              <a class="btn btn-lg po-btn-line" href="/about">About us</a>
+            </div>
           </div>
-          <a class="btn btn-primary btn-lg" href="/book">Book a Service</a>
         </div>
       </div>
     </section>
@@ -238,18 +286,15 @@
   <footer class="site-footer">
     <div class="site-wrap footer-grid">
       <div>
-        <a class="brand footer-brand" href="/">
-          <img src="/static/icons/logo-64.png" alt="" width="28" height="28">
-          <span>{{BUSINESS_NAME}}</span>
-        </a>
-        <p class="footer-tagline">Clean lawns. Stronger communities.</p>
+        <a class="brand footer-brand" href="/">{{BRAND}}</a>
+        <p class="footer-tagline">On post. On time.</p>
         <p>Veteran-owned · Spring, TX</p>
-        <p class="footer-trust">Marine-led operations · Planned daily routes · Encrypted card payments</p>
+        <p class="footer-trust">Clean lawns. Stronger communities.</p>
       </div>
       <nav aria-label="Footer">
         <a href="/book">Book a service</a>
+        <a href="#pricing">Pricing</a>
         <a href="#services">Services</a>
-        <a href="#areas">Service areas</a>
         <a href="/team">Meet the crew</a>
         <a href="/about">About</a>
         <a href="/visit">View my visit</a>
@@ -270,7 +315,7 @@
 
   <div class="book-bar" id="book-bar" aria-hidden="true">
     <div class="book-bar-text"><span>Next open day</span><strong id="bar-day">See available days</strong></div>
-    <a class="btn btn-primary" href="/book" tabindex="-1">Book Now</a>
+    <a class="btn btn-primary" href="/book" tabindex="-1">Book a mow</a>
   </div>
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
@@ -279,7 +324,9 @@
   <script>
     document.getElementById("year").textContent = new Date().getFullYear();
     const money = (n) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
-    const ZONE_COLORS = ["#2f7d4f", "#2b6cb0", "#b7791f", "#8a4fbf", "#c05621"];
+    const dollars = (n) => money(n).replace(/\.00$/, "");
+    const pct = (x) => `${Math.round(x * 100)}%`;
+    const ZONE_COLORS = ["#2E7D4F", "#2b6cb0", "#b7791f", "#8a4fbf", "#c05621"];
 
     // Realtor-style service-area map: shaded areas, price pins, and a list that
     // highlights the matching area on hover/tap (and vice versa).
@@ -291,8 +338,8 @@
         const [w, s, e, n] = z.bbox;
         return {
           type: "Feature", id: i,
-          // Lowest flat price per visit (the same in every area); the $35 base alone is not a price anyone pays.
-          properties: { key: z.key, name: z.name, price: money(fromPrice).replace(/\.00$/, ""), color: ZONE_COLORS[i % ZONE_COLORS.length] },
+          // Starting price per visit (the same in every area), from the pricing data the booking form uses.
+          properties: { key: z.key, name: z.name, price: dollars(fromPrice), color: ZONE_COLORS[i % ZONE_COLORS.length] },
           // A zone can cover several boxes (e.g. Cleveland + Plum Grove).
           geometry: { type: "MultiPolygon", coordinates: (z.boxes || [z.bbox]).map(([bw, bs, be, bn]) =>
             [[[bw, bs], [be, bs], [be, bn], [bw, bn], [bw, bs]]]) },
@@ -388,6 +435,48 @@
         el.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); el.click(); } });
       });
     }
+
+    // Hero price card and the pricing table, from the yield engine the booking form charges with
+    // (base, included size, size step, yard types) and the add-on prices. The server adds the
+    // route-density discount and tax at booking, so the table states the discount without a number.
+    function drawPrices(info) {
+      const y = info.yield;
+      if (!y) return;
+      document.getElementById("hero-price").textContent = dollars(y.base);
+      document.getElementById("hero-included").textContent = `${y.included_sqft.toLocaleString("en-US")} sq ft`;
+      document.getElementById("hero-step").textContent = pct(y.step);
+      document.getElementById("hero-price-note").hidden = false;
+
+      const rows = [];
+      const row = (label, sub, value, cls) => {
+        const tr = document.createElement("tr");
+        if (cls) tr.className = cls;
+        const th = document.createElement("th"); th.scope = "row";
+        const name = document.createElement("span"); name.textContent = label; th.append(name);
+        if (sub) { const s = document.createElement("span"); s.className = "po-row-sub"; s.textContent = sub; th.append(s); }
+        const td = document.createElement("td"); td.textContent = value;
+        tr.append(th, td);
+        rows.push(tr);
+      };
+      row("Mowing", `Up to ${y.included_sqft.toLocaleString("en-US")} sq ft`, dollars(y.base));
+      row("Each extra 1,000 sq ft", null, `+${pct(y.step)}`);
+      (y.yard_types || []).filter((t) => t.mult > 1).forEach((t) => row(t.label, "Yard type", `+${pct(t.mult - 1)}`));
+      (info.add_ons || []).filter((a) => !a.scope && a.price > 0)
+        .forEach((a) => row(a.label, "Same visit as your mow", `+${dollars(a.price)}`));
+      (info.add_ons || []).filter((a) => a.quote)
+        .forEach((a) => row(a.label, a.season ? `Available for ${a.season} visits` : null, "Free quote"));
+      row("Neighbor route discount", "When our customers nearby are already booked", "Automatic", "po-row-save");
+      document.getElementById("price-rows").replaceChildren(...rows);
+
+      // One tax line when every area has the same rate (the usual case), else a general note.
+      const rates = [...new Set((info.zones || []).map((z) => z.tax_rate))];
+      if (rates.length === 1) {
+        const note = document.getElementById("price-tax-note");
+        note.textContent = `${+(rates[0] * 100).toFixed(2)}% Texas sales tax added.`;
+        note.hidden = false;
+      }
+    }
+
     const fmtDay = (iso) =>
       new Date(iso + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
     const hour12 = (h) => `${((h + 11) % 12) + 1} ${h < 12 ? "AM" : "PM"}`;
@@ -418,7 +507,6 @@
       document.getElementById("bar-day").textContent = new Date(info.earliest_date + "T12:00:00")
         .toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
       document.getElementById("cutoff").textContent = `Next-day booking closes at ${hour12(info.freeze_hour)} Central.`;
-      document.getElementById("banner-cutoff").textContent = `Next-day booking closes at ${hour12(info.freeze_hour)} sharp.`;
       // Real openings only: daily limit minus jobs already booked. Shown when the route is nearly full.
       const spots = document.getElementById("spots-left");
       if (info.spots_left != null && info.spots_left <= 3) {
@@ -427,12 +515,13 @@
           : `Only ${info.spots_left} ${info.spots_left === 1 ? "spot" : "spots"} left on ${wd}'s route.`;
         spots.hidden = false;
       }
+      drawPrices(info);
 
-      // Neighborhoods: one price note when every area costs the same, otherwise a price per area.
-      // Prices are flat per visit by lawn size and tier, the same in every area: show the lowest one.
-      const lowest = Math.min(...(info.packages || []).map((p) => p.brackets[0].price));
+      // Neighborhoods: one price note, since mowing costs the same in every area. The starting price is the
+      // yield engine's base (what the booking form charges); older tier brackets are the fallback.
+      const lowest = info.yield ? info.yield.base : Math.min(...(info.packages || []).map((p) => p.brackets[0].price));
       document.getElementById("area-price-note").textContent = isFinite(lowest) && info.zones.length
-        ? `Mowing starts at ${money(lowest).replace(/\.00$/, "")} per visit in every area.` : "";
+        ? `Mowing starts at ${dollars(lowest)} per visit in every area.` : "";
       const list = document.getElementById("area-list");
       list.replaceChildren();
       info.zones.forEach((z, i) => {
@@ -450,7 +539,12 @@
         list.append(li);
       });
       if (isFinite(lowest)) drawAreaMap(info.zones, lowest); else document.getElementById("area-map-wrap").hidden = true;
-      if (isFinite(lowest)) document.getElementById("mow-from").textContent = `Starting at ${money(lowest).replace(/\.00$/, "")} per visit`;
+      if (isFinite(lowest)) document.getElementById("mow-from").textContent = `Starting at ${dollars(lowest)} per visit`;
+      // Service cards: add-on prices from the same list the booking form charges (no numbers in the HTML).
+      document.querySelectorAll("[data-addon-price]").forEach((el) => {
+        const a = (info.add_ons || []).find((x) => x.key === el.dataset.addonPrice);
+        if (a && a.price > 0) el.textContent = `+${dollars(a.price)} per visit`;
+      });
       // Google address dropdown on "Check your address" when the owner set the Maps key in Render.
       if (info.google_maps_key) {
         const input = document.getElementById("check-address"), slot = document.getElementById("check-picker");
@@ -466,10 +560,11 @@
       }
     }).catch(() => {
       document.getElementById("next-day").textContent = "See the booking page";
+      document.getElementById("hero-price-line").hidden = true;      // no price shown rather than a guessed one
       document.getElementById("area-list").replaceChildren();
     });
 
-    // "Do we service your area?" uses the same instant check as the booking page. Nothing is saved.
+    // "Check your address" uses the same instant check as the booking page. Nothing is saved.
     const checker = document.getElementById("area-checker");
     let picked = null;   // Google's coordinates for the address picked from the dropdown
     checker.addEventListener("submit", async (e) => {
@@ -512,7 +607,7 @@
       }
     });
 
-    // Mobile "Book Now" bar: shown on small screens, hidden while another booking button is
+    // Mobile "Book a mow" bar: shown on small screens, hidden while another booking button is
     // already on screen or while the visitor is typing (so it never covers a field or the keyboard).
     (() => {
       const bar = document.getElementById("book-bar");

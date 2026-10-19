@@ -6,7 +6,7 @@
 //   Other API    always network (bookings and completions must reach the server)
 //   Push         shows a notification when the server sends one; tapping it opens the site
 //
-// __VERSION__ is replaced by the server with a hash of the static files.
+// __VERSION__ is replaced by the server with a hash of the static files, __BUSINESS_NAME__ with BUSINESS_NAME.
 
 const VERSION = "__VERSION__";
 const SHELL = `shell-${VERSION}`;
@@ -81,7 +81,7 @@ self.addEventListener("push", (event) => {
     data = { body: event.data.text() };
   }
   const options = {
-    body: data.body || "Tap to open Semper Green Lawn Care.",
+    body: data.body || "Tap to open __BUSINESS_NAME__",
     icon: "/static/icons/icon-192.png",
     vibrate: [200, 100, 200],
     tag: "visit-update",          // a newer update replaces the old one instead of stacking
@@ -92,7 +92,7 @@ self.addEventListener("push", (event) => {
       { action: "close", title: "Dismiss" },
     ],
   };
-  event.waitUntil(self.registration.showNotification(data.title || "Semper Green Lawn Care", options));
+  event.waitUntil(self.registration.showNotification(data.title || "__BUSINESS_NAME__", options));
 });
 
 // Tapping the notification (or its "View my visit" button) opens that page, reusing an open window if there is one.

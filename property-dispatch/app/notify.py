@@ -52,6 +52,11 @@ def day_words(day, lang: str) -> str:
     return f"{day.strftime('%A, %b')} {day.day}"
 
 
+def sentence(name: str) -> str:
+    """A name that ends a sentence: "Post One Lawn Co." already has its period, so it doesn't get a second one."""
+    return name if name.endswith(".") else name + "."
+
+
 def next_customer_message(stop: dict, settings: Settings, crew_name: str | None = None) -> str:
     first = stop["customer_name"].split()[0]
     lang = stop.get("lang") or "en"
@@ -60,13 +65,13 @@ def next_customer_message(stop: dict, settings: Settings, crew_name: str | None 
     if lang == "es":
         who = f"{crew_name.split()[0]} de {settings.business_name}" if crew_name else settings.business_name
         return (
-            f"Hola {first}, te saluda {who}. Acabamos de terminar el trabajo anterior y vamos en camino "
+            f"Hola {first}, te saluda {sentence(who)} Acabamos de terminar el trabajo anterior y vamos en camino "
             f"para tu servicio de {service}; llegamos en unos {minutes} minutos. "
             f"Responde STOP para no recibir más mensajes."
         )
     who = f"{crew_name.split()[0]} from {settings.business_name}" if crew_name else settings.business_name
     return (
-        f"Hi {first}, this is {who}. We just finished the previous job "
+        f"Hi {first}, this is {sentence(who)} We just finished the previous job "
         f"and are heading your way for your {service} service, about {minutes} minutes out. "
         f"Reply STOP to opt out."
     )

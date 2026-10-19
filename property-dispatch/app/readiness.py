@@ -79,6 +79,10 @@ def checks(settings: Settings, repo, stripe_enabled: bool) -> list[dict]:
     add("charity_names", "Charity names confirmed",
         settings.charity_toys_name != Settings.model_fields["charity_toys_name"].default,
         "Render: CHARITY_TOYS_NAME once the program has said yes (until then a plain description shows)", required=False)
+    # The site was renamed; a BUSINESS_NAME left over in Render would keep the old name on every page and text.
+    add("brand_name", "Site shows the Post One name", "semper green" not in settings.business_name.lower(),
+        f"Render → Environment: BUSINESS_NAME=Post One Lawn Co., or delete it (that's the default). It is now \"{settings.business_name}\"",
+        required=False)
     return out
 
 

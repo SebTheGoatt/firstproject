@@ -6,7 +6,8 @@
 
 Plain-English drafts written from what this app actually does (see each section). Have a Texas
 attorney review them; then change the EFFECTIVE date below whenever the wording changes.
-Contact details come from settings (LEGAL_NAME, BUSINESS_EMAIL, BUSINESS_PHONE).
+The business is named as LEGAL_NAME, doing business as BUSINESS_NAME; contact details come from
+settings (BUSINESS_EMAIL, BUSINESS_PHONE).
 """
 
 import html
@@ -15,19 +16,13 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
 from .config import Settings
-from .local_pages import contact_line, crumbs, layout
+from .local_pages import crumbs, layout, legal_footer_html  # noqa: F401  (legal_footer_html: main.py imports it from here)
 
 esc = html.escape
 EFFECTIVE = "October 19, 2026"
 SMS_CONSENT = ("I agree to get text messages from {legal} about this booking: confirmation, crew on the way, "
                "job done, payment link, and one note afterward asking how we did. Msg & data rates may apply; "
                "frequency varies. Reply STOP to opt out, HELP for help.")
-
-
-def legal_footer_html(settings: Settings) -> str:
-    """The footer line every customer page carries: who we are, how to reach us, the policies."""
-    return (f'<p class="legal-line">{esc(settings.legal_name)}{contact_line(settings)} · '
-            '<a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a></p>')
 
 
 def contact_words(settings: Settings) -> str:
@@ -41,26 +36,48 @@ def contact_words(settings: Settings) -> str:
     return " or ".join(parts) or "reply to any of our text messages"
 
 
+POLICIES = (("Privacy Policy", "/privacy"), ("Terms of Service", "/terms"), ("Refund & Cancellation Policy", "/refunds"))
+
+
+def who(settings: Settings) -> str:
+    """Who the customer deals with: "Semper Green LLC, doing business as Post One Lawn Co."."""
+    return f"{esc(settings.legal_name)}, doing business as {esc(settings.business_name)}"
+
+
 def page(settings: Settings, version: str, title: str, description: str, sections: str) -> str:
+    here = ' aria-current="page"'
+    links = "".join(f'\n            <a href="{href}"{here if name == title else ""}>{esc(name)}</a>' for name, href in POLICIES)
     body = f"""
-    <section class="section legal" aria-labelledby="legal-title">
-      <div class="site-wrap legal-wrap">
-        {crumbs([("Home", "/"), (title, None)])}
-        <h1 class="page-title" id="legal-title">{esc(title)}</h1>
-        <p class="hint">Effective {EFFECTIVE} · {esc(settings.legal_name)}, doing business as {esc(settings.business_name)}</p>
+    <article class="legal" aria-labelledby="legal-title">
+      <div class="sp-hero sp-hero-short">
+        <div class="site-wrap sp-hero-copy">
+          {crumbs([("Home", "/"), (title, None)])}
+          <h1 class="page-title" id="legal-title">{esc(title)}</h1>
+          <p class="hint">Effective {EFFECTIVE} · {who(settings)}</p>
+        </div>
+      </div>
+      <div class="section">
+        <div class="site-wrap sp-legal">
+          <div class="sp-doc">
 {sections}
         <h2>Contact</h2>
         <p>Questions about this page: {contact_words(settings)}.</p>
+          </div>
+          <nav class="sp-policy-nav" aria-label="Policies">
+            <p class="sp-kicker" aria-hidden="true">Policies</p>{links}
+          </nav>
+        </div>
       </div>
-    </section>"""
-    return layout(settings, version, title=f"{title} | {settings.business_name}", description=description, body=body)
+    </article>"""
+    return layout(settings, version, title=f"{title} | {settings.business_name}", description=description, body=body,
+                  page="legal")
 
 
 def privacy_html(settings: Settings, version: str) -> str:
-    legal, contact = esc(settings.legal_name), contact_words(settings)
+    contact = contact_words(settings)
     return page(settings, version, "Privacy Policy",
                 "What we collect when you book a lawn visit, who sees it, and how to delete it.", f"""
-        <p>{legal} ("we") mows lawns and runs this website and booking app. This page explains what we collect,
+        <p>{who(settings)} ("we") mows lawns and runs this website and booking app. This page explains what we collect,
           why, and your choices. We do not sell your information, and we do not use advertising trackers.</p>
 
         <h2>What we collect</h2>
@@ -126,12 +143,12 @@ def privacy_html(settings: Settings, version: str) -> str:
 
 
 def terms_html(settings: Settings, version: str) -> str:
-    legal, contact = esc(settings.legal_name), contact_words(settings)
+    contact = contact_words(settings)
     insured = (f"We carry {esc(settings.liability_coverage)} in commercial general liability coverage. "
                if settings.liability_coverage.strip() else "")
     return page(settings, version, "Terms of Service",
                 "The agreement for lawn visits booked online: scope, prices, payment, weather and our damage policy.", f"""
-        <p>These terms are the agreement between you and {legal} when you book a visit on this site.
+        <p>These terms are the agreement between you and {who(settings)}, when you book a visit on this site.
           By booking, you agree to them, to our <a href="/refunds">refund policy</a> and to our
           <a href="/privacy">privacy policy</a>.</p>
 

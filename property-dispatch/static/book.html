@@ -5,170 +5,174 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Book a Service | {{BUSINESS_NAME}}</title>
   <meta name="description" content="Book mowing, bin cleaning or gutter service online. We confirm your address and text you when the crew is on the way.">
-  <meta name="theme-color" content="#0b3d2e">
+  <meta name="theme-color" content="#0F2B22">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Semper Green">
+  <meta name="apple-mobile-web-app-title" content="Post One">
   <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="preload" href="/static/fonts/big-shoulders-display-800.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/public-sans-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/styles.css?v={{V}}">
   <script src="/static/i18n.js?v={{V}}"></script>
 </head>
-<body class="site">
+<body class="site page-booking">
   <header class="site-header">
     <div class="site-wrap header-row">
-      <a class="brand" href="/">
-        <img src="/static/icons/logo-64.png" alt="" width="32" height="32">
-        <span>{{BUSINESS_NAME}}</span>
-      </a>
+      <a class="brand" href="/">{{BRAND}}</a>
       <a class="btn btn-sm" href="/">Home</a>
     </div>
   </header>
-  <main class="wrap">
-    <header class="page-intro">
-      <h1>Book a service</h1>
-      <p>Calculate your mowing price, add any extras, and book your visit. You'll see the full itemized total before you book.</p>
-      <details id="areas" class="hint" hidden>
-        <summary>Where we service</summary>
-        <ul id="area-list"></ul>
-      </details>
+  <main>
+    <!-- Title band: continues the Post Green header, like the app's booking screen. -->
+    <header class="page-intro book-hero">
+      <div class="wrap">
+        <h1>Book a service</h1>
+        <p>Calculate your mowing price, add any extras, and book your visit. You'll see the full itemized total before you book.</p>
+        <details id="areas" class="hint" hidden>
+          <summary>Where we service</summary>
+          <ul id="area-list"></ul>
+        </details>
+      </div>
     </header>
 
-    <div id="ok" class="alert alert-ok" role="status" hidden></div>
+    <div class="wrap book-body">
+      <div id="ok" class="alert alert-ok" role="status" hidden></div>
 
-    <form id="intake" class="card" novalidate>
-      <div id="err" class="alert alert-error" role="alert" hidden></div>
+      <form id="intake" class="card" novalidate>
+        <div id="err" class="alert alert-error" role="alert" hidden></div>
 
-      <section class="step" aria-labelledby="step-where">
-        <h2 class="step-title" id="step-where"><span>1</span>Your address</h2>
-        <div class="field">
-          <label for="address">Service address</label>
-          <div id="address-picker" hidden></div>
-          <input id="address" name="address" type="text" autocomplete="street-address" required
-                 placeholder="1234 Oak Forest Ln, Spring, TX 77386">
-          <input type="hidden" id="lat"><input type="hidden" id="lng">
-          <div class="hint" id="address-hint">House number, street, city and ZIP.</div>
-          <div class="area-check" id="area-check" role="status" aria-live="polite" hidden></div>
-        </div>
-        <!-- Lawn size comes from the address: shown here, editable only if the customer knows better. -->
-        <div class="size-readout" id="size-readout" aria-live="polite">
-          <span class="size-label">Your lawn</span>
-          <strong id="size-value">Pick your address to size your lawn</strong>
-          <span class="size-basis" id="size-basis"></span>
-        </div>
-        <!-- What to mow: sets the size the server prices, and locks the price. -->
-        <fieldset class="scope-pick" id="scope-pick" hidden>
-          <legend>Property Infrastructure Configuration:</legend>
-          <input type="radio" name="scope" id="scope-yard" value="scope_yard" checked>
-          <label for="scope-yard"><strong>Standard Managed Footprint</strong>
-            <span id="scope-yard-size">Main or fenced yard only</span></label>
-          <input type="radio" name="scope" id="scope-full" value="scope_full">
-          <label for="scope-full"><strong>Full Estate Scope</strong>
-            <span id="scope-full-size">The whole property, minus the house</span></label>
-        </fieldset>
-        <div class="field" id="size-edit" hidden>
-          <label for="lawn-sqft">Your lawn size</label>
-          <div class="sqft-input"><input id="lawn-sqft" type="text" inputmode="numeric" autocomplete="off"
-            placeholder="Lawn square footage" aria-describedby="sqft-help sqft-error"><span>sq ft</span></div>
-          <p class="hint" id="sqft-help">Mowable lawn area only. The crew confirms it on site.</p>
-          <p class="field-error" id="sqft-error" role="alert" hidden></p>
-        </div>
-      </section>
-
-      <section class="step" aria-labelledby="step-rate">
-        <h2 class="step-title" id="step-rate"><span>2</span>Your yard type</h2>
-        <fieldset>
-          <legend class="visually-hidden">Yard type</legend>
-          <div class="rates tiers" id="rates" role="radiogroup" aria-describedby="rate-error"></div>
-          <p class="field-error" id="rate-error" role="alert" hidden>Choose your yard type to continue.</p>
-          <p class="hint per-visit-note">Billed per visit. No subscription, no contract.</p>
-        </fieldset>
-        <div class="price-box estimate" id="estimate" aria-live="polite">
-          <h3 class="order-title">Lawn Mowing estimate</h3>
-          <dl class="price-lines" id="estimate-lines"></dl>
-          <div class="impact-box" id="impact-box" hidden>
-            <span class="impact-kicker">✓ Your order includes</span>
-            <strong class="impact-amount" id="impact-amount"></strong>
-            <span class="impact-for" id="impact-for">for the cause you pick in step 6</span>
+        <section class="step" aria-labelledby="step-where">
+          <h2 class="step-title" id="step-where"><span>1</span>Your address</h2>
+          <div class="field">
+            <label for="address">Service address</label>
+            <div id="address-picker" hidden></div>
+            <input id="address" name="address" type="text" autocomplete="street-address" required
+                   placeholder="1234 Oak Forest Ln, Spring, TX 77386">
+            <input type="hidden" id="lat"><input type="hidden" id="lng">
+            <div class="hint" id="address-hint">House number, street, city and ZIP.</div>
+            <div class="area-check" id="area-check" role="status" aria-live="polite" hidden></div>
           </div>
-        </div>
-      </section>
-
-      <section class="step" aria-labelledby="step-addons">
-        <h2 class="step-title" id="step-addons"><span>3</span>Add-ons <span class="optional">(optional)</span></h2>
-        <fieldset id="addon-fieldset">
-          <legend class="visually-hidden">Add-ons to your mowing visit</legend>
-          <addon-injector id="addon-injector"></addon-injector>
-          <div class="add-ons" id="add-ons"></div>
-        </fieldset>
-      </section>
-
-      <section class="step" aria-labelledby="step-day">
-        <h2 class="step-title" id="step-day"><span>4</span>Service day</h2>
-        <div class="field">
-          <label for="date">Service day</label>
-          <input id="date" name="scheduled_date" type="date" required>
-          <div class="hint" id="date-hint">Next-day bookings close at 5 PM.</div>
-        </div>
-      </section>
-
-      <section class="step" aria-labelledby="step-review">
-        <h2 class="step-title" id="step-review"><span>5</span>Review your order</h2>
-        <div class="price-box order-summary" id="price-box" aria-live="polite">
-          <h3 class="order-title">Order summary</h3>
-          <p class="muted" id="price-empty">Add your address in step 1 to see your final total.</p>
-          <dl class="price-lines" id="price-lines" hidden></dl>
-          <p class="hint" id="price-note" hidden></p>
-        </div>
-      </section>
-
-      <section class="step" aria-labelledby="step-pay">
-        <h2 class="step-title" id="step-pay"><span>6</span>Pay your way</h2>
-        <fieldset>
-          <legend class="visually-hidden">Payment method</legend>
-          <div class="pay-options">
-            <input type="radio" name="payment_method" id="pay-cash" value="cash" checked>
-            <label for="pay-cash"><strong>Cash to the crew</strong><span>Pay when we arrive or when we finish.</span></label>
-            <input type="radio" name="payment_method" id="pay-card" value="card" disabled>
-            <label for="pay-card" id="pay-card-label"><strong>Card, Apple Pay or Google Pay</strong><span id="pay-card-note">Coming soon.</span></label>
+          <!-- Lawn size comes from the address: shown here, editable only if the customer knows better. -->
+          <div class="size-readout" id="size-readout" aria-live="polite">
+            <span class="size-label">Your lawn</span>
+            <strong id="size-value">Pick your address to size your lawn</strong>
+            <span class="size-basis" id="size-basis"></span>
           </div>
-        </fieldset>
-        <!-- The customer picks the one cause their order's giving goes to (names come from Render settings). -->
-        <fieldset class="impact-pick" id="impact-pick">
-          <legend>Direct Your Local Community Impact Token</legend>
-          <p class="hint">Part of every order goes to a local cause. Pick where yours goes.</p>
-          <div class="impact-options" id="impact-options">
-            <input type="radio" name="charity_choice" id="cause-toys_for_tots" value="toys_for_tots" checked>
-            <label for="cause-toys_for_tots"><strong>Holiday toy drive for local kids</strong><span>Helps buy holiday toys for kids in our service area.</span></label>
-            <input type="radio" name="charity_choice" id="cause-vfw" value="vfw">
-            <label for="cause-vfw"><strong>Veterans of Foreign Wars (VFW)</strong><span>Helps local veterans and their families through a VFW post in our area.</span></label>
-            <input type="radio" name="charity_choice" id="cause-nicu" value="nicu">
-            <label for="cause-nicu"><strong>Neonatal intensive care (NICU) families</strong><span>Helps families whose newborns are in neonatal intensive care.</span></label>
+          <!-- What to mow: sets the size the server prices, and locks the price. -->
+          <fieldset class="scope-pick" id="scope-pick" hidden>
+            <legend>Property Infrastructure Configuration:</legend>
+            <input type="radio" name="scope" id="scope-yard" value="scope_yard" checked>
+            <label for="scope-yard"><strong>Standard Managed Footprint</strong>
+              <span id="scope-yard-size">Main or fenced yard only</span></label>
+            <input type="radio" name="scope" id="scope-full" value="scope_full">
+            <label for="scope-full"><strong>Full Estate Scope</strong>
+              <span id="scope-full-size">The whole property, minus the house</span></label>
+          </fieldset>
+          <div class="field" id="size-edit" hidden>
+            <label for="lawn-sqft">Your lawn size</label>
+            <div class="sqft-input"><input id="lawn-sqft" type="text" inputmode="numeric" autocomplete="off"
+              placeholder="Lawn square footage" aria-describedby="sqft-help sqft-error"><span>sq ft</span></div>
+            <p class="hint" id="sqft-help">Mowable lawn area only. The crew confirms it on site.</p>
+            <p class="field-error" id="sqft-error" role="alert" hidden></p>
           </div>
-        </fieldset>
-      </section>
+        </section>
 
-      <section class="step" aria-labelledby="step-details">
-        <h2 class="step-title" id="step-details"><span>7</span>Your details</h2>
-        <div class="field">
-          <label for="name">Full name</label>
-          <input id="name" name="name" type="text" autocomplete="name" required maxlength="120">
-        </div>
-        <div class="field">
-          <label for="phone">Mobile phone</label>
-          <input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required placeholder="(281) 555-0123">
-          <div class="hint">We text your access code, and again when the crew is on the way.</div>
-        </div>
-        <div class="consent">
-          <input type="checkbox" id="sms-consent" name="sms_consent" required>
-          <label for="sms-consent">{{SMS_CONSENT}} See our <a href="/terms" target="_blank" rel="noopener">terms</a>
-            and <a href="/privacy" target="_blank" rel="noopener">privacy policy</a>.</label>
-        </div>
-      </section>
+        <section class="step" aria-labelledby="step-rate">
+          <h2 class="step-title" id="step-rate"><span>2</span>Your yard type</h2>
+          <fieldset>
+            <legend class="visually-hidden">Yard type</legend>
+            <div class="rates tiers" id="rates" role="radiogroup" aria-describedby="rate-error"></div>
+            <p class="field-error" id="rate-error" role="alert" hidden>Choose your yard type to continue.</p>
+            <p class="hint per-visit-note">Billed per visit. No subscription, no contract.</p>
+          </fieldset>
+          <div class="price-box estimate" id="estimate" aria-live="polite">
+            <h3 class="order-title">Lawn Mowing estimate</h3>
+            <dl class="price-lines" id="estimate-lines"></dl>
+            <div class="impact-box" id="impact-box" hidden>
+              <span class="impact-kicker">✓ Your order includes</span>
+              <strong class="impact-amount" id="impact-amount"></strong>
+              <span class="impact-for" id="impact-for">for the cause you pick in step 6</span>
+            </div>
+          </div>
+        </section>
 
-      <p class="impact-promise" id="impact-promise">✓ Your pick is saved with your booking. What your order generates goes to that cause, and so does anything extra you give the crew.</p>
-      <button class="btn btn-primary btn-block btn-lg" type="submit" id="submit">Book service</button>
-    </form>
+        <section class="step" aria-labelledby="step-addons">
+          <h2 class="step-title" id="step-addons"><span>3</span>Add-ons <span class="optional">(optional)</span></h2>
+          <fieldset id="addon-fieldset">
+            <legend class="visually-hidden">Add-ons to your mowing visit</legend>
+            <addon-injector id="addon-injector"></addon-injector>
+            <div class="add-ons" id="add-ons"></div>
+          </fieldset>
+        </section>
+
+        <section class="step" aria-labelledby="step-day">
+          <h2 class="step-title" id="step-day"><span>4</span>Service day</h2>
+          <div class="field">
+            <label for="date">Service day</label>
+            <input id="date" name="scheduled_date" type="date" required>
+            <div class="hint" id="date-hint">Next-day bookings close at 5 PM.</div>
+          </div>
+        </section>
+
+        <section class="step" aria-labelledby="step-review">
+          <h2 class="step-title" id="step-review"><span>5</span>Review your order</h2>
+          <div class="price-box order-summary" id="price-box" aria-live="polite">
+            <h3 class="order-title">Order summary</h3>
+            <p class="muted" id="price-empty">Add your address in step 1 to see your final total.</p>
+            <dl class="price-lines" id="price-lines" hidden></dl>
+            <p class="hint" id="price-note" hidden></p>
+          </div>
+        </section>
+
+        <section class="step" aria-labelledby="step-pay">
+          <h2 class="step-title" id="step-pay"><span>6</span>Pay your way</h2>
+          <fieldset>
+            <legend class="visually-hidden">Payment method</legend>
+            <div class="pay-options">
+              <input type="radio" name="payment_method" id="pay-cash" value="cash" checked>
+              <label for="pay-cash"><strong>Cash to the crew</strong><span>Pay when we arrive or when we finish.</span></label>
+              <input type="radio" name="payment_method" id="pay-card" value="card" disabled>
+              <label for="pay-card" id="pay-card-label"><strong>Card, Apple Pay or Google Pay</strong><span id="pay-card-note">Coming soon.</span></label>
+            </div>
+          </fieldset>
+          <!-- The customer picks the one cause their order's giving goes to (names come from Render settings). -->
+          <fieldset class="impact-pick" id="impact-pick">
+            <legend>Direct Your Local Community Impact Token</legend>
+            <p class="hint">Part of every order goes to a local cause. Pick where yours goes.</p>
+            <div class="impact-options" id="impact-options">
+              <input type="radio" name="charity_choice" id="cause-toys_for_tots" value="toys_for_tots" checked>
+              <label for="cause-toys_for_tots"><strong>Holiday toy drive for local kids</strong><span>Helps buy holiday toys for kids in our service area.</span></label>
+              <input type="radio" name="charity_choice" id="cause-vfw" value="vfw">
+              <label for="cause-vfw"><strong>Veterans of Foreign Wars (VFW)</strong><span>Helps local veterans and their families through a VFW post in our area.</span></label>
+              <input type="radio" name="charity_choice" id="cause-nicu" value="nicu">
+              <label for="cause-nicu"><strong>Neonatal intensive care (NICU) families</strong><span>Helps families whose newborns are in neonatal intensive care.</span></label>
+            </div>
+          </fieldset>
+        </section>
+
+        <section class="step" aria-labelledby="step-details">
+          <h2 class="step-title" id="step-details"><span>7</span>Your details</h2>
+          <div class="field">
+            <label for="name">Full name</label>
+            <input id="name" name="name" type="text" autocomplete="name" required maxlength="120">
+          </div>
+          <div class="field">
+            <label for="phone">Mobile phone</label>
+            <input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required placeholder="(281) 555-0123">
+            <div class="hint">We text your access code, and again when the crew is on the way.</div>
+          </div>
+          <div class="consent">
+            <input type="checkbox" id="sms-consent" name="sms_consent" required>
+            <label for="sms-consent">{{SMS_CONSENT}} See our <a href="/terms" target="_blank" rel="noopener">terms</a>
+              and <a href="/privacy" target="_blank" rel="noopener">privacy policy</a>.</label>
+          </div>
+        </section>
+
+        <p class="impact-promise" id="impact-promise">✓ Your pick is saved with your booking. What your order generates goes to that cause, and so does anything extra you give the crew.</p>
+        <button class="btn btn-primary btn-block btn-lg" type="submit" id="submit">Book service</button>
+      </form>
+    </div>
   </main>
   <footer class="mini-footer site-wrap">{{LEGAL_FOOTER}}</footer>
 
@@ -454,7 +458,7 @@
         { className: "verify-badge", textContent: "✓ Price locked" }), " ",
         "You pay this total for the area you chose. No surprise changes on site.");
       else priceNote.append("Your crew confirms the lawn size on site; the price only changes if it's different.");
-      if ((q.add_ons || []).some((a) => a.price == null))
+      if ((q.add_ons || []).some((a) => !a.scope && !a.info && a.price == null))   // a quote add-on, not the yard / size notes
         priceNote.append(" Holiday lighting is a free quote: the crew takes a look and you decide later. Nothing is charged for it.");
     }
 

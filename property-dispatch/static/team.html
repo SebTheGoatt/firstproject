@@ -5,19 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Meet the Crew | {{BUSINESS_NAME}}</title>
   <meta name="description" content="Meet the people who take care of your yard: who they are, what they do, and their recent work.">
-  <meta name="theme-color" content="#0b3d2e">
+  <meta name="theme-color" content="#0F2B22">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+  <link rel="preload" href="/static/fonts/big-shoulders-display-800.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/public-sans-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/styles.css?v={{V}}">
 </head>
-<body class="site">
+<body class="site page-team">
   <header class="site-header">
     <div class="site-wrap header-row">
-      <a class="brand" href="/">
-        <img src="/static/icons/logo-64.png" alt="" width="32" height="32">
-        <span>{{BUSINESS_NAME}}</span>
-      </a>
+      <a class="brand" href="/">{{BRAND}}</a>
       <nav class="site-nav" aria-label="Main">
         <a href="/#services">Services</a>
         <a href="/#areas">Service areas</a>
@@ -29,13 +28,19 @@
 
   <main>
     <!-- Team overview -->
-    <section class="section" id="team-view" hidden>
-      <div class="site-wrap">
-        <p class="eyebrow">Veteran-owned · Spring, TX</p>
-        <h1 class="page-title">Meet the crew</h1>
-        <p class="section-lede">The people who show up at your door. Tap anyone to see their story and recent work.</p>
-        <ul class="team-grid" id="team-grid"></ul>
-        <p class="empty" id="team-empty" hidden>Our crew profiles are coming soon.</p>
+    <section id="team-view" hidden>
+      <div class="team-hero">
+        <div class="site-wrap">
+          <p class="eyebrow">Veteran-owned · Spring, TX</p>
+          <h1 class="page-title">Meet the crew</h1>
+          <p class="section-lede">The people who show up at your door. Tap anyone to see their story and recent work.</p>
+        </div>
+      </div>
+      <div class="section team-section">
+        <div class="site-wrap">
+          <ul class="team-grid" id="team-grid"></ul>
+          <p class="empty" id="team-empty" hidden>Our crew profiles are coming soon.</p>
+        </div>
       </div>
     </section>
 

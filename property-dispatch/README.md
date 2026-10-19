@@ -58,10 +58,12 @@ coverage. Signing out deletes the saved route from the phone.
 installed apps pick up the new version on their next launch. You don't
 need to reinstall.
 
-The business name on every page comes from `BUSINESS_NAME` (Semper Green Lawn Care). The logo
-lives in `static/icons/` (header `logo-64.png`, app icons, `favicon.ico`, and `social.jpg`, the
-picture shown when the site is shared in a text or on social media). Brand colors: forest green
-`#0B3D2E`, fresh green `#4CAF50`, sunlit green `#A7D129`.
+The business name on every page comes from `BUSINESS_NAME` (Post One Lawn Co.); the legal name,
+`LEGAL_NAME`, stays Semper Green LLC (policy pages read "Semper Green LLC, doing business as Post One
+Lawn Co."). The logo lives in `static/icons/` (header `logo-64.png`, app icons, `favicon.ico`, and
+`social.jpg`, the picture shown when the site is shared in a text or on social media). Brand colors:
+Post Green `#0F2B22`, Field Green `#2E7D4F`, Fresh Blade `#9BD15A`, Dress Brass `#C9A227`,
+Parade Ground `#F5F6F1`.
 
 ## Address entry: instant area check + optional Google dropdown
 

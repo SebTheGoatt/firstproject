@@ -52,7 +52,7 @@ def test_every_area_page_renders_for_crawlers(client):
             assert r.status_code == 200 and r.headers["content-type"].startswith("text/html")
             t = r.text
             assert f"<h1 id=\"area-title\">Lawn mowing in {a.city}, TX</h1>" in t
-            assert f"<title>Lawn Mowing in {a.city}, TX | Semper Green Lawn Care</title>" in t
+            assert f"<title>Lawn Mowing in {a.city}, TX | Post One Lawn Co.</title>" in t
             assert f'<link rel="canonical" href="http://testserver/local/{a.slug}">' in t
             assert 'property="og:title"' in t and 'property="og:description"' in t and 'name="description"' in t
             assert 'name="viewport"' in t and "/static/styles.css?v=" in t
@@ -111,7 +111,8 @@ def test_json_ld_business_service_and_breadcrumbs(client):
         nodes = by_type(json_ld(client.get(f"/local/{a.slug}").text))
         assert set(nodes) == {"HomeAndConstructionBusiness", "Service", "BreadcrumbList"}
         biz, svc, crumbs = nodes["HomeAndConstructionBusiness"], nodes["Service"], nodes["BreadcrumbList"]
-        assert biz["@id"] == "http://testserver/#business" and biz["name"] == "Semper Green Lawn Care"
+        assert biz["@id"] == "http://testserver/#business" and biz["name"] == "Post One Lawn Co."
+        assert biz["legalName"] == "Semper Green LLC"
         assert biz["priceRange"] == f"$75-{dollars(yield_mow_fee(MAX_SQFT, 'STEEP_SLOPES'))}"
         assert {c["name"] for c in biz["areaServed"]} == {f"{x.city}, TX" for x in AREAS}
         assert svc["serviceType"] == "Lawn mowing" and svc["provider"] == {"@id": biz["@id"]}
@@ -289,3 +290,22 @@ def test_trailing_slash_and_odd_paths(client):
 def test_area_pages_load_the_spanish_switch(client):
     assert '<script src="/static/i18n.js?v=' in client.get("/local/klein").text
     assert '<script src="/static/i18n.js?v=' in client.get("/local").text
+
+
+def test_server_pages_share_the_post_one_footer_and_hero(client):
+    """Every server-rendered page: the Post Green hero band, the public name in the footer, the legal name in the legal line."""
+    for path in ("/local", "/local/spring", "/about", "/privacy", "/terms", "/refunds", "/local/nowhere", "/no-such-page"):
+        t = client.get(path, headers={"Accept": "text/html"}).text
+        assert 'class="site local page-server-pages' in t and 'class="sp-hero' in t, path
+        assert re.search(r'<p class="footer-copy">© \d{4} Post One Lawn Co\.</p>', t), path
+        assert '<p class="legal-line">Semper Green LLC · <a href="/privacy">Privacy</a>' in t, path
+        assert '<p class="footer-tagline">On post. On time.</p>' in t, path
+
+
+def test_area_pages_point_to_the_home_address_check(client):
+    """"Check your address" goes to the address form on the home page, which really has that id."""
+    assert 'id="area-checker"' in client.get("/").text
+    assert client.get("/local").text.count('href="/#area-checker"') == 1
+    t = client.get("/local/klein").text
+    assert 'href="/#area-checker"' in t and 'href="/#areas"' not in t
+    assert t.count('<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">') == 3      # one icon per trust line

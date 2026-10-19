@@ -23,6 +23,7 @@ import asyncio
 import hashlib
 import hmac
 import html
+import json
 import logging
 import os
 import secrets
@@ -45,7 +46,7 @@ from .agent_api import register_agent_api
 from .live_feed import record_booking, register_live_routes
 from .about_page import register_about_page
 from .legal_pages import SMS_CONSENT, legal_footer_html, register_legal_pages
-from .local_pages import home_structured_data, not_found_page, register_local_pages
+from .local_pages import brand_html, brand_lines, home_structured_data, not_found_page, register_local_pages
 from .yield_engine import register_yield_engine
 from .readiness import register_readiness
 from .crew_auth import CrewIdentity
@@ -241,7 +242,10 @@ def create_app(
     def render(name: str) -> str:
         # Static pages are UTF-8 regardless of the host process locale (Windows hosts default to a legacy code page).
         text = (STATIC_DIR / name).read_text(encoding="utf-8")
+        # {{BRAND}} is the header/footer logo (mark + two-line wordmark), {{BRAND_SHORT}} its first line ("Post One").
         return (text.replace("{{BUSINESS_NAME}}", html.escape(settings.business_name)).replace("{{V}}", version)
+                .replace("{{BRAND}}", brand_html(settings.business_name))
+                .replace("{{BRAND_SHORT}}", html.escape(brand_lines(settings.business_name)[0]))
                 .replace("{{LEGAL_FOOTER}}", legal_footer_html(settings))
                 .replace("{{SMS_CONSENT}}", html.escape(SMS_CONSENT.format(legal=settings.legal_name))))
 
@@ -308,8 +312,9 @@ def create_app(
 
     @app.get("/sw.js", include_in_schema=False)
     def service_worker():
-        # Served from the root so its scope covers the whole site.
-        body = (STATIC_DIR / "sw.js").read_text(encoding="utf-8").replace("__VERSION__", version)
+        # Served from the root so its scope covers the whole site. The name goes inside a JS string, so JSON-escape it.
+        body = ((STATIC_DIR / "sw.js").read_text(encoding="utf-8").replace("__VERSION__", version)
+                .replace("__BUSINESS_NAME__", json.dumps(settings.business_name)[1:-1]))
         return Response(body, media_type="application/javascript", headers={"Cache-Control": "no-cache"})
 
     @app.get("/manifest.webmanifest", include_in_schema=False)

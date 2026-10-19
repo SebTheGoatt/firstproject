@@ -39,7 +39,7 @@ def test_manifest_needs_the_agent_key_and_holds_no_secrets(client, on, manifest)
     for secret in ("SUPERSECRETVALUE", "owner-secret-code", "private-key-material", "read-key-123"):
         assert secret not in text
     m = manifest()
-    assert m["business"] == "Semper Green Lawn Care" and m["manifest_version"] == 1 and m["api_version"] == agent_api.API_VERSION
+    assert m["business"] == "Post One Lawn Co." and m["manifest_version"] == 1 and m["api_version"] == agent_api.API_VERSION
     assert m["stripe_mode"] == "test"          # only the key's prefix is read, never the key itself
     on.stripe_secret_key = "sk_live_SUPERSECRETVALUE"
     assert manifest()["stripe_mode"] == "live" and "SUPERSECRETVALUE" not in json.dumps(manifest())

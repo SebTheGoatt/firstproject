@@ -16,7 +16,7 @@ import logging
 from datetime import datetime, timedelta
 
 from . import push
-from .notify import send_text
+from .notify import send_text, sentence
 
 log = logging.getLogger("reviews")
 
@@ -33,11 +33,11 @@ def review_link(settings) -> str:
 def review_message(first_name: str, business: str, visit_url: str, review_url: str, lang: str = "en") -> str:
     if lang == "es":
         photos = f"Tu recibo y tus fotos de antes y después están aquí: {visit_url} . " if visit_url else ""
-        return (f"Hola {first_name}, gracias por elegir a {business}. {photos}Si hicimos un buen trabajo, ¿nos dejas "
+        return (f"Hola {first_name}, gracias por elegir a {sentence(business)} {photos}Si hicimos un buen trabajo, ¿nos dejas "
                 f"una reseña en Google? Ayuda mucho a un negocio local de veteranos: {review_url} . "
                 f"Responde STOP para no recibir más mensajes.")
     photos = f"Your receipt and before & after photos are here: {visit_url} . " if visit_url else ""
-    return (f"Hi {first_name}, thanks for choosing {business}. {photos}If we did a good job, would you leave us a "
+    return (f"Hi {first_name}, thanks for choosing {sentence(business)} {photos}If we did a good job, would you leave us a "
             f"quick Google review? It means a lot to a veteran-owned local business: {review_url} . Reply STOP to opt out.")
 
 

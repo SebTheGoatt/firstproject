@@ -1,14 +1,14 @@
 {
   "id": "/",
   "name": "{{BUSINESS_NAME}}",
-  "short_name": "Semper Green",
+  "short_name": "Post One",
   "description": "Clean lawns. Stronger communities. Veteran-owned mowing, bin cleaning and gutter service around Spring, TX.",
   "start_url": "/?source=app",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#f4f6f3",
-  "theme_color": "#0b3d2e",
+  "background_color": "#F5F6F1",
+  "theme_color": "#0F2B22",
   "categories": ["lifestyle", "utilities"],
   "icons": [
     { "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },

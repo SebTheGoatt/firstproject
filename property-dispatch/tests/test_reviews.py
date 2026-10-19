@@ -91,10 +91,22 @@ def test_a_failing_text_doesnt_stop_the_others(client, repo, settings, sms):
 
 def test_wording_follows_googles_review_rules():
     for lang in ("en", "es"):
-        text = reviews.review_message("Sam", "Semper Green Lawn Care", "https://x/visit/AB", REVIEW_URL, lang).lower()
+        text = reviews.review_message("Sam", "Post One Lawn Co.", "https://x/visit/AB", REVIEW_URL, lang).lower()
         assert REVIEW_URL.lower() in text
         for banned in ("5-star", "5 star", "five star", "5 estrellas", "toys for tots", "donat", "discount", "descuento"):
             assert banned not in text
+
+
+def test_a_name_that_ends_in_a_period_never_gets_a_second_one(settings):
+    from app.notify import next_customer_message
+    stop = {"customer_name": "Sam Lee", "service": "mowing", "add_ons": [], "leg_duration_s": 600}
+    for lang in ("en", "es"):
+        text = reviews.review_message("Sam", "Post One Lawn Co.", "https://x/visit/AB", REVIEW_URL, lang)
+        assert "Post One Lawn Co. " in text and ".." not in text
+        for crew in (None, "Pat Doe"):
+            text = next_customer_message({**stop, "lang": lang}, settings, crew)
+            assert "Post One Lawn Co. " in text and ".." not in text, text
+    assert "thanks for choosing Bob's Lawns. " in reviews.review_message("Sam", "Bob's Lawns", "", REVIEW_URL)
 
 
 def test_visit_page_shows_the_review_button_only_after_the_visit(client, repo, settings):

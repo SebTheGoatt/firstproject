@@ -50,7 +50,7 @@ def test_the_client_needs_a_safe_address_and_a_key():
 def test_look_tools_work_and_dates_are_checked(site, client, repo, settings):
     day_with_bookings(client, repo, settings)
     s = site("read-key-123")
-    assert s.health()["business"] == "Semper Green Lawn Care"
+    assert s.health()["business"] == "Post One Lawn Co."
     assert json.loads(sg.run_tool(s, "day_summary", {"day": TOMORROW.isoformat()}))["totals"]["bookings"] == 1
     assert "days" in json.loads(sg.run_tool(s, "week_outlook", {"days": 3}))
     assert "Dates look like" in json.loads(sg.run_tool(s, "day_summary", {"day": "tomorrow"}))["error"]

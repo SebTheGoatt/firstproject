@@ -63,8 +63,8 @@ class Settings(BaseSettings):
     # Backup copy of each night's dispatch manifest by email (Resend). Blank = logs only.
     resend_api_key: str = ""
     operational_alert_email: str = ""
-    resend_from: str = "Semper Green Dispatch <onboarding@resend.dev>"   # use your verified domain once it's set up
-    business_name: str = "Semper Green Lawn Care"
+    resend_from: str = "Post One Dispatch <onboarding@resend.dev>"   # use your verified domain once it's set up
+    business_name: str = "Post One Lawn Co."   # the public name (an assumed name of the LLC below)
     # Who customers contract with, and how they reach us (footer, privacy policy, terms, refunds).
     legal_name: str = "Semper Green LLC"
     business_email: str = ""       # set BUSINESS_EMAIL in Render once the business Gmail exists; shown everywhere then

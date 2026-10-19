@@ -5,11 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Notification keys | {{BUSINESS_NAME}}</title>
   <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#0F2B22">
   <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="preload" href="/static/fonts/big-shoulders-display-800.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/public-sans-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/styles.css?v={{V}}">
 </head>
-<body class="site">
-  <main class="site-wrap" style="max-width:720px;padding-block:32px">
+<body class="site page-owner">
+  <div class="crew-brandbar">
+    <img class="brand-mark" src="/static/brand/post-one-mark.svg" alt="" width="24" height="26">
+    <p class="crew-brandbar-name">{{BRAND_SHORT}} · <span>Owner</span></p>
+  </div>
+  <main class="site-wrap owner-wrap">
+    <p class="back-row"><a href="/crew">← Crew app</a></p>
     <h1>Set up visit notifications</h1>
     <p class="muted">This makes a private key pair <strong>inside your browser</strong>. Nothing is sent or saved anywhere, so you're the only one who ever sees it.</p>
     <ol>
@@ -20,12 +28,12 @@
     </ol>
     <p id="status" class="alert" role="status">Checking the keys that are in Render right now…</p>
     <button class="btn btn-primary" type="button" id="make">Make my keys</button>
-    <div id="out" hidden style="margin-top:24px">
+    <div id="out" class="key-out" hidden>
       <h2 class="card-title">VAPID_PUBLIC_KEY</h2>
-      <p><code id="pub" style="word-break:break-all"></code></p>
+      <p><code id="pub"></code></p>
       <button class="btn btn-outline" type="button" data-copy="pub">Copy public key</button>
-      <h2 class="card-title" style="margin-top:24px">VAPID_PRIVATE_KEY (keep secret)</h2>
-      <p><code id="priv" style="word-break:break-all"></code></p>
+      <h2 class="card-title">VAPID_PRIVATE_KEY (keep secret)</h2>
+      <p><code id="priv"></code></p>
       <button class="btn btn-outline" type="button" data-copy="priv">Copy private key</button>
       <p class="muted small" id="copied" role="status"></p>
       <p class="muted small">Made new keys by mistake? Only the pair you saved in Render counts. If you ever replace it, customers just tap "Get updates" again.</p>
