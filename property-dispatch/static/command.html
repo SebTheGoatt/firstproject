@@ -108,22 +108,44 @@
     nav.links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
     nav.links a { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; text-decoration: none;
       border: 1px solid var(--etch); border-radius: 3px; padding: 14px; color: var(--cyan-ink); background: var(--glass); }
+    button.intercept { color: #060709; border: 0; background: linear-gradient(90deg, #D97706, #B45309); box-shadow: 0 0 15px rgb(217 119 6 / 0.3); }
+    .days { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+    @media (min-width: 640px) { .days { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    @media (min-width: 1100px) { .days { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
+    .dayc { border: 1px solid rgb(30 41 59); border-radius: 3px; padding: 8px; text-align: center; background: rgb(17 20 26 / 0.4); }
+    .dayc.has { border-color: rgb(6 182 212 / 0.45); background: rgb(17 20 26 / 0.8); }
+    .dayc.off { opacity: 0.35; }
+    .dayc .k { display: block; } .dayc b { display: block; margin-top: 3px; font-size: 0.78rem; }
+    .dayc small { display: block; font-size: 0.58rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+    .t .who { margin-top: 2px; font-size: 0.68rem; color: var(--muted); overflow-wrap: anywhere; }
+    .t .acts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--etch); }
+    .t .acts button { font: 700 0.62rem/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; min-height: 40px; padding: 0 12px;
+      border-radius: 3px; cursor: pointer; background: transparent; }
+    .t .acts .go { color: var(--cyan-ink); border: 1px solid rgb(6 182 212 / 0.45); }
+    .t .acts .purge { color: var(--out); border: 1px solid rgb(239 68 68 / 0.45); }
+    .toast { margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--gold); border-radius: 3px; background: var(--glass-2); font-size: 0.72rem; }
   </style>
 </head>
 <body>
   <header class="visor">
     <div>
-      <h1 class="caps"><span class="reactor" aria-hidden="true"></span>{{BRAND_SHORT}} // Owner Command</h1>
+      <h1 class="caps"><span class="reactor" aria-hidden="true"></span>STARK_NET // OWNER_OPERATIONAL_MATRIX</h1>
       <p class="sub caps" id="sub">North Houston grid · syncing…</p>
     </div>
     <div class="chips">
       <div class="chip"><p class="k">CGL_COVERAGE</p><p class="v" id="chip-cgl">–</p></div>
       <div class="chip"><p class="k">CARD_CHECKOUT</p><p class="v" id="chip-stripe">–</p></div>
+      <div class="chip"><p class="k">SYSTEM_STATUS</p><p class="v" id="chip-route">–</p></div>
+      <button class="act intercept" type="button" id="compute" hidden>[ COMPUTE INTERCEPT PATH ]</button>
       <button class="act" type="button" id="refresh">Resync</button>
     </div>
   </header>
 
   <p class="msg" id="msg" hidden></p>
+  <p class="toast" id="toast" role="status" hidden></p>
+
+  <!-- 7-day timeline strip: expected revenue per area day -->
+  <section class="days" id="days" aria-label="Next 7 days" hidden></section>
 
   <main class="hud" id="hud" hidden>
     <!-- Pane 1: TARGET_MANIFEST (5 cols) -->
@@ -210,14 +232,20 @@
         el("i", { "aria-hidden": "true" }),
         el("div", {},
           el("div", { class: "row" },
-            el("span", { class: "id" }, `#${t.ref} // ${t.area.toUpperCase()}`),
+            el("span", { class: "id" }, `${(t.name || "#" + t.ref).toUpperCase()} // ${t.area.toUpperCase()}`),
             el("span", { class: "tag " + (t.status === "DONE" ? "in" : t.status === "ROUTED" ? "cy" : "au") }, t.status.replace(" ", "_"))),
           el("div", { class: "line" },
             el("span", {}, day(t.date, { weekday: "short", month: "numeric", day: "numeric" }).toUpperCase()),
             el("span", {}, t.sqft ? `${t.sqft.toLocaleString()} SQ FT` : "SIZE_TBD"),
             t.scope ? el("span", {}, t.scope.toUpperCase()) : null,
             el("span", { class: t.paid ? "in" : "" }, `${t.pay === "card" ? "CARD" : "CASH"} ${t.paid ? "CLEARED" : "DUE"} ${money(t.amount)}`),
-            t.off_area ? el("span", { class: "out" }, "OUTSIDE AREA DAY: MOVE") : el("span", { class: "in" }, "IN BOUNDARY")))))
+            t.off_area ? el("span", { class: "out" }, `${t.area.toUpperCase()}_OUTLIER`) : el("span", { class: "in" }, "VALIDATED")),
+          t.address ? el("div", { class: "who" }, t.address.toUpperCase()) : null,
+          t.off_area && t.status !== "DONE" ? el("div", { class: "acts" },
+            act("go", `INTERCEPT → ${day(t.move_to, { weekday: "short", month: "numeric", day: "numeric" }).toUpperCase()}`,
+                `/api/owner/jobs/${t.job_id}/move`, { day: t.move_to }, `Moved to its ${t.area} day. Customer texted.`),
+            act("purge", "PURGE", `/api/owner/jobs/${t.job_id}/cancel`, null, "Cancelled. Card payments refund automatically."))
+            : null)))
         : [el("p", { class: "empty" }, "TARGET_MANIFEST EMPTY · no bookings in the next 7 days.")]));
 
       $("week").replaceChildren(...d.week.map((w) => el("tr", {},
@@ -247,6 +275,46 @@
         : el("p", { class: "empty" }, "NO VISITS TODAY."));
     }
 
+    // Two-tap buttons: the first tap arms, the second sends. Used for INTERCEPT (move), PURGE (cancel), COMPUTE (build route).
+    function act(cls, label, url, body, done) {
+      const b = el("button", { class: cls, type: "button" }, label);
+      b.addEventListener("click", async () => {
+        if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = "CONFIRM?"; setTimeout(() => { delete b.dataset.armed; b.textContent = label; }, 4000); return; }
+        b.disabled = true;
+        const res = await fetch(url, { method: "POST", headers: { ...headers(), "Content-Type": "application/json" },
+                                       body: JSON.stringify(body || { confirm: true }) }).catch(() => null);
+        const d = res ? await res.json().catch(() => ({})) : {};
+        toast(res && res.ok ? done : (d.detail || "NO_SIGNAL // RETRY"));
+        load();
+      });
+      return b;
+    }
+    function toast(text) { $("toast").textContent = text; $("toast").hidden = false; setTimeout(() => { $("toast").hidden = true; }, 6000); }
+
+    function renderTop(d) {
+      const nr = d.next_route;
+      const st = $("chip-route");
+      if (!nr.date) { st.textContent = "NO_TARGETS"; st.className = "v dim"; $("compute").hidden = true; }
+      else if (nr.built) { st.textContent = `ROUTE_LOCKED // ${nr.stops} STOPS`; st.className = "v in"; $("compute").hidden = true; }
+      else { st.textContent = "ROUTE_UNASSIGNED // HOLD"; st.className = "v out"; $("compute").hidden = false;
+             $("compute").dataset.day = nr.date; }
+      $("days").hidden = false;
+      $("days").replaceChildren(...d.week.map((w, i) => el("div", { class: "dayc" + (w.jobs ? " has" : "") + (w.area ? "" : " off") },
+        el("span", { class: "k" + (w.jobs ? " cy" : "") }, (i === 0 ? "TODAY_" : "") + day(w.date, { weekday: "short" }).toUpperCase()
+          + (i === 0 ? "" : "_" + w.date.slice(8))),
+        el("b", { class: w.jobs ? "au" : "dim" }, money(w.expected)),
+        el("small", {}, `${w.area || "off"} · ${w.jobs}/${w.quota}`))));
+    }
+    $("compute").addEventListener("click", async () => {
+      const b = $("compute"), dayIso = b.dataset.day;
+      if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = "[ CONFIRM COMPUTE ]"; return; }
+      delete b.dataset.armed; b.disabled = true; b.textContent = "[ OPTIMIZING… ]";
+      const res = await fetch(`/api/owner/routes/${dayIso}/build`, { method: "POST", headers: headers() }).catch(() => null);
+      const d = res ? await res.json().catch(() => ({})) : {};
+      toast(res && res.ok ? `ROUTE_LOCKED // ${d.stops} STOPS · ${d.total_miles} MI · ${d.drive_minutes} MIN DRIVE` : (d.detail || "NO_SIGNAL // RETRY"));
+      b.disabled = false; b.textContent = "[ COMPUTE INTERCEPT PATH ]"; load();
+    });
+
     function renderLive(s) {
       const t = s.today || {};
       $("live").replaceChildren(ro("Online now", String(s.online ?? 0), "cy"), ro("Visits today", String(t.visits ?? 0)),
@@ -273,7 +341,8 @@
         return;
       }
       $("msg").hidden = true; $("hud").hidden = false;
-      renderCommand(await res.json());
+      const data = await res.json();
+      renderCommand(data); renderTop(data);
       loadLive();
     }
     async function loadLive() {

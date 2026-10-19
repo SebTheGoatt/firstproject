@@ -41,11 +41,22 @@ def revenue(rows: list[dict]) -> dict:
     }
 
 
-def terminal_row(j: dict, day: date) -> dict:
+def next_area_day(zone, after: date) -> date | None:
+    """The area's next weekday after `after` (where INTERCEPT moves an outlier)."""
+    if zone is None:
+        return None
+    return after + timedelta(days=(zone.service_weekday - after.weekday()) % 7 or 7)
+
+
+def terminal_row(j: dict, day: date, today: date) -> dict:
     zone = zone_by_key(j.get("zone_key"))
+    off = bool(zone_for_weekday(day.weekday()) and zone and zone.key != zone_for_weekday(day.weekday()).key)
     scope = next((a["key"] for a in (j.get("add_ons") or []) if a.get("key") in ("scope_yard", "scope_full")), None)
     return {
         "ref": "P1-" + str(j["job_id"])[:4].upper(),
+        "job_id": j["job_id"],
+        "name": j.get("customer_name"),          # owner-only screen, same as the owner dashboard
+        "address": j.get("address"),
         "date": day.isoformat(),
         "area": short_name(zone) if zone else "?",
         "sqft": j.get("lawn_sqft"),
@@ -55,7 +66,8 @@ def terminal_row(j: dict, day: date) -> dict:
         "pay": j.get("payment_method"),
         "paid": j.get("payment_status") == "paid",
         "amount": _money(j.get("amount_due")),
-        "off_area": bool(zone_for_weekday(day.weekday()) and zone and zone.key != zone_for_weekday(day.weekday()).key),
+        "off_area": off,
+        "move_to": next_area_day(zone, today).isoformat() if off and zone else None,
     }
 
 
@@ -76,7 +88,7 @@ def register_command(app: FastAPI, settings: Settings, owner, page) -> None:
             week.append({"date": d.isoformat(), "area": day_area(d), "jobs": len(rows), "quota": settings.daily_job_quota,
                          "expected": _money(sum(float(r.get("amount_due") or 0) for r in rows))})
             if rows and len(terminal) < TERMINAL_LIMIT:
-                terminal += [terminal_row(j, d) for j in repo().list_jobs(d)][: TERMINAL_LIMIT - len(terminal)]
+                terminal += [terminal_row(j, d, today) for j in repo().list_jobs(d)][: TERMINAL_LIMIT - len(terminal)]
         # Pre/post photo log for today's visits (the crew's before and after shots).
         photos = []
         for j in repo().list_jobs(today):
@@ -84,7 +96,12 @@ def register_command(app: FastAPI, settings: Settings, owner, page) -> None:
             photos.append({"ref": "P1-" + str(j["job_id"])[:4].upper(), "before": "before" in kinds, "after": "after" in kinds,
                            "done": bool(j.get("completed_at"))})
         cgl = settings.liability_coverage.strip() or None
+        # The next route to compute: the first upcoming day that has bookings.
+        nxt = next((date.fromisoformat(w["date"]) for w in week if w["jobs"] and w["date"] > today.isoformat()), None)
+        route = repo().get_route(nxt) if nxt else None
         return {
+            "next_route": {"date": nxt.isoformat() if nxt else None, "built": route is not None,
+                           "stops": len(route["stops"]) if route else 0},
             "date": today.isoformat(),
             "area_today": day_area(today),
             "revenue_mtd": revenue(month),
