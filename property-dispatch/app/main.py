@@ -49,6 +49,7 @@ from .about_page import register_about_page
 from .legal_pages import SMS_CONSENT, legal_footer_html, register_legal_pages
 from .local_pages import brand_html, brand_lines, home_structured_data, not_found_page, register_local_pages
 from .yield_engine import register_yield_engine
+from .command import register_command
 from .readiness import register_readiness
 from .crew_auth import CrewIdentity
 from .crew_routes import register_crew_routes
@@ -298,6 +299,7 @@ def create_app(
     register_pay_routes(app, settings, app.state.stripe)
     owner_auth = register_visit_routes(app, settings, crew_auth)
     register_readiness(app, settings, owner_auth, page)   # owner's go-live checklist: /owner/readiness
+    register_command(app, settings, owner_auth, page)     # owner's command view: /owner/command
     register_agent_api(app, settings, build={"static_version": version, "commit": os.environ.get("RENDER_GIT_COMMIT", "")[:7]})   # scoped, audited keys for StarNet agents (off unless AGENT_KEY_READ / AGENT_KEY_OPS are set)
     register_agent_routes(app, settings, crew_auth)   # owner-only Ollama dispatch assistant (off unless OLLAMA_BASE_URL is set)
     register_local_pages(app, settings, version)      # server-rendered /local area pages + /sitemap.xml for search engines
