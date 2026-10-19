@@ -12,25 +12,20 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
 from .config import Settings
-from .local_pages import cause_names, joined, layout
+from .local_pages import cause_names, hour_words, joined, layout
+from .zones import schedule_text
 
 esc = html.escape
 
 FOUNDERS = (
     ("Raymundo S. Alvarez", "Co-Founder · Director of Operations", "USMC VET / MBA",
-     "Forged through nearly a decade of strict tactical infantry leadership and high-value asset protection within "
-     "the U.S. Marine Corps Security Guard Program, securing vital federal architecture and diplomatic infrastructure "
-     "across global U.S. Embassies. Combines an immaculate 4.0 graduate business background with specialized NVIDIA "
-     "AI Infrastructure tracking to ensure flawless routing execution on the ground."),
+     "U.S. Marine Corps veteran with an MBA. Runs dispatch, pricing and the crew, and answers for every visit."),
 )
 
 # Waiting on Ciro's go-ahead. To show him on the page, move this entry into FOUNDERS above.
 PENDING_FOUNDERS = (
     ("Ciro Marabillo-Arreguin", "Co-Founder · Supply Chain Manager", "LOGISTICS CORE",
-     "An accomplished enterprise shipping, inventory control, and multi-stop operations supervisor with a proven "
-     "record managing complex commercial fleet dispatch paths and strict KPI tracking logs at RXO Logistics. "
-     "Specializes in Lean Six Sigma process improvements, tight resource scheduling, and asset risk mitigation to "
-     "completely eliminate unbilled downtime across target deployment zones."),
+     "Fleet dispatch and multi-stop scheduling background at RXO Logistics. Keeps routes tight and days on time."),
 )
 
 
@@ -64,18 +59,14 @@ def about_html(settings: Settings, version: str) -> str:
     # Each cause in its own span, so the Spanish page can translate the names one by one.
     causes = [f"<span>{esc(c)}</span>" for c in cause_names(settings)]
     pillars = (   # (number, kicker, title, text as HTML)
-        ("01", "Frictionless Autonomy", "The Power of Choice",
-         "We systematically rejected the rigid, forced corporate subscription structures that fatigue modern consumers. "
-         "Instead, we built a streamlined, self-serve transaction shell. You select your exact property coordinates, "
-         "layer high-margin add-ons instantly with zero personal friction, and manage your asset timeline your way."),
-        ("02", "Dynamic Geofences", "Route Density Optimization",
-         f"By locking down our daily regional manifests at {settings.freeze_hour - 12 if settings.freeze_hour > 12 else settings.freeze_hour}:00 PM sharp, "
-         "we treat every morning deployment like a controlled tactical insertion. We map spatial density patterns across "
-         "target ZIP networks, cutting down the fuel and drive-time leakages that drive low-class starters into bankruptcy."),
-        ("03", "Generational Moats", "The Purpose Pledge",
-         "As dedicated Texas homeowners and land stewards, we approach your property boundary with genuine peer "
-         "perspective and oversight. Every mission completed allows you to allocate part of your payment directly to "
-         f"the local cause you pick: {joined(causes)}."),
+        ("01", "No subscription", "Pay per visit",
+         "Book one visit at a time. Pick your lawn size, yard type and add-ons, and the total, tax included, is shown "
+         "before you book. Pay by card at checkout or cash to the crew."),
+        ("02", "One area a day", "Lawns, not the road",
+         f"We mow {esc(schedule_text())}. Each route locks at {hour_words(settings.freeze_hour)} the day before, "
+         "so the crew drives less and your day is firm."),
+        ("03", "Local causes", "Your pick",
+         f"Part of every visit goes to the local cause you pick when you book: {joined(causes)}."),
     )
     cols = "".join(f"""
           <li><span class="sp-num">{n}</span><p class="sp-kicker">{esc(k)}</p><h3>{esc(t)}</h3><p>{d}</p></li>"""
@@ -87,12 +78,10 @@ def about_html(settings: Settings, version: str) -> str:
     <section class="sp-hero" aria-labelledby="about-title">
       <div class="site-wrap sp-hero-grid">
         <div class="sp-hero-copy">
-          <p class="eyebrow">Veteran-Owned &amp; Managed · NVIDIA AI Infrastructure Trained</p>
-          <h1 id="about-title">Built on Pedigree. Driven by <span>Discernment.</span></h1>
-          <p class="lede">Anyone can deploy a lawn mower or purchase an automated robot. But a machine cannot exercise
-            situational judgment, and unmanaged contractors lack operational accountability. We engineered
-            {esc(settings.business_name.split(" Lawn")[0])} around a single core tenet: bringing elite operational legacy,
-            institutional discipline, and data-driven logistics to home asset preservation.</p>
+          <p class="eyebrow">Veteran-owned · Spring, TX</p>
+          <h1 id="about-title">Local crew. Upfront prices. <span>On time.</span></h1>
+          <p class="lede">You see your price before you book, pay per visit with no subscription, and get a text when
+            the crew is on the way. We mow one area a day, so the crew's time goes into lawns, not the road.</p>
           <div class="hero-actions">
             <a class="btn btn-lg sp-btn-fresh" href="/book">Book your first visit</a>
             <a class="btn btn-lg sp-btn-line" href="#why">Our story</a>

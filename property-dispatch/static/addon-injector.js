@@ -1,6 +1,6 @@
 /**
  * Post One Lawn Co. - User Autonomy Add-on Injector Component
- * Eliminates "hip-pocket" pricing by giving users absolute control over high-margin add-ons.
+ * Add-ons with their price shown up front, picked by the customer before booking.
  *
  *   <addon-injector></addon-injector>   fires "addonSelectionChange" (bubbles) with { binCleaning, gutterCleaning }
  *   Optional attributes: bin-price / gutter-price (from the server's price list) and selected="bin_cleaning gutters".

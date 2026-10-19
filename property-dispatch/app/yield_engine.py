@@ -22,7 +22,7 @@ from .zones import find_zone
 
 log = logging.getLogger(__name__)
 
-# Enterprise Pricing Constraints (the numbers live in app/pricing.py, which booking and Stripe use too)
+# Pricing constraints (the numbers live in app/pricing.py, which booking and Stripe use too)
 TEXAS_SALES_TAX_RATE = 0.0825 # 8.25% localized tax bracket (outside our areas; inside, the area's own rate)
 
 
@@ -69,7 +69,7 @@ def register_yield_engine(app: FastAPI, settings, page) -> None:
             return yield_price(payload, request.app.state.repo.active_job_points(today))
         except Exception:
             log.exception("Yield engine failed")
-            raise HTTPException(status_code=500, detail="Infrastructure Engine Fault")
+            raise HTTPException(status_code=500, detail="Pricing error. Please try again.")
 
     @app.get("/estimate", include_in_schema=False)
     def estimate_page():

@@ -98,26 +98,26 @@ const SemperGreenEngine = {
         container.innerHTML = `
             <div class="space-y-2 p-4 bg-zinc-900 rounded-lg text-white border border-zinc-800">
                 <div class="flex justify-between text-sm">
-                    <span class="text-zinc-400">Logistics Deployment Fee Floor:</span>
+                    <span class="text-zinc-400">Mowing:</span>
                     <span class="font-mono">$${data.base_mow_fee.toFixed(2)}</span>
                 </div>
                 ${data.is_cluster_optimized ? `
                 <div class="flex justify-between text-sm text-emerald-400">
-                    <span>⚡ Route Cluster Optimization Benefit (${data.route_density_score} stops):</span> <span class="font-mono">-$${data.density_discount.toFixed(2)}</span>
+                    <span>Neighbor discount (${data.route_density_score} booked nearby):</span> <span class="font-mono">-$${data.density_discount.toFixed(2)}</span>
                 </div>` : `
                 <div class="text-xs text-amber-500">
-                    📍 Standalone Premium Density Target Area
+                    No neighbors booked nearby yet
                 </div>`}
                 <div class="flex justify-between text-sm">
-                    <span class="text-zinc-400">Ancillary High-Margin Infrastructure Add-ons:</span>
+                    <span class="text-zinc-400">Add-ons:</span>
                     <span class="font-mono">$${data.addons_total.toFixed(2)}</span>
                 </div>
                 <div class="border-t border-zinc-800 my-2 pt-2 flex justify-between text-sm">
-                    <span class="text-zinc-400">Texas Sales Tax Allocation (8.25%):</span>
+                    <span class="text-zinc-400">Texas sales tax (8.25%):</span>
                     <span class="font-mono">$${data.sales_tax.toFixed(2)}</span>
                 </div>
                 <div class="flex justify-between text-base font-bold text-green-400">
-                    <span>Guaranteed Enterprise Checkout Total:</span>
+                    <span>Guaranteed total:</span>
                     <span class="font-mono">$${data.final_checkout_total.toFixed(2)}</span>
                 </div>
             </div>

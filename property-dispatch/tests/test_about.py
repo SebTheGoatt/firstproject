@@ -10,8 +10,10 @@ def test_about_page_has_both_founders_and_true_pillars(client, settings):
     for name, role, tag, _ in FOUNDERS:
         assert name in t and role in t and tag in t
     assert "Ciro" not in t and "RXO" not in t and len(FOUNDERS) == 1
-    assert "Built on Pedigree. Driven by <span>Discernment.</span>" in t
-    assert "5:00 PM sharp" in t and "cutting down the fuel" in t
+    assert "Local crew. Upfront prices. <span>On time.</span>" in t
+    assert "Each route locks at 5 PM the day before" in t and "Mon Spring · Tue Klein" in t and "no subscription" in t
+    for jargon in ("Pedigree", "tactical", "Enterprise", "high-margin", "NVIDIA", "bankruptcy", "Infrastructure"):
+        assert jargon not in t, jargon
     assert "Holiday toy drive for local kids" in t and "Local veterans and their families" in t   # real causes
     for false_claim in ("completely erasing", "verified, local combat veteran", "encrypted payment rails", "service dogs"):
         assert false_claim not in t
