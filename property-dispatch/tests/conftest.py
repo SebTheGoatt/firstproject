@@ -73,3 +73,16 @@ def legacy_quoted_job(repo, letter="B", phone="+12815550101", service="gutters",
         service=service, scheduled_date=day or TOMORROW, service_minutes=60, zone_key="SPRING_LUXURY_LOOP",
         quoted_price=None, payment_method=method, pay_token=f"legacy-pay-token-{letter}-0123456789",
         access_code="LGCY" + "ABCDEFGH"[ord(letter[0]) % 8] * 4, tax_rate=0.0825)
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "area_days: keep the one-area-per-day booking rule on (tests/test_area_days.py)")
+
+
+@pytest.fixture(autouse=True)
+def _any_day_for_older_tests(request, monkeypatch):
+    """Most tests book a fixed date for addresses in several areas. They test pricing, texts, routes and so on,
+    not the weekday rule, so the rule is relaxed for them; tests marked area_days keep it on."""
+    if request.node.get_closest_marker("area_days") is None:
+        monkeypatch.setattr("app.main.check_area_day", lambda day, zone: None)
+        monkeypatch.setattr("app.nightly.one_area", lambda jobs, day: (jobs, []))

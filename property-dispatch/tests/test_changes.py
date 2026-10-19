@@ -90,8 +90,9 @@ def test_rain_day_moves_every_unstarted_visit(client, repo, settings, sms):
     run_nightly(repo, settings, TOMORROW)
     with patch("app.changes.local_now", return_value=NOW):
         r = client.post(f"/api/owner/days/{TOMORROW}/rain", headers=CREW).json()
-    assert r == {"moved": 2, "to": str(TOMORROW + timedelta(days=1))}
-    assert all(repo.jobs[x["id"]]["scheduled_date"] == TOMORROW + timedelta(days=1) for x in (a, b))
+    saturday = TOMORROW + timedelta(days=(5 - TOMORROW.weekday()) % 7)      # that week's weather make-up day
+    assert r == {"moved": 2, "to": str(saturday)}
+    assert all(repo.jobs[x["id"]]["scheduled_date"] == saturday for x in (a, b))
     assert sum("because of the weather" in m[1] for m in sms.sent) == 2
 
 

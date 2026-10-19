@@ -17,6 +17,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from pydantic import BaseModel
 
 from .booking import local_now
+from .zones import MAKEUP_WEEKDAY, WEEKDAY_NAMES, short_name, zone_by_key
 from .config import Settings
 from .notify import day_words, send_text
 from .payments import PaymentError
@@ -85,8 +86,25 @@ def register_change_routes(app: FastAPI, settings: Settings, owner, throttle, no
         text(b, cancelled_text(b, settings.business_name, refund))
         return {"cancelled": True, "refund": refund}
 
-    def next_service_day_after(day: date) -> date:
-        return max(day + timedelta(days=1), local_now(settings).date() + timedelta(days=1))
+    def area_day_ok(b: dict, day: date) -> str | None:
+        """None when the visit may go on that day: its area's weekday, or Saturday (weather make-up). Else why not."""
+        zone = zone_by_key(b.get("zone_key"))
+        if zone is None or day.weekday() in (zone.service_weekday, MAKEUP_WEEKDAY):
+            return None
+        return (f"{short_name(zone)} is mowed on {WEEKDAY_NAMES[zone.service_weekday]}s (Saturday for weather make-ups), "
+                "so the crew stays in one area a day. Pick one of those days.")
+
+    def makeup_day(day: date, zone_key: str | None) -> date:
+        """Where a rained-out day goes: that week's Saturday if it's free of other areas, else the area's next weekday."""
+        tomorrow = local_now(settings).date() + timedelta(days=1)
+        saturday = day + timedelta(days=(MAKEUP_WEEKDAY - day.weekday()) % 7 or 7)
+        others = {j.get("zone_key") for j in repo().list_jobs(saturday)} - {zone_key, None}
+        if saturday >= tomorrow and not others:
+            return saturday
+        nxt = day + timedelta(days=7)
+        while nxt < tomorrow:
+            nxt += timedelta(days=7)
+        return nxt
 
     # ---------- Customer ----------
     @app.post("/api/visit/{raw_code}/cancel")
@@ -125,6 +143,8 @@ def register_change_routes(app: FastAPI, settings: Settings, owner, throttle, no
         b = brief_or_404(job_id)
         if body.day <= local_now(settings).date():
             raise HTTPException(status_code=422, detail="Pick a day after today.")
+        if why := area_day_ok(b, body.day):
+            raise HTTPException(status_code=422, detail=why)
         if not repo().move_job(job_id, body.day):
             raise HTTPException(status_code=409, detail="That visit is done or cancelled, so it can't move.")
         text(b, moved_text(b, settings.business_name, body.day, weather=False))
@@ -132,10 +152,12 @@ def register_change_routes(app: FastAPI, settings: Settings, owner, throttle, no
 
     @app.post("/api/owner/days/{day}/rain", dependencies=[Depends(owner)])
     def rain_day(day: date):
-        """Weather: every visit that day that hasn't started moves to the next service day, with a text to each."""
-        to = next_service_day_after(day)
+        """Weather: every unstarted visit that day moves to that week's Saturday make-up (or the area's next weekday
+        if Saturday is taken by another area), with a text to each. The day holds one area, so all go together."""
+        jobs = repo().list_jobs(day)
+        to = makeup_day(day, next((j.get("zone_key") for j in jobs if j.get("zone_key")), None))
         moved = 0
-        for j in repo().list_jobs(day):
+        for j in jobs:
             if j["status"] not in ("pending", "scheduled") or j.get("completed_at") or j.get("on_the_way_at"):
                 continue
             b = repo().job_brief(j["job_id"])

@@ -33,7 +33,7 @@ from .charity import causes
 from .config import Settings, site_url
 from .pricing import (ADD_ONS, MAX_SQFT, YARD_TYPES, YIELD_GIVING_RATE, YIELD_INCLUDED_SQFT, bracket_profile,
                       density_pct, season_text, yield_mow_fee)
-from .zones import zone_by_key
+from .zones import WEEKDAY_NAMES, zone_by_key
 
 esc = html.escape
 
@@ -110,14 +110,18 @@ def price_rows() -> list[tuple[str, int, dict[str, Decimal]]]:
              {k: yield_mow_fee(n, k) for k in YARD_TYPES}) for n in SAMPLE_SIZES]
 
 
-def next_open_day(settings: Settings, repo) -> date:
-    """The first day after the 5 PM cutoff that still has room. Reads only how many jobs a day has."""
+def next_open_day(settings: Settings, repo, zone=None) -> date:
+    """The first day after the 5 PM cutoff that still has room (for one area: its next area day, a week apart).
+    Reads only how many jobs a day has."""
     now = local_now(settings)
     day = earliest_bookable_day(now, settings.freeze_hour)
+    if zone is not None:
+        day += timedelta(days=(zone.service_weekday - day.weekday()) % 7)
+    step = timedelta(days=7 if zone is not None else 1)
     last = now.date() + timedelta(days=settings.booking_horizon_days)
     try:
         while day < last and repo.count_active_jobs(day) >= settings.daily_job_quota:
-            day += timedelta(days=1)
+            day += step
     except Exception:          # never fail the page over this
         pass
     return day
@@ -445,7 +449,8 @@ def area_html(settings: Settings, version: str, area: Area, site: str, day: date
         <aside class="sp-card next-open" aria-label="Next service day you can book">
           <p class="sp-kicker">Next day you can book</p>
           <p class="next-day">{day:%A, %B} {day.day}</p>
-          <p class="hint">Next-day booking closes at {hour_words(settings.freeze_hour)}.</p>
+          <p class="hint">We mow {city} every {WEEKDAY_NAMES[zone.service_weekday]}, so the crew stays in your area all day.
+            Booking closes at {hour_words(settings.freeze_hour)} the day before.</p>
           <a class="btn btn-primary btn-block" href="/book">Book this day</a>
         </aside>
       </div>
@@ -628,7 +633,8 @@ def register_local_pages(app: FastAPI, settings: Settings, version: str = "") ->
         if target != slug:
             return RedirectResponse(f"/local/{target}", status_code=301)
         return html_page(area_html(settings, version, AREA_BY_SLUG[target], site_url(settings, request),
-                                   next_open_day(settings, request.app.state.repo)))
+                                   next_open_day(settings, request.app.state.repo,
+                                                 zone_by_key(AREA_BY_SLUG[target].zone_key))))
 
     @app.get("/local/{slug}/{rest:path}", include_in_schema=False)
     def street_page(slug: str, rest: str):

@@ -551,7 +551,7 @@ class SupabaseRepository:
         self.sb.table("customers").update({"name": DELETED_NAME, "phone": _anonymous_phone()}).eq("id", cid).execute()
         return "deleted"
 
-    BRIEF_SELECT = ("id, status, scheduled_date, service, add_ons, payment_method, payment_status, amount_paid, amount_due, "
+    BRIEF_SELECT = ("id, status, scheduled_date, zone_key, service, add_ons, payment_method, payment_status, amount_paid, amount_due, "
                     "stripe_session_id, access_code, lang, customers(name, phone), route_stops(id, notified_at, completed_at)")
 
     def job_brief(self, job_id: str) -> dict | None:
@@ -978,7 +978,7 @@ class MemoryRepository:
         if j is None:
             return None
         c, st = self.customers[j["customer_id"]], self._stop_for(job_id) or {}
-        return {**{k: j.get(k) for k in ("id", "status", "scheduled_date", "service", "add_ons", "payment_method",
+        return {**{k: j.get(k) for k in ("id", "status", "scheduled_date", "zone_key", "service", "add_ons", "payment_method",
                                           "payment_status", "amount_paid", "amount_due", "stripe_session_id",
                                           "access_code", "lang")},
                 "customer_name": c["name"], "phone": c["phone"], "notified_at": st.get("notified_at"),

@@ -27,6 +27,7 @@ from pydantic import BaseModel, Field
 
 from . import push
 from .booking import local_now
+from .zones import MAKEUP_WEEKDAY, short_name, zone_for_weekday
 from .charity import all_causes, describe as describe_charities, ledger
 from .changes import register_change_routes
 from .manifest import build_manifest
@@ -243,17 +244,26 @@ def register_visit_routes(app: FastAPI, settings: Settings, crew_auth):
                 for c in all_causes(settings)],   # every cause, including customers' picks (e.g. the toy drive)
         }
 
+    def day_area(day: date) -> str | None:
+        """The one area that day is for ('Spring'), 'Make-up' on Saturday, None on Sunday."""
+        zone = zone_for_weekday(day.weekday())
+        return short_name(zone) if zone else ("Make-up" if day.weekday() == MAKEUP_WEEKDAY else None)
+
     @app.get("/api/owner/day/{day}", dependencies=[Depends(owner)])
     def owner_day(day: date, r=Depends(repo)):
         jobs = r.list_jobs(day)
+        area = zone_for_weekday(day.weekday())
         for j in jobs:
             j["access_code"] = format_code(j["access_code"])
             j["service_label"] = order_label(j["service"], j.get("add_ons"))
+            # One area per day: a visit from another area won't be routed today. The owner moves it.
+            j["off_area"] = bool(area and j.get("zone_key") and j["zone_key"] != area.key)
         route = r.get_route(day)
         now = local_now(settings)
         build_at = now.replace(hour=settings.freeze_hour, minute=0, second=0, microsecond=0)
         return {
             "date": day.isoformat(),
+            "area": day_area(day),
             "timezone": settings.business_timezone,
             "quota": settings.daily_job_quota,
             "totals": totals(jobs),
@@ -294,7 +304,7 @@ def register_visit_routes(app: FastAPI, settings: Settings, crew_auth):
             d = start + timedelta(days=i)
             day_rows = [x for x in rows if str(x["scheduled_date"]) == d.isoformat()]
             out.append({
-                "date": d.isoformat(), "jobs": len(day_rows), "quota": settings.daily_job_quota,
+                "date": d.isoformat(), "area": day_area(d), "jobs": len(day_rows), "quota": settings.daily_job_quota,
                 "expected": round(sum(float(x["amount_due"] or 0) for x in day_rows), 2),
                 "collected": round(sum(float(x["amount_paid"] or 0) for x in day_rows if x["payment_status"] == "paid"), 2),
             })

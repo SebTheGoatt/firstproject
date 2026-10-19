@@ -3,11 +3,13 @@
 * A day is frozen once the daily cutoff (default 5 PM local) passes on the
   day before it. Today and any past day are always frozen.
 * Each day accepts at most DAILY_JOB_QUOTA active (pending/scheduled) jobs.
+* One area per day: an address can only be booked on its area's weekday (app/zones.py).
 """
 
 from datetime import date, datetime, timedelta
 
 from .config import Settings
+from .zones import WEEKDAY_NAMES, ServiceZone, service_days, short_name
 
 
 class BookingRejected(Exception):
@@ -46,3 +48,25 @@ def validate_booking(day: date, now: datetime, active_jobs_that_day: int, settin
         raise BookingRejected(f"Please book within the next {settings.booking_horizon_days} days.")
     if active_jobs_that_day >= settings.daily_job_quota:
         raise BookingRejected("That day is fully booked. Please choose another day.")
+
+
+def check_area_day(day: date, zone: ServiceZone) -> None:
+    """Hard rule: the crew works one area a day, so a booking must land on its area's weekday."""
+    if day.weekday() != zone.service_weekday:
+        name = WEEKDAY_NAMES[zone.service_weekday]
+        raise BookingRejected(f"We mow {short_name(zone)} on {name}s only, so the crew stays in one area all day. "
+                              f"Please pick a {name}.")
+
+
+def open_area_days(zone: ServiceZone, now: datetime, settings: Settings, count_active) -> list[dict]:
+    """The area's bookable days in the booking window, with spots left (full days included, marked 0)."""
+    first = earliest_bookable_day(now, settings.freeze_hour)
+    last = now.date() + timedelta(days=settings.booking_horizon_days)
+    out = []
+    for d in service_days(zone, first, last):
+        try:
+            left = max(0, settings.daily_job_quota - count_active(d))
+        except Exception:
+            left = None
+        out.append({"date": d.isoformat(), "spots_left": left})
+    return out

@@ -110,8 +110,11 @@
           <h2 class="step-title" id="step-day"><span>4</span>Service day</h2>
           <div class="field">
             <label for="date">Service day</label>
-            <input id="date" name="scheduled_date" type="date" required>
-            <div class="hint" id="date-hint">Next-day bookings close at 5 PM.</div>
+            <select id="date" name="scheduled_date" required disabled>
+              <option value="">Enter your address first</option>
+            </select>
+            <div class="hint" id="date-hint">We mow one area a day, so your days depend on your address.</div>
+            <div class="hint" id="schedule-hint"></div>
           </div>
         </section>
 
@@ -488,6 +491,7 @@
           return;
         }
         lastCheckedAddress = address;
+        if (body.in_area && body.service_days) fillDays(body);
         if (body.in_area && err.textContent.startsWith("Pick your address")) err.hidden = true;
         areaBox.className = "area-check " + (body.in_area ? "ok" : "bad");
         areaBox.textContent = body.in_area ? `✓ Good news: you're in our ${body.zone_name} area.` : body.message;
@@ -502,6 +506,32 @@
       }
     }
     const checkArea = updateServer;
+
+    // One area per day: only this address's area days can be picked. Full days stay listed but can't be chosen.
+    let daysFor = "";
+    function fillDays(body) {
+      const key = body.service_days.map((d) => d.date + ":" + d.spots_left).join(",");
+      if (key === daysFor) return;
+      daysFor = key;
+      const keep = dateInput.value;
+      dateInput.replaceChildren();
+      for (const d of body.service_days) {
+        const o = document.createElement("option");
+        o.value = d.date;
+        o.disabled = d.spots_left === 0;
+        o.textContent = fmtDay(d.date) + (d.spots_left === 0 ? " (full)" : "");
+        dateInput.append(o);
+      }
+      const open = body.service_days.filter((d) => d.spots_left !== 0).map((d) => d.date);
+      dateInput.disabled = !open.length;
+      if (!open.length) {
+        dateInput.replaceChildren(new Option("No open days right now. Please check back soon.", ""));
+      }
+      const before = keep;
+      dateInput.value = open.includes(keep) ? keep : (open[0] || "");
+      $("date-hint").textContent = `We mow ${body.area_short} on ${body.service_weekday}s, so the crew stays in your area all day.`;
+      if (dateInput.value !== before) { renderAddOns(); if (sqft && yardKey) updateServer(); }
+    }
 
     document.querySelectorAll('input[name="scope"]').forEach((r) => r.addEventListener("change", () => {
       scope = r.value;
@@ -558,11 +588,9 @@
     }
 
     fetch("/api/booking-info").then(r => r.json()).then(info => {
-      dateInput.min = info.earliest_date;
-      dateInput.max = info.latest_date;
-      dateInput.value = info.earliest_date;
-      $("date-hint").textContent =
-        `Earliest available: ${fmtDay(info.earliest_date)}. Next-day bookings close at ${((info.freeze_hour + 11) % 12) + 1} ${info.freeze_hour < 12 ? "AM" : "PM"}.`;
+      if (info.schedule) $("schedule-hint").textContent =
+        "Our week: " + info.schedule.map((s) => `${s.weekday.slice(0, 3)} ${s.area}`).join(" · ") +
+        `. Bookings close at ${((info.freeze_hour + 11) % 12) + 1} ${info.freeze_hour < 12 ? "AM" : "PM"} the day before.`;
       const list = $("area-list");
       for (const z of info.zones) {
         const li = document.createElement("li");
