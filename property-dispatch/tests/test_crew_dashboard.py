@@ -33,7 +33,7 @@ def test_dashboard_is_a_field_hud(client):
     for label in ("START ROUTE TRANSIT", "ARRIVED ON SITE", "COMPLETE VISIT & INVOICE STRIPE", "COMPLETE VISIT & COLLECT CASH"):
         assert label in page
     # Scope enforcement block, with the lawn size filled in from the stop (never a fixed number).
-    for text in ("SCOPE ENFORCEMENT", "COMPLIANCE LOCK", "FULL PARCEL ROTATION", "STANDARD VISIT"):
+    for text in ("SCOPE ENFORCEMENT", "FENCED CORE ONLY", "FULL PROPERTY", "STANDARD VISIT"):
         assert text in page
     assert "4,500" not in page and "14,500" not in page
     # Mobile layout: 48px tap targets, a bottom sheet that moves with transform only, two columns when sideways.

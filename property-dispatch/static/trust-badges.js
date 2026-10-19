@@ -1,6 +1,6 @@
 /**
  * Post One Lawn Co. - Professional Credential Validation Component
- * Leverages elite military, technical, and regulatory pedigree to lock in premium trust.
+ * Who runs the route and how: training and safety facts only, each one true.
  *
  *   <trust-badges coverage="$1M/$2M" background-checked></trust-badges>
  *   The insurance and background lines show only when the server sets them (LIABILITY_COVERAGE /
@@ -23,12 +23,12 @@ class TrustBadges extends HTMLElement {
         this.innerHTML = `
             <div class="trust-badges">
                 <div class="tb-head">
-                    <h4>Institutional Ground Truth</h4>
-                    <h3>Operational Pedigree &amp; Security</h3>
+                    <h4>Who runs your route</h4>
+                    <h3>Training &amp; safety</h3>
                 </div>
                 <div class="tb-grid">
                     ${badge("🎖️", "Veteran-Owned", "Locally owned and run by a U.S. Marine veteran.")}
-                    ${badge("🧠", "AI Infrastructure", "Founder trained in NVIDIA AI Infrastructure &amp; Operations; routes planned by our own optimization software.")}
+                    ${badge("🧭", "Planned routes", "One area a day, planned by our own routing software, so the crew's time goes into lawns, not the road.")}
                     ${badge("🛡️", "OSHA 30 Trained", "Job-site safety and risk mitigation run to OSHA 30-hour training standards.")}
                     ${badge("📈", "Data Systems", "Schedules tracked with Google Project Management and IBM Data Science certificate methods.")}
                 </div>

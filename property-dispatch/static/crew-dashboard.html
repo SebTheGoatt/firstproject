@@ -495,9 +495,9 @@
       const yard = (cur.add_ons || []).find((a) => a.key === "yard_type");   // yield-priced bookings: tell the crew the yard type
       if (yard && yard.value !== "STANDARD") extras.unshift(yard.label);
       const [cls, text] = cur.scope === "scope_yard"
-        ? ["scope-yard", `⚠️ COMPLIANCE LOCK: Core Yard Mowing Only (${sq ? `~${sq} sq ft` : "size not set"}). Do NOT expand service footprint beyond the main fenceline layout.`]
+        ? ["scope-yard", `⚠️ FENCED CORE ONLY (${sq ? `~${sq} sq ft` : "size not set"}). Mow inside the main fence line. Nothing outside it.`]
         : cur.scope === "scope_full"
-          ? ["scope-full", `⚡ FULL PARCEL ROTATION: Total Estate Infrastructure Management (${sq ? `~${sq} sq ft turf area` : "size not set"}). Perform full edge-to-edge sweep.`]
+          ? ["scope-full", `FULL PROPERTY (${sq ? `~${sq} sq ft` : "size not set"}). Mow the whole lot, edge to edge.`]
           : ["scope-legacy", `ℹ️ STANDARD VISIT (${sq ? `~${sq} sq ft` : "size not set"}). Older booking: confirm the lawn size when you finish.`];
       const meta = [plan, extras.length ? `Also: ${extras.join(", ")}.` : "", cur.scope ? "Price is locked for this area." : ""].filter(Boolean).join(" ");
       return el("section", { class: `scope ${cls}`, "aria-label": "Scope enforcement" },

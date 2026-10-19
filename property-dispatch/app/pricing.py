@@ -320,8 +320,8 @@ def yield_choice(add_ons) -> tuple[str, int] | None:
 def yield_notes(yard_type: str, nearby: int, discount: Decimal) -> tuple:
     notes = [{"key": "yard_type", "label": f"Yard type: {YARD_TYPES[yard_type]['label']}", "price": None,
               "info": True, "value": yard_type}]
-    notes.append({"key": "route_density", "label": f"Route Cluster Optimization Benefit ({nearby} stops)" if discount
-                  else "Standalone Premium Density Target Area", "price": None, "info": True,
+    notes.append({"key": "route_density", "label": f"Neighbor discount ({nearby} booked nearby)" if discount
+                  else "No neighbors booked nearby yet", "price": None, "info": True,
                   "stops": nearby, "amount": float(-discount)})
     return tuple(notes)
 

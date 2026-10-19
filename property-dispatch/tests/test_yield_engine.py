@@ -87,7 +87,7 @@ def test_neighbors_already_booked_give_the_density_discount(client):
     # 2 bookings within half a mile: 5% off the $75 mow = 71.25 + tax 5.88
     assert (third["subtotal"], third["total"]) == (71.25, 77.13)
     note = next(a for a in third["add_ons"] if a["key"] == "route_density")
-    assert (note["stops"], note["amount"]) == (2, -3.75) and note["label"] == "Route Cluster Optimization Benefit (2 stops)"
+    assert (note["stops"], note["amount"]) == (2, -3.75) and note["label"] == "Neighbor discount (2 booked nearby)"
     far = book_yield(client, "Clv", "0103")                       # Cleveland: nobody nearby
     assert far["subtotal"] == 75.0
 
@@ -115,7 +115,7 @@ def test_stripe_line_names_the_yard_type_and_discount(settings, repo):
 
     settings.stripe_secret_key = "sk_test"
     notes = [{"key": "yard_type", "label": "Yard type: Steep slopes", "price": None, "info": True, "value": "STEEP_SLOPES"},
-             {"key": "route_density", "label": "Route Cluster Optimization Benefit (2 stops)", "price": None, "info": True,
+             {"key": "route_density", "label": "Neighbor discount (2 booked nearby)", "price": None, "info": True,
               "stops": 2, "amount": -4.69}]
     StripeClient(settings, httpx.Client(transport=httpx.MockTransport(handler))).create_checkout(
         job_id="j1", service_label="Mowing", service_date="2026-10-20", amount_due=96.39, donation=0,
@@ -127,7 +127,7 @@ def test_stripe_line_names_the_yard_type_and_discount(settings, repo):
 
 def test_booking_form_asks_for_yard_type_not_tiers(client):
     t = client.get("/book").text
-    assert "Your yard type" in t and "yard_type: yardKey" in t and "Guaranteed Enterprise Checkout Total" in t
+    assert "Your yard type" in t and "yard_type: yardKey" in t and "Guaranteed total" in t and "Enterprise" not in t
     assert "data.package =" not in t and "Choose a rate" not in t
     info = client.get("/api/booking-info").json()["yield"]
     assert (info["base"], info["included_sqft"], info["step"], info["giving_rate"]) == (75.0, 5000, 0.08, 0.02)
