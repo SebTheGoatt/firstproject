@@ -170,7 +170,7 @@
     // Header, footer and the brand's lines (Post One)
     "Pricing": "Precios",
     "Areas": "Áreas",
-    "Our story": "Nuestra historia",
+    "Why us": "Por qué nosotros",
     "My visit": "Mi visita",
     "Book a mow": "Reservar",
     "About": "Nosotros",
@@ -179,9 +179,9 @@
     "On post. On time.": "En el puesto. A tiempo.",
     "Every yard gets Post One attention.": "Cada jardín recibe la atención de Post One.",
     "Why “Post One”": "Por qué “Post One”",
-    "The post that's never left unmanned.": "El puesto que nunca queda sin vigilancia.",
-    "At U.S. embassies around the world, Marine Security Guards stand Post One, the post that is never left unmanned. Our co-founder, Raymundo, served as a Marine Security Guard. Now he brings that standard home to Spring: show up on time, do it right, and treat every yard like it matters.":
-      "En las embajadas de EE. UU. en todo el mundo, los Marine Security Guards (guardias de seguridad de los Marines) hacen guardia en Post One, el puesto que nunca queda sin vigilancia. Nuestro cofundador, Raymundo, sirvió como Marine Security Guard. Ahora trae ese estándar a Spring: llegar a tiempo, hacer bien el trabajo y tratar cada jardín como si importara.",
+    "Your yard is our first priority.": "Tu jardín es nuestra prioridad número uno.",
+    "Post One means you're never an afterthought. We mow on planned neighborhood routes, so we show up on the day we say, text you when we're on the way, and send a receipt when we're done.":
+      "Con Post One nunca quedas en segundo plano. Cortamos en rutas planificadas por vecindario, así que llegamos el día que decimos, te avisamos por mensaje cuando vamos en camino y te enviamos un recibo al terminar.",
     // About page (/about) and its trust badges
     "Veteran-Owned & Managed · NVIDIA AI Infrastructure Trained": "Propiedad y gestión de un veterano · Formación en infraestructura de IA de NVIDIA",
     "Built on Pedigree. Driven by": "Con trayectoria probada. Guiados por el",
@@ -209,8 +209,8 @@
     "Part of every visit's price goes to the local cause you pick when you book.": "Parte del precio de cada visita va a la causa local que elijas al reservar.",
     "Institutional Ground Truth": "Trayectoria comprobada",
     "Operational Pedigree & Security": "Experiencia operativa y seguridad",
-    "Embassy Security Veteran": "Veterano de seguridad en embajadas",
-    "Directed by a U.S. Embassy Marine Security Guard veteran.": "Dirigido por un veterano de los Marine Security Guards de las embajadas de EE. UU.",
+    "Veteran-Owned": "Empresa de veteranos",
+    "Locally owned and run by a U.S. Marine veteran.": "De propiedad local y dirigida por un veterano de los Marines de EE. UU.",
     "AI Infrastructure": "Infraestructura de IA",
     "Founder trained in NVIDIA AI Infrastructure & Operations; routes planned by our own optimization software.":
       "Fundador con formación en infraestructura y operaciones de IA de NVIDIA; rutas planeadas con nuestro propio software de optimización.",
@@ -303,8 +303,8 @@
     "Tight route density.": "Rutas compactas.",
     "We work each neighborhood on a set rotation, so the crew's time goes into your lawn, not the road.":
       "Trabajamos cada vecindario en una rotación fija, para que el tiempo del equipo se use en tu jardín, no en el camino.",
-    "Run with Marine Corps discipline: a planned route every day, a live page for every visit, and card payments through Stripe's encrypted checkout.":
-      "Con la disciplina del Cuerpo de Marines: una ruta planificada cada día, una página en vivo para cada visita y pagos con tarjeta en el pago cifrado de Stripe.",
+    "A planned route every day, a live page for every visit, and card payments through Stripe's encrypted checkout.":
+      "Una ruta planificada cada día, una página en vivo para cada visita y pagos con tarjeta en el pago cifrado de Stripe.",
     "Marine-led operations · Planned daily routes · Encrypted card payments":
       "Dirigido por un Marine · Rutas planificadas cada día · Pagos con tarjeta cifrados",
     "Real people from the neighborhood, led by a veteran. Here's who shows up at your door.":
@@ -325,7 +325,7 @@
     "per extra 1,000 sq ft.": "por cada 1,000 pies² adicionales.",
     "Neighbors already on your route lower your price.": "Si tus vecinos ya están en la ruta, tu precio baja.",
     "Checking…": "Revisando…",
-    "Run by a U.S. Marine veteran.": "Dirigido por un veterano de los Marines de EE. UU.",
+    "Local and accountable.": "Local y responsable.",
     "Price before you book": "Precio antes de reservar",
     "Tax included, shown up front.": "Con impuestos incluidos, a la vista desde el inicio.",
     "Text updates": "Avisos por mensaje de texto",

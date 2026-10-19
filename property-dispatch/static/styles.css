@@ -1223,8 +1223,23 @@ label.check input { width: 18px; height: 18px; }
 .page-home .po-story-copy > p:not(.po-eyebrow) { margin: 0; max-width: 62ch; font-size: 1.06rem; line-height: 1.6; color: #D3DCD6; }
 .page-home .po-story-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
 
-@media (max-width: 900px) {
+/* The card's one column must be able to shrink: Google's address box has a wide built-in minimum and
+   would otherwise push everything in the card past its right edge on phones. */
+.page-home .po-card { grid-template-columns: minmax(0, 1fr); }
+.page-home .po-card > *, .page-home .po-checker .checker-row > * { min-width: 0; max-width: 100%; }
+.page-home .po-checker gmp-place-autocomplete { width: 100%; min-width: 0; }
+.page-home .po-card-note span { display: inline; }
+
+@media (max-width: 1080px) {
+  /* Tablets and phones in desktop mode: stack the price card under the headline instead of squeezing both. */
   .page-home .po-hero-grid { grid-template-columns: minmax(0, 1fr); gap: 36px; }
+  .page-home .po-card { max-width: 560px; }
+  .page-home .po-trust { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .page-home .po-checker .checker-row { flex-wrap: wrap; }
+  .page-home .po-checker .checker-row .btn { flex: 1 1 100%; }
+  .page-home .po-trust { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 680px) {
   .page-home .po-card { padding: 22px; }

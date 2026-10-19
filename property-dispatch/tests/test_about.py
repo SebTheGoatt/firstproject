@@ -35,12 +35,12 @@ def test_trust_badges_claim_insurance_only_when_set(client, settings, repo):
 
 
 def test_why_post_one_tells_the_story_and_backs_each_line(client):
-    """The "Why Post One" band: the Marine Security Guard's Post One, the founder who stood it, and the brand's three
-    lines, each backed by something the app really does. No Marine Corps insignia or slogans, no phone, no clearance."""
+    """The "Why Post One" band sells the business (first priority, planned routes), not the founder's service history,
+    plus the brand's three lines, each backed by something the app really does. No insignia, slogans, phone or clearance."""
     t = client.get("/about").text
     assert 'id="why"' in t and 'href="#why"' in t and "Why “Post One”" in t
-    assert "Marine Security Guards stand Post One, the post that is never left unmanned." in t
-    assert "Our co-founder, Raymundo, served as a Marine Security Guard." in t
+    assert "Your yard is our first priority." in t and "Post One means you're never an afterthought." in t
+    assert "Marine Security Guard" not in t.split('id="why"')[1].split("</section>")[0]
     for line in ("On post. On time.", "Every yard gets Post One attention.", "Clean lawns. Stronger communities."):
         assert f"<strong>{line}</strong>" in t, line
     assert "you get a text when the crew is on the way" in t and "you see it, tax included, before you book" in t
