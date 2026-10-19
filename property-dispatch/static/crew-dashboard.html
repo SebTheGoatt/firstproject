@@ -269,16 +269,6 @@
     .hud-timeline .is-done .tl-dot { border-color: #10B981; color: #10B981; }
     .hud-timeline .is-active .tl-dot { border-color: var(--stark-gold); background: var(--stark-gold); color: #060709; box-shadow: 0 0 12px rgb(217 119 6 / 0.55); }
     .deck { border-top: 1px solid var(--stark-gold); }
-    /* Radar over the live map: rings + a slow sweep. Decorative, never blocks a tap. */
-    .radar { grid-area: stage; pointer-events: none; z-index: 2; place-self: center; width: min(92vw, 520px); aspect-ratio: 1;
-      border-radius: 50%; border: 1px solid rgb(6 182 212 / 0.35); overflow: hidden;
-      background: repeating-radial-gradient(circle, transparent 0 22%, rgb(6 182 212 / 0.16) 22% 22.4%),
-                  linear-gradient(rgb(6 182 212 / 0.14), rgb(6 182 212 / 0.14)) center / 1px 100% no-repeat,
-                  linear-gradient(rgb(6 182 212 / 0.14), rgb(6 182 212 / 0.14)) center / 100% 1px no-repeat; }
-    .radar .sweep { position: absolute; inset: 0; border-radius: 50%;
-      background: conic-gradient(from 0deg, rgb(6 182 212 / 0.14), transparent 60deg); animation: sweep 4s linear infinite; }
-    @keyframes sweep { to { transform: rotate(1turn); } }
-    @media (prefers-reduced-motion: reduce) { .radar .sweep { animation: none; } }
   </style>
 </head>
 <body class="dash">
@@ -309,7 +299,6 @@
   </main>
 
   <div id="dash" hidden>
-    <div class="radar" aria-hidden="true"><span class="sweep"></span></div>
     <div id="route-map" role="button" tabindex="0" aria-label="Active Route Map: today's stops. Tap for turn-by-turn directions to the current stop."></div>
     <button class="map-fit" id="map-fit" type="button" aria-label="Show the whole route on the map">⤢ Whole route</button>
 
