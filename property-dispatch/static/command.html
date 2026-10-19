@@ -123,13 +123,38 @@
       border-radius: 3px; cursor: pointer; background: transparent; }
     .t .acts .go { color: var(--cyan-ink); border: 1px solid rgb(6 182 212 / 0.45); }
     .t .acts .purge { color: var(--out); border: 1px solid rgb(239 68 68 / 0.45); }
+    /* ---- polish: tidy alignment, no stretched panes, phone-first strip ---- */
+    .hud { align-items: start; }
+    .stack { align-content: start; gap: 18px; }
+    .stack > div > h2, .pane > h2 { margin-bottom: 10px; }
+    .visor { display: grid; grid-template-columns: minmax(0, 1fr); }
+    @media (min-width: 1100px) { .visor { grid-template-columns: minmax(0, 1fr) auto; } }
+    .chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .chips .chip { min-width: 0; }
+    .chips .chip:nth-child(3) { grid-column: 1 / -1; }
+    .chips .act { min-width: 0; }
+    .chips #compute { grid-column: 1 / -1; }
+    .chips #compute[hidden] + #refresh { grid-column: 1 / -1; }
+    @media (min-width: 1100px) { .chips { display: flex; } .chips .chip:nth-child(3), .chips #compute { grid-column: auto; } }
+    .visor h1 { font-size: clamp(0.8rem, 3.4vw, 0.95rem); line-height: 1.35; align-items: flex-start; }
+    .visor h1 .reactor { margin-top: 0.3em; }
+    .chips #refresh { grid-column: 1 / -1; }
+    nav.links { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    nav.links a { text-align: center; padding: 14px 6px; }
+    @media (min-width: 720px) { nav.links { display: flex; } }
+    .days { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; padding-bottom: 2px; }
+    .days::-webkit-scrollbar { display: none; }
+    .dayc { flex: 1 0 112px; scroll-snap-align: start; }
+    .dayc small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .t .row .id { overflow-wrap: anywhere; }
+    .t .line span:empty { display: none; }
     .toast { margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--gold); border-radius: 3px; background: var(--glass-2); font-size: 0.72rem; }
   </style>
 </head>
 <body>
   <header class="visor">
     <div>
-      <h1 class="caps"><span class="reactor" aria-hidden="true"></span>STARK_NET // OWNER_OPERATIONAL_MATRIX</h1>
+      <h1 class="caps"><span class="reactor" aria-hidden="true"></span><span>STARK_NET // OWNER_OPERATIONAL_MATRIX</span></h1>
       <p class="sub caps" id="sub">North Houston grid · syncing…</p>
     </div>
     <div class="chips">
@@ -232,14 +257,14 @@
         el("i", { "aria-hidden": "true" }),
         el("div", {},
           el("div", { class: "row" },
-            el("span", { class: "id" }, `${(t.name || "#" + t.ref).toUpperCase()} // ${t.area.toUpperCase()}`),
+            el("span", { class: "id" }, `${(t.name || "#" + t.ref).toUpperCase()} // ${short(t.area).toUpperCase()}`),
             el("span", { class: "tag " + (t.status === "DONE" ? "in" : t.status === "ROUTED" ? "cy" : "au") }, t.status.replace(" ", "_"))),
           el("div", { class: "line" },
             el("span", {}, day(t.date, { weekday: "short", month: "numeric", day: "numeric" }).toUpperCase()),
             el("span", {}, t.sqft ? `${t.sqft.toLocaleString()} SQ FT` : "SIZE_TBD"),
             t.scope ? el("span", {}, t.scope.toUpperCase()) : null,
             el("span", { class: t.paid ? "in" : "" }, `${t.pay === "card" ? "CARD" : "CASH"} ${t.paid ? "CLEARED" : "DUE"} ${money(t.amount)}`),
-            t.off_area ? el("span", { class: "out" }, `${t.area.toUpperCase()}_OUTLIER`) : el("span", { class: "in" }, "VALIDATED")),
+            t.off_area ? el("span", { class: "out" }, "OUTLIER") : el("span", { class: "in" }, "VALIDATED")),
           t.address ? el("div", { class: "who" }, t.address.toUpperCase()) : null,
           t.off_area && t.status !== "DONE" ? el("div", { class: "acts" },
             act("go", `INTERCEPT → ${day(t.move_to, { weekday: "short", month: "numeric", day: "numeric" }).toUpperCase()}`,
@@ -250,7 +275,7 @@
 
       $("week").replaceChildren(...d.week.map((w) => el("tr", {},
         el("td", {}, day(w.date, { weekday: "short", month: "numeric", day: "numeric" }).toUpperCase()),
-        el("td", { class: w.area ? "cy" : "dim" }, (w.area || "Off").toUpperCase()),
+        el("td", { class: w.area ? "cy" : "dim" }, (short(w.area) || "Off").toUpperCase()),
         el("td", { class: "r" }, `${w.jobs}/${w.quota}`),
         el("td", { class: "r" }, money(w.expected)))));
 
@@ -265,7 +290,7 @@
         kv("STRIPE_DISPUTES", "NOT_TRACKED", "au"),
         kv("FLEET_HOURS", "NOT_TRACKED", "au"),
         kv("TDA_LICENSE", "N/A", "cy"),
-        el("p", { class: "note" }, "Reserve buffer, disputes and fleet hours aren't in the app, so no number is shown. ", df.tda));
+        el("p", { class: "note" }, "NOT_TRACKED = no data in the app yet. TDA: mowing only, no license needed."));
 
       $("photos").replaceChildren(df.photo_log.length
         ? el("table", { class: "g" }, el("thead", {}, el("tr", {}, el("th", {}, "Visit"), el("th", {}, "Pre"), el("th", {}, "Post"))),
@@ -291,6 +316,7 @@
     }
     function toast(text) { $("toast").textContent = text; $("toast").hidden = false; setTimeout(() => { $("toast").hidden = true; }, 6000); }
 
+    const short = (a) => (a || "").replace(" & Splendora", "").replace(" & Plum Grove", "");
     function renderTop(d) {
       const nr = d.next_route;
       const st = $("chip-route");
@@ -303,7 +329,7 @@
         el("span", { class: "k" + (w.jobs ? " cy" : "") }, (i === 0 ? "TODAY_" : "") + day(w.date, { weekday: "short" }).toUpperCase()
           + (i === 0 ? "" : "_" + w.date.slice(8))),
         el("b", { class: w.jobs ? "au" : "dim" }, money(w.expected)),
-        el("small", {}, `${w.area || "off"} · ${w.jobs}/${w.quota}`))));
+        el("small", {}, `${short(w.area) || "off"} · ${w.jobs}/${w.quota}`))));
     }
     $("compute").addEventListener("click", async () => {
       const b = $("compute"), dayIso = b.dataset.day;
