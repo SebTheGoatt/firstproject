@@ -1,5 +1,5 @@
 /**
- * Semper Green Lawn Care - User Autonomy Add-on Injector Component
+ * Post One Lawn Co. - User Autonomy Add-on Injector Component
  * Eliminates "hip-pocket" pricing by giving users absolute control over high-margin add-ons.
  *
  *   <addon-injector></addon-injector>   fires "addonSelectionChange" (bubbles) with { binCleaning, gutterCleaning }

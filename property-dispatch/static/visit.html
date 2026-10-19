@@ -6,74 +6,95 @@
   <title>Your Visit | {{BUSINESS_NAME}}</title>
   <meta name="robots" content="noindex">
   <meta name="referrer" content="no-referrer">
-  <meta name="theme-color" content="#0b3d2e">
+  <meta name="theme-color" content="#0F2B22">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+  <link rel="preload" href="/static/fonts/big-shoulders-display-800.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/public-sans-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/styles.css?v={{V}}">
   <script src="/static/i18n.js?v={{V}}"></script>
 </head>
-<body class="site">
+<body class="site page-visit-pay">
   <header class="site-header">
     <div class="site-wrap header-row">
-      <a class="brand" href="/">
-        <img src="/static/icons/logo-64.png" alt="" width="32" height="32">
-        <span>{{BUSINESS_NAME}}</span>
-      </a>
+      <a class="brand" href="/">{{BRAND}}</a>
       <a class="btn btn-sm" href="/book">Book again</a>
     </div>
   </header>
 
-  <main class="wrap">
-    <!-- Enter code -->
-    <form class="card" id="code-form" hidden>
-      <p class="eyebrow">Your visit</p>
-      <h1 class="visit-title">Enter your access code</h1>
-      <p class="muted">It's on your booking confirmation and in our text message. It looks like <strong>K7MX-3QPA</strong>.</p>
-      <div class="field">
-        <label for="code">Access code</label>
-        <input id="code" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false"
-               inputmode="text" maxlength="12" placeholder="XXXX-XXXX" required class="code-input">
+  <main>
+    <!-- Post Green band: "Your visit", then the day as the title (or the code prompt) -->
+    <header class="vp-hero">
+      <div class="wrap">
+        <p class="eyebrow">Your visit</p>
+        <h1 class="visit-title" id="v-title"></h1>
+        <p class="vp-what" id="v-what" hidden></p>
+        <p class="vp-where" id="v-where" hidden></p>
+        <p class="vp-meta" id="v-meta" hidden><span id="v-hello"></span> · <span id="v-code"></span></p>
       </div>
-      <div id="err" class="alert alert-error" role="alert" hidden></div>
-      <button class="btn btn-primary btn-block" type="submit">See my visit</button>
-    </form>
+    </header>
 
-    <!-- Visit -->
-    <article id="visit" hidden>
-      <section class="card visit-head">
-        <p class="eyebrow" id="v-code"></p>
-        <h1 class="visit-title" id="v-hello"></h1>
-        <p class="muted" id="v-what"></p>
-        <ol class="timeline" id="v-timeline"></ol>
-        <div class="alert alert-ok" id="v-live" role="status" aria-live="polite" hidden></div>
-        <p class="visit-eta" id="v-eta" hidden></p>
-        <div class="push-box" id="v-push" hidden>
-          <button class="btn btn-outline" type="button" id="push-btn">Get updates on this phone</button>
-          <p class="muted small" id="push-note">We'll notify you when the crew is on the way, when your visit is done and when your card payment goes through, plus one note afterward asking how we did. Nothing else.</p>
+    <div class="wrap vp-body">
+      <!-- Enter code -->
+      <form class="card" id="code-form" hidden>
+        <p class="muted">It's on your booking confirmation and in our text message. It looks like <strong>K7MX-3QPA</strong>.</p>
+        <div class="field">
+          <label for="code">Access code</label>
+          <input id="code" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false"
+                 inputmode="text" maxlength="12" placeholder="XXXX-XXXX" required class="code-input">
         </div>
-      </section>
+        <div id="err" class="alert alert-error" role="alert" hidden></div>
+        <button class="btn btn-primary btn-block btn-lg" type="submit">See my visit</button>
+      </form>
 
-      <section class="card visit-crew" id="v-crew" hidden></section>
+      <!-- Visit -->
+      <article id="visit" hidden>
+        <section class="card vp-cancelled" id="v-cancelled" hidden>
+          <h2 class="vp-cancelled-title">This visit was cancelled.</h2>
+          <p class="muted">Pick another day whenever you're ready.</p>
+          <a class="btn btn-primary btn-block" href="/book">Book again</a>
+        </section>
 
-      <section class="card review-card" id="v-review" hidden>
-        <h2 class="card-title">How did we do?</h2>
-        <p class="muted">If we did a good job, a quick Google review helps a veteran-owned local business. It takes about a minute.</p>
-        <a class="btn btn-primary" id="v-review-link" target="_blank" rel="noopener">Leave a Google review</a>
-      </section>
+        <section class="card visit-head" id="v-status">
+          <ol class="vp-steps" id="v-timeline" aria-label="Visit status"></ol>
+          <div class="alert alert-ok" id="v-live" role="status" aria-live="polite" hidden></div>
+          <div class="push-box" id="v-push" hidden>
+            <button class="btn btn-outline" type="button" id="push-btn">Get updates on this phone</button>
+            <p class="muted small" id="push-note">We'll notify you when the crew is on the way, when your visit is done and when your card payment goes through, plus one note afterward asking how we did. Nothing else.</p>
+          </div>
+        </section>
 
-      <section class="card" id="v-pay"></section>
+        <section class="card visit-crew" id="v-crew" hidden></section>
 
-      <section class="card" id="v-photos-card">
-        <h2 class="card-title">Before &amp; after</h2>
-        <p class="muted" id="v-photos-empty">Your crew will add before and after photos during the visit.</p>
-        <div class="ba-grid" id="v-photos"></div>
-      </section>
+        <section class="card review-card" id="v-review" hidden>
+          <h2 class="card-title">How did we do?</h2>
+          <p class="muted">If we did a good job, a quick Google review helps a veteran-owned local business. It takes about a minute.</p>
+          <a class="btn btn-primary" id="v-review-link" target="_blank" rel="noopener">Leave a Google review</a>
+        </section>
 
-      <p class="center" id="cancel-row" hidden><button class="btn btn-outline" type="button" id="cancel-btn">Cancel this visit</button></p>
-      <p class="center hint"><button class="link-btn" type="button" id="other-code">Use a different code</button></p>
-      <p class="center hint"><button class="link-btn" type="button" id="forget-btn">Delete my information</button></p>
-    </article>
+        <section class="card vp-receipt" id="v-pay"></section>
+
+        <div class="vp-actions" id="v-actions" hidden>
+          <a class="btn btn-primary btn-block btn-lg" id="v-pay-link" hidden>Pay now</a>
+          <div class="vp-cancel" id="cancel-row" hidden>
+            <button class="btn btn-block vp-cancel-btn" type="button" id="cancel-btn">Cancel this visit</button>
+            <p class="hint center">You can cancel here until the crew is on the way. Card payments are refunded in full.</p>
+          </div>
+        </div>
+
+        <section class="card" id="v-photos-card">
+          <h2 class="card-title">Before &amp; after</h2>
+          <p class="muted" id="v-photos-empty">Your crew will add before and after photos during the visit.</p>
+          <div class="ba-grid" id="v-photos"></div>
+        </section>
+
+        <div class="vp-links">
+          <button class="link-btn" type="button" id="other-code">Use a different code</button>
+          <button class="link-btn" type="button" id="forget-btn">Delete my information</button>
+        </div>
+      </article>
+    </div>
   </main>
   <footer class="mini-footer site-wrap">{{LEGAL_FOOTER}}</footer>
 
@@ -89,7 +110,9 @@
     const KEY = "visitCode";
     let reviewShown = false;
     const money = (n) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
-    const fmtDay = (iso) => new Date(iso + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+    // "Friday · Oct 16" (the browser's language; i18n.js switches it to Spanish)
+    const fmtDay = (iso) => { const d = new Date(iso + "T12:00:00");
+      return `${d.toLocaleDateString(undefined, { weekday: "long" })} · ${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`; };
     let tz;
     const fmtTime = (d) => d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: tz });
 
@@ -106,6 +129,8 @@
 
     function showForm(msg) {
       $("visit").hidden = true; $("code-form").hidden = false;
+      $("v-title").textContent = "Enter your access code";
+      for (const id of ["v-what", "v-where", "v-meta"]) $(id).hidden = true;
       if (msg) { $("err").textContent = msg; $("err").hidden = false; } else $("err").hidden = true;
       $("code").focus();
     }
@@ -151,43 +176,42 @@
     function render(v) {
       tz = v.timezone;
       $("code-form").hidden = true; $("visit").hidden = false;
-      $("v-code").textContent = `Access code ${v.access_code}`;
+      $("v-title").textContent = fmtDay(v.scheduled_date);
+      $("v-what").textContent = v.service_label;
+      $("v-where").textContent = v.address;
       $("v-hello").textContent = `Hi ${v.first_name}`;
-      $("v-what").textContent = `${v.service_label} on ${fmtDay(v.scheduled_date)} at ${v.address}`;
+      $("v-code").textContent = `Access code ${v.access_code}`;
+      for (const id of ["v-what", "v-where", "v-meta"]) $(id).hidden = false;
 
-      // Status timeline
-      const steps = [
-        ["Booked", true],
-        ["Route planned", v.status !== "pending"],
-        ["On the way", !!v.on_the_way_at || v.status === "completed"],
-        ["Done", v.status === "completed"],
-      ];
-      const current = steps.filter(([, on]) => on).length - 1;
-      $("v-timeline").replaceChildren(...steps.map(([label, on], i) =>
-        el("li", { class: [on && "on", i === current && "current"].filter(Boolean).join(" ") }, label)));
-
-      const eta = $("v-eta");
-      eta.hidden = true;
-      if (v.status === "cancelled") {
-        eta.textContent = "This visit was cancelled."; eta.hidden = false;
-      } else if (v.status === "completed" && v.completed_at) {
-        eta.textContent = `Finished at ${fmtTime(new Date(v.completed_at))}. Thank you!`; eta.hidden = false;
-      } else if (v.eta) {
+      // Status: Booked → Crew on the way → Done, each with a line on what happens next.
+      const cancelled = v.status === "cancelled", done = v.status === "completed";
+      const onTheWay = !!v.on_the_way_at || done;
+      let arrival = null;
+      if (v.eta && !v.on_the_way_at) {
         const t = new Date(v.eta);
-        const from = new Date(t.getTime() - 30 * 60000), to = new Date(t.getTime() + 30 * 60000);
-        eta.textContent = v.on_the_way_at ? "Your crew is on the way!" : `Arriving between ${fmtTime(from)} and ${fmtTime(to)}.`;
-        eta.hidden = false;
-      } else if (v.status === "pending") {
-        eta.textContent = "We'll plan the route at 5 PM the day before and text you when the crew is on the way.";
-        eta.hidden = false;
+        arrival = `Arriving between ${fmtTime(new Date(t.getTime() - 30 * 60000))} and ${fmtTime(new Date(t.getTime() + 30 * 60000))}.`;
       }
+      const steps = [
+        ["Booked", true, v.status === "pending" ? "We plan the route at 5 PM the day before." : "Route planned"],
+        ["Crew on the way", onTheWay, done ? null : v.on_the_way_at ? "Your crew is on the way!" : arrival || "We text you when they head your way."],
+        ["Done", done, done ? (v.completed_at ? `Finished at ${fmtTime(new Date(v.completed_at))}. Thank you!` : null) : "Before & after photos show up below."],
+      ];
+      const next = steps.findIndex(([, on]) => !on);
+      $("v-timeline").replaceChildren(...steps.map(([label, on, sub], i) =>
+        el("li", { class: on ? "is-done" : i === next ? "is-next" : null, "aria-current": i === next ? "step" : null },
+          el("span", { class: "vp-mark", "aria-hidden": "true" }),
+          el("div", { class: "vp-step" },
+            on ? el("span", { class: "visually-hidden" }, "Completed:") : null,
+            el("strong", {}, label), sub ? el("span", { class: "vp-sub" }, sub) : null))));
+      $("v-status").hidden = cancelled;
+      $("v-cancelled").hidden = !cancelled;
 
       // Crew member
       const crew = $("v-crew");
       crew.replaceChildren();
       if (v.crew_member) {
         const m = v.crew_member;
-        const av = el("div", { class: "avatar avatar-lg", style: `--accent:${m.accent_color || "#2f7d4f"}` });
+        const av = el("div", { class: "avatar avatar-lg", style: `--accent:${m.accent_color || "var(--brand)"}` });
         if (m.photo_url) av.append(el("img", { src: m.photo_url, alt: "" }));
         else av.textContent = m.display_name.split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
         crew.append(av, el("div", {},
@@ -201,6 +225,11 @@
 
       // Cancel: open until the crew is on the way (refund policy: full refund before they arrive).
       $("cancel-row").hidden = !(["pending", "scheduled"].includes(v.status) && !v.on_the_way_at);
+      // Card customers pay from their own payment page (never for a cancelled visit).
+      const payLink = $("v-pay-link"), payUrl = !cancelled && v.payment.status !== "paid" && v.payment.method === "card" && v.payment.pay_url;
+      payLink.hidden = !payUrl;
+      if (payUrl) { payLink.href = payUrl; payLink.textContent = v.payment.amount_due != null ? "Pay now" : "Open payment page"; }
+      $("v-actions").hidden = payLink.hidden && $("cancel-row").hidden;
 
       // Google review (only after the visit is done, and only if the owner set the review link)
       const review = $("v-review");
@@ -213,6 +242,7 @@
       // Payment
       const p = v.payment, pay = $("v-pay");
       pay.replaceChildren(el("h2", { class: "card-title" }, "Payment"));
+      pay.hidden = cancelled && p.status !== "paid";   // nothing to pay for a cancelled visit
       if (p.status === "paid") {
         pay.append(el("p", {}, el("strong", {}, `Paid ${money(p.amount_paid)}`), p.method === "cash" ? " in cash" : " by card",
           p.donation > 0 ? `, including a ${money(p.donation)} donation. Thank you!` : ". Thank you!"));
@@ -234,13 +264,12 @@
             discount > 0 ? el("div", {}, el("dt", {}, `⚡ ${notes.route_density.label}`), el("dd", {}, `-${money(discount)}`)) : null,
             ...(p.add_ons || []).filter((a) => !a.info).map((a) => el("div", {}, el("dt", {}, a.scope ? `Area mowed: ${a.label}` : a.price == null ? a.label : `Add-on: ${a.label}`),
               el("dd", {}, a.scope ? "Included" : a.price == null ? "No charge" : money(a.price)))),
-            p.tax > 0 ? el("div", {}, el("dt", {}, `Texas sales tax${rate}`), el("dd", {}, money(p.tax))) : null,
+            p.tax > 0 ? el("div", { class: "tax" }, el("dt", {}, `Texas sales tax${rate}`), el("dd", {}, money(p.tax))) : null,
             el("div", { class: "total" }, el("dt", {}, "Total"), el("dd", {}, money(p.amount_due)))));
         } else {
           pay.append(el("p", {}, `Price: ${money(p.amount_due)}`));
         }
-        if (p.method === "card" && p.pay_url) pay.append(el("a", { class: "btn btn-primary", href: p.pay_url }, p.amount_due != null ? "Pay now" : "Open payment page"));
-        else pay.append(el("p", { class: "muted" }, "You chose cash: pay the crew when they arrive."));
+        if (p.method === "cash") pay.append(el("p", { class: "muted" }, "You chose cash: pay the crew when they arrive."));
         const picked = (p.giving_ledger || []).length === 1 && p.giving_ledger[0].percent === 100 ? p.giving_ledger[0].name : null;
         pay.append(el("p", { class: "veteran-note" }, el("span", { class: "flag", "aria-hidden": "true" }, "★"),
           picked ? `No tip necessary. Anything extra you give goes to ${picked}, the cause you picked.`
@@ -250,13 +279,14 @@
       if (p.charity_amount > 0) {
         const led = (p.giving_ledger || []).filter((c) => c.amount > 0);
         pay.append(el("div", { class: "donation-split" },
-          el("strong", {}, `Your order generates ${money(p.charity_amount)}${p.package_label ? ` (${p.package_label})` : ""}`),
+          el("strong", {}, "Your order generates", ` ${money(p.charity_amount)}`, ...(p.package_label ? [" (", p.package_label, ")"] : [])),
           ...led.map((c) => el("div", { class: "ledger-row" }, el("span", {}, `${c.name} (${c.percent}%)`), el("b", {}, money(c.amount))))));
       }
 
       // Before & after
       const grid = $("v-photos"); grid.replaceChildren();
       $("v-photos-empty").hidden = v.photos.length > 0;
+      $("v-photos-card").hidden = cancelled && !v.photos.length;
       for (const kind of ["before", "after"]) {
         const shots = v.photos.filter((x) => x.kind === kind);
         if (!shots.length) continue;

@@ -180,3 +180,18 @@ def test_directions_need_gps_sign_in_and_a_working_service(client, repo, setting
     assert client.get(f"/api/crew/directions/nope?lat=30.1&lng=-95.3", headers=CREW).status_code == 404
     r = client.get(f"/api/crew/directions/{sid}?lat=30.1&lng=-95.3", headers=CREW)   # tests have no OSRM_URL
     assert r.status_code == 503 and r.json()["detail"]
+
+
+def test_crew_and_owner_pages_wear_the_post_one_look(client):
+    """Post One crew look: every owner control is still on /crew, the HUD keeps its mark, the owner pages get the brand bar."""
+    crew = client.get("/crew").text
+    for piece in ('id="rain-day"', 'id="print-manifest"', 'href="/owner/readiness"', 'id="dash-refresh"', 'href="/crew/dashboard"',
+                  'id="stops"', 'id="job-list"', 'id="live-station"', '<p class="crew-brandbar-name">Post One · <span>Crew</span></p>'):
+        assert piece in crew, piece
+    hud = client.get("/crew/dashboard").text
+    assert 'src="/static/brand/post-one-mark.svg" alt=""' in hud and "--brass" in hud and "fonts.googleapis.com" not in hud
+    for path in ("/owner/readiness", "/push-setup"):
+        page = client.get(path).text
+        assert '<p class="crew-brandbar-name">Post One · <span>Owner</span></p>' in page and "{{" not in page, path
+        assert 'style="' not in page, path                       # styled from styles.css only
+    assert '<body class="site page-team">' in client.get("/team").text

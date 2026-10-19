@@ -167,6 +167,66 @@
     "Checking your address…": "Revisando tu dirección…",
     "Please check the address and include your ZIP.": "Revisa la dirección e incluye tu código postal.",
     "Something went wrong. Please try again.": "Algo salió mal. Intenta de nuevo.",
+    // Header, footer and the brand's lines (Post One)
+    "Pricing": "Precios",
+    "Areas": "Áreas",
+    "Our story": "Nuestra historia",
+    "My visit": "Mi visita",
+    "Book a mow": "Reservar",
+    "About": "Nosotros",
+    "About us": "Sobre nosotros",
+    "Veteran-owned": "Propiedad de un veterano",
+    "On post. On time.": "En el puesto. A tiempo.",
+    "Every yard gets Post One attention.": "Cada jardín recibe la atención de Post One.",
+    "Why “Post One”": "Por qué “Post One”",
+    "The post that's never left unmanned.": "El puesto que nunca queda sin vigilancia.",
+    "At U.S. embassies around the world, Marine Security Guards stand Post One, the post that is never left unmanned. Our co-founder, Raymundo, served as a Marine Security Guard. Now he brings that standard home to Spring: show up on time, do it right, and treat every yard like it matters.":
+      "En las embajadas de EE. UU. en todo el mundo, los Marine Security Guards (guardias de seguridad de los Marines) hacen guardia en Post One, el puesto que nunca queda sin vigilancia. Nuestro cofundador, Raymundo, sirvió como Marine Security Guard. Ahora trae ese estándar a Spring: llegar a tiempo, hacer bien el trabajo y tratar cada jardín como si importara.",
+    // About page (/about) and its trust badges
+    "Veteran-Owned & Managed · NVIDIA AI Infrastructure Trained": "Propiedad y gestión de un veterano · Formación en infraestructura de IA de NVIDIA",
+    "Built on Pedigree. Driven by": "Con trayectoria probada. Guiados por el",
+    "Discernment.": "buen criterio.",
+    "Book your first visit": "Reserva tu primera visita",
+    "Leadership": "Liderazgo",
+    "Co-Founder · Director of Operations": "Cofundador · Director de Operaciones",
+    "Forged through nearly a decade of strict tactical infantry leadership and high-value asset protection within the U.S. Marine Corps Security Guard Program, securing vital federal architecture and diplomatic infrastructure across global U.S. Embassies. Combines an immaculate 4.0 graduate business background with specialized NVIDIA AI Infrastructure tracking to ensure flawless routing execution on the ground.":
+      "Formado en casi una década de liderazgo táctico de infantería y protección de activos de alto valor dentro del Programa de Guardias de Seguridad del Cuerpo de Marines de EE. UU., resguardando instalaciones federales e infraestructura diplomática en embajadas de EE. UU. en todo el mundo. Combina un posgrado en negocios con promedio perfecto de 4.0 y formación especializada en infraestructura de IA de NVIDIA para que cada ruta se ejecute sin fallas en el terreno.",
+    "How we work": "Cómo trabajamos",
+    "Frictionless Autonomy": "Autonomía sin complicaciones",
+    "The Power of Choice": "El poder de elegir",
+    "We systematically rejected the rigid, forced corporate subscription structures that fatigue modern consumers. Instead, we built a streamlined, self-serve transaction shell. You select your exact property coordinates, layer high-margin add-ons instantly with zero personal friction, and manage your asset timeline your way.":
+      "Rechazamos las suscripciones corporativas rígidas y obligatorias que cansan a los clientes de hoy. En su lugar, creamos un sistema de reserva sencillo que manejas tú mismo. Eliges tu propiedad exacta, agregas extras al instante sin complicaciones y organizas tus fechas a tu manera.",
+    "Dynamic Geofences": "Zonas dinámicas",
+    "Route Density Optimization": "Optimización de rutas por densidad",
+    "Generational Moats": "Ventajas que perduran",
+    "The Purpose Pledge": "Nuestro compromiso con un propósito",
+    "As dedicated Texas homeowners and land stewards, we approach your property boundary with genuine peer perspective and oversight. Every mission completed allows you to allocate part of your payment directly to the local cause you pick:":
+      "Como propietarios de vivienda en Texas que cuidan su tierra, tratamos tu propiedad como lo haría un vecino, con atención real. Cada trabajo terminado te permite destinar parte de tu pago directamente a la causa local que elijas:",
+    "Each day's route is planned the evening before, and you get a text when the crew is on the way.":
+      "La ruta de cada día se planea la tarde anterior y recibes un mensaje de texto cuando el equipo va en camino.",
+    "Your price comes from your lawn size and yard type, and you see it, tax included, before you book.":
+      "Tu precio depende del tamaño de tu césped y del tipo de jardín, y lo ves, con impuestos incluidos, antes de reservar.",
+    "Part of every visit's price goes to the local cause you pick when you book.": "Parte del precio de cada visita va a la causa local que elijas al reservar.",
+    "Institutional Ground Truth": "Trayectoria comprobada",
+    "Operational Pedigree & Security": "Experiencia operativa y seguridad",
+    "Embassy Security Veteran": "Veterano de seguridad en embajadas",
+    "Directed by a U.S. Embassy Marine Security Guard veteran.": "Dirigido por un veterano de los Marine Security Guards de las embajadas de EE. UU.",
+    "AI Infrastructure": "Infraestructura de IA",
+    "Founder trained in NVIDIA AI Infrastructure & Operations; routes planned by our own optimization software.":
+      "Fundador con formación en infraestructura y operaciones de IA de NVIDIA; rutas planeadas con nuestro propio software de optimización.",
+    "OSHA 30 Trained": "Formación OSHA 30",
+    "Job-site safety and risk mitigation run to OSHA 30-hour training standards.": "Seguridad en el trabajo y control de riesgos según la capacitación OSHA de 30 horas.",
+    "Data Systems": "Sistemas de datos",
+    "Schedules tracked with Google Project Management and IBM Data Science certificate methods.":
+      "Horarios controlados con los métodos de los certificados de Google Project Management e IBM Data Science.",
+    "🔒 Encrypted Stripe Checkout": "🔒 Pago cifrado con Stripe",
+    "Background-Checked Crew": "Equipo con verificación de antecedentes",
+    "Veteran-Led": "Dirigido por un veterano",
+    // Policy pages (/privacy, /terms, /refunds): the titles and the side menu
+    "Policies": "Políticas",
+    "Privacy Policy": "Política de privacidad",
+    "Terms of Service": "Términos del servicio",
+    "Refund & Cancellation Policy": "Política de reembolsos y cancelaciones",
 
     // ---------- Home ----------
     "Veteran-owned · Spring, TX area": "Negocio de un veterano · Área de Spring, TX",
@@ -253,6 +313,56 @@
     "Put your lawn on the route.": "Pon tu jardín en la ruta.",
     "Booking takes about a minute, and you'll see your full price before you book.":
       "Reservar toma como un minuto y verás tu precio completo antes de confirmar.",
+    // Post One home: hero, price card, trust row, steps, pricing table, areas and the name's story
+    "Lawn mowing on planned neighborhood routes north and northeast of Houston. See your price before you book, get a text when we're on the way, and cancel free until we are.":
+      "Cortamos el césped en rutas planeadas por vecindario al norte y noreste de Houston. Ve tu precio antes de reservar, recibe un mensaje de texto cuando vayamos en camino y cancela gratis hasta ese momento.",
+    "Get my price": "Ver mi precio",
+    "See pricing": "Ver precios",
+    "Starting price": "Precio inicial",
+    "per mow, before tax": "por corte, antes de impuestos",
+    "Lawns up to": "Céspedes de hasta",
+    "Bigger lawns add": "Los céspedes más grandes suben un",
+    "per extra 1,000 sq ft.": "por cada 1,000 pies² adicionales.",
+    "Neighbors already on your route lower your price.": "Si tus vecinos ya están en la ruta, tu precio baja.",
+    "Checking…": "Revisando…",
+    "Run by a U.S. Marine veteran.": "Dirigido por un veterano de los Marines de EE. UU.",
+    "Price before you book": "Precio antes de reservar",
+    "Tax included, shown up front.": "Con impuestos incluidos, a la vista desde el inicio.",
+    "Text updates": "Avisos por mensaje de texto",
+    "English or Spanish.": "En inglés o en español.",
+    "Free cancellation": "Cancelación gratis",
+    "Until the crew is on the way.": "Hasta que el equipo vaya en camino.",
+    "Get your price": "Obtén tu precio",
+    "Enter your address and yard type. Your total, tax included, shows before you book.":
+      "Escribe tu dirección y el tipo de jardín. Tu total, con impuestos incluidos, aparece antes de reservar.",
+    "Pick your day": "Elige tu día",
+    "We mow each neighborhood on set route days, so the crew's time goes into lawns, not the road.":
+      "Cortamos cada vecindario en días de ruta fijos, para que el tiempo del equipo se use en los jardines, no en el camino.",
+    "We stand our post": "Firmes en nuestro puesto",
+    "You get a text when we're on the way, a live page for your visit, and a receipt when we're done.":
+      "Recibes un mensaje cuando vamos en camino, una página en vivo de tu visita y un recibo cuando terminamos.",
+    "Straight pricing": "Precios claros",
+    "One clear formula, the same in every area we serve. Neighbors already on your route bring your price down.":
+      "Una fórmula clara, igual en todas nuestras áreas. Si tus vecinos ya están en la ruta, tu precio baja.",
+    "Prices are before tax. The booking form shows your total before you book.":
+      "Los precios son antes de impuestos. El formulario de reserva te muestra el total antes de reservar.",
+    "Pay cash to the crew or by card through Stripe's encrypted checkout.": "Paga en efectivo al equipo o con tarjeta en el pago cifrado de Stripe.",
+    "Mowing and add-on prices per visit, before tax": "Precios de corte y extras por visita, antes de impuestos",
+    "Your price is on the booking form.": "Tu precio está en el formulario de reserva.",
+    "Each extra 1,000 sq ft": "Cada 1,000 pies² adicionales",
+    "Same visit as your mow": "En la misma visita del corte",
+    "Neighbor route discount": "Descuento por vecinos en la ruta",
+    "When our customers nearby are already booked": "Cuando ya tenemos clientes reservados cerca de ti",
+    "Automatic": "Automático",
+    "Price shown before you book": "Precio visible antes de reservar",
+    "Your final price depends on lawn size and yard type.": "Tu precio final depende del tamaño del césped y del tipo de jardín.",
+    "Where we stand post": "Dónde hacemos guardia",
+    "We keep our routes tight so the crew spends time on lawns, not on the road. Pick your area for its neighborhoods and prices, or check your address at the top of the page.":
+      "Mantenemos rutas cortas para que el equipo pase su tiempo en los jardines, no en la carretera. Elige tu área para ver sus vecindarios y precios, o revisa tu dirección al inicio de la página.",
+    "Area pages": "Páginas de áreas",
+    "Loading service areas…": "Cargando áreas de servicio…",
+    "Clean lawns. Stronger communities. Part of every mow goes to a cause you pick when you book.":
+      "Jardines limpios. Comunidades más fuertes. Parte de cada corte va a la causa que elijas al reservar.",
 
     // ---------- Booking ----------
     "Calculate your mowing price, add any extras, and book your visit. You'll see the full itemized total before you book.":
@@ -373,6 +483,35 @@
     "We couldn't find that address. Please check the street name and include city, state and ZIP.":
       "No encontramos esa dirección. Revisa el nombre de la calle e incluye ciudad, estado y código postal.",
     "Too many checks. Please wait a few minutes.": "Demasiadas búsquedas. Espera unos minutos.",
+    // Yard type (step 2), the estimate's lines and the add-on cards
+    "Check your price before you book.": "Consulta tu precio antes de reservar.",
+    "Your yard type": "Tu tipo de jardín",
+    "Yard type": "Tipo de jardín",
+    "Standard yard": "Jardín estándar",
+    "Lots of trees or beds": "Muchos árboles o jardineras",
+    "Steep slopes": "Pendientes pronunciadas",
+    "Open lawn, normal edging": "Césped abierto, orillado normal",
+    "Many trees, beds or obstacles to trim around": "Muchos árboles, jardineras u obstáculos que hay que bordear",
+    "Hills or slopes that take extra care": "Lomas o pendientes que requieren cuidado extra",
+    "Choose your yard type to continue.": "Elige tu tipo de jardín para continuar.",
+    "Logistics Deployment Fee Floor": "Tarifa base del servicio",
+    "Route cluster discount": "Descuento por ruta en tu vecindario",
+    "Checked with your address": "Se calcula con tu dirección",
+    "📍 Standalone Premium Density Target Area": "📍 Sin descuento por ruta en tu zona por ahora",
+    "Standalone Premium Density Target Area": "Sin descuento por ruta en tu zona por ahora",
+    "Ancillary High-Margin Infrastructure Add-ons": "Extras",
+    "Texas Sales Tax Allocation": "Impuesto sobre ventas de Texas",
+    "Guaranteed Enterprise Checkout Total": "Total garantizado",
+    "Estimated total (confirmed on site)": "Total estimado (se confirma en el lugar)",
+    "✓ Your order includes": "✓ Tu pedido incluye",
+    "Configure Your Operation": "Arma tu servicio",
+    "Select Instant Add-Ons": "Elige tus extras",
+    "Zero phone tag. Zero drive-by guessing games. Run your service your way.": "Sin llamadas de ida y vuelta ni precios a ojo. Tu servicio, a tu manera.",
+    "Bin Sanitization": "Desinfección de botes de basura",
+    "Clean, deodorize, and kill bacteria setup.": "Lavado, desodorizado y eliminación de bacterias.",
+    "Gutter Clearance": "Limpieza de canaletas",
+    "Clear downspouts to restore water flow.": "Destapamos las bajantes para que el agua vuelva a correr.",
+    "Add to current visit": "Agregar a esta visita",
 
     // ---------- Pay ----------
     "Data from": "Datos de",
@@ -403,6 +542,10 @@
     "This visit is already paid. Thank you!": "Esta visita ya está pagada. ¡Gracias!",
     "We couldn't find that payment link.": "No encontramos ese enlace de pago.",
     "We couldn't load this payment.": "No pudimos cargar este pago.",
+    "Hi there": "Hola",
+    "local VFW, NICU & at-risk youth programs": "programas locales de VFW, NICU y jóvenes en riesgo",
+    "of your price": "de tu precio",
+    "It's included in your total, not added on.": "Ya está incluido en tu total, no se suma.",
 
     // ---------- Visit ----------
     "Your visit": "Tu visita",
@@ -444,8 +587,18 @@
     "We couldn't open that visit.": "No pudimos abrir esa visita.",
     "We couldn't find that code. Check it and try again.": "No encontramos ese código. Revísalo e intenta de nuevo.",
     "Too many tries. Please wait a few minutes.": "Demasiados intentos. Espera unos minutos.",
-    " in cash": " en efectivo",
-    " by card": " con tarjeta",
+    // Status steps (Booked → Crew on the way → Done) and the cancel box
+    "Visit status": "Estado de la visita",
+    "Completed:": "Completado:",
+    "We plan the route at 5 PM the day before.": "Planeamos la ruta a las 5 PM del día anterior.",
+    "Crew on the way": "Equipo en camino",
+    "We text you when they head your way.": "Te avisamos por mensaje cuando el equipo vaya en camino.",
+    "Before & after photos show up below.": "Las fotos de antes y después aparecen abajo.",
+    "You can cancel here until the crew is on the way. Card payments are refunded in full.":
+      "Puedes cancelar aquí hasta que el equipo vaya en camino. Los pagos con tarjeta se reembolsan por completo.",
+    "Pick another day whenever you're ready.": "Elige otro día cuando quieras.",
+    "in cash": "en efectivo",
+    "by card": "con tarjeta",
     ". Thank you!": ". ¡Gracias!",
   };
 
@@ -492,6 +645,13 @@
     [/^Show (.+) on the map$/, (m) => `Mostrar ${m[1]} en el mapa`],
     [/^(.+): mowing from (\$[\d,.]+) per visit$/, (m) => `${m[1]}: corte desde ${m[2]} por visita`],
     [/^(Neighborhood Block Lock|Operational Target|Bi-Weekly Demand) · (\$[\d.]+) \/ sq\. ft\.$/, (m) => `${ES[m[1]]} · ${m[2]} / pie²`],
+    // About page (/about): the short name and the route lock hour come from settings; the trust badges' footer
+    // lists insurance and background checks only when the owner has set them.
+    [/^Anyone can deploy a lawn mower or purchase an automated robot\. But a machine cannot exercise situational judgment, and unmanaged contractors lack operational accountability\. We engineered (.+) around a single core tenet: bringing elite operational legacy, institutional discipline, and data-driven logistics to home asset preservation\.$/,
+      (m) => `Cualquiera puede usar una podadora o comprar un robot automático. Pero una máquina no tiene criterio para cada situación, y los contratistas sin supervisión no rinden cuentas. Creamos ${m[1]} con un principio central: llevar al cuidado de tu hogar una sólida experiencia operativa, disciplina institucional y logística basada en datos.`],
+    [/^By locking down our daily regional manifests at (\d+:\d\d [AP]M) sharp, we treat every morning deployment like a controlled tactical insertion\. We map spatial density patterns across target ZIP networks, cutting down the fuel and drive-time leakages that drive low-class starters into bankruptcy\.$/,
+      (m) => `Cerramos la lista de trabajos de cada día a las ${m[1]} en punto y tratamos cada salida de la mañana como una operación táctica controlada. Mapeamos la densidad de clientes por código postal para reducir el combustible y el tiempo de manejo que llevan a la quiebra a los negocios mal planeados.`],
+    [/^🔒 Encrypted Stripe Checkout( · .+)$/, (m) => m[0].split(" · ").map((p) => one(p).replace(/^Insured \((.+)\)$/, "Con seguro ($1)")).join(" · ")],
     [/^Includes (.+) commercial liability coverage while we're on your property\.$/, (m) => `Incluye cobertura de responsabilidad comercial de ${m[1]} mientras estamos en tu propiedad.`],
     [/^Next-day booking closes at (\d+ [AP]M) sharp\.$/, (m) => `Las reservas para el día siguiente cierran a las ${m[1]} en punto.`],
     [/^Only (\d+) spots? left on (.+)'s route\.$/, (m) => m[1] === "1" ? `Solo queda 1 lugar en la ruta del ${m[2]}.` : `Solo quedan ${m[1]} lugares en la ruta del ${m[2]}.`],
@@ -533,12 +693,16 @@
     [/^Add-on: (.+)$/, (m) => `Extra: ${one(m[1])}`],
     [/^Sales tax \(([\d.]+%)\)$/, (m) => `Impuesto sobre ventas (${m[1]})`],
     [/^Texas sales tax \(([\d.]+%)\)$/, (m) => `Impuesto sobre ventas de Texas (${m[1]})`],
+    [/^Texas Sales Tax Allocation \(([\d.]+%)\)$/, (m) => `Impuesto sobre ventas de Texas (${m[1]})`],
+    [/^(⚡ )?Route Cluster Optimization Benefit \((\d+) stops?\)$/,
+      (m) => `${m[1] || ""}Descuento por ruta en tu vecindario (${m[2]} ${m[2] === "1" ? "parada cercana" : "paradas cercanas"})`],
     [/^You're booked for (.+)\.$/, (m) => `¡Listo! Tu cita es el ${m[1]}.`],
     [/^We'll text (.+) when the crew is headed to (.+)\.$/, (m) => `Te enviaremos un mensaje al ${m[1]} cuando el equipo vaya en camino a ${m[2]}.`],
     [/^for (.+)$/, (m) => ES[m[1]] ? `para ${ES[m[1]]}` : null],
     [/^(\$[\d,.]+) \/ visit$/, (m) => `${m[1]} / visita`],
     [/^From (\$[\d,.]+) \/ visit$/, (m) => `Desde ${m[1]} / visita`],
     [/^✓ Package includes (\$[\d,.]+) for (.+)\. Thank you!$/, (m) => `✓ El paquete incluye ${m[1]} para ${ES[m[2]] ?? m[2]}. ¡Gracias!`],
+    [/^✓ Your order includes (\$[\d,.]+) for (.+)\. Thank you!$/, (m) => `✓ Tu pedido incluye ${m[1]} para ${ES[m[2]] ?? m[2]}. ¡Gracias!`],
     [/^Your order generates (\$[\d,.]+) for (.+)\. Thank you!$/, (m) => ES[m[2]] ? `Tu pedido genera ${m[1]} para ${ES[m[2]]}. ¡Gracias!` : null],
     [/^Your order generates (\$[\d,.]+) for local VFW, NICU & at-risk youth programs\. Thank you!$/, (m) => `Tu pedido genera ${m[1]} para programas locales de VFW, NICU y jóvenes en riesgo. ¡Gracias!`],
     [/^★ Your order generates (\$[\d,.]+) for local VFW, NICU & at-risk youth programs \((\w+), (\d+)% of your price\)\. It's included in your total, not added on\.$/,

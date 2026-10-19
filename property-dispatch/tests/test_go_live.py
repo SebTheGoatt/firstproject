@@ -39,7 +39,7 @@ def test_manifest_lists_every_stop_truthfully(client, repo, settings):
     r = client.get(f"/api/owner/manifest/{TOMORROW}", headers=CREW)
     assert r.status_code == 200 and r.headers["content-type"].startswith("text/plain")
     t = r.text
-    for words in ("OFFICIAL DISPATCH MANIFEST", "[STOP #1] - STATUS: PENDING DISPATCH", "100 A Example Rd", "Customer A",
+    for words in ("POST ONE LAWN CO. - OFFICIAL DISPATCH MANIFEST", "[STOP #1] - STATUS: PENDING DISPATCH", "100 A Example Rd", "Customer A",
                   "Gate code 4455, dog in back", "COLLECT $113.66 CASH", "DISCIPLINE DICTATES EXECUTION"):
         assert words in t, words
     assert "Pre-Auth" not in t                                    # we never pre-authorize cards
@@ -84,6 +84,14 @@ def test_readiness_lists_what_is_missing(client, settings):
     assert client.get("/api/owner/readiness").status_code == 401
     page = client.get("/owner/readiness")
     assert page.status_code == 200 and page.headers["x-robots-tag"] == "noindex"
+
+
+def test_readiness_flags_a_leftover_old_business_name(client, settings):
+    by = {c["key"]: c for c in client.get("/api/owner/readiness", headers=CREW).json()["checks"]}
+    assert by["brand_name"]["ok"] is True and by["brand_name"]["required"] is False
+    old = settings.model_copy(update={"business_name": "Semper Green Lawn Care"})    # BUSINESS_NAME still set in Render
+    item = next(c for c in checks(old, client.app.state.repo, stripe_enabled=False) if c["key"] == "brand_name")
+    assert item["ok"] is False and "BUSINESS_NAME=Post One Lawn Co." in item["fix"]
 
 
 def test_fully_configured_business_is_ready(settings, repo):

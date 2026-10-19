@@ -5,12 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Crew | {{BUSINESS_NAME}}</title>
   <meta name="robots" content="noindex">
-  <meta name="theme-color" content="#0b3d2e">
+  <meta name="theme-color" content="#0F2B22">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Crew Route">
   <link rel="manifest" href="/crew.webmanifest">
+  <link rel="preload" href="/static/fonts/big-shoulders-display-800.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/public-sans-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/styles.css?v={{V}}">
   <style>
     /* Live Station (owner dashboard tab) */
@@ -23,7 +25,7 @@
     .ls-row { display: grid; grid-template-columns: 130px 1fr 44px; align-items: center; gap: 8px; margin: 6px 0; }
     .ls-row .flabel { font-size: .82rem; }
     .ls-bar { background: rgba(0,0,0,.08); border-radius: 6px; height: 14px; overflow: hidden; }
-    .ls-fill { background: var(--accent, #2f7d4f); height: 100%; border-radius: 6px; min-width: 2px; }
+    .ls-fill { background: var(--accent, #2E7D4F); height: 100%; border-radius: 6px; min-width: 2px; }
     .ls-row .fcount { font-size: .8rem; text-align: right; font-variant-numeric: tabular-nums; }
     .ls-drop { display: flex; justify-content: space-between; padding: 6px 2px; border-bottom: 1px solid rgba(0,0,0,.06); font-size: .85rem; }
     .ls-feed { list-style: none; margin: 0; padding: 0; max-height: 300px; overflow-y: auto; }
@@ -31,12 +33,16 @@
     .ls-time { color: var(--muted, #7c8a82); white-space: nowrap; font-size: .75rem; font-variant-numeric: tabular-nums; }
     .ls-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; align-self: center; }
     .k-visit { background: #2b6cb0; } .k-step { background: #b7791f; }
-    .k-booked { background: #2f7d4f; } .k-exit { background: #c05621; }
+    .k-booked { background: #2E7D4F; } .k-exit { background: #c05621; }
     .ls-note { font-size: .74rem; color: var(--muted, #5b6b62); margin-top: 10px; }
     .live-station h4 { margin: 14px 0 6px; font-size: .95rem; }
   </style>
 </head>
 <body class="crew-body">
+  <div class="crew-brandbar">
+    <img class="brand-mark" src="/static/brand/post-one-mark.svg" alt="" width="24" height="26">
+    <p class="crew-brandbar-name">{{BRAND_SHORT}} · <span>Crew</span></p>
+  </div>
 
   <!-- ================= Sign-in ================= -->
   <main class="wrap" id="signin" hidden>
@@ -108,9 +114,9 @@
           <h2 class="tab-title">Dashboard</h2>
           <button class="btn btn-sm" type="button" id="dash-refresh">Refresh</button>
         </div>
-        <p class="owner-links"><a class="btn btn-sm" href="/owner/readiness">Go-live checklist</a>
+        <p class="owner-links"><button class="btn btn-sm" type="button" id="rain-day">Rain day</button>
           <button class="btn btn-sm" type="button" id="print-manifest">Print manifest</button>
-          <button class="btn btn-sm" type="button" id="rain-day">Rain day</button></p>
+          <a class="btn btn-sm" href="/owner/readiness">Go-live checklist</a></p>
         <div class="week" id="week" role="tablist" aria-label="Next 7 days"></div>
         <div id="dash-err" class="alert alert-error" role="alert" hidden></div>
         <div class="kpis" id="kpis"></div>
@@ -122,8 +128,8 @@
         <!-- Live Station: owner-only live feed (visitors, bookings, click-offs) -->
         <div class="live-station" id="live-station">
           <div class="topbar">
-            <h4 style="margin:0">Live Station</h4>
-            <span id="ls-note" class="ls-note" style="margin-top:0">updates every few seconds</span>
+            <h4>Live Station</h4>
+            <span id="ls-note" class="ls-note">updates every few seconds</span>
           </div>
           <div class="live-grid">
             <div class="live-stat"><div class="num" id="ls-online">–</div><div class="lbl">Online now</div></div>
@@ -303,7 +309,7 @@
       root.style.setProperty("--brand", color);
       root.style.setProperty("--brand-ink", "#ffffff");
       root.style.setProperty("--brand-soft", `color-mix(in srgb, ${color} 14%, var(--surface))`);
-      document.querySelector('meta[name="theme-color"]').content = color;
+      // The phone's status bar stays Post Green: it sits right above the brand bar.
     }
     // Shrink photos on the phone before upload: faster on cell data, smaller to store.
     function resizeImage(file, max = 1600, quality = 0.82) {
@@ -862,7 +868,7 @@
             el("span", { class: "muted small" }, r.built
               ? (r.missing ? `${r.missing} booking(s) added after it was built. Rebuild to include them.` : `${r.completed}/${r.stops} done.`)
               : `Builds automatically at ${((d.auto_build.hour + 11) % 12) + 1} PM the day before.`)),
-          canBuild ? buildBtn : null);
+          ...(canBuild ? [buildBtn] : []));   // append() would print a null as the text "null"
         $("jobs-title").textContent = `Bookings for ${dayLabel(dashDay, { weekday: "long", month: "long", day: "numeric" })}`;
         const ul = $("job-list"); ul.replaceChildren();
         if (!d.jobs.length) ul.append(el("li", { class: "empty" }, "No bookings for this day yet."));

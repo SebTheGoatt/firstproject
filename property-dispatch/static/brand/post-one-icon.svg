@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-labelledby="post-one-icon-title">
+<title id="post-one-icon-title">Post One Lawn Co.</title>
+<rect width="120" height="120" rx="26" fill="#2E7D4F"/>
+<path d="M60 14 L100 29 V62 C100 86 84 101 60 109 C36 101 20 86 20 62 V29 Z" fill="#0F2B22" stroke="#C9A227" stroke-width="3.5" stroke-linejoin="round"/>
+<path d="M56 92 V48 C52 51 47 53 41 54 V45 C51 43 58 36 61 28 H67 V92 Z" fill="#9BD15A"/>
+</svg>

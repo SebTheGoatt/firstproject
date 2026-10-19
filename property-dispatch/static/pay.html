@@ -6,77 +6,83 @@
   <title>Pay | {{BUSINESS_NAME}}</title>
   <meta name="robots" content="noindex">
   <meta name="referrer" content="no-referrer">
-  <meta name="theme-color" content="#0b3d2e">
+  <meta name="theme-color" content="#0F2B22">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+  <link rel="preload" href="/static/fonts/big-shoulders-display-800.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/public-sans-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/styles.css?v={{V}}">
   <script src="/static/i18n.js?v={{V}}"></script>
 </head>
-<body class="site">
+<body class="site page-visit-pay">
   <header class="site-header">
     <div class="site-wrap header-row">
-      <a class="brand" href="/">
-        <img src="/static/icons/logo-64.png" alt="" width="32" height="32">
-        <span>{{BUSINESS_NAME}}</span>
-      </a>
+      <a class="brand" href="/">{{BRAND}}</a>
     </div>
   </header>
 
-  <main class="wrap">
-    <div id="err" class="alert alert-error" role="alert" hidden></div>
-
-    <section class="card pay-card" id="pay" hidden>
-      <p class="eyebrow">Pay your way</p>
-      <h1 id="hello">Hi there</h1>
-      <dl class="pay-summary">
-        <div><dt>Service</dt><dd id="svc"></dd></div>
-        <div><dt>Date</dt><dd id="when"></dd></div>
-        <div><dt id="price-label">Price</dt><dd id="price"></dd></div>
-        <div id="tax-row" hidden><dt id="tax-label">Texas sales tax</dt><dd id="tax"></dd></div>
-      </dl>
-      <p class="veteran-note" id="giving" style="margin-bottom:18px" hidden></p>
-
-      <!-- Paid -->
-      <div id="paid" class="alert alert-ok" hidden></div>
-
-      <!-- Waiting for the webhook after returning from Stripe -->
-      <div id="confirming" class="alert alert-ok" hidden>Confirming your payment…</div>
-
-      <!-- Price not set yet -->
-      <div id="pending-price" class="alert alert-warn" hidden>
-        Your final price is set when the crew finishes the job. We'll text you this link then.
+  <main>
+    <header class="vp-hero">
+      <div class="wrap">
+        <p class="eyebrow">Pay your way</p>
+        <h1 id="hello">Hi there</h1>
+        <p class="vp-what" id="svc"></p>
+        <p class="vp-where" id="when"></p>
       </div>
+    </header>
 
-      <!-- Card not available -->
-      <div id="no-card" class="alert alert-warn" hidden>
-        Online card payments aren't available right now. You can pay the crew in cash.
-      </div>
+    <div class="wrap vp-body">
+      <div id="err" class="alert alert-error" role="alert" hidden></div>
 
-      <form id="pay-form" hidden>
-        <fieldset>
-          <legend>Add a donation? <span class="optional">(optional)</span></legend>
-          <p class="veteran-note"><span class="flag" aria-hidden="true">★</span>
-            <span>No tip necessary. Donations are always welcome and never taxed. We're a veteran-owned business,
-            and we pass every donation on: <span id="charity-list">33% to the VFW, 33% to NICU families and 34% to at-risk youth programs</span>.</span></p>
-          <div class="chips" id="chips" role="radiogroup" aria-label="Donation amount">
-            <button type="button" class="chip is-on" data-amt="0" role="radio" aria-checked="true">No thanks</button>
-            <button type="button" class="chip" data-amt="5" role="radio" aria-checked="false">$5</button>
-            <button type="button" class="chip" data-amt="10" role="radio" aria-checked="false">$10</button>
-            <button type="button" class="chip" data-amt="20" role="radio" aria-checked="false">$20</button>
-            <button type="button" class="chip" data-amt="other" role="radio" aria-checked="false">Other</button>
-          </div>
-          <div class="field" id="other-wrap" hidden>
-            <label for="other">Donation amount ($)</label>
-            <input id="other" type="text" inputmode="decimal" placeholder="15" autocomplete="off">
-          </div>
-          <div class="donation-split" id="split" hidden aria-live="polite"></div>
-        </fieldset>
-        <div class="pay-total"><span>Total</span><strong id="total"></strong></div>
-        <button class="btn btn-primary btn-block btn-lg" id="pay-btn" type="submit">Pay securely</button>
-        <p class="hint center">Pay with card, Apple Pay or Google Pay on Stripe's secure page. We never see your card number.<br>
-          Because donations are paid through our business, they aren't tax-deductible for you.</p>
-      </form>
-    </section>
+      <section class="card pay-card" id="pay" hidden>
+        <dl class="pay-summary">
+          <div><dt id="price-label">Price</dt><dd id="price"></dd></div>
+          <div id="tax-row" class="tax" hidden><dt id="tax-label">Texas sales tax</dt><dd id="tax"></dd></div>
+        </dl>
+        <p class="veteran-note" id="giving" hidden></p>
+
+        <!-- Paid -->
+        <div id="paid" class="alert alert-ok" hidden></div>
+
+        <!-- Waiting for the webhook after returning from Stripe -->
+        <div id="confirming" class="alert alert-ok" hidden>Confirming your payment…</div>
+
+        <!-- Price not set yet -->
+        <div id="pending-price" class="alert alert-warn" hidden>
+          Your final price is set when the crew finishes the job. We'll text you this link then.
+        </div>
+
+        <!-- Card not available -->
+        <div id="no-card" class="alert alert-warn" hidden>
+          Online card payments aren't available right now. You can pay the crew in cash.
+        </div>
+
+        <form id="pay-form" hidden>
+          <fieldset>
+            <legend>Add a donation? <span class="optional">(optional)</span></legend>
+            <p class="veteran-note"><span class="flag" aria-hidden="true">★</span>
+              <span>No tip necessary. Donations are always welcome and never taxed. We're a veteran-owned business,
+              and we pass every donation on: <span id="charity-list">33% to the VFW, 33% to NICU families and 34% to at-risk youth programs</span>.</span></p>
+            <div class="chips" id="chips" role="radiogroup" aria-label="Donation amount">
+              <button type="button" class="chip is-on" data-amt="0" role="radio" aria-checked="true">No thanks</button>
+              <button type="button" class="chip" data-amt="5" role="radio" aria-checked="false">$5</button>
+              <button type="button" class="chip" data-amt="10" role="radio" aria-checked="false">$10</button>
+              <button type="button" class="chip" data-amt="20" role="radio" aria-checked="false">$20</button>
+              <button type="button" class="chip" data-amt="other" role="radio" aria-checked="false">Other</button>
+            </div>
+            <div class="field" id="other-wrap" hidden>
+              <label for="other">Donation amount ($)</label>
+              <input id="other" type="text" inputmode="decimal" placeholder="15" autocomplete="off">
+            </div>
+            <div class="donation-split" id="split" hidden aria-live="polite"></div>
+          </fieldset>
+          <div class="pay-total"><span>Total</span><strong id="total"></strong></div>
+          <button class="btn btn-primary btn-block btn-lg" id="pay-btn" type="submit">Pay securely</button>
+          <p class="hint center">Pay with card, Apple Pay or Google Pay on Stripe's secure page. We never see your card number.<br>
+            Because donations are paid through our business, they aren't tax-deductible for you.</p>
+        </form>
+      </section>
+    </div>
   </main>
   <footer class="mini-footer site-wrap">{{LEGAL_FOOTER}}</footer>
 
@@ -123,8 +129,10 @@
         $("tax").textContent = money(info.tax);
       }
       if (info.charity_amount > 0) {
-        $("giving").textContent = `★ Your order generates ${money(info.charity_amount)} for ${info.charity_choice_name || "local VFW, NICU & at-risk youth programs"} ` +
-          `(${kind ? kind + ", " : ""}${Math.round((info.charity_rate || 0) * 100)}% of your price). It's included in your total, not added on.`;
+        // Separate text nodes, so i18n.js can translate each phrase (a yard type like "Standard yard" breaks a whole-sentence pattern).
+        $("giving").replaceChildren("★ ", "Your order generates", ` ${money(info.charity_amount)} `,
+          `for ${info.charity_choice_name || "local VFW, NICU & at-risk youth programs"}`, " (", ...(kind ? [kind, ", "] : []),
+          `${Math.round((info.charity_rate || 0) * 100)}% `, "of your price", "). ", "It's included in your total, not added on.");
         show("giving");
       }
       ["paid", "pending-price", "no-card", "pay-form", "confirming"].forEach((id) => show(id, false));

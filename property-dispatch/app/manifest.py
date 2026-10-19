@@ -30,7 +30,7 @@ def _balance(s: dict) -> str:
 
 
 def build_manifest(route: dict, notes: dict[str, str], settings: Settings, day: date) -> str:
-    out = ["=" * 80, " SEMPER GREEN LAWN CARE - OFFICIAL DISPATCH MANIFEST",
+    out = ["=" * 80, f" {settings.business_name.upper()} - OFFICIAL DISPATCH MANIFEST",
            f" OPERATIONAL DATE: {day:%A, %B} {day.day}, {day.year} | LOCK TIME: {settings.freeze_hour}:00 Central",
            "=" * 80, f" INITIAL DISPATCH ANCHOR YARD: ({settings.base_lat:.6f}, {settings.base_lng:.6f})", "-" * 80]
     for s in route["stops"]:

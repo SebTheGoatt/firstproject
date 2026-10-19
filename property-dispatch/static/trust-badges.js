@@ -1,5 +1,5 @@
 /**
- * Semper Green Lawn Care - Professional Credential Validation Component
+ * Post One Lawn Co. - Professional Credential Validation Component
  * Leverages elite military, technical, and regulatory pedigree to lock in premium trust.
  *
  *   <trust-badges coverage="$1M/$2M" background-checked></trust-badges>

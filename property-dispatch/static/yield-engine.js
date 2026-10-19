@@ -1,5 +1,5 @@
 /**
- * Semper Green Lawn Care - Front-End Logistics Controller
+ * Post One Lawn Co. - Front-End Logistics Controller
  * Orchestrates dynamic pricing engine queries and feeds the Stripe payloads.
  */
 const SemperGreenEngine = {
@@ -14,7 +14,7 @@ const SemperGreenEngine = {
     },
 
     init() {
-        console.log("⚡ Semper Green AI-Backed Infrastructure Active");
+        console.log("Post One pricing engine ready");
         this.bindEvents();
     },
 

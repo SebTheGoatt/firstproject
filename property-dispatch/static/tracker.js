@@ -1,4 +1,4 @@
-/* Semper Green — activity tracker (v4)
+/* Post One — activity tracker (v4)
  * ---------------------------------------------------
  * Sends: pageviews, booking-funnel milestones, heartbeats, and
  * estimated departures (exits). Booking completions are counted

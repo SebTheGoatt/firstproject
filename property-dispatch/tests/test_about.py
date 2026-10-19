@@ -32,3 +32,19 @@ def test_trust_badges_claim_insurance_only_when_set(client, settings, repo):
     settings.liability_coverage, settings.crew_background_checked = "$1M/$2M", True
     t = TestClient(create_app(settings, repo=repo)).get("/about").text
     assert '<trust-badges coverage="$1M/$2M" background-checked></trust-badges>' in t
+
+
+def test_why_post_one_tells_the_story_and_backs_each_line(client):
+    """The "Why Post One" band: the Marine Security Guard's Post One, the founder who stood it, and the brand's three
+    lines, each backed by something the app really does. No Marine Corps insignia or slogans, no phone, no clearance."""
+    t = client.get("/about").text
+    assert 'id="why"' in t and 'href="#why"' in t and "Why “Post One”" in t
+    assert "Marine Security Guards stand Post One, the post that is never left unmanned." in t
+    assert "Our co-founder, Raymundo, served as a Marine Security Guard." in t
+    for line in ("On post. On time.", "Every yard gets Post One attention.", "Clean lawns. Stronger communities."):
+        assert f"<strong>{line}</strong>" in t, line
+    assert "you get a text when the crew is on the way" in t and "you see it, tax included, before you book" in t
+    assert 'class="sp-story-mark" viewBox="0 0 200 220" aria-hidden="true"' in t        # logo A, decorative
+    for banned in ("Semper Fi", "Globe and Anchor", "clearance", "Top Secret", 'href="tel:', "licensed", "bonded"):
+        assert banned.lower() not in t.lower(), banned
+    assert t.count('<article class="sp-founder">') == len(FOUNDERS)                     # Ciro stays pending

@@ -28,7 +28,7 @@ def test_policy_pages_name_the_business_and_how_to_reach_it(client, settings):
         r = client.get(path)
         assert r.status_code == 200 and "noindex" not in r.text and "{{" not in r.text
         t = r.text
-        assert words in t and "Semper Green LLC" in t
+        assert words in t and "Semper Green LLC, doing business as Post One Lawn Co." in t
         assert 'href="mailto:' not in t and 'href="tel:' not in t     # email and phone only once they're set
         assert "reply to any of our text messages" in t
     t = app_with(settings, client.app.state.repo, business_phone="(281) 555-0199",
@@ -126,3 +126,16 @@ def test_delete_needs_a_real_code(client):
 
 def test_visit_page_has_the_delete_button(client):
     assert 'id="forget-btn">Delete my information</button>' in client.get("/visit").text
+
+
+def test_policies_name_the_dba_and_link_each_other(client, settings, repo):
+    """Each policy says who the customer deals with (the LLC, doing business as the public name) and links the others."""
+    for path, title in (("/privacy", "Privacy Policy"), ("/terms", "Terms of Service"), ("/refunds", "Refund & Cancellation Policy")):
+        t = client.get(path).text
+        assert f'<a href="{path}" aria-current="page">{html.escape(title)}</a>' in t, path
+        assert t.count('aria-current="page"') == 2, path            # this policy in the side list, and the breadcrumb
+        assert all(f'href="/{p}"' in t for p in ("privacy", "terms", "refunds"))
+    assert 'Semper Green LLC, doing business as Post One Lawn Co. ("we") mows lawns' in client.get("/privacy").text
+    assert "between you and Semper Green LLC, doing business as Post One Lawn Co., when you book" in client.get("/terms").text
+    t = app_with(settings, repo, business_name="Acme Lawn Care").get("/privacy").text
+    assert "Semper Green LLC, doing business as Acme Lawn Care" in t and "Post One" not in t

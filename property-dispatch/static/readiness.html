@@ -5,12 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Go-Live Checklist | {{BUSINESS_NAME}}</title>
   <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#0F2B22">
   <link rel="icon" href="/favicon.ico">
+  <link rel="preload" href="/static/fonts/big-shoulders-display-800.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/public-sans-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/styles.css?v={{V}}">
   <style>
     .ready-wrap { max-width: 640px; margin: 0 auto; padding: 24px 16px 48px; }
     .ready-banner { padding: 16px; border-radius: 14px; font-weight: 800; font-size: 1.15rem; margin: 12px 0 20px; }
-    .ready-banner.yes { background: #e7f6ec; border: 2px solid #1e7a43; color: #0f4a27; }
+    .ready-banner.yes { background: var(--brand-soft); border: 2px solid var(--brand); color: var(--brand-deep); }
     .ready-banner.no { background: #fff4d6; border: 2px solid #b45309; color: #5c2c00; }
     .checks { list-style: none; margin: 0; padding: 0; }
     .checks li { display: grid; grid-template-columns: 32px 1fr; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--border); }
@@ -19,9 +22,13 @@
     .checks .opt { font-size: 0.8rem; color: var(--muted); margin-left: 6px; }
   </style>
 </head>
-<body>
+<body class="page-owner">
+  <div class="crew-brandbar">
+    <img class="brand-mark" src="/static/brand/post-one-mark.svg" alt="" width="24" height="26">
+    <p class="crew-brandbar-name">{{BRAND_SHORT}} · <span>Owner</span></p>
+  </div>
   <main class="ready-wrap">
-    <p><a href="/crew">← Crew app</a></p>
+    <p class="back-row"><a href="/crew">← Crew app</a></p>
     <h1>Go-live checklist</h1>
     <p class="muted">Everything the business needs before real customers book. Secrets are never shown, only whether they're set.</p>
     <div id="banner" class="ready-banner" hidden></div>
