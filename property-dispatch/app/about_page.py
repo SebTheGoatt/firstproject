@@ -127,10 +127,8 @@ def about_html(settings: Settings, version: str) -> str:
           {SHIELD}
           <div class="sp-story-copy">
             <p class="eyebrow">Why “Post One”</p>
-            <h2 id="why-title">The post that's never left unmanned.</h2>
-            <p>At U.S. embassies around the world, Marine Security Guards stand Post One, the post that is never left unmanned.
-              Our co-founder, Raymundo, served as a Marine Security Guard. Now he brings that standard home to Spring:
-              show up on time, do it right, and treat every yard like it matters.</p>
+            <h2 id="why-title">Your yard is our first priority.</h2>
+            <p>Post One means you're never an afterthought. We mow on planned neighborhood routes, so we show up on the day we say, text you when we're on the way, and send a receipt when we're done.</p>
             <ul class="sp-standards">{standards}</ul>
             <div class="hero-actions">
               <a class="btn btn-lg sp-btn-fresh" href="/book">Book your first visit</a>

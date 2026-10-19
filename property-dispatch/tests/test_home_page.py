@@ -21,7 +21,8 @@ def test_home_has_the_post_one_sections_and_keeps_every_widget(client):
                "hero-price", "hero-price-note", "price-rows", "price-tax-note", "year"):
         assert f'id="{el}"' in t, el
     assert all(f'<li><a href="/local/{a.slug}">' in t for a in AREAS)          # an area chip for every area page
-    assert "Marine Security Guard" in t and "Semper Green LLC" in t            # the name's story; who customers contract with
+    assert "Your yard is our first priority." in t and "Semper Green LLC" in t   # the business pitch; who customers contract with
+    assert "Marine Security Guard" not in t                                      # we sell the business, not the founder's service history
     assert "{{" not in t
 
 
