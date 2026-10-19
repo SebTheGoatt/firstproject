@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Route | {{BUSINESS_NAME}}</title>
   <meta name="robots" content="noindex">
-  <meta name="theme-color" content="#0F2B22">
+  <meta name="theme-color" content="#060709">
   <link rel="manifest" href="/crew.webmanifest">
   <link rel="icon" href="/favicon.ico">
   <link rel="preload" href="/static/fonts/big-shoulders-display-800.woff2" as="font" type="font/woff2" crossorigin>
@@ -21,7 +21,8 @@
       --gap-s: 8px; --gap: 12px; --gap-l: 16px;
       --radius-card: 16px;
       --hud-row: 56px;
-      --hud-h: calc(var(--hud-row) + env(safe-area-inset-top, 0px));
+      --hud-row2: 46px;           /* the stop timeline under the readouts */
+      --hud-h: calc(var(--hud-row) + var(--hud-row2) + env(safe-area-inset-top, 0px));
       --cta-min: 72px; --cta-pad: 10px;
       --cta-h: calc(var(--cta-min) + 2 * var(--cta-pad) + env(safe-area-inset-bottom, 0px));
       --deck-top-gap: 12px;        /* map still peeks above the deck when it's fully open */
@@ -37,7 +38,8 @@
     /* ---------- Top HUD bar ---------- */
     .hud { position: fixed; top: 0; left: 0; right: 0; z-index: var(--z-hud); height: var(--hud-h);
       padding: env(safe-area-inset-top, 0px) max(12px, env(safe-area-inset-right, 0px)) 0 max(12px, env(safe-area-inset-left, 0px));
-      display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--gap-s);
+      display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: var(--hud-row) var(--hud-row2);
+      align-items: center; column-gap: var(--gap-s);
       background: var(--hud-bg); color: #ffffff; border-bottom: 2px solid var(--brass); }
     .hud-mark { width: 24px; height: auto; }
     .hud-readouts { display: flex; gap: clamp(8px, 2.5vw, 32px); min-width: 0; }
@@ -240,6 +242,43 @@
       font: 800 1.5rem/1.1 var(--font-display); letter-spacing: 0.04em; cursor: pointer; }
     .nav-arrive.near { background: var(--brand-deep); }
     .nav-me { width: 22px; height: 22px; border-radius: 50%; background: #1a73e8; border: 3px solid #fff; box-shadow: 0 0 0 6px rgb(26 115 232 / 0.25); }
+
+    /* ===== Stark HUD skin: obsidian, graphite glass, gold/cyan etched edges, JetBrains Mono readouts =====
+       The stop card you're working stays light with black text so it reads in full sun. */
+    @font-face { font-family: "JetBrains Mono"; font-weight: 400; font-display: swap; src: url(/static/fonts/jetbrains-mono-400.woff2) format("woff2"); }
+    @font-face { font-family: "JetBrains Mono"; font-weight: 700; font-display: swap; src: url(/static/fonts/jetbrains-mono-700.woff2) format("woff2"); }
+    :root { --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --hud-bg: rgb(17 20 26 / 0.82); --stark-gold: #D97706; --stark-cyan: #06B6D4; --stark-bg: #060709; }
+    body.dash { background: var(--stark-bg); }
+    .hud { background: var(--hud-bg); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--stark-gold); box-shadow: 0 1px 0 rgb(6 182 212 / 0.35); }
+    .readout { border-left-color: rgb(6 182 212 / 0.45); }
+    .readout span, .readout b, .hud-link, .progress-line, .workload, .route-seq h2 { font-family: var(--mono); }
+    .readout span { letter-spacing: 0.14em; }
+    .readout b { font-weight: 700; font-size: clamp(0.82rem, 3.6vw, 1.1rem); letter-spacing: 0; }
+    .readout span { font-size: 0.6rem; }
+    .hud-readouts { gap: clamp(6px, 2vw, 32px); }
+    .hud-timeline { grid-column: 1 / -1; display: flex; align-items: center; gap: 0; margin: 0; padding: 0 0 2px; list-style: none;
+      overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .hud-timeline::-webkit-scrollbar { display: none; }
+    .hud-timeline li { display: flex; align-items: center; flex: none; }
+    .hud-timeline li + li::before { content: ""; width: 14px; height: 2px; background: rgb(6 182 212 / 0.35); }
+    .hud-timeline li.is-done + li::before { background: #10B981; }
+    .tl-dot { min-width: 40px; min-height: 36px; padding: 0 8px; border-radius: 3px; border: 1px solid rgb(6 182 212 / 0.5);
+      background: rgb(6 7 9 / 0.6); color: #E2E8F0; font: 700 0.8rem/1 var(--mono); letter-spacing: 0.04em; cursor: pointer; }
+    .hud-timeline .is-done .tl-dot { border-color: #10B981; color: #10B981; }
+    .hud-timeline .is-active .tl-dot { border-color: var(--stark-gold); background: var(--stark-gold); color: #060709; box-shadow: 0 0 12px rgb(217 119 6 / 0.55); }
+    .deck { border-top: 1px solid var(--stark-gold); }
+    /* Radar over the live map: rings + a slow sweep. Decorative, never blocks a tap. */
+    .radar { grid-area: stage; pointer-events: none; z-index: 2; place-self: center; width: min(92vw, 520px); aspect-ratio: 1;
+      border-radius: 50%; border: 1px solid rgb(6 182 212 / 0.35); overflow: hidden;
+      background: repeating-radial-gradient(circle, transparent 0 22%, rgb(6 182 212 / 0.16) 22% 22.4%),
+                  linear-gradient(rgb(6 182 212 / 0.14), rgb(6 182 212 / 0.14)) center / 1px 100% no-repeat,
+                  linear-gradient(rgb(6 182 212 / 0.14), rgb(6 182 212 / 0.14)) center / 100% 1px no-repeat; }
+    .radar .sweep { position: absolute; inset: 0; border-radius: 50%;
+      background: conic-gradient(from 0deg, rgb(6 182 212 / 0.22), transparent 70deg); animation: sweep 4s linear infinite; }
+    @keyframes sweep { to { transform: rotate(1turn); } }
+    @media (prefers-reduced-motion: reduce) { .radar .sweep { animation: none; } }
   </style>
 </head>
 <body class="dash">
@@ -251,7 +290,8 @@
       <div class="readout"><span>Route</span><b id="m-time">–</b></div>
       <div class="readout status" id="m-status-box"><span>Status</span><b id="m-status">–</b></div>
     </section>
-    <a class="hud-link" href="/crew">Full crew app</a>
+    <a class="hud-link" href="/crew">Crew app</a>
+    <ol class="hud-timeline" id="timeline" aria-label="Stop timeline"></ol>
   </header>
 
   <main class="state-wrap">
@@ -269,6 +309,7 @@
   </main>
 
   <div id="dash" hidden>
+    <div class="radar" aria-hidden="true"><span class="sweep"></span></div>
     <div id="route-map" role="button" tabindex="0" aria-label="Active Route Map: today's stops. Tap for turn-by-turn directions to the current stop."></div>
     <button class="map-fit" id="map-fit" type="button" aria-label="Show the whole route on the map">⤢ Whole route</button>
 
@@ -442,6 +483,7 @@
       $("cta-bar").hidden = s === "done";
       renderCurrent(s);
       renderList();
+      renderTimeline();
       updateTravel();
       snapTo(deck.snap, !deck.placed); deck.placed = true;   // the card changed size: re-measure the peek
       drawMap();
@@ -507,6 +549,18 @@
     }
 
     // Route Sequence Deck: every stop of the day on one timeline. Tap a stop to see it on the map.
+    // Top pane: the whole route as a line of stops. Tap one to see it on the map.
+    function renderTimeline() {
+      const cur = current();
+      $("timeline").replaceChildren(...route.stops.map((x, i) => {
+        const state = x.completed_at ? "done" : x === cur ? "active" : "pending";
+        return el("li", { class: `is-${state}` },
+          el("button", { class: "tl-dot", type: "button", "aria-label": `Stop ${i + 1}${state === "done" ? ", done" : state === "active" ? ", current" : ""}`,
+                         onclick: () => showOnMap(x) }, state === "done" ? `✓${i + 1}` : String(i + 1)));
+      }));
+      $("timeline").querySelector(".is-active")?.scrollIntoView({ inline: "center", block: "nearest" });
+    }
+
     function renderList() {
       const cur = current();
       $("stop-list").replaceChildren(...route.stops.map((x, i) => {
