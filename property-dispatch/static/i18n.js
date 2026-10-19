@@ -600,6 +600,10 @@
     "in cash": "en efectivo",
     "by card": "con tarjeta",
     ". Thank you!": ". ¡Gracias!",
+    // One area per day (booking form)
+    "Enter your address first": "Primero escribe tu dirección",
+    "We mow one area a day, so your days depend on your address.": "Cortamos un área por día, así que tus días dependen de tu dirección.",
+    "No open days right now. Please check back soon.": "No hay días disponibles por ahora. Vuelve a consultar pronto.",
   };
 
   // English weekday / month names inside server messages ("Friday, Oct 16").
@@ -613,6 +617,13 @@
   const charityList = (s) => s.split(/, | and /).map((part) => part.replace(/^(\$[\d,.]+) to (.+)$/, (_, a, n) => `${a} para ${one(n)}`)).join(", ");
 
   const PATTERNS = [
+    [/^We mow (.+) on (\w+)s, so the crew stays in your area all day\.$/,
+      (m) => `Cortamos en ${m[1]} los ${DAYS[m[2]] || m[2]}, así el equipo se queda en tu área todo el día.`],
+    [/^We mow (.+) on (\w+)s only, so the crew stays in one area all day\. Please pick a (\w+)\.$/,
+      (m) => `Cortamos en ${m[1]} solo los ${DAYS[m[2]] || m[2]}, así el equipo se queda en un área todo el día. Elige un ${DAYS[m[3]] || m[3]}.`],
+    [/^Our week: (.+)\. Bookings close at (.+) the day before\.$/,
+      (m) => `Nuestra semana: ${m[1].replace(/\b(Mon|Tue|Wed|Thu|Fri)\b/g, (d) => ({ Mon: "lun", Tue: "mar", Wed: "mié", Thu: "jue", Fri: "vie" })[d])}. Las reservas cierran a las ${m[2]} del día anterior.`],
+    [/^(.+) \(full\)$/, (m) => `${esDate(m[1])} (lleno)`],
     // Page titles end with the business name, whatever it is.
     [/^(Book a [Ss]ervice|Pay|Your Visit) \| (.+)$/, (m) => `${{ "Book a Service": "Reservar un servicio", "Book a service": "Reservar un servicio", Pay: "Pagar", "Your Visit": "Tu visita" }[m[1]]} | ${m[2]}`],
     [/^(.+) \| Mowing, Bin Cleaning & Gutters in Spring, TX$/, (m) => `${m[1]} | Corte de césped, limpieza de botes y canaletas en Spring, TX`],

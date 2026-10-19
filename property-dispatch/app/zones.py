@@ -6,12 +6,18 @@ corner to top-right corner, edges inclusive. A zone can cover several boxes
 away at intake. Boxes must not overlap, so a point maps to at most one zone
 and one price.
 
+One area per day: each zone is mowed on its own weekday (service_weekday, Monday = 0), west to
+east from the base yard so the crew never crosses the county in a day:
+  Mon Spring · Tue Klein · Wed New Caney & Splendora · Thu Colony Ridge · Fri Cleveland & Plum Grove.
+Saturday is the weather make-up day (rain days only), never booked directly.
+
 tax_rate is the combined Texas state + local sales tax for the area
 (6.25% state + up to 2% local). 8.25% is the default; check each area with
 the Comptroller's Sales Tax Rate Locator and adjust here.
 """
 
 from dataclasses import dataclass, field
+from datetime import date, timedelta
 
 Box = tuple[float, float, float, float]  # min_lng, min_lat, max_lng, max_lat
 DEFAULT_TAX_RATE = 0.0825
@@ -24,6 +30,7 @@ class ServiceZone:
     name: str
     bbox: Box                                 # main box (map pin + label)
     mow_rate: float                           # mowing base trip fee per visit, USD (+ rate × sq ft)
+    service_weekday: int = 0                  # the one weekday this area is mowed (Monday = 0 ... Friday = 4)
     extra_boxes: tuple[Box, ...] = field(default=())
     tax_rate: float = DEFAULT_TAX_RATE
     # Lawn sizes the booking form prices when the customer picks what to mow (see app/lawn_estimate.py).
@@ -47,6 +54,7 @@ SERVICE_ZONES: tuple[ServiceZone, ...] = (
         # South edge at 30.10 so all of Woodson's Reserve (center ~30.116) fits.
         bbox=(-95.4200, 30.1000, -95.2800, 30.1800),
         mow_rate=FLAT_FEE,
+        service_weekday=0,
     ),
     ServiceZone(
         key="KLEIN_CORE",
@@ -56,6 +64,7 @@ SERVICE_ZONES: tuple[ServiceZone, ...] = (
         # it never touches the Spring corridor or takes in Old Town Spring.
         bbox=(-95.5850, 29.9950, -95.4250, 30.0900),
         mow_rate=FLAT_FEE,
+        service_weekday=1,
     ),
     ServiceZone(
         key="I69_HIGH_DENSITY_SPINE",
@@ -65,6 +74,7 @@ SERVICE_ZONES: tuple[ServiceZone, ...] = (
         # East edge at -95.115 so Plum Grove (~-95.109 to -95.087) belongs to Cleveland.
         bbox=(-95.2600, 30.1850, -95.1150, 30.2950),
         mow_rate=FLAT_FEE,
+        service_weekday=2,
         full_property_sqft=10_000,
     ),
     ServiceZone(
@@ -78,6 +88,7 @@ SERVICE_ZONES: tuple[ServiceZone, ...] = (
         # with the Cleveland sector.
         extra_boxes=((-95.1120, 30.1650, -95.0800, 30.2350),),
         mow_rate=FLAT_FEE,
+        service_weekday=4,
         full_property_sqft=14_500,     # e.g. 686 Road 5039: ~19,166 sq ft lot minus the house
     ),
     ServiceZone(
@@ -90,6 +101,7 @@ SERVICE_ZONES: tuple[ServiceZone, ...] = (
         # Rancho San Vicente (~30.232, -95.087), which sits in Plum Grove, stays in that zone.
         bbox=(-95.0795, 30.1450, -95.0000, 30.2750),
         mow_rate=FLAT_FEE,
+        service_weekday=3,
         full_property_sqft=14_500,
     ),
 )
@@ -101,6 +113,36 @@ def zone_by_key(key: str | None) -> ServiceZone | None:
 
 def find_zone(lat: float, lng: float) -> ServiceZone | None:
     return next((z for z in SERVICE_ZONES if z.contains(lat, lng)), None)
+
+
+WEEKDAY_NAMES = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+MAKEUP_WEEKDAY = 5     # Saturday: weather make-up only
+
+
+def zone_for_weekday(weekday: int) -> ServiceZone | None:
+    """The one area mowed on that weekday (None on the weekend)."""
+    return next((z for z in SERVICE_ZONES if z.service_weekday == weekday), None)
+
+
+def service_days(zone: ServiceZone, first: date, last: date) -> list[date]:
+    """Every date from first to last (inclusive) that is this area's service day."""
+    day = first + timedelta(days=(zone.service_weekday - first.weekday()) % 7)
+    out = []
+    while day <= last:
+        out.append(day)
+        day += timedelta(days=7)
+    return out
+
+
+def schedule_text() -> str:
+    """'Mon Spring · Tue Klein · ...' for pages and messages."""
+    return " · ".join(f"{WEEKDAY_NAMES[z.service_weekday][:3]} {short_name(z)}"
+                      for z in sorted(SERVICE_ZONES, key=lambda z: z.service_weekday))
+
+
+def short_name(zone: ServiceZone) -> str:
+    return {"SPRING_LUXURY_LOOP": "Spring", "KLEIN_CORE": "Klein", "I69_HIGH_DENSITY_SPINE": "New Caney & Splendora",
+            "CLEVELAND_HUB": "Cleveland & Plum Grove", "COLONY_RIDGE": "Colony Ridge"}.get(zone.key, zone.name)
 
 
 def validate_zones(zones: tuple[ServiceZone, ...]) -> None:
@@ -121,4 +163,12 @@ def validate_zones(zones: tuple[ServiceZone, ...]) -> None:
                 raise ValueError(f"Zones {ka} and {kb} overlap")
 
 
+def validate_schedule(zones: tuple[ServiceZone, ...]) -> None:
+    """One area per weekday, Monday to Friday."""
+    days = [z.service_weekday for z in zones]
+    if any(not 0 <= d <= 4 for d in days) or len(set(days)) != len(days):
+        raise ValueError(f"Each area needs its own weekday, Monday (0) to Friday (4); got {days}")
+
+
 validate_zones(SERVICE_ZONES)
+validate_schedule(SERVICE_ZONES)

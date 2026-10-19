@@ -123,6 +123,7 @@
         <div class="donation-ledger" id="donation-ledger" hidden></div>
         <div class="card route-card" id="route-card"></div>
         <h3 class="list-title" id="jobs-title">Bookings</h3>
+        <div class="alert alert-warn" id="off-area" role="status" hidden></div>
         <ul class="job-list" id="job-list"></ul>
 
         <!-- Live Station: owner-only live feed (visitors, bookings, click-offs) -->
@@ -829,6 +830,7 @@
           const b = el("button", { type: "button", role: "tab", class: "day-card" + (d.date === dashDay ? " is-on" : ""), "aria-selected": String(d.date === dashDay) },
             el("span", { class: "dc-day" }, d.date === week[0].date ? "Today" : dayLabel(d.date, { weekday: "short" })),
             el("span", { class: "dc-date" }, dayLabel(d.date, { month: "numeric", day: "numeric" })),
+            el("span", { class: "dc-area" }, d.area || "Off"),
             el("b", {}, String(d.jobs)),
             el("span", { class: "dc-bar", "aria-hidden": "true" }, el("span", { style: `width:${pct}%` })),
             el("span", { class: "dc-money" }, money(d.expected)));
@@ -869,7 +871,11 @@
               ? (r.missing ? `${r.missing} booking(s) added after it was built. Rebuild to include them.` : `${r.completed}/${r.stops} done.`)
               : `Builds automatically at ${((d.auto_build.hour + 11) % 12) + 1} PM the day before.`)),
           ...(canBuild ? [buildBtn] : []));   // append() would print a null as the text "null"
-        $("jobs-title").textContent = `Bookings for ${dayLabel(dashDay, { weekday: "long", month: "long", day: "numeric" })}`;
+        $("jobs-title").textContent = `Bookings for ${dayLabel(dashDay, { weekday: "long", month: "long", day: "numeric" })}`
+          + (d.area ? ` · ${d.area}` : "");
+        const off = d.jobs.filter((j) => j.off_area && j.status !== "cancelled").length;
+        $("off-area").hidden = !off;
+        $("off-area").textContent = off ? `${off} booking(s) here are outside ${d.area}'s day and won't go on the route. Use Move to put them on their area's day.` : "";
         const ul = $("job-list"); ul.replaceChildren();
         if (!d.jobs.length) ul.append(el("li", { class: "empty" }, "No bookings for this day yet."));
         for (const j of d.jobs) {

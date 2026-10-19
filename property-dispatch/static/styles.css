@@ -1662,3 +1662,23 @@ body.page-team { min-height: 100vh; min-height: 100dvh; display: flex; flex-dire
 .page-server-pages .sp-check-card a { color: var(--fresh); font-weight: 700; }
 .page-server-pages .sp-check-card a:hover { color: var(--on-dark); }
 @media (max-width: 680px) { .page-server-pages .sp-check-card { padding: 22px; } }
+
+/* ===== Owner/crew app on phones (Android & iPhone) ===== */
+.dc-area { font-size: 0.68rem; font-weight: 700; color: var(--accent); text-align: center; line-height: 1.15;
+  max-width: 100%; min-height: 2.3em; overflow: hidden; padding: 0 2px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  /* The week scrolls sideways with full-size day cards instead of seven squeezed columns. */
+  .week { display: flex; overflow-x: auto; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
+    gap: 8px; padding-bottom: 6px; margin-inline: -4px; padding-inline: 4px; scrollbar-width: none; }
+  .week::-webkit-scrollbar { display: none; }
+  .day-card { flex: 0 0 84px; scroll-snap-align: start; padding: 8px 4px; min-height: 96px; }
+  .dc-money { display: block; }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi span { white-space: normal; }
+  .route-card .btn { width: 100%; min-height: 48px; }
+  .job-row { flex-direction: column; }
+  .job-side { justify-items: start; grid-auto-flow: column; justify-content: start; align-items: center; }
+}
+/* Thumb-sized taps everywhere in the crew app. */
+.crew-body .btn, .crew-body button, .crew-body select, .crew-body input:not([type="checkbox"]):not([type="radio"]) { min-height: 44px; }

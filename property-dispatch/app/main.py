@@ -37,7 +37,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import deeplinks, push, reviews
-from .booking import BookingRejected, earliest_bookable_day, local_now, next_service_day, validate_booking
+from .booking import (BookingRejected, check_area_day, earliest_bookable_day, local_now, next_service_day,
+                      open_area_days, validate_booking)
 from .config import Settings, get_settings, site_url
 from .db import Repository, make_repository
 from .geocode import GeocodingError, GeocoderUnavailable, NominatimGeocoder
@@ -67,7 +68,7 @@ from .notify import (TwilioClient, booking_message, day_words, notify_next_custo
 from .pay_routes import register_pay_routes
 from .visit_routes import format_code, new_access_code, register_visit_routes
 from .payments import StripeClient
-from .zones import SERVICE_ZONES, find_zone, zone_by_key
+from .zones import SERVICE_ZONES, WEEKDAY_NAMES, find_zone, short_name, zone_by_key
 
 log = logging.getLogger(__name__)
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
@@ -356,6 +357,8 @@ def create_app(
             "spots_left": spots_left,
             "latest_date": now.date() + timedelta(days=settings.booking_horizon_days),
             "freeze_hour": settings.freeze_hour,
+            "schedule": [{"weekday": WEEKDAY_NAMES[z.service_weekday], "area": short_name(z), "zone_key": z.key}
+                         for z in sorted(SERVICE_ZONES, key=lambda z: z.service_weekday)],
             "services": [{"value": s.value, "label": SERVICE_LABELS[s]} for s in Service],
             "zones": [{"key": z.key, "name": z.name, "mow_rate": z.mow_rate, "tax_rate": z.tax_rate,
                        "bbox": list(z.bbox), "boxes": [list(b) for b in z.boxes]}
@@ -433,6 +436,10 @@ def create_app(
                         if zone else outside_message()),
             # So the customer doesn't have to guess: an estimate for this area (they can change it; the crew confirms on site).
             "lawn_estimate": estimate_lawn(repo, zone) if zone else None,
+            # One area per day: the only dates this address can be booked.
+            "service_weekday": WEEKDAY_NAMES[zone.service_weekday] if zone else None,
+            "area_short": short_name(zone) if zone else None,
+            "service_days": open_area_days(zone, local_now(settings), settings, repo.count_active_jobs) if zone else [],
         }
 
     def scoped_sqft(add_ons, zone, client_sqft, repo):
@@ -466,6 +473,9 @@ def create_app(
         except (LawnSizeError, ValueError) as exc:
             raise HTTPException(status_code=422, detail=str(exc))
         return {"in_area": True, "zone_name": zone.name, "flat_fee": zone.mow_rate,
+                # one area per day: the dates this address can be booked (its area's weekday)
+                "service_weekday": WEEKDAY_NAMES[zone.service_weekday], "area_short": short_name(zone),
+                "service_days": open_area_days(zone, local_now(settings), settings, repo.count_active_jobs),
                 "service_label": order_label(body.service.value, list(q.add_ons)), **q.as_dict()}
 
     @app.post("/api/jobs", response_model=JobCreated, status_code=201)
@@ -497,6 +507,10 @@ def create_app(
         zone = find_zone(geo.lat, geo.lng)
         if zone is None:
             raise HTTPException(status_code=422, detail=outside_message())
+        try:                   # one area per day: the crew never drives Cleveland to Spring in a day
+            check_area_day(body.scheduled_date, zone)
+        except BookingRejected as exc:
+            raise HTTPException(status_code=409, detail=str(exc))
         # The server's own price, from the size (set here for yard / full property), tier and add-ons.
         try:
             lawn_sqft = check_sqft(scoped_sqft(body.add_ons, zone, body.lawn_sqft, repo))

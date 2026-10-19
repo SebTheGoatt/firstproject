@@ -16,6 +16,7 @@ import argparse
 import logging
 import sys
 from datetime import date, datetime, time, timedelta
+from collections import Counter
 
 from .manifest import send_manifest_for
 from .booking import local_now, next_service_day
@@ -23,6 +24,7 @@ from .config import Settings, get_settings
 from .db import Repository, make_repository
 from .routing import optimize_route
 from .routing.matrix import TravelMatrix
+from .zones import find_zone, zone_for_weekday
 
 log = logging.getLogger("nightly")
 
@@ -37,6 +39,18 @@ def compute_etas(start_at: datetime, legs: list[tuple[int, int]]) -> list[dateti
     return etas
 
 
+def one_area(jobs: list, day: date) -> tuple[list, list]:
+    """Hard rule: a route covers one area. The weekday's area (Saturday make-up: whichever area has the most
+    visits) stays on the route; anything else is left off for the owner to move, never driven across the county."""
+    keys = [getattr(find_zone(j.lat, j.lng), "key", None) for j in jobs]
+    area = zone_for_weekday(day.weekday())
+    key = area.key if area else (Counter(k for k in keys if k).most_common(1) or [(None, 0)])[0][0]
+    if key is None:
+        return jobs, []
+    keep = [j for j, k in zip(jobs, keys) if k == key]
+    return keep, [j for j, k in zip(jobs, keys) if k != key]
+
+
 def run_nightly(
     repo: Repository,
     settings: Settings,
@@ -44,7 +58,10 @@ def run_nightly(
     *,
     matrix: TravelMatrix | None = None,
 ) -> dict:
-    jobs = repo.list_routable_jobs(day)
+    jobs, off_area = one_area(repo.list_routable_jobs(day), day)
+    if off_area:
+        log.warning("%s: %d visit(s) outside the day's area left off the route: %s", day, len(off_area),
+                    ", ".join(j.id for j in off_area))
     if len(jobs) > settings.daily_job_quota:
         # Quota is enforced at intake; this only trips on manual inserts.
         log.warning("%d jobs exceed quota of %d for %s", len(jobs), settings.daily_job_quota, day)
@@ -91,6 +108,7 @@ def run_nightly(
         "total_miles": round(result.total_distance_m / 1609.344, 1),
         "drive_minutes": round(result.total_duration_s / 60),
         "matrix_source": result.matrix_source,
+        "off_area": [j.id for j in off_area],     # booked outside the day's area: move them (owner dashboard)
     }
     log.info("Route built: %s", summary)
     try:     # paper backup of the day in the owner's inbox (only when Resend is set up); never blocks the route

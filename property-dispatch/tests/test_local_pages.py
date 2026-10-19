@@ -5,6 +5,7 @@ import html
 import json
 import re
 import xml.etree.ElementTree as ET
+from datetime import date
 from decimal import Decimal
 from unittest.mock import patch
 from urllib.parse import urlparse
@@ -61,7 +62,9 @@ def test_every_area_page_renders_for_crawlers(client):
             assert all(html.escape(p) in t for p in a.places)
             assert all(z in t for z in a.zips)
             assert "8.25% Texas sales tax added" in t
-            assert "Thursday, October 15" in t          # next service day you can book, from NOW
+            first = {0: "Monday, October 19", 1: "Tuesday, October 20", 2: "Wednesday, October 21",
+                     3: "Thursday, October 15", 4: "Friday, October 16"}[zone_by_key(a.zone_key).service_weekday]
+            assert first in t                           # the area's own next service day, from NOW
             assert 'href="/book">Book online</a>' in t
             assert all(f'href="/local/{o.slug}"' in t for o in AREAS if o is not a)
             assert "Veteran-owned" in t
@@ -79,7 +82,8 @@ def test_meta_descriptions_and_intros_are_unique(client):
 def test_next_day_follows_the_5pm_cutoff(client):
     with patch("app.local_pages.local_now", return_value=NOW.replace(hour=18)):
         t = client.get("/local/klein").text
-    assert "Friday, October 16" in t and "Next-day booking closes at 5 PM." in t
+    # Klein is Tuesdays: the 5 PM cutoff only shuts tomorrow (Thursday), so the next Klein day is still the 20th.
+    assert "Tuesday, October 20" in t and "We mow Klein every Tuesday" in t and "5 PM the day before" in t
 
 
 def test_price_table_lists_every_yard_type_and_size(client):
@@ -236,10 +240,11 @@ def test_next_day_skips_days_that_are_already_full(client, repo, settings):
     from .test_api_flow import book
     settings.daily_job_quota = 2
     with patch("app.main.local_now", return_value=NOW):
-        assert book(client, "A", "0100").status_code == 201 and book(client, "B", "0101").status_code == 201
+        monday = date(2026, 10, 19)
+        assert book(client, "A", "0100", day=monday).status_code == 201 and book(client, "B", "0101", day=monday).status_code == 201
     with patch("app.local_pages.local_now", return_value=NOW):
         t = client.get("/local/spring").text
-    assert "Thursday, October 15" not in t and "Friday, October 16" in t      # the 15th is full
+    assert "Monday, October 19" not in t and "Monday, October 26" in t      # Spring's Monday the 19th is full
     for private in ("Customer A", "100 A Example Rd"):
         assert private not in t
 
