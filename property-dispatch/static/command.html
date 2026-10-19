@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Command View | {{BUSINESS_NAME}}</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#0A0A0C">
+  <link rel="icon" href="/favicon.ico">
+  <style>
+    :root {
+      --bg: #0A0A0C; --panel: #111014; --card: #16151A; --line: #1E1B4B; --line2: #2E1065;
+      --purple: #6D28D9; --purple-ink: #A78BFA; --cyan: #06B6D4; --gold: #D97706; --gold-ink: #F59E0B;
+      --green: #10B981; --red: #F87171; --text: #F1F5F9; --muted: #94A3B8; --dim: #64748B;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+      padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 32px max(16px, env(safe-area-inset-left)); }
+    ::selection { background: var(--purple); }
+    a { color: var(--cyan); }
+    .mono { font-family: var(--mono); }
+    header.top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px;
+      border-bottom: 1px solid var(--line); padding-bottom: 14px; margin-bottom: 18px; }
+    .title { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 1.05rem; font-weight: 900;
+      letter-spacing: 0.14em; text-transform: uppercase; color: var(--cyan); }
+    .pulse { width: 10px; height: 10px; border-radius: 50%; background: var(--cyan); animation: pulse 1.6s ease-in-out infinite; flex: none; }
+    @keyframes pulse { 50% { opacity: 0.25; } }
+    @media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
+    .sub { margin: 4px 0 0; font: 700 0.7rem/1.3 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip { background: var(--panel); border: 1px solid var(--line2); border-radius: 6px; padding: 8px 12px; text-align: right; min-width: 150px; }
+    .chip p { margin: 0; }
+    .k { font: 700 0.66rem/1.3 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); }
+    .v { font: 700 0.8rem/1.3 var(--mono); text-transform: uppercase; }
+    .ok { color: var(--green); } .warn { color: var(--gold-ink); } .bad { color: var(--red); } .cy { color: var(--cyan); } .pu { color: var(--purple-ink); }
+    main.grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+    @media (min-width: 1200px) { main.grid { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr); } }
+    @media (min-width: 760px) and (max-width: 1199px) { main.grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+      .center { grid-column: 1 / -1; order: -1; } }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px; min-width: 0; }
+    .panel h2 { margin: 0 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line);
+      font: 800 0.72rem/1.3 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; }
+    .center { display: grid; gap: 16px; min-width: 0; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+    .stat { position: relative; overflow: hidden; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px 14px; }
+    .stat::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--purple); }
+    .stat .big { margin: 6px 0 2px; font: 900 1.7rem/1.1 var(--mono); }
+    .stat .note { margin: 0; font: 600 0.66rem/1.3 var(--mono); text-transform: uppercase; color: var(--dim); }
+    .feed { display: grid; gap: 8px; max-height: 560px; overflow-y: auto; padding-right: 2px; }
+    .job { background: var(--card); border-left: 2px solid var(--purple); border-radius: 6px; padding: 10px 12px; }
+    .job.off { border-left-color: var(--red); }
+    .row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+    .tag { font: 700 0.62rem/1 var(--mono); padding: 4px 6px; border-radius: 4px; background: var(--line); white-space: nowrap; }
+    .job .what { margin: 6px 0 0; font-weight: 700; }
+    .job .foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; margin-top: 8px; padding-top: 6px;
+      border-top: 1px solid var(--line); font: 600 0.7rem/1.3 var(--mono); color: var(--muted); }
+    .chart-box { position: relative; height: 260px; }
+    table.grid { width: 100%; border-collapse: collapse; font: 600 0.74rem/1.35 var(--mono); }
+    table.grid th, table.grid td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--line); }
+    table.grid th { color: var(--dim); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.64rem; }
+    table.grid td.r, table.grid th.r { text-align: right; }
+    .box { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; }
+    .box p { margin: 0; }
+    .empty { color: var(--dim); font: 600 0.75rem/1.4 var(--mono); }
+    .msg { color: var(--muted); }
+    nav.links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+    nav.links a { font: 700 0.72rem/1 var(--mono); text-transform: uppercase; letter-spacing: 0.1em; text-decoration: none;
+      border: 1px solid var(--line2); border-radius: 6px; padding: 12px 14px; color: var(--cyan); }
+    button.refresh { font: 700 0.72rem/1 var(--mono); text-transform: uppercase; letter-spacing: 0.1em; color: var(--gold-ink);
+      background: transparent; border: 1px solid var(--gold); border-radius: 6px; padding: 12px 14px; min-height: 44px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div>
+      <h1 class="title"><span class="pulse" aria-hidden="true"></span>{{BUSINESS_NAME}} // Command</h1>
+      <p class="sub" id="sub">North Houston grid · loading…</p>
+    </div>
+    <div class="chips">
+      <div class="chip"><p class="k">CGL coverage</p><p class="v" id="chip-cgl">–</p></div>
+      <div class="chip"><p class="k">Card checkout</p><p class="v" id="chip-stripe">–</p></div>
+      <button class="refresh" type="button" id="refresh">Refresh</button>
+    </div>
+  </header>
+
+  <p class="msg" id="msg" hidden></p>
+
+  <main class="grid" id="grid" hidden>
+    <section class="panel" aria-labelledby="t-term">
+      <h2 id="t-term" class="pu">Booking terminal · next 7 days</h2>
+      <div class="feed" id="feed"></div>
+    </section>
+
+    <section class="center">
+      <div class="stats" id="stats"></div>
+      <div class="panel">
+        <h2 class="cy">Route load · next 7 days</h2>
+        <div class="chart-box"><canvas id="load" aria-label="Bookings per day against the daily limit" role="img"></canvas></div>
+        <table class="grid" aria-label="Route load by day">
+          <thead><tr><th>Day</th><th>Area</th><th class="r">Jobs</th><th class="r">Expected</th></tr></thead>
+          <tbody id="week"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="t-def">
+      <h2 id="t-def" class="warn">Liability &amp; field logs</h2>
+      <div id="defense"></div>
+    </section>
+  </main>
+
+  <nav class="links" aria-label="Owner tools">
+    <a href="/crew">Crew app</a>
+    <a href="/owner/readiness">Go-live checklist</a>
+  </nav>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
+  <script>
+    let token = null;
+    try { token = localStorage.getItem("crewToken"); } catch {}
+    const $ = (id) => document.getElementById(id);
+    const money = (n) => (n ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
+    const day = (iso, o) => new Date(iso + "T12:00:00").toLocaleDateString("en-US", o);
+    function el(tag, attrs = {}, ...kids) {
+      const e = document.createElement(tag);
+      for (const [k, v] of Object.entries(attrs)) k === "class" ? (e.className = v) : e.setAttribute(k, v);
+      e.append(...kids.filter((x) => x != null && x !== false));
+      return e;
+    }
+    const kv = (k, v, cls = "") => el("div", { class: "row" }, el("span", { class: "k" }, k), el("span", { class: "v " + cls }, v));
+    let chart;
+
+    function render(d) {
+      $("sub").textContent = `North Houston grid · ${day(d.date, { weekday: "long", month: "short", day: "numeric" })} · `
+        + (d.area_today ? `area today: ${d.area_today}` : "no route today");
+      const cgl = d.defense.cgl;
+      $("chip-cgl").textContent = cgl ? `${cgl} // on file` : "NOT ON FILE";
+      $("chip-cgl").className = "v " + (cgl ? "ok" : "bad");
+      $("chip-stripe").textContent = d.defense.stripe_live ? "LIVE" : "NOT SET UP";
+      $("chip-stripe").className = "v " + (d.defense.stripe_live ? "ok" : "warn");
+
+      const r = d.revenue_mtd;
+      $("stats").replaceChildren(
+        ...[["Collected MTD", money(r.collected), `${r.paid_count} paid of ${r.bookings} visits`, ""],
+            ["Expected MTD", money(r.expected), "all visits this month", "cy"],
+            ["Still owed", money(r.unpaid), "unpaid visits this month", r.unpaid > 0 ? "warn" : "ok"],
+            ["Sales tax held", money(r.sales_tax), "collected, owed to Texas", "pu"]]
+          .map(([k, v, n, c]) => el("div", { class: "stat" }, el("p", { class: "k" }, k), el("p", { class: "big " + c }, v), el("p", { class: "note" }, n))));
+
+      $("feed").replaceChildren(...(d.terminal.length ? d.terminal.map((j) => el("div", { class: "job" + (j.off_area ? " off" : "") },
+        el("div", { class: "row" },
+          el("span", { class: "mono", style: "font-weight:700;font-size:.75rem" }, `#${j.ref} // ${j.area.toUpperCase()}`),
+          el("span", { class: "tag " + (j.status === "DONE" ? "ok" : j.status === "ROUTED" ? "cy" : "warn") }, j.status)),
+        el("p", { class: "what" }, [j.sqft ? `${j.sqft.toLocaleString()} sq ft` : "size TBD", j.scope].filter(Boolean).join(" // ")),
+        el("div", { class: "foot" },
+          el("span", {}, day(j.date, { weekday: "short", month: "numeric", day: "numeric" })),
+          el("span", { class: j.paid ? "ok" : "" }, `${j.pay === "card" ? "Card" : "Cash"} ${j.paid ? "cleared" : "due"}: ${money(j.amount)}`),
+          j.off_area ? el("span", { class: "bad" }, "WRONG AREA DAY: MOVE") : null)))
+        : [el("p", { class: "empty" }, "No bookings in the next 7 days.")]));
+
+      $("week").replaceChildren(...d.week.map((w) => el("tr", {},
+        el("td", {}, day(w.date, { weekday: "short", month: "numeric", day: "numeric" })),
+        el("td", { class: w.area ? "cy" : "" }, w.area || "Off"),
+        el("td", { class: "r" }, `${w.jobs}/${w.quota}`),
+        el("td", { class: "r" }, money(w.expected)))));
+      drawChart(d.week);
+
+      const def = d.defense;
+      const photos = def.photo_log;
+      $("defense").replaceChildren(
+        el("div", { class: "box" },
+          kv("CGL insurance", def.cgl ? `${def.cgl} ON FILE` : "NOT ON FILE", def.cgl ? "ok" : "bad"),
+          kv("Crew background checks", def.background_checked ? "CONFIRMED" : "NOT CONFIRMED", def.background_checked ? "ok" : "warn"),
+          kv("Stripe disputes", "NOT TRACKED", "warn"),
+          kv("Mower fleet / hours", "NOT TRACKED", "warn"),
+          kv("TDA license", "N/A", "cy"),
+          el("p", { class: "k", style: "margin-top:8px;text-transform:none;letter-spacing:0" }, def.tda)),
+        el("p", { class: "k", style: "margin:6px 0 8px" }, "Pre/post photo log · today"),
+        photos.length ? el("table", { class: "grid" },
+          el("thead", {}, el("tr", {}, el("th", {}, "Visit"), el("th", {}, "Before"), el("th", {}, "After"))),
+          el("tbody", {}, ...photos.map((p) => el("tr", {},
+            el("td", {}, `#${p.ref}`),
+            el("td", { class: p.before ? "ok" : (p.done ? "bad" : "warn") }, p.before ? "LOGGED" : "MISSING"),
+            el("td", { class: p.after ? "ok" : (p.done ? "bad" : "warn") }, p.after ? "LOGGED" : (p.done ? "MISSING" : "PENDING"))))))
+          : el("p", { class: "empty" }, "No visits today."));
+    }
+
+    function drawChart(week) {
+      if (!window.Chart) return;
+      const labels = week.map((w) => `${day(w.date, { weekday: "short" })} ${w.area ? w.area.split(" ")[0] : ""}`.trim());
+      const data = { labels, datasets: [
+        { type: "bar", label: "Jobs booked", data: week.map((w) => w.jobs), backgroundColor: "rgba(109, 40, 217, 0.55)",
+          borderColor: "#6D28D9", borderWidth: 1, borderRadius: 3 },
+        { type: "line", label: "Daily limit", data: week.map((w) => w.quota), borderColor: "#D97706", borderDash: [4, 4],
+          pointRadius: 0, borderWidth: 2 },
+      ] };
+      const grid = { color: "#1E1B4B" }, ticks = { color: "#94A3B8", font: { family: "monospace", size: 10 } };
+      if (chart) { chart.data = data; chart.update(); return; }
+      chart = new Chart($("load"), { data, options: { responsive: true, maintainAspectRatio: false, animation: { duration: 400 },
+        plugins: { legend: { labels: { color: "#94A3B8", font: { family: "monospace", size: 10 }, boxWidth: 10 } } },
+        scales: { x: { grid, ticks }, y: { grid, ticks: { ...ticks, precision: 0 }, beginAtZero: true } } } });
+    }
+
+    async function load() {
+      if (!token) { $("msg").hidden = false; $("msg").innerHTML = 'Sign in as the owner in the <a href="/crew">crew app</a> first.'; return; }
+      const res = await fetch("/api/owner/command", { headers: { "X-Crew-Token": token } }).catch(() => null);
+      if (!res || !res.ok) {
+        $("msg").hidden = false;
+        $("msg").textContent = res && res.status === 403 ? "Only the owner can see this." : "Couldn't load. Sign in again in the crew app.";
+        return;
+      }
+      $("msg").hidden = true; $("grid").hidden = false;
+      render(await res.json());
+    }
+    $("refresh").addEventListener("click", load);
+    window.addEventListener("load", load);
+    setInterval(() => { if (!document.hidden) load(); }, 60000);
+  </script>
+</body>
+</html>
