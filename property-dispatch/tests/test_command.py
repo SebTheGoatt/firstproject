@@ -21,7 +21,8 @@ def test_command_view_reports_bookings_and_never_invents_numbers(client, setting
     assert tomorrow["jobs"] == 1 and tomorrow["area"] == "Colony Ridge"       # Thursday's area
     (row,) = d["terminal"]
     assert row["status"] == "PENDING DISPATCH" and row["area"] == "Spring" and row["off_area"] is True
-    assert "Customer A" not in str(d) and "Example Rd" not in str(d)          # no names or addresses on this screen
+    assert row["name"] == "Customer A" and row["move_to"] == "2026-10-19"     # INTERCEPT target: Spring's next Monday
+    assert d["next_route"] == {"date": TOMORROW.isoformat(), "built": False, "stops": 0}
     df = d["defense"]
     assert df["cgl"] is None and df["stripe_disputes"] is None and df["fleet"] is None   # not on file / not tracked
     assert df["tda"].startswith("N/A")
