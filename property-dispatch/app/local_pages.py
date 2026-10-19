@@ -179,7 +179,7 @@ def business_node(settings: Settings, site: str) -> dict:
             "legalName": settings.legal_name, "url": f"{site}/",
             "description": "Veteran-owned lawn mowing with bin and gutter cleaning add-ons, booked online, "
                            "on planned neighborhood routes north and northeast of Houston.",
-            "image": f"{site}/static/icons/social.jpg",
+            "image": f"{site}/static/icons/post-one-share.jpg",
             "address": {"@type": "PostalAddress", "addressLocality": "Spring", "addressRegion": "TX",
                         "postalCode": "77373", "addressCountry": "US"},
             "areaServed": [{"@type": "AdministrativeArea", "name": f"{a.city}, TX"} for a in AREAS],
@@ -263,7 +263,11 @@ def layout(settings: Settings, version: str, *, title: str, description: str, bo
   <link rel="canonical" href="{esc(canonical)}">
   <meta property="og:url" content="{esc(canonical)}">"""
     if og_image:
-        meta += f'\n  <meta property="og:image" content="{esc(og_image)}">'
+        meta += f'''
+  <meta property="og:image" content="{esc(og_image)}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">'''
     areas = "\n".join(f'        <a href="/local/{a.slug}">{esc(a.city)}</a>' for a in AREAS)
     return f"""<!doctype html>
 <html lang="en">
@@ -513,7 +517,7 @@ def area_html(settings: Settings, version: str, area: Area, site: str, day: date
                    f"Flat prices from {dollars(low)} a visit before tax. Veteran-owned. Book online.")
     ld = f'\n  <script type="application/ld+json">{script_json(structured_data(settings, area, site))}</script>'
     return layout(settings, version, title=title, description=description, body=body, canonical=page_url,
-                  og_image=f"{site}/static/icons/social.jpg", head_extra=ld, page="area")
+                  og_image=f"{site}/static/icons/post-one-share.jpg", head_extra=ld, page="area")
 
 
 def area_links(areas) -> str:
@@ -551,7 +555,7 @@ def index_html(settings: Settings, version: str, site: str) -> str:
     cities = joined(f"{a.city}" for a in AREAS)
     return layout(settings, version, title=f"Areas We Serve | {settings.business_name}",
                   description=f"Lawn mowing in {cities}, TX: the neighborhoods we cover and flat per-visit prices for each area.",
-                  body=body, canonical=f"{site}/local", og_image=f"{site}/static/icons/social.jpg", page="index")
+                  body=body, canonical=f"{site}/local", og_image=f"{site}/static/icons/post-one-share.jpg", page="index")
 
 
 def not_found_html(settings: Settings, version: str) -> str:
