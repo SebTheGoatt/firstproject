@@ -2,6 +2,8 @@
 
     GET /local                    "Areas we serve": a link to every area page
     GET /local/{area}             one page per area we mow (spring, klein, new-caney, cleveland, colony-ridge)
+    GET /local/{area}/{hood}      one page per neighborhood we mow in that area (hand-written, see HOODS)
+    GET /local/{hood}             301 to /local/{area}/{hood}
     GET /local/{area}/{anything}  301 to /local/{area}: street-level links fold into the area page
     GET /sitemap.xml              the public pages as absolute URLs (robots.txt points here)
 
@@ -15,7 +17,8 @@ hand-written AREAS table below, the price list and settings. The only thing they
 database is how many jobs are booked on a day (so "next day you can book" skips full days).
 We also do NOT make a page per street from bookings: that would publish where customers live,
 and Google treats mass-produced, near-duplicate location pages as doorway pages (scaled
-content abuse). One real page per area we actually serve.
+content abuse). One real page per area we actually serve, plus a page for each named neighborhood
+in HOODS: a short hand-written list of subdivisions inside the zone boxes, each with its own text.
 """
 
 import html
@@ -81,6 +84,55 @@ ALIASES = {"splendora": "new-caney", "plum-grove": "cleveland"}
 for _a in AREAS:  # fail fast on a typo'd zone key
     if zone_by_key(_a.zone_key) is None:
         raise ValueError(f"{_a.slug}: unknown zone {_a.zone_key}")
+
+
+@dataclass(frozen=True)
+class Hood:
+    slug: str
+    area: str                   # the Area slug it belongs to
+    name: str                   # must also be listed in that Area's places
+    intro: str                  # written for this page only: where it is and what a visit there looks like
+
+
+# Only subdivisions named in the zone boxes of app/zones.py. No streets, nothing from bookings.
+HOODS: tuple[Hood, ...] = (
+    Hood("woodsons-reserve", "spring", "Woodson's Reserve",
+         "Woodson's Reserve is the center of our Spring route, near SH-99 and Rayford Rd. Monday is Spring day, so "
+         "every lawn we mow here is cut the same day, one street after the next, by a crew that stays in the area."),
+    Hood("the-canopies", "new-caney", "The Canopies",
+         "The Canopies sits on the west side of our New Caney route. The homes are newer and close together, which keeps "
+         "the drive between lawns short and the crew's time on mowing."),
+    Hood("porters-mill", "new-caney", "Porters Mill",
+         "Porters Mill is one of the New Caney developments on our Wednesday route, along with The Canopies and "
+         "Splendora. Book once for a single mow, or keep booking on Wednesdays; there is no contract either way."),
+    Hood("grand-oaks-reserve", "cleveland", "Grand Oaks Reserve",
+         "Grand Oaks Reserve is on our Friday Cleveland route with the new construction off FM 1010 and SH-105. "
+         "New-build yards often have fresh sod and bare edges, so tell us in the booking notes if anything needs extra care."),
+    Hood("santa-fe", "colony-ridge", "Santa Fe",
+         "Santa Fe is the southern end of our Colony Ridge route. Colony Ridge lots often run large, so the booking form lets you "
+         "choose yard only or the full property, and the price you see is locked in."),
+    Hood("grand-san-jacinto", "colony-ridge", "Grand San Jacinto",
+         "Grand San Jacinto sits between Santa Fe and Montebello on our Thursday Colony Ridge route. Pick yard only "
+         "to keep the area around the house mowed, or full property for the whole lot."),
+    Hood("montebello", "colony-ridge", "Montebello",
+         "Montebello is in the middle of our Colony Ridge route. Thursday is Colony Ridge day, so the "
+         "crew works through Montebello and the sections around it without driving back and forth."),
+    Hood("camino-real", "colony-ridge", "Camino Real",
+         "Camino Real is on the north side of our Colony Ridge route. With neighbors booked close by, "
+         "the mowing price drops automatically; the booking form shows the discount before you book."),
+    Hood("bella-vista", "colony-ridge", "Bella Vista",
+         "Bella Vista is the farthest north section on our Colony Ridge route. It is still mowed on Thursdays with "
+         "the rest of Colony Ridge, so you get the same price and the same day as everyone else in the area."),
+)
+HOOD_BY_SLUG = {h.slug: h for h in HOODS}
+
+for _h in HOODS:  # fail fast on a neighborhood that isn't on its area's list
+    if _h.area not in AREA_BY_SLUG or _h.name not in AREA_BY_SLUG[_h.area].places:
+        raise ValueError(f"{_h.slug}: not one of {_h.area}'s places")
+
+
+def hoods_in(area: Area) -> list[Hood]:
+    return [h for h in HOODS if h.area == area.slug]
 
 
 def resolve(slug: str) -> str | None:
@@ -427,7 +479,9 @@ def area_html(settings: Settings, version: str, area: Area, site: str, day: date
         ("“Full property” is priced at", f"about {full:,} sq ft ({bracket_profile(full)}): {full_prices} before tax"),
         ("“Yard only” is priced at", "the typical yard size here; the booking form shows it for your address"),
         ("Sales tax", f"{percent(zone.tax_rate)}%")))
-    places = "".join(f"<li>{esc(p)}</li>" for p in area.places)
+    hood_for = {h.name: h for h in hoods_in(area)}
+    places = "".join(f'<li><a href="/local/{area.slug}/{hood_for[p].slug}">{esc(p)}</a></li>' if p in hood_for
+                     else f"<li>{esc(p)}</li>" for p in area.places)
     trust = "".join(f"<li>{icon(i)}<div><strong>{esc(t)}</strong><span>{esc(d)}</span></div></li>"
                     for i, t, d in trust_items(settings))
     others = area_links(a for a in AREAS if a is not area)
@@ -521,6 +575,95 @@ def area_html(settings: Settings, version: str, area: Area, site: str, day: date
     description = (f"Lawn mowing in {area.city}, TX: {joined(area.places[:3])}. "
                    f"Flat prices from {dollars(low)} a visit before tax. Veteran-owned. Book online.")
     ld = f'\n  <script type="application/ld+json">{script_json(structured_data(settings, area, site))}</script>'
+    return layout(settings, version, title=title, description=description, body=body, canonical=page_url,
+                  og_image=f"{site}/static/icons/post-one-share.jpg", head_extra=ld, page="area")
+
+
+def hood_structured_data(settings: Settings, area: Area, hood: Hood, site: str) -> dict:
+    """The business + this neighborhood's mowing Service + breadcrumbs (no prices list: the area page carries it)."""
+    page_url = f"{site}/local/{area.slug}/{hood.slug}"
+    low, high = price_range()
+    return {"@context": "https://schema.org", "@graph": [
+        business_node(settings, site),
+        {"@type": "Service", "@id": f"{page_url}#service", "serviceType": "Lawn mowing",
+         "name": f"Lawn mowing in {hood.name}, {area.city}, TX", "url": page_url, "provider": {"@id": f"{site}/#business"},
+         "areaServed": {"@type": "Place", "name": f"{hood.name}, {area.city}, TX",
+                        "containedInPlace": {"@type": "City", "name": f"{area.city}, TX"}},
+         "offers": {"@type": "AggregateOffer", "priceCurrency": "USD", "lowPrice": f"{low:.2f}", "highPrice": f"{high:.2f}"}},
+        {"@type": "BreadcrumbList", "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Home", "item": f"{site}/"},
+            {"@type": "ListItem", "position": 2, "name": "Areas we serve", "item": f"{site}/local"},
+            {"@type": "ListItem", "position": 3, "name": f"{area.city}, TX", "item": f"{site}/local/{area.slug}"},
+            {"@type": "ListItem", "position": 4, "name": hood.name, "item": page_url}]},
+    ]}
+
+
+def hood_html(settings: Settings, version: str, hood: Hood, site: str, day: date) -> str:
+    area = AREA_BY_SLUG[hood.area]
+    zone = zone_by_key(area.zone_key)
+    name, city = esc(hood.name), esc(area.city)
+    weekday = WEEKDAY_NAMES[zone.service_weekday]
+    page_url = f"{site}/local/{area.slug}/{hood.slug}"
+    low, _ = price_range()
+    full = zone.full_property_sqft
+    sizes = "".join(f"<li><strong>{esc(size)}</strong><span>{dollars(prices['STANDARD'])} before tax</span></li>"
+                    for size, _, prices in price_rows()[:3])
+    neighbors = [h for h in hoods_in(area) if h is not hood]
+    nearby = "".join(f'<li><a href="/local/{area.slug}/{h.slug}">Lawn mowing in {esc(h.name)}</a></li>' for h in neighbors)
+    nearby_block = f"""
+        <h3>Also on the {city} route</h3>
+        <ul class="area-links">{nearby}</ul>""" if neighbors else ""
+
+    body = f"""
+    <section class="sp-hero" aria-labelledby="hood-title">
+      <div class="site-wrap sp-hero-grid">
+        <div class="sp-hero-copy">
+          {crumbs([("Home", "/"), ("Areas we serve", "/local"), (area.city, f"/local/{area.slug}"), (hood.name, None)])}
+          <p class="eyebrow">Veteran-owned · {city}, TX · {weekday}s</p>
+          <h1 id="hood-title">Lawn mowing in {name}</h1>
+          <p class="lede">{esc(hood.intro)}</p>
+          <div class="hero-actions">
+            <a class="btn btn-lg sp-btn-fresh" href="/book">Book online</a>
+            <a class="btn btn-lg sp-btn-line" href="/local/{area.slug}#prices">See all prices</a>
+          </div>
+        </div>
+        <aside class="sp-card next-open" aria-label="Next service day you can book">
+          <p class="sp-kicker">Next day you can book</p>
+          <p class="next-day">{day:%A, %B} {day.day}</p>
+          <p class="hint">{name} is mowed every {weekday} with the rest of {city}.
+            Booking closes at {hour_words(settings.freeze_hour)} the day before.</p>
+          <a class="btn btn-primary btn-block" href="/book">Book this day</a>
+        </aside>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="cost-title">
+      <div class="site-wrap">
+        <h2 id="cost-title">What a mow costs in {name}</h2>
+        <p class="section-lede">A flat price per visit from {dollars(low)}, set by your lawn size and yard type. You see the
+          full price with tax before you book.</p>
+        <ul class="local-list">{sizes}
+          <li><strong>“Full property” here</strong><span>priced at about {full:,} sq ft ({esc(bracket_profile(full))})</span></li>
+        </ul>
+        <p class="hint">Standard yards shown. Neighbors in {name} already on the route lower your price: {percent(density_pct(2))}% off
+          with 2 or more booked within half a mile, {percent(density_pct(5))}% with 5 or more.
+          <a href="/local/{area.slug}#prices">Full price table and add-ons</a>.</p>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="hood-more-title">
+      <div class="site-wrap">
+        <h2 id="hood-more-title">More about our {city} route</h2>
+        <p class="section-lede">{esc(area.intro)}</p>
+        <p><a class="btn btn-outline" href="/local/{area.slug}">Lawn mowing in {city}, TX</a></p>{nearby_block}
+      </div>
+    </section>
+{cta_band(f"Put your {hood.name} lawn on the route.")}"""
+
+    title = f"Lawn Mowing in {hood.name}, {area.city} TX | {settings.business_name}"
+    description = (f"Lawn mowing in {hood.name}, {area.city}, TX, every {weekday}. "
+                   f"Flat prices from {dollars(low)} a visit before tax. Veteran-owned. Book online.")
+    ld = f'\n  <script type="application/ld+json">{script_json(hood_structured_data(settings, area, hood, site))}</script>'
     return layout(settings, version, title=title, description=description, body=body, canonical=page_url,
                   og_image=f"{site}/static/icons/post-one-share.jpg", head_extra=ld, page="area")
 
@@ -628,6 +771,8 @@ def register_local_pages(app: FastAPI, settings: Settings, version: str = "") ->
     @app.get("/local/{slug}", include_in_schema=False)
     def area_page(slug: str, request: Request):
         target = resolve(slug)
+        if target is None and (hood := HOOD_BY_SLUG.get(slug.lower())):
+            return RedirectResponse(f"/local/{hood.area}/{hood.slug}", status_code=301)
         if target is None:
             return html_page(not_found_html(settings, version), 404)
         if target != slug:
@@ -637,11 +782,18 @@ def register_local_pages(app: FastAPI, settings: Settings, version: str = "") ->
                                                  zone_by_key(AREA_BY_SLUG[target].zone_key))))
 
     @app.get("/local/{slug}/{rest:path}", include_in_schema=False)
-    def street_page(slug: str, rest: str):
-        # Street-level URLs fold into the area page: we never publish streets.
+    def street_page(slug: str, rest: str, request: Request):
+        # A neighborhood we wrote a page for gets that page; any other street-level URL folds into the
+        # area page: we never publish streets.
         target = resolve(slug)
         if target is None:
             return html_page(not_found_html(settings, version), 404)
+        hood = HOOD_BY_SLUG.get(rest.strip("/").lower())
+        if hood and hood.area == target and slug == target and rest == hood.slug:
+            return html_page(hood_html(settings, version, hood, site_url(settings, request),
+                                       next_open_day(settings, request.app.state.repo, zone_by_key(AREA_BY_SLUG[target].zone_key))))
+        if hood:
+            return RedirectResponse(f"/local/{hood.area}/{hood.slug}", status_code=301)
         return RedirectResponse(f"/local/{target}", status_code=301)
 
     @app.get("/local/{rest:path}", include_in_schema=False)
@@ -655,7 +807,8 @@ def register_local_pages(app: FastAPI, settings: Settings, version: str = "") ->
     @app.get("/sitemap.xml", include_in_schema=False)
     def sitemap(request: Request):
         site = site_url(settings, request)
-        paths = ["/", "/book", "/team", "/local", *(f"/local/{a.slug}" for a in AREAS), "/about", "/privacy", "/terms", "/refunds"]
+        paths = ["/", "/book", "/team", "/local", *(f"/local/{a.slug}" for a in AREAS),
+                 *(f"/local/{h.area}/{h.slug}" for h in HOODS), "/about", "/privacy", "/terms", "/refunds"]
         urls = "".join(f"  <url><loc>{xml_escape(site + p)}</loc></url>\n" for p in paths)
         body = ('<?xml version="1.0" encoding="UTF-8"?>\n'
                 f'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n{urls}</urlset>\n')

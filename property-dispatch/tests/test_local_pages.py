@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 
 from fastapi.testclient import TestClient
 
-from app.local_pages import AREAS
+from app.local_pages import AREAS, HOODS
 from app.main import create_app
 from app.local_pages import SAMPLE_SIZES, dollars
 from app.pricing import MAX_SQFT, YARD_TYPES, yield_mow_fee
@@ -22,6 +22,7 @@ from .conftest import FakeGeocoder
 from .test_api_flow import NOW, TOMORROW, book
 
 AREA_PATHS = [f"/local/{a.slug}" for a in AREAS]
+HOOD_PATHS = [f"/local/{h.area}/{h.slug}" for h in HOODS]
 LD_JSON = re.compile(r'<script type="application/ld\+json">(.*?)</script>', re.S)
 
 
@@ -177,7 +178,7 @@ def test_sitemap_is_valid_xml_with_every_public_page(client):
     assert r.status_code == 200 and r.headers["content-type"].startswith("application/xml")
     ns = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
     locs = [e.text for e in ET.fromstring(r.content).findall("s:url/s:loc", ns)]
-    assert locs == [f"http://testserver{p}" for p in ("/", "/book", "/team", "/local", *AREA_PATHS, "/about", "/privacy", "/terms", "/refunds")]
+    assert locs == [f"http://testserver{p}" for p in ("/", "/book", "/team", "/local", *AREA_PATHS, *HOOD_PATHS, "/about", "/privacy", "/terms", "/refunds")]
     for loc in locs:
         assert client.get(urlparse(loc).path, follow_redirects=False).status_code == 200, loc
 
@@ -270,10 +271,10 @@ def test_each_area_states_its_own_full_property_size_and_county(client):
 
 
 def test_meta_descriptions_fit_in_search_results(client):
-    for a in AREAS:
-        t = client.get(f"/local/{a.slug}").text
+    for path in AREA_PATHS + HOOD_PATHS:
+        t = client.get(path).text
         d = html.unescape(re.search(r'<meta name="description" content="([^"]+)"', t).group(1))
-        assert len(d) <= 160, (a.slug, len(d))
+        assert len(d) <= 160, (path, len(d))
 
 
 def test_real_charity_names_appear_only_once_the_owner_sets_them(client, settings, repo):
@@ -314,3 +315,43 @@ def test_area_pages_point_to_the_home_address_check(client):
     t = client.get("/local/klein").text
     assert 'href="/#area-checker"' in t and 'href="/#areas"' not in t
     assert t.count('<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">') == 3      # one icon per trust line
+
+
+def test_every_neighborhood_page_renders_with_its_own_text(client):
+    seen = set()
+    for h, path in zip(HOODS, HOOD_PATHS):
+        r = client.get(path)
+        assert r.status_code == 200 and "{{" not in r.text, path
+        assert f"<h1 id=\"hood-title\">Lawn mowing in {html.escape(h.name)}</h1>" in r.text
+        assert html.escape(h.intro) in r.text and h.intro not in seen
+        seen.add(h.intro)
+        area = next(a for a in AREAS if a.slug == h.area)
+        day = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"][zone_by_key(area.zone_key).service_weekday]
+        assert f"every {day}" in r.text and f'href="/local/{area.slug}"' in r.text
+        assert f'<link rel="canonical" href="http://testserver{path}">' in r.text
+        crumbs = by_type(json_ld(r.text))["BreadcrumbList"]["itemListElement"]
+        assert [c["name"] for c in crumbs] == ["Home", "Areas we serve", f"{area.city}, TX", h.name]
+
+
+def test_neighborhoods_are_inside_served_areas_only(client):
+    for h in HOODS:
+        area = next(a for a in AREAS if a.slug == h.area)
+        assert h.name in area.places
+    for path in ("/local/the-woodlands", "/local/spring/the-woodlands", "/local/oak-ridge-north"):
+        r = client.get(path, follow_redirects=False)
+        assert r.status_code in (301, 404) and "woodlands" not in r.headers.get("location", ""), path
+
+
+def test_area_pages_link_their_neighborhoods(client):
+    page = client.get("/local/colony-ridge").text
+    for slug in ("santa-fe", "grand-san-jacinto", "montebello", "camino-real", "bella-vista"):
+        assert f'href="/local/colony-ridge/{slug}"' in page
+
+
+def test_neighborhood_shortcuts_redirect_to_the_canonical_page(client):
+    for path, target in (("/local/woodsons-reserve", "/local/spring/woodsons-reserve"),
+                         ("/local/klein/the-canopies", "/local/new-caney/the-canopies"),
+                         ("/local/splendora/porters-mill", "/local/new-caney/porters-mill"),
+                         ("/local/cleveland/Grand-Oaks-Reserve", "/local/cleveland/grand-oaks-reserve")):
+        r = client.get(path, follow_redirects=False)
+        assert r.status_code == 301 and r.headers["location"] == target, path
