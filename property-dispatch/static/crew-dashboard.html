@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Route | {{BUSINESS_NAME}}</title>
   <meta name="robots" content="noindex">
-  <meta name="theme-color" content="#060709">
+  <meta name="theme-color" content="#FFFFFF">
   <link rel="manifest" href="/crew.webmanifest">
   <link rel="icon" href="/favicon.ico">
   <link rel="preload" href="/static/fonts/big-shoulders-display-800.woff2" as="font" type="font/woff2" crossorigin>
@@ -150,7 +150,7 @@
     .note-box .btn { margin-top: var(--gap-s); }
     .note-saved { font-size: 1rem; color: var(--muted); }
 
-    /* SCOPE ENFORCEMENT: high contrast, impossible to miss in the sun. */
+    /* What to mow: high contrast, impossible to miss in the sun. */
     .scope { margin-top: var(--gap); padding: 12px 14px; border-radius: 12px; border: 3px solid; }
     .scope p { margin: 0; }
     .scope-title { font: 800 1rem/1.2 var(--mono); letter-spacing: 0.1em; margin-bottom: 6px !important; }
@@ -243,32 +243,71 @@
     .nav-arrive.near { background: var(--brand-deep); }
     .nav-me { width: 22px; height: 22px; border-radius: 50%; background: #1a73e8; border: 3px solid #fff; box-shadow: 0 0 0 6px rgb(26 115 232 / 0.25); }
 
-    /* ===== Stark HUD skin: obsidian, graphite glass, gold/cyan etched edges, JetBrains Mono readouts =====
-       The stop card you're working stays light with black text so it reads in full sun. */
-    @font-face { font-family: "JetBrains Mono"; font-weight: 400; font-display: swap; src: url(/static/fonts/jetbrains-mono-400.woff2) format("woff2"); }
-    @font-face { font-family: "JetBrains Mono"; font-weight: 700; font-display: swap; src: url(/static/fonts/jetbrains-mono-700.woff2) format("woff2"); }
-    :root { --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-      --hud-bg: rgb(17 20 26 / 0.82); --stark-gold: #D97706; --stark-cyan: #06B6D4; --stark-bg: #060709; }
-    body.dash { background: var(--stark-bg); }
-    .hud { background: var(--hud-bg); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
-      border-bottom: 1px solid var(--stark-gold); box-shadow: 0 1px 0 rgb(6 182 212 / 0.35); }
-    .readout { border-left-color: rgb(6 182 212 / 0.45); }
-    .readout span, .readout b, .hud-link, .progress-line, .workload, .route-seq h2 { font-family: var(--mono); }
-    .readout span { letter-spacing: 0.14em; }
-    .readout b { font-weight: 700; font-size: clamp(0.82rem, 3.6vw, 1.1rem); letter-spacing: 0; }
-    .readout span { font-size: 0.6rem; }
-    .hud-readouts { gap: clamp(6px, 2vw, 32px); }
-    .hud-timeline { grid-column: 1 / -1; display: flex; align-items: center; gap: 0; margin: 0; padding: 0 0 2px; list-style: none;
+    /* ===== Daylight skin: white bars and sheets on Parade Ground, Ink text, 1px rules, no glow or glass.
+       Field Green marks progress and the stop you're on; the big button keeps its step colors so it reads in full sun. */
+    :root { --hud-bg: #ffffff; --line-l: #E3E6DF; --track: #EDEFEA; }
+    body.dash { background: var(--bg); color: var(--text); }
+    .hud, .deck, .main-cta, .state-wrap { --focus: var(--brand); }
+    .hud { background: var(--hud-bg); color: var(--text); border-bottom: 1px solid var(--line-l); }
+    .readout { border-left: 1px solid var(--line-l); }
+    .readout span { font: 500 0.75rem/1.2 var(--font-body); letter-spacing: 0; text-transform: none; color: var(--muted); }
+    .readout b { font: 700 clamp(0.95rem, 3.8vw, 1.2rem)/1.2 var(--font-body); letter-spacing: 0; }
+    .readout.status b::before { background: var(--border-strong); }
+    .readout.status[data-state="active"] b { color: var(--brand-strong); }
+    .readout.status[data-state="active"] b::before, .readout.status[data-state="done"] b::before { background: var(--brand); }
+    .hud-link { border-color: var(--border-strong); color: var(--text); font-weight: 600; }
+    .hud-timeline { grid-column: 1 / -1; display: flex; align-items: center; gap: 0; margin: 0; padding: 0 0 4px; list-style: none;
       overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
     .hud-timeline::-webkit-scrollbar { display: none; }
     .hud-timeline li { display: flex; align-items: center; flex: none; }
-    .hud-timeline li + li::before { content: ""; width: 14px; height: 2px; background: rgb(6 182 212 / 0.35); }
-    .hud-timeline li.is-done + li::before { background: #10B981; }
-    .tl-dot { min-width: 40px; min-height: 36px; padding: 0 8px; border-radius: 3px; border: 1px solid rgb(6 182 212 / 0.5);
-      background: rgb(6 7 9 / 0.6); color: #E2E8F0; font: 700 0.8rem/1 var(--mono); letter-spacing: 0.04em; cursor: pointer; }
-    .hud-timeline .is-done .tl-dot { border-color: #10B981; color: #10B981; }
-    .hud-timeline .is-active .tl-dot { border-color: var(--stark-gold); background: var(--stark-gold); color: #060709; box-shadow: 0 0 12px rgb(217 119 6 / 0.55); }
-    .deck { border-top: 1px solid var(--stark-gold); }
+    .hud-timeline li + li::before { content: ""; width: 12px; height: 2px; background: var(--line-l); }
+    .hud-timeline li.is-done + li::before { background: var(--brand); }
+    .tl-dot { min-width: 40px; min-height: 36px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--border-strong);
+      background: var(--surface); color: var(--text); font: 600 0.9rem/1 var(--font-body); font-variant-numeric: tabular-nums; cursor: pointer; }
+    .hud-timeline .is-done .tl-dot { border-color: var(--brand-soft); background: var(--brand-soft); color: var(--brand-strong); }
+    .hud-timeline .is-active .tl-dot { border-color: var(--brand); background: var(--brand); color: #fff; }
+    .empty-state h2 { font: 700 1.5rem/1.25 var(--font-body); text-transform: none; letter-spacing: -0.01em; }
+    .empty-state p { color: var(--muted); }
+    .deck, .main-cta { background: var(--bg); border-top: 1px solid var(--line-l); }
+    .deck { box-shadow: 0 -1px 0 var(--line-l); }
+    .deck-handle .grip { background: var(--border-strong); }
+    @media (min-width: 680px) { .main-cta { border-color: var(--line-l); } }
+    @media (orientation: landscape) and (min-width: 640px), (min-width: 900px) {
+      .deck, .main-cta { border-right: 1px solid var(--line-l); }
+      .deck { box-shadow: none; }
+    }
+    .stop-card { border: 2px solid var(--brand); box-shadow: none; background: var(--surface); }
+    .stop-card.all-done { border-color: var(--brand); }
+    .stop-kicker { font: 600 0.95rem/1.3 var(--font-body); text-transform: none; letter-spacing: 0; color: var(--brand-strong); }
+    .scope-title { font: 700 1rem/1.2 var(--font-body); letter-spacing: 0; }
+    .scope.scope-full { box-shadow: none; border-color: #2E7D4F; background: #EDF7F0; }
+    .deck-metrics { background: var(--surface); border-color: var(--line-l); }
+    .progress-line b { font: 700 1.3rem/1 var(--font-body); font-variant-numeric: tabular-nums; }
+    .route-bar { background: var(--track); }
+    .route-bar span { background: var(--brand); }
+    .workload { color: var(--muted); }
+    .route-seq h2 { font: 700 1.2rem/1.25 var(--font-body); text-transform: none; letter-spacing: 0; }
+    .route-seq ol::before { background: var(--line-l); }
+    .tl-node { background: var(--surface); border: 2px solid var(--brand); color: var(--brand-strong); font: 700 1rem/1 var(--font-body); }
+    .tl-card { background: var(--surface); border-color: var(--line-l); color: var(--text); }
+    .tl-sub { color: var(--muted); }
+    .tag-full, .tag-yard, .badge-now { font: 700 0.75rem/1.4 var(--font-body); letter-spacing: 0; }
+    .badge-now { background: var(--brand); color: #fff; }
+    .tl-item.is-done .tl-card { color: var(--muted); border-color: var(--border-strong); }
+    .tl-item.is-done .tl-node { border-color: var(--border-strong); color: var(--muted); }
+    .tl-item.is-active .tl-card { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); }
+    .tl-item.is-active .tl-node { border-color: var(--brand); background: var(--brand); color: #fff; }
+    .tl-item.is-active .tl-node::after { border-color: var(--brand); }
+    .sheet h2 { font: 700 1.4rem/1.25 var(--font-body); text-transform: none; letter-spacing: 0; }
+    .toast-d { background: var(--text); color: #fff; border: 0; box-shadow: none; }
+    .nav-banner { background: var(--surface); color: var(--text); border-bottom: 1px solid var(--line-l); }
+    .nav-then { border-top-color: var(--line-l); opacity: 1; color: var(--muted); }
+    .nav-dist { font: 700 1.9rem/1.1 var(--font-body); letter-spacing: -0.01em; }
+    .nav-arrive.near { background: var(--brand); }
+    .main-cta button, .nav-arrive { font: 700 1.35rem/1.2 var(--font-body); letter-spacing: 0; }
+    .dash .btn { transition: background-color 120ms ease-out, transform 120ms ease-out; }
+    .dash .btn:active, .main-cta button:active, .tl-dot:active { transform: scale(0.97); }
+    @media (prefers-reduced-motion: reduce) { .dash .btn { transition: none; } }
   </style>
 </head>
 <body class="dash">
@@ -319,7 +358,7 @@
     </section>
 
     <div class="main-cta" id="cta-bar" hidden>
-      <button type="button" id="cta" data-step="start">START ROUTE TRANSIT</button>
+      <button type="button" id="cta" data-step="start">Start route</button>
     </div>
   </div>
 
@@ -337,7 +376,7 @@
         <a class="btn" id="nav-gmaps" target="_blank" rel="noopener">Open in Maps</a>
         <button class="btn" type="button" id="nav-end">End</button>
       </div>
-      <button class="nav-arrive" type="button" id="nav-arrive">ARRIVED ON SITE</button>
+      <button class="nav-arrive" type="button" id="nav-arrive">Arrived on site</button>
     </div>
   </div>
 
@@ -346,7 +385,7 @@
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script>
     // ---------- Crew dashboard ----------
-    // Life cycle of the current stop:  START ROUTE TRANSIT → ARRIVED ON SITE → COMPLETE VISIT.
+    // Life cycle of the current stop:  Start route → Arrived on site → Finish visit.
     // The server owns the route, payments and customer notices; this page only stores two small things on the
     // phone: "route started today" and "arrived at stop X" (so a refresh keeps the right button).
     const $ = (id) => document.getElementById(id);
@@ -439,12 +478,12 @@
 
     // The big button says exactly what finishing does: card customers get their Stripe pay link, cash gets collected.
     function ctaLabel(s, cur) {
-      if (s === "start") return "START ROUTE TRANSIT";
-      if (s === "arrive") return "ARRIVED ON SITE";
+      if (s === "start") return "Start route";
+      if (s === "arrive") return "Arrived on site";
       if (s !== "complete") return "";
-      if (cur.payment_status === "paid") return "COMPLETE VISIT";
-      if (cur.payment_method === "card") return cur.amount_due != null ? "COMPLETE VISIT & INVOICE STRIPE" : "COMPLETE VISIT";
-      return "COMPLETE VISIT & COLLECT CASH";
+      if (cur.payment_status === "paid") return "Finish visit";
+      if (cur.payment_method === "card") return cur.amount_due != null ? "Finish & text card pay link" : "Finish visit";
+      return "Finish & collect cash";
     }
 
     // ---------- drawing ----------
@@ -518,7 +557,7 @@
       $("note-text").value = notes[cur.stop_id] || "";
     }
 
-    // SCOPE ENFORCEMENT: exactly what this customer paid for, so nobody mows more (or less) than booked.
+    // What to mow: exactly what this customer paid for, so nobody mows more (or less) than booked.
     function scopeBlock(cur) {
       const sq = cur.lawn_sqft ? cur.lawn_sqft.toLocaleString("en-US") : null;
       const plan = cur.service_minutes ? `Plan ~${cur.service_minutes} min on site.` : "";
@@ -526,13 +565,13 @@
       const yard = (cur.add_ons || []).find((a) => a.key === "yard_type");   // yield-priced bookings: tell the crew the yard type
       if (yard && yard.value !== "STANDARD") extras.unshift(yard.label);
       const [cls, text] = cur.scope === "scope_yard"
-        ? ["scope-yard", `⚠️ FENCED CORE ONLY (${sq ? `~${sq} sq ft` : "size not set"}). Mow inside the main fence line. Nothing outside it.`]
+        ? ["scope-yard", `Fenced core only (${sq ? `~${sq} sq ft` : "size not set"}). Mow inside the main fence line. Nothing outside it.`]
         : cur.scope === "scope_full"
-          ? ["scope-full", `FULL PROPERTY (${sq ? `~${sq} sq ft` : "size not set"}). Mow the whole lot, edge to edge.`]
-          : ["scope-legacy", `ℹ️ STANDARD VISIT (${sq ? `~${sq} sq ft` : "size not set"}). Older booking: confirm the lawn size when you finish.`];
+          ? ["scope-full", `Full property (${sq ? `~${sq} sq ft` : "size not set"}). Mow the whole lot, edge to edge.`]
+          : ["scope-legacy", `Standard visit (${sq ? `~${sq} sq ft` : "size not set"}). Older booking: confirm the lawn size when you finish.`];
       const meta = [plan, extras.length ? `Also: ${extras.join(", ")}.` : "", cur.scope ? "Price is locked for this area." : ""].filter(Boolean).join(" ");
-      return el("section", { class: `scope ${cls}`, "aria-label": "Scope enforcement" },
-        el("p", { class: "scope-title" }, "SCOPE ENFORCEMENT"),
+      return el("section", { class: `scope ${cls}`, "aria-label": "What to mow" },
+        el("p", { class: "scope-title" }, "What to mow"),
         el("p", { class: "scope-text" }, text),
         meta ? el("p", { class: "scope-meta" }, meta) : null);
     }
