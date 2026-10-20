@@ -3,359 +3,378 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Owner Command | {{BUSINESS_NAME}}</title>
+  <title>Owner | {{BUSINESS_NAME}}</title>
   <meta name="robots" content="noindex">
-  <meta name="theme-color" content="#060709">
+  <meta name="theme-color" content="#FFFFFF">
   <link rel="icon" href="/favicon.ico">
-  <link rel="preload" href="/static/fonts/jetbrains-mono-400.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="/static/fonts/jetbrains-mono-700.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/public-sans-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/public-sans-600.woff2" as="font" type="font/woff2" crossorigin>
   <style>
-    @font-face { font-family: "JetBrains Mono"; font-weight: 400; font-style: normal; font-display: swap;
-      src: url(/static/fonts/jetbrains-mono-400.woff2) format("woff2"); }
-    @font-face { font-family: "JetBrains Mono"; font-weight: 700; font-style: normal; font-display: swap;
-      src: url(/static/fonts/jetbrains-mono-700.woff2) format("woff2"); }
+    /* Owner screen. Light and flat: colour goes on data (bookings, money, a booking on the wrong day),
+       not on chrome. One filled button: the next job (build the route). Bookings 7 + side 5 of 12 columns. */
+    @font-face { font-family: "Public Sans"; font-weight: 400; font-display: swap; src: url(/static/fonts/public-sans-400.woff2) format("woff2"); }
+    @font-face { font-family: "Public Sans"; font-weight: 500; font-display: swap; src: url(/static/fonts/public-sans-500.woff2) format("woff2"); }
+    @font-face { font-family: "Public Sans"; font-weight: 600; font-display: swap; src: url(/static/fonts/public-sans-600.woff2) format("woff2"); }
+    @font-face { font-family: "Public Sans"; font-weight: 700; font-display: swap; src: url(/static/fonts/public-sans-700.woff2) format("woff2"); }
     :root {
-      --bg: #060709; --glass: rgb(17 20 26 / 0.72); --glass-2: rgb(17 20 26 / 0.9); --etch: rgb(6 182 212 / 0.28);
-      --gold: #D97706; --gold-ink: #F59E0B; --cyan: #06B6D4; --cyan-ink: #22D3EE; --in: #10B981; --out: #EF4444;
-      --text: #E2E8F0; --muted: #94A3B8; --dim: #64748B;
-      --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --ground: #F6F7F3;      /* a lawn-paper white, one step off pure white */
+      --sheet: #FFFFFF;
+      --line: #E3E6DF;
+      --line-strong: #CFD4CB;
+      --track: #EDEFEA;
+      --ink: #14201B;
+      --ink-2: #3D4A44;
+      --muted: #5F6B65;       /* 5.4:1 on the sheet */
+      --green: #2E7D4F;       /* Field Green: the one data hue */
+      --green-soft: #E6F1EA;
+      --green-ink: #1F5A3C;
+      --brass: #8A6210;       /* money still owed, text-safe on white */
+      --red: #B42318;
+      --radius: 10px;
+      --font: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
     }
     * { box-sizing: border-box; }
-    html { background: var(--bg); }
-    body { margin: 0; min-height: 100vh; color: var(--text); font: 400 13px/1.5 var(--mono);
-      background: radial-gradient(1200px 600px at 70% -10%, rgb(6 182 212 / 0.08), transparent 60%),
-                  radial-gradient(900px 500px at 0% 110%, rgb(217 119 6 / 0.07), transparent 60%), var(--bg);
-      padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 28px max(14px, env(safe-area-inset-left)); }
-    ::selection { background: var(--cyan); color: var(--bg); }
-    a { color: var(--cyan-ink); }
-    .caps { text-transform: uppercase; letter-spacing: 0.12em; }
-    .in { color: var(--in); } .out { color: var(--out); } .cy { color: var(--cyan-ink); } .au { color: var(--gold-ink); } .dim { color: var(--dim); }
+    html { background: var(--ground); }
+    body { margin: 0; background: var(--ground); color: var(--ink); font: 400 14px/1.5 var(--font); -webkit-font-smoothing: antialiased; }
+    a { color: var(--green-ink); text-underline-offset: 3px; }
+    ::selection { background: var(--green-soft); }
+    :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; border-radius: 4px; }
+    .num { font-variant-numeric: tabular-nums; }
 
-    /* Visor header */
-    .visor { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px;
-      padding: 12px 14px; margin-bottom: 14px; border: 1px solid var(--gold); border-radius: 4px; background: var(--glass);
-      -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); position: relative; }
-    .visor::before, .pane::before { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
-      background: linear-gradient(90deg, var(--cyan) 0 18px, transparent 18px) top left / 100% 1px no-repeat,
-                  linear-gradient(180deg, var(--cyan) 0 18px, transparent 18px) top left / 1px 100% no-repeat,
-                  linear-gradient(270deg, var(--cyan) 0 18px, transparent 18px) bottom right / 100% 1px no-repeat,
-                  linear-gradient(0deg, var(--cyan) 0 18px, transparent 18px) bottom right / 1px 100% no-repeat; }
-    .visor h1 { margin: 0; display: flex; align-items: center; gap: 10px; font-size: 0.95rem; font-weight: 700; color: var(--cyan-ink); }
-    .reactor { width: 12px; height: 12px; border-radius: 50%; flex: none; background: var(--cyan);
-      box-shadow: 0 0 0 3px rgb(6 182 212 / 0.2), 0 0 14px var(--cyan); animation: core 2s ease-in-out infinite; }
-    @keyframes core { 50% { box-shadow: 0 0 0 6px rgb(6 182 212 / 0.06), 0 0 4px var(--cyan); } }
-    @media (prefers-reduced-motion: reduce) { .reactor, .sweep { animation: none !important; } }
-    .visor .sub { margin: 3px 0 0; font-size: 0.68rem; color: var(--muted); }
-    .chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
-    .chip { border: 1px solid var(--etch); border-radius: 3px; padding: 6px 10px; background: var(--glass-2); min-width: 140px; }
-    .chip p { margin: 0; }
-    .k { font-size: 0.62rem; font-weight: 700; color: var(--dim); text-transform: uppercase; letter-spacing: 0.14em; }
-    .v { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
-    button.act { font: 700 0.7rem/1 var(--mono); text-transform: uppercase; letter-spacing: 0.14em; color: var(--gold-ink);
-      background: transparent; border: 1px solid var(--gold); border-radius: 3px; padding: 0 14px; min-height: 44px; cursor: pointer; }
-    button.act:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+    /* Top bar: the product, the scope, the other screens */
+    .bar { height: 56px; display: flex; align-items: center; gap: 16px; padding: 0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+      border-bottom: 1px solid var(--line); background: var(--sheet); position: sticky; top: 0; z-index: 5; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--ink); text-decoration: none; white-space: nowrap; }
+    .brand img { width: 22px; height: 24px; }
+    .brand small { font-weight: 400; color: var(--muted); font-size: 14px; }
+    .bar nav { display: flex; gap: 4px; margin-left: auto; overflow-x: auto; scrollbar-width: none; }
+    .bar nav::-webkit-scrollbar { display: none; }
+    .bar nav a { color: var(--ink-2); text-decoration: none; padding: 8px 12px; border-radius: 8px; white-space: nowrap; font-weight: 500;
+      transition: background-color 120ms ease-out; }
+    .bar nav a:hover { background: var(--ground); }
+    .bar nav a[aria-current="page"] { background: var(--track); color: var(--ink); }
 
-    /* Interlocking 12-column visor grid: 5 / 4 / 3 */
-    .hud { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
-    @media (min-width: 1100px) { .hud { grid-template-columns: repeat(12, minmax(0, 1fr)); }
-      .p-targets { grid-column: span 5; } .p-live { grid-column: span 4; } .p-liab { grid-column: span 3; } }
-    @media (min-width: 720px) and (max-width: 1099px) { .hud { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .p-targets { grid-column: 1 / -1; } }
-    .pane { position: relative; min-width: 0; padding: 12px; border: 1px solid var(--etch); border-radius: 4px; background: var(--glass);
-      -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
-    .pane h2 { margin: 0 0 10px; padding-bottom: 8px; border-bottom: 1px solid var(--etch); font-size: 0.72rem; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.18em; display: flex; justify-content: space-between; gap: 8px; }
-    .pane h2 small { color: var(--dim); font-weight: 400; letter-spacing: 0.08em; }
-    .stack { display: grid; gap: 12px; }
+    main { max-width: 1320px; margin: 0 auto; padding: 24px max(16px, env(safe-area-inset-right)) 48px max(16px, env(safe-area-inset-left)); }
 
-    /* Readout grids */
-    .readouts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-    .ro { border: 1px solid var(--etch); border-left: 2px solid var(--gold); border-radius: 3px; padding: 8px 10px; background: rgb(6 7 9 / 0.5); }
-    .ro b { display: block; font-size: 1.35rem; line-height: 1.15; font-weight: 700; }
-    .ro span { font-size: 0.6rem; color: var(--dim); text-transform: uppercase; letter-spacing: 0.14em; }
+    /* Title row: the day, the one finding, the one job */
+    .title { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; margin-bottom: 20px; }
+    .title h1 { margin: 0; font-size: 24px; line-height: 1.25; font-weight: 700; letter-spacing: -0.01em; }
+    .finding { margin: 4px 0 0; color: var(--ink-2); max-width: 70ch; }
+    .finding b { font-weight: 600; color: var(--ink); }
+    .finding.bad b { color: var(--red); }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .btn { font: 600 14px/1 var(--font); min-height: 40px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--line-strong);
+      background: var(--sheet); color: var(--ink); cursor: pointer; transition: background-color 120ms ease-out, transform 120ms ease-out; }
+    .btn:hover { background: var(--ground); }
+    .btn:active { transform: scale(0.97); }
+    .btn.primary { background: var(--green); border-color: var(--green); color: #fff; }
+    .btn.primary:hover { background: var(--green-ink); }
+    .btn[data-armed] { background: var(--ink); border-color: var(--ink); color: #fff; }
+    .btn:disabled { opacity: 0.55; cursor: default; transform: none; }
+    .btn.sm { min-height: 36px; padding: 0 12px; font-size: 13px; }
+    .btn.danger { color: var(--red); }
 
-    /* TARGET_MANIFEST */
-    .legend { display: flex; flex-wrap: wrap; gap: 12px; margin: -2px 0 10px; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); }
-    .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 1px; margin-right: 6px; vertical-align: middle; }
-    .targets { display: grid; gap: 6px; max-height: 640px; overflow-y: auto; padding-right: 2px; }
-    .t { display: grid; grid-template-columns: 4px minmax(0, 1fr); border: 1px solid var(--etch); border-radius: 3px; background: rgb(6 7 9 / 0.55); }
-    .t > i { border-radius: 3px 0 0 3px; background: var(--in); }
-    .t.out > i { background: var(--out); }
-    .t > div { padding: 8px 10px; min-width: 0; }
-    .t .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-    .t .id { font-weight: 700; font-size: 0.75rem; letter-spacing: 0.06em; }
-    .tag { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em; padding: 3px 6px; border-radius: 2px; border: 1px solid currentColor; white-space: nowrap; }
-    .t .line { margin-top: 4px; font-size: 0.72rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 12px; }
+    /* The week: one column per day, each day is one area */
+    .week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: var(--radius);
+      background: var(--sheet); margin-bottom: 24px; overflow: hidden; }
+    .day { padding: 12px 14px 14px; border-left: 1px solid var(--line); min-width: 0; }
+    .day:first-child { border-left: 0; }
+    .day .d { color: var(--muted); font-size: 12px; }
+    .day .a { font-weight: 600; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .day .m { margin-top: 10px; font-size: 18px; font-weight: 600; }
+    .day .m.zero { color: var(--muted); font-weight: 500; }
+    .load { height: 4px; border-radius: 2px; background: var(--track); margin-top: 8px; overflow: hidden; }
+    .load span { display: block; height: 100%; background: var(--green); }
+    .day .j { margin-top: 6px; font-size: 12px; color: var(--muted); }
+    .day.today { background: #FAFBF8; box-shadow: inset 0 2px 0 var(--green); }
+    .day.today .d { color: var(--green-ink); font-weight: 600; }
+    .day.off .a { color: var(--muted); font-weight: 400; }
 
-    /* LIVE_FUNNEL_TELEMETRY meters */
-    .meter { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; margin-bottom: 8px; font-size: 0.7rem; }
-    .meter .bar { grid-column: 1 / -1; height: 6px; border-radius: 1px; background: rgb(6 182 212 / 0.1); overflow: hidden; }
-    .meter .bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--cyan), var(--gold)); }
-    .feed { list-style: none; margin: 0; padding: 0; max-height: 240px; overflow-y: auto; font-size: 0.7rem; }
-    .feed li { display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 8px; padding: 5px 0; border-bottom: 1px dashed var(--etch); }
-    .feed time { color: var(--dim); }
+    .grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
+    @media (min-width: 1040px) { .grid { grid-template-columns: repeat(12, minmax(0, 1fr)); } .main { grid-column: span 7; align-self: start; } .side { grid-column: span 5; } }
+    .side { display: grid; gap: 24px; align-content: start; }
+    .panel { background: var(--sheet); border: 1px solid var(--line); border-radius: var(--radius); min-width: 0; overflow: hidden; }
+    .panel > header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    .panel h2 { margin: 0; font-size: 15px; font-weight: 600; }
+    .panel header small { color: var(--muted); font-size: 13px; }
+    .pad { padding: 16px; }
 
-    /* Load + liability tables */
-    table.g { width: 100%; border-collapse: collapse; font-size: 0.7rem; }
-    table.g th, table.g td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--etch); }
-    table.g th { color: var(--dim); font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; font-size: 0.58rem; }
-    table.g .r { text-align: right; }
-    .kv { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--etch); }
-    .kv:last-child { border-bottom: 0; }
-    .note { margin: 8px 0 0; font-size: 0.64rem; color: var(--dim); line-height: 1.5; }
-    .empty { color: var(--dim); font-size: 0.72rem; margin: 6px 0; }
-    .msg { color: var(--muted); }
-    nav.links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-    nav.links a { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; text-decoration: none;
-      border: 1px solid var(--etch); border-radius: 3px; padding: 14px; color: var(--cyan-ink); background: var(--glass); }
-    button.intercept { color: #060709; border: 0; background: linear-gradient(90deg, #D97706, #B45309); box-shadow: 0 0 15px rgb(217 119 6 / 0.3); }
-    .days { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
-    @media (min-width: 640px) { .days { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-    @media (min-width: 1100px) { .days { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
-    .dayc { border: 1px solid rgb(30 41 59); border-radius: 3px; padding: 8px; text-align: center; background: rgb(17 20 26 / 0.4); }
-    .dayc.has { border-color: rgb(6 182 212 / 0.45); background: rgb(17 20 26 / 0.8); }
-    .dayc.off { opacity: 0.35; }
-    .dayc .k { display: block; } .dayc b { display: block; margin-top: 3px; font-size: 0.78rem; }
-    .dayc small { display: block; font-size: 0.58rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
-    .t .who { margin-top: 2px; font-size: 0.68rem; color: var(--muted); overflow-wrap: anywhere; }
-    .t .acts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--etch); }
-    .t .acts button { font: 700 0.62rem/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; min-height: 40px; padding: 0 12px;
-      border-radius: 3px; cursor: pointer; background: transparent; }
-    .t .acts .go { color: var(--cyan-ink); border: 1px solid rgb(6 182 212 / 0.45); }
-    .t .acts .purge { color: var(--out); border: 1px solid rgb(239 68 68 / 0.45); }
-    /* ---- polish: tidy alignment, no stretched panes, phone-first strip ---- */
-    .hud { align-items: start; }
-    .stack { align-content: start; gap: 18px; }
-    .stack > div > h2, .pane > h2 { margin-bottom: 10px; }
-    .visor { display: grid; grid-template-columns: minmax(0, 1fr); }
-    @media (min-width: 1100px) { .visor { grid-template-columns: minmax(0, 1fr) auto; } }
-    .chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-    .chips .chip { min-width: 0; }
-    .chips .chip:nth-child(3) { grid-column: 1 / -1; }
-    .chips .act { min-width: 0; }
-    .chips #compute { grid-column: 1 / -1; }
-    .chips #compute[hidden] + #refresh { grid-column: 1 / -1; }
-    @media (min-width: 1100px) { .chips { display: flex; } .chips .chip:nth-child(3), .chips #compute { grid-column: auto; } }
-    .visor h1 { font-size: clamp(0.8rem, 3.4vw, 0.95rem); line-height: 1.35; align-items: flex-start; }
-    .visor h1 .reactor { margin-top: 0.3em; }
-    .chips #refresh { grid-column: 1 / -1; }
-    nav.links { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    nav.links a { text-align: center; padding: 14px 6px; }
-    @media (min-width: 720px) { nav.links { display: flex; } }
-    .days { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; padding-bottom: 2px; }
-    .days::-webkit-scrollbar { display: none; }
-    .dayc { flex: 1 0 112px; scroll-snap-align: start; }
-    .dayc small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .t .row .id { overflow-wrap: anywhere; }
-    .t .line span:empty { display: none; }
-    .toast { margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--gold); border-radius: 3px; background: var(--glass-2); font-size: 0.72rem; }
+    /* Bookings: rules and alignment, no zebra, money right-aligned */
+    .bk { list-style: none; margin: 0; padding: 0; }
+    .bk li { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; gap: 4px 14px; padding: 12px 16px; border-top: 1px solid var(--line); }
+    .bk li:first-child { border-top: 0; }
+    .bk .when { color: var(--muted); font-size: 13px; }
+    .bk .when b { display: block; color: var(--ink); font-weight: 600; font-size: 14px; }
+    .bk .who { font-weight: 600; }
+    .bk .addr { color: var(--ink-2); font-size: 13px; overflow-wrap: anywhere; }
+    .bk .meta { color: var(--muted); font-size: 13px; margin-top: 2px; }
+    .bk .amt { text-align: right; font-weight: 600; }
+    .bk .amt small { display: block; font-weight: 500; color: var(--muted); font-size: 12px; }
+    .bk .amt small.due { color: var(--brass); }
+    .bk .amt small.paid { color: var(--green-ink); }
+    .pill { display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--track); color: var(--ink-2); }
+    .pill.routed { background: var(--green-soft); color: var(--green-ink); }
+    .pill.done { background: var(--green); color: #fff; }
+    .bk li.wrong { background: #FFFAF9; }
+    .wrong-note { grid-column: 2 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; color: var(--red); font-size: 13px; font-weight: 600; }
+    .wrong-note span { margin-right: 4px; }
+    .empty { padding: 28px 16px; margin: 0; color: var(--muted); text-align: center; }
+    .bk li.empty { display: block; }
+
+    /* Figures: type, not tiles */
+    .figs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; }
+    .fig .v { font-size: 22px; font-weight: 600; line-height: 1.2; }
+    .fig .v.big { font-size: 28px; letter-spacing: -0.01em; }
+    .fig .v.zero { color: var(--muted); }
+    .fig .v.owed { color: var(--brass); }
+    .fig .k { color: var(--muted); font-size: 13px; margin-top: 2px; }
+
+    .funnel { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); display: grid; gap: 10px; }
+    .funnel h3 { margin: 0; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+    .step { display: grid; grid-template-columns: minmax(0, 1fr) 48px; align-items: center; gap: 4px 10px; font-size: 13px; }
+    .step .bar2 { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; }
+    .step .bar2 span { display: block; height: 100%; background: var(--green); }
+    .step .c { text-align: right; font-weight: 600; }
+
+    .checks { list-style: none; margin: 0; padding: 0; }
+    .checks li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 16px; border-top: 1px solid var(--line); }
+    .checks li:first-child { border-top: 0; }
+    .s { font-weight: 600; white-space: nowrap; }
+    .s.ok { color: var(--green-ink); } .s.no { color: var(--red); } .s.na { color: var(--muted); font-weight: 500; }
+    .foot { margin: 0; padding: 10px 16px 14px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); }
+
+    table.ph { width: 100%; border-collapse: collapse; font-size: 13px; }
+    table.ph th, table.ph td { padding: 9px 16px; border-top: 1px solid var(--line); text-align: left; }
+    table.ph th { color: var(--muted); font-weight: 500; border-top: 0; }
+
+    .toast { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: #fff;
+      padding: 12px 16px; border-radius: 10px; font-weight: 500; width: max-content; max-width: calc(100vw - 32px); z-index: 10; }
+    .msg { color: var(--ink-2); }
+
+    /* Phone: the week scrolls sideways, everything else stacks, taps stay 44px */
+    @media (max-width: 760px) {
+      .week { display: flex; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; }
+      .week::-webkit-scrollbar { display: none; }
+      .day { flex: 0 0 36%; scroll-snap-align: start; }
+      .bk li { grid-template-columns: minmax(0, 1fr) auto; }
+      .bk .when { grid-column: 1 / -1; display: flex; gap: 6px; align-items: baseline; }
+      .bk .when b { display: inline; font-size: 13px; }
+      .wrong-note { grid-column: 1 / -1; }
+      .btn, .btn.sm { min-height: 44px; }
+      .title .actions { width: 100%; }
+      .title .actions .btn { flex: 1; }
+      .brand small { display: none; }
+      .bar nav a { padding: 8px 10px; }
+    }
+    @media (prefers-reduced-motion: reduce) { .btn, .bar nav a { transition: none; } }
   </style>
 </head>
 <body>
-  <header class="visor">
-    <div>
-      <h1 class="caps"><span class="reactor" aria-hidden="true"></span><span>STARK_NET // OWNER_OPERATIONAL_MATRIX</span></h1>
-      <p class="sub caps" id="sub">North Houston grid · syncing…</p>
-    </div>
-    <div class="chips">
-      <div class="chip"><p class="k">CGL_COVERAGE</p><p class="v" id="chip-cgl">–</p></div>
-      <div class="chip"><p class="k">CARD_CHECKOUT</p><p class="v" id="chip-stripe">–</p></div>
-      <div class="chip"><p class="k">SYSTEM_STATUS</p><p class="v" id="chip-route">–</p></div>
-      <button class="act intercept" type="button" id="compute" hidden>[ COMPUTE INTERCEPT PATH ]</button>
-      <button class="act" type="button" id="refresh">Resync</button>
-    </div>
+  <header class="bar">
+    <a class="brand" href="/owner/command"><img src="/static/brand/post-one-mark.svg" alt="" width="22" height="24">{{BRAND_SHORT}} <small>Owner</small></a>
+    <nav aria-label="Owner screens">
+      <a href="/owner/command" aria-current="page">Today</a>
+      <a href="/crew">Bookings &amp; crew</a>
+      <a href="/crew/dashboard">Route</a>
+      <a href="/owner/readiness">Go-live</a>
+    </nav>
   </header>
 
-  <p class="msg" id="msg" hidden></p>
-  <p class="toast" id="toast" role="status" hidden></p>
+  <main>
+    <p class="msg" id="msg" hidden></p>
+    <div id="app" hidden>
+      <section class="title">
+        <div>
+          <h1 id="h1">Today</h1>
+          <p class="finding" id="finding"></p>
+        </div>
+        <div class="actions">
+          <button class="btn primary" type="button" id="build" hidden>Build route</button>
+          <button class="btn" type="button" id="refresh">Refresh</button>
+        </div>
+      </section>
 
-  <!-- 7-day timeline strip: expected revenue per area day -->
-  <section class="days" id="days" aria-label="Next 7 days" hidden></section>
+      <section class="week" id="week" aria-label="This week, one area a day"></section>
 
-  <main class="hud" id="hud" hidden>
-    <!-- Pane 1: TARGET_MANIFEST (5 cols) -->
-    <section class="pane p-targets" aria-labelledby="h-targets">
-      <h2 id="h-targets" class="cy">TARGET_MANIFEST <small id="t-count">7 DAYS</small></h2>
-      <p class="legend"><span><i style="background:#10B981"></i>Inside area day</span><span><i style="background:#EF4444"></i>Outlier: move</span></p>
-      <div class="targets" id="targets"></div>
-    </section>
+      <div class="grid">
+        <section class="panel main" aria-labelledby="h-bk">
+          <header><h2 id="h-bk">Bookings, next 7 days</h2><small id="bk-count"></small></header>
+          <ul class="bk" id="bookings"></ul>
+        </section>
 
-    <!-- Pane 2: live meters and feed (4 cols) -->
-    <section class="pane p-live stack" aria-labelledby="h-live">
-      <div>
-        <h2 id="h-live" class="cy">LIVE_STATION_STATISTICS <small id="live-age">–</small></h2>
-        <div class="readouts" id="live"></div>
-      </div>
-      <div>
-        <h2 class="au">LIVE_FUNNEL_TELEMETRY</h2>
-        <div id="funnel"><p class="empty">Waiting for site traffic…</p></div>
-      </div>
-      <div>
-        <h2 class="cy">CONCURRENT_FEED</h2>
-        <ul class="feed" id="feed"><li><time>--:--</time><span class="dim">No activity yet today.</span></li></ul>
-      </div>
-      <div>
-        <h2 class="au">ROUTE_LOAD <small>7 DAYS</small></h2>
-        <table class="g" aria-label="Route load by day">
-          <thead><tr><th>Day</th><th>Area</th><th class="r">Jobs</th><th class="r">Expected</th></tr></thead>
-          <tbody id="week"></tbody>
-        </table>
-      </div>
-    </section>
+        <div class="side">
+          <section class="panel" aria-labelledby="h-money">
+            <header><h2 id="h-money">This month</h2><small id="month-name"></small></header>
+            <div class="pad"><div class="figs" id="money"></div></div>
+          </section>
 
-    <!-- Pane 3: money and liability (3 cols) -->
-    <section class="pane p-liab stack" aria-labelledby="h-money">
-      <div>
-        <h2 id="h-money" class="au">REVENUE_MTD</h2>
-        <div class="readouts" id="money"></div>
+          <section class="panel" aria-labelledby="h-site">
+            <header><h2 id="h-site">Website today</h2><small id="site-age">–</small></header>
+            <div class="pad">
+              <div class="figs" id="site"></div>
+              <div class="funnel" id="funnel"></div>
+            </div>
+          </section>
+
+          <section class="panel" aria-labelledby="h-cover">
+            <header><h2 id="h-cover">Cover &amp; paperwork</h2></header>
+            <ul class="checks" id="cover"></ul>
+            <p class="foot">A dash means the app doesn't track it yet. Mowing needs no TDA license.</p>
+          </section>
+
+          <section class="panel" aria-labelledby="h-ph">
+            <header><h2 id="h-ph">Before &amp; after photos</h2><small>today</small></header>
+            <div id="photos"></div>
+          </section>
+        </div>
       </div>
-      <div>
-        <h2 class="au">LIABILITY_MATRIX</h2>
-        <div id="liab"></div>
-      </div>
-      <div>
-        <h2 class="cy">PRE/POST_PHOTO_LOG <small>TODAY</small></h2>
-        <div id="photos"></div>
-      </div>
-    </section>
+    </div>
   </main>
-
-  <nav class="links" aria-label="Owner tools">
-    <a href="/crew">Crew app</a>
-    <a href="/crew/dashboard">Crew HUD</a>
-    <a href="/owner/readiness">Go-live checklist</a>
-  </nav>
+  <div class="toast" id="toast" role="status" hidden></div>
 
   <script>
     let token = null;
     try { token = localStorage.getItem("crewToken"); } catch {}
     const $ = (id) => document.getElementById(id);
+    const headers = () => ({ "X-Crew-Token": token });
     const money = (n) => (n ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
     const day = (iso, o) => new Date(iso + "T12:00:00").toLocaleDateString("en-US", o);
+    const short = (a) => (a || "").replace(" & Splendora", "").replace(" & Plum Grove", "");
+    const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
     function el(tag, attrs = {}, ...kids) {
       const e = document.createElement(tag);
       for (const [k, v] of Object.entries(attrs)) k === "class" ? (e.className = v) : e.setAttribute(k, v);
       e.append(...kids.filter((x) => x != null && x !== false));
       return e;
     }
-    const kv = (k, v, cls) => el("div", { class: "kv" }, el("span", { class: "k" }, k), el("span", { class: "v " + cls }, v));
-    const ro = (k, v, cls = "") => el("div", { class: "ro" }, el("b", { class: cls }, v), el("span", {}, k));
-    const headers = () => ({ "X-Crew-Token": token });
-
-    function renderCommand(d) {
-      $("sub").textContent = `North Houston grid · ${day(d.date, { weekday: "short", month: "short", day: "numeric" })} · `
-        + (d.area_today ? `area_today: ${d.area_today}` : "no route today");
-      const df = d.defense;
-      $("chip-cgl").textContent = df.cgl ? `${df.cgl} // ON FILE` : "NOT_ON_FILE";
-      $("chip-cgl").className = "v " + (df.cgl ? "in" : "out");
-      $("chip-stripe").textContent = df.stripe_live ? "LIVE" : "NOT_SET_UP";
-      $("chip-stripe").className = "v " + (df.stripe_live ? "in" : "au");
-
-      const out = d.terminal.filter((t) => t.off_area).length;
-      $("t-count").textContent = `${d.terminal.length} TARGETS · ${out} OUTLIER${out === 1 ? "" : "S"}`;
-      $("targets").replaceChildren(...(d.terminal.length ? d.terminal.map((t) => el("div", { class: "t" + (t.off_area ? " out" : "") },
-        el("i", { "aria-hidden": "true" }),
-        el("div", {},
-          el("div", { class: "row" },
-            el("span", { class: "id" }, `${(t.name || "#" + t.ref).toUpperCase()} // ${short(t.area).toUpperCase()}`),
-            el("span", { class: "tag " + (t.status === "DONE" ? "in" : t.status === "ROUTED" ? "cy" : "au") }, t.status.replace(" ", "_"))),
-          el("div", { class: "line" },
-            el("span", {}, day(t.date, { weekday: "short", month: "numeric", day: "numeric" }).toUpperCase()),
-            el("span", {}, t.sqft ? `${t.sqft.toLocaleString()} SQ FT` : "SIZE_TBD"),
-            t.scope ? el("span", {}, t.scope.toUpperCase()) : null,
-            el("span", { class: t.paid ? "in" : "" }, `${t.pay === "card" ? "CARD" : "CASH"} ${t.paid ? "CLEARED" : "DUE"} ${money(t.amount)}`),
-            t.off_area ? el("span", { class: "out" }, "OUTLIER") : el("span", { class: "in" }, "VALIDATED")),
-          t.address ? el("div", { class: "who" }, t.address.toUpperCase()) : null,
-          t.off_area && t.status !== "DONE" ? el("div", { class: "acts" },
-            act("go", `INTERCEPT → ${day(t.move_to, { weekday: "short", month: "numeric", day: "numeric" }).toUpperCase()}`,
-                `/api/owner/jobs/${t.job_id}/move`, { day: t.move_to }, `Moved to its ${t.area} day. Customer texted.`),
-            act("purge", "PURGE", `/api/owner/jobs/${t.job_id}/cancel`, null, "Cancelled. Card payments refund automatically."))
-            : null)))
-        : [el("p", { class: "empty" }, "TARGET_MANIFEST EMPTY · no bookings in the next 7 days.")]));
-
-      $("week").replaceChildren(...d.week.map((w) => el("tr", {},
-        el("td", {}, day(w.date, { weekday: "short", month: "numeric", day: "numeric" }).toUpperCase()),
-        el("td", { class: w.area ? "cy" : "dim" }, (short(w.area) || "Off").toUpperCase()),
-        el("td", { class: "r" }, `${w.jobs}/${w.quota}`),
-        el("td", { class: "r" }, money(w.expected)))));
-
-      const r = d.revenue_mtd;
-      $("money").replaceChildren(ro("Collected", money(r.collected), "in"), ro("Expected", money(r.expected), "cy"),
-        ro("Still owed", money(r.unpaid), r.unpaid > 0 ? "au" : "in"), ro("Sales tax held", money(r.sales_tax), "au"));
-
-      $("liab").replaceChildren(
-        kv("CGL_INSURANCE", df.cgl ? `${df.cgl}` : "NOT_ON_FILE", df.cgl ? "in" : "out"),
-        kv("CREW_BACKGROUND", df.background_checked ? "CONFIRMED" : "NOT_CONFIRMED", df.background_checked ? "in" : "au"),
-        kv("RESERVE_BUFFER", "NOT_TRACKED", "au"),
-        kv("STRIPE_DISPUTES", "NOT_TRACKED", "au"),
-        kv("FLEET_HOURS", "NOT_TRACKED", "au"),
-        kv("TDA_LICENSE", "N/A", "cy"),
-        el("p", { class: "note" }, "NOT_TRACKED = no data in the app yet. TDA: mowing only, no license needed."));
-
-      $("photos").replaceChildren(df.photo_log.length
-        ? el("table", { class: "g" }, el("thead", {}, el("tr", {}, el("th", {}, "Visit"), el("th", {}, "Pre"), el("th", {}, "Post"))),
-            el("tbody", {}, ...df.photo_log.map((p) => el("tr", {}, el("td", {}, `#${p.ref}`),
-              el("td", { class: p.before ? "in" : (p.done ? "out" : "au") }, p.before ? "LOGGED" : (p.done ? "MISSING" : "PENDING")),
-              el("td", { class: p.after ? "in" : (p.done ? "out" : "au") }, p.after ? "LOGGED" : (p.done ? "MISSING" : "PENDING"))))))
-        : el("p", { class: "empty" }, "NO VISITS TODAY."));
+    let toastTimer;
+    function toast(text) {
+      $("toast").textContent = text; $("toast").hidden = false;
+      clearTimeout(toastTimer); toastTimer = setTimeout(() => { $("toast").hidden = true; }, 5000);
     }
-
-    // Two-tap buttons: the first tap arms, the second sends. Used for INTERCEPT (move), PURGE (cancel), COMPUTE (build route).
-    function act(cls, label, url, body, done) {
-      const b = el("button", { class: cls, type: "button" }, label);
-      b.addEventListener("click", async () => {
-        if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = "CONFIRM?"; setTimeout(() => { delete b.dataset.armed; b.textContent = label; }, 4000); return; }
-        b.disabled = true;
-        const res = await fetch(url, { method: "POST", headers: { ...headers(), "Content-Type": "application/json" },
-                                       body: JSON.stringify(body || { confirm: true }) }).catch(() => null);
-        const d = res ? await res.json().catch(() => ({})) : {};
-        toast(res && res.ok ? done : (d.detail || "NO_SIGNAL // RETRY"));
-        load();
+    // Two taps for anything that texts a customer or changes the route: the first asks, the second does it.
+    function twoTap(btn, run) {
+      btn.addEventListener("click", async () => {
+        const label = btn.dataset.label || btn.textContent;
+        if (!btn.dataset.armed) {
+          btn.dataset.label = label; btn.dataset.armed = "1"; btn.textContent = "Tap again to confirm";
+          setTimeout(() => { if (btn.dataset.armed) { delete btn.dataset.armed; btn.textContent = btn.dataset.label; } }, 4000);
+          return;
+        }
+        delete btn.dataset.armed; btn.disabled = true;
+        await run(); btn.disabled = false; btn.textContent = btn.dataset.label;
       });
-      return b;
+      return btn;
     }
-    function toast(text) { $("toast").textContent = text; $("toast").hidden = false; setTimeout(() => { $("toast").hidden = true; }, 6000); }
-
-    const short = (a) => (a || "").replace(" & Splendora", "").replace(" & Plum Grove", "");
-    function renderTop(d) {
-      const nr = d.next_route;
-      const st = $("chip-route");
-      if (!nr.date) { st.textContent = "NO_TARGETS"; st.className = "v dim"; $("compute").hidden = true; }
-      else if (nr.built) { st.textContent = `ROUTE_LOCKED // ${nr.stops} STOPS`; st.className = "v in"; $("compute").hidden = true; }
-      else { st.textContent = "ROUTE_UNASSIGNED // HOLD"; st.className = "v out"; $("compute").hidden = false;
-             $("compute").dataset.day = nr.date; }
-      $("days").hidden = false;
-      $("days").replaceChildren(...d.week.map((w, i) => el("div", { class: "dayc" + (w.jobs ? " has" : "") + (w.area ? "" : " off") },
-        el("span", { class: "k" + (w.jobs ? " cy" : "") }, (i === 0 ? "TODAY_" : "") + day(w.date, { weekday: "short" }).toUpperCase()
-          + (i === 0 ? "" : "_" + w.date.slice(8))),
-        el("b", { class: w.jobs ? "au" : "dim" }, money(w.expected)),
-        el("small", {}, `${short(w.area) || "off"} · ${w.jobs}/${w.quota}`))));
-    }
-    $("compute").addEventListener("click", async () => {
-      const b = $("compute"), dayIso = b.dataset.day;
-      if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = "[ CONFIRM COMPUTE ]"; return; }
-      delete b.dataset.armed; b.disabled = true; b.textContent = "[ OPTIMIZING… ]";
-      const res = await fetch(`/api/owner/routes/${dayIso}/build`, { method: "POST", headers: headers() }).catch(() => null);
+    async function post(url, body) {
+      const res = await fetch(url, { method: "POST", headers: { ...headers(), "Content-Type": "application/json" },
+                                     body: JSON.stringify(body || {}) }).catch(() => null);
       const d = res ? await res.json().catch(() => ({})) : {};
-      toast(res && res.ok ? `ROUTE_LOCKED // ${d.stops} STOPS · ${d.total_miles} MI · ${d.drive_minutes} MIN DRIVE` : (d.detail || "NO_SIGNAL // RETRY"));
-      b.disabled = false; b.textContent = "[ COMPUTE INTERCEPT PATH ]"; load();
-    });
+      return { ok: !!(res && res.ok), d };
+    }
 
-    function renderLive(s) {
+    function render(d) {
+      const wrong = d.terminal.filter((t) => t.off_area && t.status !== "DONE");
+      const nr = d.next_route;
+      $("h1").textContent = day(d.date, { weekday: "long", month: "long", day: "numeric" }) + (d.area_today ? ` · ${short(d.area_today)}` : "");
+      // The one finding first: a booking on the wrong day, then an unbuilt route, then the plain state.
+      const f = $("finding");
+      f.className = "finding" + (wrong.length ? " bad" : "");
+      if (wrong.length) {
+        f.replaceChildren(el("b", {}, `${plural(wrong.length, "booking is", "bookings are")} on the wrong area day.`),
+          " Move each one to its area's day, or cancel it.");
+      } else if (nr.date && !nr.built) {
+        const w = d.week.find((x) => x.date === nr.date);
+        f.replaceChildren(el("b", {}, `${day(nr.date, { weekday: "long" })}'s route isn't built yet.`),
+          ` ${plural(w ? w.jobs : 0, "booking", "bookings")} in ${short(w && w.area)}. It builds itself at 5 PM the day before.`);
+      } else if (nr.date) {
+        f.textContent = `${day(nr.date, { weekday: "long" })}'s route is ready: ${plural(nr.stops, "stop", "stops")}.`;
+      } else {
+        f.textContent = "No bookings in the next 7 days.";
+      }
+      const b = $("build");
+      b.hidden = !(nr.date && !nr.built);
+      if (!b.hidden && !b.dataset.armed) {
+        b.dataset.day = nr.date;
+        b.dataset.label = b.textContent = `Build ${day(nr.date, { weekday: "long" })}'s route`;
+      }
+
+      // The week
+      $("week").replaceChildren(...d.week.map((w, i) => el("div", { class: "day" + (i === 0 ? " today" : "") + (w.area ? "" : " off") },
+        el("div", { class: "d" }, i === 0 ? "Today" : day(w.date, { weekday: "short", month: "numeric", day: "numeric" })),
+        el("div", { class: "a" }, w.area ? short(w.area) : "Day off"),
+        el("div", { class: "m num" + (w.expected ? "" : " zero") }, money(w.expected)),
+        el("div", { class: "load", "aria-hidden": "true" },
+          el("span", { style: `width:${Math.min(100, Math.round((100 * w.jobs) / Math.max(1, w.quota)))}%` })),
+        el("div", { class: "j num" }, `${w.jobs} of ${w.quota} booked`))));
+
+      // Bookings
+      $("bk-count").textContent = d.terminal.length ? `${d.terminal.length} total` + (wrong.length ? ` · ${wrong.length} on the wrong day` : "") : "";
+      $("bookings").replaceChildren(...(d.terminal.length ? d.terminal.map((t) => {
+        const li = el("li", { class: t.off_area && t.status !== "DONE" ? "wrong" : "" },
+          el("div", { class: "when" }, el("b", {}, day(t.date, { weekday: "short" })), day(t.date, { month: "short", day: "numeric" })),
+          el("div", {},
+            el("div", { class: "who" }, t.name || t.ref),
+            t.address ? el("div", { class: "addr" }, t.address) : null,
+            el("div", { class: "meta" }, [short(t.area), t.sqft ? `${t.sqft.toLocaleString()} sq ft` : null, t.scope].filter(Boolean).join(" · "), " ",
+              el("span", { class: "pill " + (t.status === "DONE" ? "done" : t.status === "ROUTED" ? "routed" : "") },
+                t.status === "DONE" ? "Done" : t.status === "ROUTED" ? "On the route" : "Waiting for route"))),
+          el("div", { class: "amt num" }, money(t.amount),
+            el("small", { class: t.paid ? "paid" : "due" }, `${t.pay === "card" ? "Card" : "Cash"} · ${t.paid ? "paid" : "due"}`)));
+        if (t.off_area && t.status !== "DONE") {
+          const to = day(t.move_to, { weekday: "short", month: "short", day: "numeric" });
+          const move = twoTap(el("button", { class: "btn sm", type: "button" }, `Move to ${to}`), async () => {
+            const r = await post(`/api/owner/jobs/${t.job_id}/move`, { day: t.move_to });
+            toast(r.ok ? `Moved to ${to}. The customer got a text.` : (r.d.detail || "No signal. Try again."));
+            load();
+          });
+          const cancel = twoTap(el("button", { class: "btn sm danger", type: "button" }, "Cancel"), async () => {
+            const r = await post(`/api/owner/jobs/${t.job_id}/cancel`, { confirm: true });
+            toast(r.ok ? "Cancelled. A card payment refunds automatically." : (r.d.detail || "No signal. Try again."));
+            load();
+          });
+          li.append(el("div", { class: "wrong-note" }, el("span", {}, `${short(t.area)} isn't mowed this day.`), move, cancel));
+        }
+        return li;
+      }) : [el("li", { class: "empty" }, "No bookings in the next 7 days.")]));
+
+      // Money
+      const r = d.revenue_mtd;
+      $("month-name").textContent = day(d.date, { month: "long" });
+      const fig = (k, v, cls) => el("div", { class: "fig" }, el("div", { class: "v num " + cls }, v), el("div", { class: "k" }, k));
+      $("money").replaceChildren(
+        fig("Collected", money(r.collected), "big" + (r.collected ? "" : " zero")),
+        fig("Booked", money(r.expected), "big" + (r.expected ? "" : " zero")),
+        fig("Still owed", money(r.unpaid), r.unpaid ? "owed" : "zero"),
+        fig("Sales tax held", money(r.sales_tax), r.sales_tax ? "" : "zero"));
+
+      // Cover & paperwork: real settings only; a dash where the app doesn't track it
+      const df = d.defense;
+      const row = (k, v, cls) => el("li", {}, el("span", {}, k), el("span", { class: "s " + cls }, v));
+      $("cover").replaceChildren(
+        row("Liability insurance", df.cgl ? `${df.cgl} on file` : "Not on file", df.cgl ? "ok" : "no"),
+        row("Crew background checks", df.background_checked ? "Confirmed" : "Not confirmed", df.background_checked ? "ok" : "no"),
+        row("Card payments", df.stripe_live ? "Live" : "Not set up", df.stripe_live ? "ok" : "no"),
+        row("Card disputes", df.stripe_disputes ?? "–", "na"),
+        row("Mower hours", df.fleet ?? "–", "na"));
+
+      const shot = (has, done) => el("td", { class: "s " + (has ? "ok" : done ? "no" : "na") }, has ? "Taken" : done ? "Missing" : "–");
+      $("photos").replaceChildren(df.photo_log.length
+        ? el("table", { class: "ph" }, el("thead", {}, el("tr", {}, el("th", {}, "Visit"), el("th", {}, "Before"), el("th", {}, "After"))),
+            el("tbody", {}, ...df.photo_log.map((p) => el("tr", {}, el("td", { class: "num" }, p.ref), shot(p.before, p.done), shot(p.after, p.done)))))
+        : el("p", { class: "empty" }, "No visits today."));
+    }
+
+    function renderSite(s) {
       const t = s.today || {};
-      $("live").replaceChildren(ro("Online now", String(s.online ?? 0), "cy"), ro("Visits today", String(t.visits ?? 0)),
-        ro("Booked today", String(t.bookings ?? 0), "in"), ro("Left site (est.)", String(t.exits ?? 0), "au"));
-      const top = Math.max(1, ...(s.funnel || []).map((f) => f.count));
-      $("funnel").replaceChildren(...((s.funnel || []).length ? s.funnel.map((f) => el("div", { class: "meter" },
-        el("span", { class: "caps" }, `${String(f.step).padStart(2, "0")} ${f.label}`), el("b", {}, String(f.count)),
-        el("div", { class: "bar", "aria-hidden": "true" }, el("span", { style: `width:${Math.round((100 * f.count) / top)}%` }))))
-        : [el("p", { class: "empty" }, "Waiting for site traffic…")]));
-      const recent = s.recent || [];
-      $("feed").replaceChildren(...(recent.length ? recent.slice(0, 40).map((x) => el("li", {},
-        el("time", {}, new Date(x.ts * 1000).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })),
-        el("span", {}, `${(x.kind || "").toUpperCase()} · ${x.text || ""}`)))
-        : [el("li", {}, el("time", {}, "--:--"), el("span", { class: "dim" }, "No activity yet today."))]));
-      $("live-age").textContent = "SYNC " + new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      const fig = (k, v) => el("div", { class: "fig" }, el("div", { class: "v num" + (v ? "" : " zero") }, String(v ?? 0)), el("div", { class: "k" }, k));
+      $("site").replaceChildren(fig("On the site now", s.online), fig("Visits", t.visits), fig("Booked", t.bookings), fig("Left without booking", t.exits));
+      const steps = s.funnel || [];
+      const top = Math.max(1, ...steps.map((x) => x.count));
+      $("funnel").replaceChildren(...(steps.length ? [el("h3", {}, "Where visitors got to")] : []), ...steps.map((x) => el("div", { class: "step" },
+        el("span", {}, x.label), el("span", { class: "c num" }, String(x.count)),
+        el("div", { class: "bar2", "aria-hidden": "true" }, el("span", { style: `width:${Math.round((100 * x.count) / top)}%` })))));
+      $("site-age").textContent = "updated " + new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
     }
 
     async function load() {
@@ -366,20 +385,24 @@
         $("msg").textContent = res && res.status === 403 ? "Only the owner can see this." : "Couldn't load. Sign in again in the crew app.";
         return;
       }
-      $("msg").hidden = true; $("hud").hidden = false;
-      const data = await res.json();
-      renderCommand(data); renderTop(data);
-      loadLive();
+      $("msg").hidden = true; $("app").hidden = false;
+      render(await res.json());
+      loadSite();
     }
-    async function loadLive() {
+    async function loadSite() {
       if (!token || document.hidden) return;
       const res = await fetch("/api/live/stats", { headers: headers() }).catch(() => null);
-      if (res && res.ok) renderLive(await res.json());
+      if (res && res.ok) renderSite(await res.json());
     }
+    twoTap($("build"), async () => {
+      const r = await post(`/api/owner/routes/${$("build").dataset.day}/build`);
+      toast(r.ok ? `Route built: ${r.d.stops} stops, ${r.d.total_miles} mi, about ${r.d.drive_minutes} min of driving.` : (r.d.detail || "No signal. Try again."));
+      load();
+    });
     $("refresh").addEventListener("click", load);
     load();
     setInterval(() => { if (!document.hidden) load(); }, 60000);
-    setInterval(loadLive, 5000);
+    setInterval(loadSite, 10000);
   </script>
 </body>
 </html>

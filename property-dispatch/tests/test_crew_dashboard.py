@@ -24,16 +24,16 @@ def optimize(client, when, **body):
 
 def test_dashboard_page_is_served(client):
     r = client.get("/crew/dashboard")
-    assert r.status_code == 200 and "START ROUTE TRANSIT" in r.text
+    assert r.status_code == 200 and "Start route" in r.text
 
 
 def test_dashboard_is_a_field_hud(client):
     page = client.get("/crew/dashboard").text
     # Big button: start → arrived → a complete label that says what finishing does to the customer's bill.
-    for label in ("START ROUTE TRANSIT", "ARRIVED ON SITE", "COMPLETE VISIT & INVOICE STRIPE", "COMPLETE VISIT & COLLECT CASH"):
+    for label in ("Start route", "Arrived on site", "Finish & text card pay link", "Finish & collect cash"):
         assert label in page
     # Scope enforcement block, with the lawn size filled in from the stop (never a fixed number).
-    for text in ("SCOPE ENFORCEMENT", "FENCED CORE ONLY", "FULL PROPERTY", "STANDARD VISIT"):
+    for text in ("What to mow", "Fenced core only", "Full property", "Standard visit"):
         assert text in page
     assert "4,500" not in page and "14,500" not in page
     # Mobile layout: 48px tap targets, a bottom sheet that moves with transform only, two columns when sideways.

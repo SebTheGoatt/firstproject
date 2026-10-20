@@ -1682,3 +1682,58 @@ body.page-team { min-height: 100vh; min-height: 100dvh; display: flex; flex-dire
 }
 /* Thumb-sized taps everywhere in the crew app. */
 .crew-body .btn, .crew-body button, .crew-body select, .crew-body input:not([type="checkbox"]):not([type="radio"]) { min-height: 44px; }
+
+/* ===== crew-light (Post One) ===== */
+/* Crew app, owner dashboard and owner tools in daylight: white sheets on Parade Ground, Ink text, 1px rules, no
+   shadows. Field Green goes on data (progress, the next stop, the selected day) and the one main button only.
+   Titles are sentence case in Public Sans. Overrides the Post Green crew ground above; the public site keeps its bands. */
+.crew-body { --dark-edge: var(--border-strong); background: var(--bg); color: var(--text); --focus: var(--brand); }
+.crew-brandbar { background: var(--surface); color: var(--text); border-bottom: 1px solid var(--border); --focus: var(--brand); }
+.crew-brandbar-name { font: 700 1.05rem/1.2 var(--font-body); letter-spacing: 0; text-transform: none; }
+.crew-brandbar-name span { color: var(--muted); font-weight: 500; }
+.crew-body :is(.muted, .hint, .empty, .link-btn, .ls-note, .ls-time) { color: var(--muted); }
+.crew-body a:not(.btn) { color: var(--brand-strong); }
+.crew-body .btn:not(.btn-primary) { background: var(--surface); border-color: var(--border-strong); color: var(--text); }
+.crew-body .btn { transition: background-color 120ms ease-out, transform 120ms ease-out; }
+.crew-body .btn:active { transform: scale(0.97); }
+.crew-body :is(.tab-title, .crew-hero h1, .signin-head h1) { font: 700 1.5rem/1.25 var(--font-body); text-transform: none; letter-spacing: -0.01em; }
+.crew-body .list-title { font: 600 1.1rem/1.3 var(--font-body); text-transform: none; letter-spacing: 0; }
+.crew-body .live-station h4 { font: 600 1rem/1.3 var(--font-body); text-transform: none; letter-spacing: 0; }
+.crew-body .roster-btn strong { font: 700 1.1rem/1.2 var(--font-body); text-transform: none; letter-spacing: 0; }
+.crew-body .crew-hero { background: var(--surface); color: var(--text); border-bottom: 1px solid var(--border); }
+.crew-body .crew-hero .avatar { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--accent); }
+.crew-body .greeting, .crew-body .crew-hero-role { color: var(--muted); }
+.crew-body .crew-stats div, .crew-body .stat, .crew-body .kpi, .crew-body .live-stat {
+  background: var(--surface); border: 1px solid var(--border); color: var(--text); box-shadow: none; }
+.crew-body :is(.crew-stats, .stat, .kpi) span, .crew-body .live-stat .lbl { color: var(--muted); font-size: 0.8rem; text-transform: none; letter-spacing: 0; }
+.crew-body :is(.crew-stats, .stat, .kpi) b, .crew-body .live-stat .num { font: 600 1.5rem/1.2 var(--font-body); font-variant-numeric: tabular-nums; }
+.crew-body .kpi b { font-size: 1.35rem; }
+.crew-body .route-mode { font: 700 1.1rem/1.2 var(--font-body); text-transform: none; letter-spacing: 0; }
+.crew-body :is(.progress, .dc-bar, .ls-bar) { background: #EDEFEA; }
+.crew-body :is(.progress > div, .dc-bar span, .ls-fill) { background: var(--brand); }
+.crew-body .stop { background: var(--surface); border: 1px solid var(--border); color: var(--text); box-shadow: none; }
+.crew-body .stop :is(.addr, .meta) { color: var(--muted); }
+.crew-body .seq { border-color: var(--brand); color: var(--brand-strong); font: 700 1.05rem/1 var(--font-body); }
+.crew-body .stop .tag { background: #EDEFEA; color: var(--text); }
+.crew-body .stop.next { background: var(--surface); border: 2px solid var(--brand); box-shadow: none; }
+.crew-body .stop.next .seq { background: var(--brand); border-color: var(--brand); color: #fff; }
+.crew-body .stop.done { background: transparent; border-style: dashed; }
+.crew-body .stop.done :is(.name, .seq) { color: var(--muted); border-color: var(--border-strong); }
+.crew-body .stop .finish { border-top-color: var(--border); }
+.crew-body .stop:not(.next) .donation-line { color: var(--brand-strong); }
+.crew-body .owner-links #rain-day { border-color: var(--border-strong); }
+.crew-body .day-card { background: var(--surface); border-color: var(--border); color: var(--text); }
+.crew-body .day-card.is-on { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); }
+.crew-body .day-card b { font: 600 1.2rem/1.2 var(--font-body); font-variant-numeric: tabular-nums; }
+.crew-body :is(.dc-day, .dc-date, .dc-money) { color: var(--muted); }
+.crew-body .day-card.is-on .dc-day { color: var(--brand-strong); }
+.crew-body .dc-day { text-transform: none; letter-spacing: 0; font-size: 0.8rem; }
+.crew-body :is(.ls-drop, .ls-feed li) { border-bottom-color: var(--border); }
+.crew-body .work-del { border-color: var(--border-strong); color: var(--muted); }
+.crew-body .work-del.confirm { border-color: var(--danger); color: var(--danger); }
+.crew-body .tabbar { background: var(--surface); border-top: 1px solid var(--border); }
+.crew-body .tabbar button { color: var(--muted); }
+.crew-body .tabbar button.is-on { color: var(--text); background: #EDEFEA; box-shadow: none; }
+.crew-body .toast { background: var(--text); color: #fff; border: 0; box-shadow: none; }
+.page-owner h1 { font: 700 1.5rem/1.25 var(--font-body); text-transform: none; letter-spacing: -0.01em; }
+@media (prefers-reduced-motion: reduce) { .crew-body .btn { transition: none; } }

@@ -264,8 +264,8 @@ def test_m3_crew_dashboard_data_carries_the_scope_lock_and_time_by_lawn_size(ops
     assert cleveland_full["service_minutes"] > spring_yard["service_minutes"]
 
     page = ops.get("/crew/dashboard").text
-    for words in ("SCOPE ENFORCEMENT", "FENCED CORE ONLY", "Mow inside the main fence line", "FULL PROPERTY",
-                  "START ROUTE TRANSIT", "ARRIVED ON SITE", "COMPLETE VISIT & INVOICE STRIPE"):
+    for words in ("What to mow", "Fenced core only", "Mow inside the main fence line", "Full property",
+                  "Start route", "Arrived on site", "Finish & text card pay link"):
         assert words in page, words
 
 

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Crew | {{BUSINESS_NAME}}</title>
   <meta name="robots" content="noindex">
-  <meta name="theme-color" content="#0F2B22">
+  <meta name="theme-color" content="#FFFFFF">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -117,7 +117,7 @@
         <p class="owner-links"><button class="btn btn-sm" type="button" id="rain-day">Rain day</button>
           <button class="btn btn-sm" type="button" id="print-manifest">Print manifest</button>
           <a class="btn btn-sm" href="/owner/readiness">Go-live checklist</a>
-          <a class="btn btn-sm" href="/owner/command">Command view</a></p>
+          <a class="btn btn-sm" href="/owner/command">Owner overview</a></p>
         <div class="week" id="week" role="tablist" aria-label="Next 7 days"></div>
         <div id="dash-err" class="alert alert-error" role="alert" hidden></div>
         <div class="kpis" id="kpis"></div>
@@ -130,7 +130,7 @@
         <!-- Live Station: owner-only live feed (visitors, bookings, click-offs) -->
         <div class="live-station" id="live-station">
           <div class="topbar">
-            <h4>LIVE_STATION_STATISTICS</h4>
+            <h4>Website today</h4>
             <span id="ls-note" class="ls-note">updates every few seconds</span>
           </div>
           <div class="live-grid">
@@ -141,7 +141,7 @@
           </div>
           <div class="live-cols">
             <div>
-              <h4>LIVE_FUNNEL_TELEMETRY</h4>
+              <h4>Where visitors got to</h4>
               <div id="ls-funnel"></div>
               <h4>Where they left (estimated)</h4>
               <div id="ls-dropoff"></div>
@@ -867,12 +867,12 @@
         const canBuild = t.jobs > 0 && r.completed === 0 && dashDay >= todayLocal();
         rc.append(
           el("div", { class: "rc-text" },
-            el("strong", {}, r.built ? `Route ready: ${r.stops} stops · ${miles(r.total_distance_m)} mi · ${fmtDur(r.total_duration_s)} driving` : "ROUTE_UNASSIGNED // COMPUTE_INTERCEPT"),
+            el("strong", {}, r.built ? `Route ready: ${r.stops} stops · ${miles(r.total_distance_m)} mi · ${fmtDur(r.total_duration_s)} driving` : "Route not built yet"),
             el("span", { class: "muted small" }, r.built
               ? (r.missing ? `${r.missing} booking(s) added after it was built. Rebuild to include them.` : `${r.completed}/${r.stops} done.`)
               : `Builds automatically at ${((d.auto_build.hour + 11) % 12) + 1} PM the day before.`)),
           ...(canBuild ? [buildBtn] : []));   // append() would print a null as the text "null"
-        $("jobs-title").textContent = `TARGET_MANIFEST · ${dayLabel(dashDay, { weekday: "long", month: "long", day: "numeric" })}`
+        $("jobs-title").textContent = `Bookings · ${dayLabel(dashDay, { weekday: "long", month: "long", day: "numeric" })}`
           + (d.area ? ` · ${d.area}` : "");
         const off = d.jobs.filter((j) => j.off_area && j.status !== "cancelled").length;
         $("off-area").hidden = !off;
