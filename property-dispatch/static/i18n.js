@@ -108,6 +108,7 @@
     "Veteran-owned · Spring, TX": "De un veterano · Spring, TX",
     "Lawn mowing · Veteran-owned · Spring, TX": "Corte de césped · De un veterano · Spring, TX",
     "How it works and prices": "Cómo funciona y precios",
+    "Post One Lawn Co. is operated by Semper Green LLC": "Post One Lawn Co. es operado por Semper Green LLC",
     "Clean lawns. Stronger communities.": "Jardines limpios. Comunidades más fuertes.",
     "Get updates on this phone": "Recibir avisos en este teléfono",
     "Want a heads-up when we're on the way?": "¿Quieres un aviso cuando vayamos en camino?",

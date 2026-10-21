@@ -440,7 +440,9 @@ def contact_line(settings: Settings) -> str:
 
 def legal_footer_html(settings: Settings) -> str:
     """The footer line every customer page carries: who we are, how to reach us, the policies."""
-    return (f'<p class="legal-line">{esc(settings.legal_name)}{contact_line(settings)} · '
+    # The brand first; the LLC is still named, as the law requires for a d/b/a.
+    return (f'<p class="legal-line">{esc(settings.business_name)} is operated by {esc(settings.legal_name)}'
+            f'{contact_line(settings)} · '
             '<a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a></p>')
 
 
