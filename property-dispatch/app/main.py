@@ -46,6 +46,7 @@ from .agent import register_agent_routes
 from .agent_api import register_agent_api
 from .live_feed import record_booking, register_live_routes
 from .about_page import register_about_page
+from .service_pages import register_service_pages
 from .legal_pages import SMS_CONSENT, legal_footer_html, register_legal_pages
 from .local_pages import brand_html, brand_lines, home_structured_data, not_found_page, register_local_pages, with_share_tags
 from .yield_engine import register_yield_engine
@@ -306,6 +307,7 @@ def create_app(
     register_agent_routes(app, settings, crew_auth)   # owner-only Ollama dispatch assistant (off unless OLLAMA_BASE_URL is set)
     register_local_pages(app, settings, version)      # server-rendered /local area pages + /sitemap.xml for search engines
     register_about_page(app, settings, version)       # /about: founders and how we work
+    register_service_pages(app, settings, version)    # /services: one page per service, prices read live
     register_legal_pages(app, settings, version)      # /privacy, /terms (with the damage policy), /refunds
     register_yield_engine(app, settings, page)        # owner's yield pricing engine: /api/v1/calculate-yield-price + /estimate
 

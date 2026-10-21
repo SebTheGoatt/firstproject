@@ -187,6 +187,23 @@ def cause_names(settings: Settings) -> list[str]:
             else c["name"] for c in causes(settings)]
 
 
+def price_table() -> str:
+    """The mowing price table (lawn size × yard type, before tax), shared by the area and service pages."""
+    tiers = list(YARD_TYPES.items())
+    head = "".join(f'<th scope="col">{esc(y["label"])}</th>' for _, y in tiers)
+    rows = "".join(f'\n              <tr><th scope="row">{esc(size)}<small>{esc(bracket_profile(n))}</small></th>'
+                   + "".join(f'<td data-label="{esc(y["label"])}">{dollars(prices[k])}</td>' for k, y in tiers)
+                   + "</tr>" for size, n, prices in price_rows())
+    return f"""<div class="card price-card">
+          <table class="price-table">
+            <caption class="visually-hidden">Mowing price per visit by lawn size and yard type, before tax</caption>
+            <thead><tr><th scope="col">Lawn size</th>{head}</tr></thead>
+            <tbody>{rows}
+            </tbody>
+          </table>
+        </div>"""
+
+
 def price_range() -> tuple[Decimal, Decimal]:
     """Cheapest and most expensive mow we book online, before tax and before any route discount."""
     return yield_mow_fee(1, "STANDARD"), yield_mow_fee(MAX_SQFT, "STEEP_SLOPES")
@@ -350,7 +367,7 @@ def layout(settings: Settings, version: str, *, title: str, description: str, bo
     <div class="site-wrap header-row">
       <a class="brand" href="/">{brand}</a>
       <nav class="site-nav" aria-label="Main">
-        <a href="/#services">Services</a>
+        <a href="/services">Services</a>
         <a href="/local">Service areas</a>
         <a href="/team">Meet the crew</a>
         <a href="/about">About</a>
@@ -372,7 +389,7 @@ def layout(settings: Settings, version: str, *, title: str, description: str, bo
       </div>
       <nav aria-label="Footer">
         <a href="/book">Book a service</a>
-        <a href="/#services">Services</a>
+        <a href="/services">Services</a>
         <a href="/local">Service areas</a>
         <a href="/team">Meet the crew</a>
         <a href="/about">About</a>
@@ -479,11 +496,6 @@ def area_html(settings: Settings, version: str, area: Area, site: str, day: date
     page_url = f"{site}/local/{area.slug}"
     low, _ = price_range()
 
-    tiers = list(YARD_TYPES.items())
-    head = "".join(f'<th scope="col">{esc(y["label"])}</th>' for _, y in tiers)
-    rows = "".join(f'\n              <tr><th scope="row">{esc(size)}<small>{esc(bracket_profile(n))}</small></th>'
-                   + "".join(f'<td data-label="{esc(y["label"])}">{dollars(prices[k])}</td>' for k, y in tiers)
-                   + "</tr>" for size, n, prices in price_rows())
     add_ons = "".join(f"<li><strong>{esc(label)}</strong><span>{esc(price)}</span></li>" for label, price in add_on_rows())
     cause_list = "".join(f"<li>{esc(name)}</li>" for name in cause_names(settings))
     # Facts that really differ by area: the size "Full property" is priced at, county, ZIPs, tax.
@@ -550,14 +562,7 @@ def area_html(settings: Settings, version: str, area: Area, site: str, day: date
       <div class="site-wrap">
         <h2 id="prices-title">Mowing prices (the same in every area we serve)</h2>
         <p class="section-lede">A price per visit, set by your lawn size and your yard type. Prices are before tax.</p>
-        <div class="card price-card">
-          <table class="price-table">
-            <caption class="visually-hidden">Mowing price per visit by lawn size and yard type, before tax</caption>
-            <thead><tr><th scope="col">Lawn size</th>{head}</tr></thead>
-            <tbody>{rows}
-            </tbody>
-          </table>
-        </div>
+        {price_table()}
         <p class="tax-note">{percent(zone.tax_rate)}% Texas sales tax added.</p>
         <p class="hint">Sizes in between are priced the same way; the booking form shows your exact price before you book.
           Neighbors already on the route save you money: with 2 or more of our customers booked within half a mile,
@@ -823,7 +828,9 @@ def register_local_pages(app: FastAPI, settings: Settings, version: str = "") ->
     @app.get("/sitemap.xml", include_in_schema=False)
     def sitemap(request: Request):
         site = site_url(settings, request)
-        paths = ["/", "/book", "/team", "/local", *(f"/local/{a.slug}" for a in AREAS),
+        from .service_pages import SERVICES   # imported here: service_pages builds on this module
+        paths = ["/", "/book", "/services", *(f"/services/{s.slug}" for s in SERVICES),
+                 "/team", "/local", *(f"/local/{a.slug}" for a in AREAS),
                  *(f"/local/{h.area}/{h.slug}" for h in HOODS), "/about", "/privacy", "/terms", "/refunds"]
         urls = "".join(f"  <url><loc>{xml_escape(site + p)}</loc></url>\n" for p in paths)
         body = ('<?xml version="1.0" encoding="UTF-8"?>\n'

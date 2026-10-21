@@ -1758,3 +1758,7 @@ button.area { width: 100%; font: inherit; color: inherit; text-align: left; alig
   background: transparent center / 12px no-repeat; }
 .addon-card.is-on .addon-box { background-color: var(--brand); border-color: var(--brand);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+
+/* Home service cards: a quiet link to each service page under the button */
+.service-more { display: inline-flex; align-items: center; min-height: 44px; margin-top: 4px; font-weight: 600; color: var(--brand-strong); }
+.local-list + .area-links { margin-top: 20px; }
