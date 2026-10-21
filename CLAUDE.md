@@ -78,3 +78,15 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
   "Lawn care service", website link, ask first customers for reviews.
 - Stripe public business name and statement descriptor → Post One.
 - Delete the mock bookings from testing.
+- Run `supabase/migrations/20261028000000_issues_and_sources.sql` (problem reports + booking sources).
+- Claim the same name, hours, site and service area on Bing Places, Apple Business Connect, Yelp and Nextdoor (AI
+  assistants pull from these); set the *_URL profile settings in Render as each one goes live.
+
+## Market notes (Oct 2026 research, public sources)
+- Houston-area mowing commonly quotes ~$35–$55 a visit for typical lots (marketplaces advertise "from $19"; GreenPal
+  shows ~$39 average in Cleveland). Post One's base is $75 before tax: position on reliability (set day, upfront
+  price, texts, photos, pay-first refunds) or revisit the base price — owner's call.
+- Competitors are mostly solo crews on directories plus marketplaces (LawnStarter, GreenPal, Lawn Love). "Texas
+  Veteran Lawn Service" also brands as veteran-owned in Spring. Colony Ridge / Plum Grove have no dedicated
+  providers online, and Spanish-language marketing is an open lane there.
+
