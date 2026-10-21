@@ -228,5 +228,9 @@ async def process_lifecycle_event(request: Request, stripe_signature: str = Head
     return {"status": "event_processed_successfully"}
 
 
+# Integrations register before the "/" static mount, which would otherwise catch their paths
+from quickbase import qb_router  # noqa: E402
+app.include_router(qb_router)
+
 # Mount public directory web interface
 app.mount("/", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "public"), html=True), name="public")

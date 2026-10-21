@@ -28,3 +28,16 @@ The tests mock Stripe, Supabase, and Claude, so they need no keys and no network
 - `POST /api/v1/audit?stripe_customer_id=cus_...` with form field `file` (PDF)
 - `GET /api/v1/audits/history?stripe_customer_id=cus_...`: the company's past audits, newest first
 - `POST /api/v1/webhooks/stripe`: point Stripe's subscription events here
+
+## Quickbase integration
+
+`POST /api/v1/integrations/quickbase/webhook` audits a Quickbase record's shop log (field 6)
+and writes the score and findings back to fields 12, 13 and 14. Change the field IDs at the
+top of `quickbase.py` to match your table.
+
+1. Set `QUICKBASE_REALM`, `QUICKBASE_USER_TOKEN` and `QUICKBASE_WEBHOOK_SECRET` in `.env`.
+2. In Quickbase, create a webhook on the table that POSTs JSON to the endpoint above:
+   `{"recordId": [Record ID#], "tableId": "<table id>", "appId": "<app id>", "stripe_customer_id": "cus_..."}`
+3. Add a custom header `X-Semper-Safe-Token` with the same value as `QUICKBASE_WEBHOOK_SECRET`.
+4. Trigger it on **add or modify, only when field 6 changes**. The write-back edits the record too;
+   the server skips text it has already audited, but this setting keeps Quickbase from calling at all.
