@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Marketing | {{BUSINESS_NAME}}</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#FFFFFF">
+  <link rel="icon" href="/favicon.ico">
+  <style>
+    /* Owner screen. Light and flat: colour goes on data (bookings, money, a booking on the wrong day),
+       not on chrome. One filled button: the next job (build the route). Bookings 7 + side 5 of 12 columns. */
+    @font-face { font-family: "Public Sans"; font-weight: 400; font-display: swap; src: url(/static/fonts/public-sans-400.woff2) format("woff2"); }
+    @font-face { font-family: "Public Sans"; font-weight: 500; font-display: swap; src: url(/static/fonts/public-sans-500.woff2) format("woff2"); }
+    @font-face { font-family: "Public Sans"; font-weight: 600; font-display: swap; src: url(/static/fonts/public-sans-600.woff2) format("woff2"); }
+    @font-face { font-family: "Public Sans"; font-weight: 700; font-display: swap; src: url(/static/fonts/public-sans-700.woff2) format("woff2"); }
+    :root {
+      --ground: #F6F7F3;      /* a lawn-paper white, one step off pure white */
+      --sheet: #FFFFFF;
+      --line: #E3E6DF;
+      --line-strong: #CFD4CB;
+      --track: #EDEFEA;
+      --ink: #14201B;
+      --ink-2: #3D4A44;
+      --muted: #5F6B65;       /* 5.4:1 on the sheet */
+      --green: #2E7D4F;       /* Field Green: the one data hue */
+      --green-soft: #E6F1EA;
+      --green-ink: #1F5A3C;
+      --brass: #8A6210;       /* money still owed, text-safe on white */
+      --red: #B42318;
+      --radius: 10px;
+      --font: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--ground); }
+    body { margin: 0; background: var(--ground); color: var(--ink); font: 400 14px/1.5 var(--font); -webkit-font-smoothing: antialiased; }
+    a { color: var(--green-ink); text-underline-offset: 3px; }
+    ::selection { background: var(--green-soft); }
+    :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; border-radius: 4px; }
+    .num { font-variant-numeric: tabular-nums; }
+
+    /* Top bar: the product, the scope, the other screens */
+    .bar { height: 56px; display: flex; align-items: center; gap: 16px; padding: 0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+      border-bottom: 1px solid var(--line); background: var(--sheet); position: sticky; top: 0; z-index: 5; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--ink); text-decoration: none; white-space: nowrap; }
+    .brand img { width: 22px; height: 24px; }
+    .brand small { font-weight: 400; color: var(--muted); font-size: 14px; }
+    .bar nav { display: flex; gap: 4px; margin-left: auto; overflow-x: auto; scrollbar-width: none; }
+    .bar nav::-webkit-scrollbar { display: none; }
+    .bar nav a { color: var(--ink-2); text-decoration: none; padding: 8px 12px; border-radius: 8px; white-space: nowrap; font-weight: 500;
+      transition: background-color 120ms ease-out; }
+    .bar nav a:hover { background: var(--ground); }
+    .bar nav a[aria-current="page"] { background: var(--track); color: var(--ink); }
+
+    main { max-width: 1320px; margin: 0 auto; padding: 24px max(16px, env(safe-area-inset-right)) 48px max(16px, env(safe-area-inset-left)); }
+
+    /* Title row: the day, the one finding, the one job */
+    .title { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; margin-bottom: 20px; }
+    .title h1 { margin: 0; font-size: 24px; line-height: 1.25; font-weight: 700; letter-spacing: -0.01em; }
+    .finding { margin: 4px 0 0; color: var(--ink-2); max-width: 70ch; }
+    .finding b { font-weight: 600; color: var(--ink); }
+    .finding.bad b { color: var(--red); }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .btn { font: 600 14px/1 var(--font); min-height: 40px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--line-strong);
+      background: var(--sheet); color: var(--ink); cursor: pointer; transition: background-color 120ms ease-out, transform 120ms ease-out; }
+    .btn:hover { background: var(--ground); }
+    .btn:active { transform: scale(0.97); }
+    .btn.primary { background: var(--green); border-color: var(--green); color: #fff; }
+    .btn.primary:hover { background: var(--green-ink); }
+    .btn[data-armed] { background: var(--ink); border-color: var(--ink); color: #fff; }
+    .btn:disabled { opacity: 0.55; cursor: default; transform: none; }
+    .btn.sm { min-height: 36px; padding: 0 12px; font-size: 13px; }
+    .btn.danger { color: var(--red); }
+
+    /* The week: one column per day, each day is one area */
+    .week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: var(--radius);
+      background: var(--sheet); margin-bottom: 24px; overflow: hidden; }
+    .day { padding: 12px 14px 14px; border-left: 1px solid var(--line); min-width: 0; }
+    .day:first-child { border-left: 0; }
+    .day .d { color: var(--muted); font-size: 12px; }
+    .day .a { font-weight: 600; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .day .m { margin-top: 10px; font-size: 18px; font-weight: 600; }
+    .day .m.zero { color: var(--muted); font-weight: 500; }
+    .load { height: 4px; border-radius: 2px; background: var(--track); margin-top: 8px; overflow: hidden; }
+    .load span { display: block; height: 100%; background: var(--green); }
+    .day .j { margin-top: 6px; font-size: 12px; color: var(--muted); }
+    .day.today { background: #FAFBF8; box-shadow: inset 0 2px 0 var(--green); }
+    .day.today .d { color: var(--green-ink); font-weight: 600; }
+    .day.off .a { color: var(--muted); font-weight: 400; }
+
+    .grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
+    @media (min-width: 1040px) { .grid { grid-template-columns: repeat(12, minmax(0, 1fr)); } .main { grid-column: span 7; align-self: start; } .side { grid-column: span 5; } }
+    .side { display: grid; gap: 24px; align-content: start; }
+    .panel { background: var(--sheet); border: 1px solid var(--line); border-radius: var(--radius); min-width: 0; overflow: hidden; }
+    .panel > header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    .panel h2 { margin: 0; font-size: 15px; font-weight: 600; }
+    .panel header small { color: var(--muted); font-size: 13px; }
+    .pad { padding: 16px; }
+
+    /* Bookings: rules and alignment, no zebra, money right-aligned */
+    .bk { list-style: none; margin: 0; padding: 0; }
+    .bk li { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; gap: 4px 14px; padding: 12px 16px; border-top: 1px solid var(--line); }
+    .bk li:first-child { border-top: 0; }
+    .bk .when { color: var(--muted); font-size: 13px; }
+    .bk .when b { display: block; color: var(--ink); font-weight: 600; font-size: 14px; }
+    .bk .who { font-weight: 600; }
+    .bk .addr { color: var(--ink-2); font-size: 13px; overflow-wrap: anywhere; }
+    .bk .meta { color: var(--muted); font-size: 13px; margin-top: 2px; }
+    .bk .amt { text-align: right; font-weight: 600; }
+    .bk .amt small { display: block; font-weight: 500; color: var(--muted); font-size: 12px; }
+    .bk .amt small.due { color: var(--brass); }
+    .bk .amt small.paid { color: var(--green-ink); }
+    .pill { display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--track); color: var(--ink-2); }
+    .pill.routed { background: var(--green-soft); color: var(--green-ink); }
+    .pill.done { background: var(--green); color: #fff; }
+    .pill.owed { background: #FBF3DF; color: var(--brass); }
+    .bk li.wrong { background: #FFFAF9; }
+    .wrong-note { grid-column: 2 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; color: var(--red); font-size: 13px; font-weight: 600; }
+    .wrong-note span { margin-right: 4px; }
+    .issues { margin-bottom: 24px; border-color: #F3C8C3; }
+    .issues > header { background: #FFF6F5; }
+    .issues h2 { color: var(--red); }
+    .iss { list-style: none; margin: 0; padding: 0; }
+    .iss li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px 16px; align-items: center; padding: 12px 16px; border-top: 1px solid var(--line); }
+    .iss li:first-child { border-top: 0; }
+    .iss-kind { font-weight: 600; }
+    .iss-meta { color: var(--muted); font-size: 13px; }
+    .iss-note { margin: 4px 0 0; color: var(--ink-2); }
+    .iss-photo { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); background: var(--track); }
+    @media (max-width: 760px) { .iss li { grid-template-columns: minmax(0, 1fr) auto; } .iss li .btn { grid-column: 1 / -1; } }
+    .empty { padding: 28px 16px; margin: 0; color: var(--muted); text-align: center; }
+    .bk li.empty { display: block; }
+
+    /* Figures: type, not tiles */
+    .figs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; }
+    .fig .v { font-size: 22px; font-weight: 600; line-height: 1.2; }
+    .fig .v.big { font-size: 28px; letter-spacing: -0.01em; }
+    .fig .v.zero { color: var(--muted); }
+    .fig .v.owed { color: var(--brass); }
+    .fig .k { color: var(--muted); font-size: 13px; margin-top: 2px; }
+
+    .funnel { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); display: grid; gap: 10px; }
+    .funnel h3 { margin: 0; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+    .step { display: grid; grid-template-columns: minmax(0, 1fr) 48px; align-items: center; gap: 4px 10px; font-size: 13px; }
+    .step .bar2 { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; }
+    .step .bar2 span { display: block; height: 100%; background: var(--green); }
+    .step .c { text-align: right; font-weight: 600; }
+
+    .checks { list-style: none; margin: 0; padding: 0; }
+    .checks li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 16px; border-top: 1px solid var(--line); }
+    .checks li:first-child { border-top: 0; }
+    .s { font-weight: 600; white-space: nowrap; }
+    .s.ok { color: var(--green-ink); } .s.no { color: var(--red); } .s.na { color: var(--muted); font-weight: 500; }
+    .foot { margin: 0; padding: 10px 16px 14px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); }
+
+    table.ph { width: 100%; border-collapse: collapse; font-size: 13px; }
+    table.ph th, table.ph td { padding: 9px 16px; border-top: 1px solid var(--line); text-align: left; }
+    table.ph th { color: var(--muted); font-weight: 500; border-top: 0; }
+
+    .toast { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: #fff;
+      padding: 12px 16px; border-radius: 10px; font-weight: 500; width: max-content; max-width: calc(100vw - 32px); z-index: 10; }
+    .msg { color: var(--ink-2); }
+
+    /* Phone: the week scrolls sideways, everything else stacks, taps stay 44px */
+    @media (max-width: 760px) {
+      .week { display: flex; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; }
+      .week::-webkit-scrollbar { display: none; }
+      .day { flex: 0 0 36%; scroll-snap-align: start; }
+      .bk li { grid-template-columns: minmax(0, 1fr) auto; }
+      .bk .when { grid-column: 1 / -1; display: flex; gap: 6px; align-items: baseline; }
+      .bk .when b { display: inline; font-size: 13px; }
+      .wrong-note { grid-column: 1 / -1; }
+      .btn, .btn.sm { min-height: 44px; }
+      .title .actions { width: 100%; }
+      .title .actions .btn { flex: 1; }
+      .brand small { display: none; }
+      .bar nav a { padding: 8px 10px; }
+    }
+    @media (prefers-reduced-motion: reduce) { .btn, .bar nav a { transition: none; } }
+  
+    /* Marketing hub */
+    .sec { margin-bottom: 24px; }
+    .tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .tbl th, .tbl td { padding: 10px 16px; border-top: 1px solid var(--line); text-align: left; }
+    .tbl th { color: var(--muted); font-weight: 500; border-top: 0; }
+    .tbl td.n { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+    .note { margin: 0; padding: 12px 16px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); }
+    .warn { color: var(--brass); }
+    .days { display: grid; gap: 16px; }
+    .post-day > header small { color: var(--muted); }
+    .post { padding: 14px 16px; border-top: 1px solid var(--line); display: grid; gap: 8px; }
+    .post:first-of-type { border-top: 0; }
+    .post-h { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-weight: 600; }
+    .post-text { margin: 0; white-space: pre-wrap; color: var(--ink-2); font-size: 14px; background: var(--ground); border-radius: 8px; padding: 12px; }
+    .lang { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; }
+    .lang button { font: 600 13px var(--font); padding: 6px 12px; border: 0; background: var(--sheet); color: var(--ink-2); cursor: pointer; min-height: 34px; }
+    .lang button[aria-pressed="true"] { background: var(--track); color: var(--ink); }
+    .builder { display: grid; gap: 16px; padding: 16px; }
+    @media (min-width: 900px) { .builder { grid-template-columns: minmax(0, 1fr) 260px; } }
+    .fields { display: grid; gap: 12px; }
+    .fields label { display: grid; gap: 4px; font-weight: 600; font-size: 13px; }
+    .fields select, .fields input { font: 400 15px var(--font); padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 8px; background: #fff; min-height: 44px; }
+    .url { word-break: break-all; font-size: 13px; color: var(--ink-2); background: var(--ground); padding: 10px 12px; border-radius: 8px; }
+    .qr-box { text-align: center; }
+    .qr-box img { width: 220px; height: 220px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+    .row-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+    .checks2 { list-style: none; margin: 0; padding: 0; }
+    .checks2 li { display: flex; gap: 12px; padding: 10px 16px; border-top: 1px solid var(--line); }
+    .checks2 li:first-child { border-top: 0; }
+    .checks2 b { white-space: nowrap; min-width: 90px; color: var(--green-ink); }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="/owner/command"><img src="/static/brand/post-one-mark.svg" alt="" width="22" height="24">{{BRAND_SHORT}} <small>Owner</small></a>
+    <nav aria-label="Owner screens">
+      <a href="/owner/command">Today</a>
+      <a href="/owner/marketing" aria-current="page">Marketing</a>
+      <a href="/crew">Bookings &amp; crew</a>
+      <a href="/crew/dashboard">Route</a>
+      <a href="/owner/readiness">Go-live</a>
+    </nav>
+  </header>
+
+  <main>
+    <p class="msg" id="msg" hidden></p>
+    <div id="app" hidden>
+      <section class="title">
+        <div>
+          <h1>Marketing</h1>
+          <p class="finding" id="finding"></p>
+        </div>
+      </section>
+
+      <div class="grid">
+        <div class="main">
+          <section class="panel sec" aria-labelledby="h-posts">
+            <header><h2 id="h-posts">This week's posts</h2>
+              <span class="lang" role="group" aria-label="Language">
+                <button type="button" data-lang="en" aria-pressed="true">English</button><button type="button" data-lang="es" aria-pressed="false">Español</button>
+              </span></header>
+            <p class="note">One post per area day that can still be booked, written from your real prices and openings. Each link carries its own tag, so bookings from it show up in the scoreboard.</p>
+            <div class="days" id="posts"></div>
+          </section>
+
+          <section class="panel sec" aria-labelledby="h-build">
+            <header><h2 id="h-build">Links, QR codes and print</h2></header>
+            <div class="builder">
+              <div class="fields">
+                <label>Where it goes<select id="channel"></select></label>
+                <label>Which page<select id="target"></select></label>
+                <div><div class="url" id="link" aria-live="polite"></div></div>
+                <div class="row-btns">
+                  <button class="btn primary" type="button" id="copy-link">Copy link</button>
+                  <a class="btn" id="dl-qr" download>Download QR code</a>
+                </div>
+                <div class="row-btns" id="prints"></div>
+              </div>
+              <div class="qr-box"><img id="qr" alt="QR code for the link" width="220" height="220"></div>
+            </div>
+          </section>
+        </div>
+
+        <div class="side">
+          <section class="panel" aria-labelledby="h-score">
+            <header><h2 id="h-score">Where bookings come from</h2><small>last 30 days</small></header>
+            <table class="tbl"><thead><tr><th>Channel</th><th style="text-align:right">Bookings</th><th style="text-align:right">Booked</th></tr></thead>
+              <tbody id="score"></tbody></table>
+            <p class="note" id="score-note"></p>
+          </section>
+
+          <section class="panel" aria-labelledby="h-tags">
+            <header><h2 id="h-tags">Best links and signs</h2><small>last 90 days</small></header>
+            <table class="tbl"><thead><tr><th>Tag</th><th style="text-align:right">Bookings</th></tr></thead><tbody id="tags"></tbody></table>
+          </section>
+
+          <section class="panel" aria-labelledby="h-week">
+            <header><h2 id="h-week">Weekly routine</h2></header>
+            <ul class="checks2">
+              <li><b>Monday</b><span>Post this week's area days on Facebook, Nextdoor and your Google Business Profile.</span></li>
+              <li><b>Every job</b><span>Before and after photos. Leave a door hanger on 3 to 5 neighbors' doors.</span></li>
+              <li><b>Every job</b><span>The review text goes out on its own (<span id="rev"></span>).</span></li>
+              <li><b>Friday</b><span>One short TikTok or Reel: a stripe pass, a before and after.</span></li>
+              <li><b>Monthly</b><span>Check this scoreboard. Put more signs and hangers where bookings come from.</span></li>
+            </ul>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <script>
+    let token = null;
+    try { token = localStorage.getItem("crewToken"); } catch {}
+    const $ = (id) => document.getElementById(id);
+    const money = (n) => (n ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
+    const day = (iso, o) => new Date(iso + "T12:00:00").toLocaleDateString("en-US", o);
+    function el(tag, attrs = {}, ...kids) {
+      const e = document.createElement(tag);
+      for (const [k, v] of Object.entries(attrs)) k === "class" ? (e.className = v) : e.setAttribute(k, v);
+      e.append(...kids.filter((x) => x != null && x !== false));
+      return e;
+    }
+    let toastTimer;
+    function toast(text) { $("toast").textContent = text; $("toast").hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { $("toast").hidden = true; }, 4000); }
+    async function copy(text) {
+      try { await navigator.clipboard.writeText(text); toast("Copied."); }
+      catch { toast("Couldn't copy. Press and hold the text to copy it."); }
+    }
+    let data = null, lang = "en";
+
+    function renderPosts() {
+      $("posts").replaceChildren(...(data.posts.length ? data.posts.map((d) => el("article", { class: "post-day" },
+        el("header", { style: "padding:12px 16px;border-top:1px solid var(--line)" }, el("h3", { style: "margin:0;font-size:15px" }, `${day(d.date, { weekday: "long", month: "short", day: "numeric" })} · ${d.area}`)),
+        ...d.posts.map((p) => {
+          const text = p[lang];
+          return el("div", { class: "post" },
+            el("div", { class: "post-h" }, el("span", {}, p.label), Object.assign(el("button", { class: "btn sm", type: "button" }, "Copy"), { onclick: () => copy(text) })),
+            el("p", { class: "post-text" }, text));
+        }))) : [el("p", { class: "empty" }, "No bookable area days in the next week.")]));
+    }
+
+    function renderScore() {
+      const s = data.last_30;
+      $("score").replaceChildren(...(s.channels.length ? s.channels.map((c) => el("tr", {}, el("td", {}, c.name), el("td", { class: "n" }, String(c.bookings)), el("td", { class: "n" }, money(c.booked))))
+        : [el("tr", {}, el("td", { colspan: "3", class: "empty" }, "No bookings in the last 30 days yet."))]));
+      $("tags").replaceChildren(...(data.last_90.tags.length ? data.last_90.tags.slice(0, 10).map((t) => el("tr", {}, el("td", {}, t.name), el("td", { class: "n" }, String(t.bookings))))
+        : [el("tr", {}, el("td", { colspan: "2", class: "empty" }, "Tagged bookings show here."))]));
+      $("score-note").textContent = data.tracking_ready
+        ? "Google, ChatGPT and other sites are recognized on their own. Signs, hangers and posts need their tagged link or QR code."
+        : "Tracking needs the database update: run supabase/migrations/20261028000000_issues_and_sources.sql in Supabase.";
+      $("score-note").className = "note" + (data.tracking_ready ? "" : " warn");
+      $("rev").textContent = data.review_link ? "your Google review link is set" : "set GOOGLE_REVIEW_URL in Render to turn it on";
+      const top = s.channels.find((c) => !c.name.startsWith("Not tracked"));
+      $("finding").textContent = top ? `${top.name} brought the most bookings in the last 30 days: ${top.bookings}.`
+        : "Post this week's area days, and use a tagged link or QR code on everything you hand out.";
+    }
+
+    function refreshLink() {
+      const ch = $("channel").value, t = data.targets.find((x) => x.path === $("target").value);
+      const ref = t.area ? `${ch}-${t.area}` : ch;
+      const url = `${data.site}${t.path}?ref=${ref}`;
+      $("link").textContent = url;
+      const qs = `path=${encodeURIComponent(t.path)}&ref=${ref}`;
+      $("qr").src = `/marketing/qr.svg?${qs}`;
+      $("dl-qr").href = `/marketing/qr.svg?${qs}`; $("dl-qr").setAttribute("download", `post-one-${ref}.svg`);
+      $("prints").replaceChildren(...Object.entries(data.prints).map(([k, label]) =>
+        el("a", { class: "btn sm", href: `/owner/marketing/print?kind=${k}&path=${encodeURIComponent(t.path)}&ref=${k}${t.area ? "-" + t.area : ""}`, target: "_blank", rel: "noopener" }, `Print ${label.toLowerCase()}`)));
+    }
+
+    function renderBuilder() {
+      $("channel").replaceChildren(...Object.entries(data.channels).map(([k, v]) => el("option", { value: k }, v)));
+      $("target").replaceChildren(...data.targets.map((t) => el("option", { value: t.path }, t.label)));
+      $("target").value = data.targets.find((t) => t.area)?.path || "/";
+      $("channel").addEventListener("change", refreshLink); $("target").addEventListener("change", refreshLink);
+      $("copy-link").addEventListener("click", () => copy($("link").textContent));
+      refreshLink();
+    }
+
+    document.querySelectorAll(".lang button").forEach((b) => b.addEventListener("click", () => {
+      lang = b.dataset.lang;
+      document.querySelectorAll(".lang button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      renderPosts();
+    }));
+
+    (async () => {
+      if (!token) { $("msg").hidden = false; $("msg").innerHTML = 'Sign in as the owner in the <a href="/crew">crew app</a> first.'; return; }
+      const res = await fetch("/api/owner/marketing", { headers: { "X-Crew-Token": token } }).catch(() => null);
+      if (!res || !res.ok) { $("msg").hidden = false; $("msg").textContent = res && res.status === 403 ? "Only the owner can see this." : "Couldn't load. Sign in again in the crew app."; return; }
+      data = await res.json();
+      $("app").hidden = false;
+      renderPosts(); renderScore(); renderBuilder();
+    })();
+  </script>
+</body>
+</html>

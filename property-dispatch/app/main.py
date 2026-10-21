@@ -47,9 +47,11 @@ from .agent import register_agent_routes
 from .agent_api import register_agent_api
 from .live_feed import record_booking, register_live_routes
 from .about_page import register_about_page
+from .issues import register_issues
+from .marketing import register_marketing
 from .service_pages import register_service_pages
 from .legal_pages import SMS_CONSENT, legal_footer_html, register_legal_pages
-from .local_pages import brand_html, brand_lines, home_structured_data, not_found_page, register_local_pages, with_share_tags
+from .local_pages import brand_html, brand_lines, home_faq_structured_data, home_structured_data, not_found_page, register_local_pages, with_share_tags
 from .yield_engine import register_yield_engine
 from .command import register_command
 from .readiness import register_readiness
@@ -282,7 +284,8 @@ def create_app(
         # The business's structured data for Google, with this site's own address.
         # Link previews (texts, Facebook, Google) need the share image as a full https address.
         site = site_url(settings, request)
-        text = render("home.html").replace("{{HOME_JSONLD}}", home_structured_data(settings, site)).replace("{{SITE}}", site)
+        text = render("home.html")
+        text = text.replace("{{HOME_JSONLD}}", home_structured_data(settings, site) + home_faq_structured_data(text)).replace("{{SITE}}", site)
         return HTMLResponse(with_share_tags(text, site, "/"), headers={"Cache-Control": "no-cache"})
 
     @app.get("/book", include_in_schema=False)
@@ -325,6 +328,8 @@ def create_app(
     owner_auth = register_visit_routes(app, settings, crew_auth)
     register_readiness(app, settings, owner_auth, page)   # owner's go-live checklist: /owner/readiness
     register_command(app, settings, owner_auth, page)     # owner's command view: /owner/command
+    register_issues(app, settings, crew_auth, owner_auth)  # crew problem reports with photos → owner
+    register_marketing(app, settings, owner_auth, page, version)   # owner marketing hub: /owner/marketing
     register_agent_api(app, settings, build={"static_version": version, "commit": os.environ.get("RENDER_GIT_COMMIT", "")[:7]})   # scoped, audited keys for StarNet agents (off unless AGENT_KEY_READ / AGENT_KEY_OPS are set)
     register_agent_routes(app, settings, crew_auth)   # owner-only Ollama dispatch assistant (off unless OLLAMA_BASE_URL is set)
     register_local_pages(app, settings, version)      # server-rendered /local area pages + /sitemap.xml for search engines
@@ -362,7 +367,13 @@ def create_app(
 
     @app.get("/robots.txt", include_in_schema=False)
     def robots(request: Request):
-        return PlainTextResponse("User-agent: *\nAllow: /\nDisallow: /crew\nDisallow: /api/\n"
+        # Search engines and AI assistants (ChatGPT, Perplexity, Claude, Gemini, Apple) are all welcome on the public
+        # pages; the crew, owner, API, pay and visit pages stay out. /llms.txt is the plain-facts page for AI assistants.
+        private = "Disallow: /crew\nDisallow: /owner\nDisallow: /api/\nDisallow: /pay/\nDisallow: /visit/\n"
+        bots = ("OAI-SearchBot", "ChatGPT-User", "GPTBot", "PerplexityBot", "ClaudeBot", "Claude-SearchBot",
+                "Google-Extended", "Applebot-Extended", "Bingbot")
+        named = "".join(f"User-agent: {b}\nAllow: /\n{private}\n" for b in bots)
+        return PlainTextResponse(f"User-agent: *\nAllow: /\n{private}\n{named}"
                                  f"Sitemap: {site_url(settings, request)}/sitemap.xml\n")
 
     app.mount("/static", CachedStatic(directory=STATIC_DIR), name="static")
@@ -574,6 +585,11 @@ def create_app(
             add_ons=add_ons, add_on_total=float(q.add_on_total), lang=body.lang,
         )
         forget_counts(repo)                     # the day just got one fuller
+        if body.source:                         # marketing attribution; best effort (needs the 2026-10-28 update)
+            try:
+                repo.set_job_source(job["id"], body.source)
+            except Exception:
+                log.warning("Booking source not saved (run the 20261028 database update)")
         record_booking(job_id=str(job["id"]))   # the only booking counter (idempotent per job)
         if body.sms_consent:   # proof of consent for texting (TCPA): which booking, when, and the exact wording
             log.info("SMS consent: job %s at %s: %s", job["id"], now.isoformat(), SMS_CONSENT.format(brand=settings.business_name, legal=settings.legal_name))

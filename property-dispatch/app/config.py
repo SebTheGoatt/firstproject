@@ -109,6 +109,13 @@ class Settings(BaseSettings):
     charity_toys_name: str = "Holiday toy drive for local kids"
     # Google review link (Google Business Profile → "Ask for reviews"). Blank = no review requests are sent.
     google_review_url: str = ""
+    # Public profiles (https links). Listed as "sameAs" so Google and AI assistants tie them to this business.
+    google_business_url: str = ""
+    facebook_url: str = ""
+    instagram_url: str = ""
+    tiktok_url: str = ""
+    nextdoor_url: str = ""
+    yelp_url: str = ""
     review_requests_every_min: int = 5     # how often the web process looks for jobs to follow up on (0 = off)
 
     # --- Stripe card payments (leave blank to take cash only) ---------

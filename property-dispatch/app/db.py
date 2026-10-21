@@ -158,6 +158,13 @@ class Repository(Protocol):
     def move_job(self, job_id: str, day: date) -> bool: ...
     def add_job_photo(self, job_id: str, member_id: str | None, kind: str, photo: str) -> dict: ...
     def list_job_photos(self, job_id: str) -> list[dict]: ...
+    # Crew problem reports (app/issues.py) and marketing attribution (app/marketing.py)
+    def add_issue(self, job_id: str, member_id: str | None, kind: str, note: str, photo: str | None) -> dict: ...
+    def list_issues(self, open_only: bool = True, limit: int = 50) -> list[dict]: ...
+    def issue_photo(self, issue_id: str) -> str | None: ...
+    def resolve_issue(self, issue_id: str) -> bool: ...
+    def set_job_source(self, job_id: str, source: str) -> None: ...
+    def bookings_by_source(self, since: datetime) -> list[dict]: ...
     def job_photo(self, photo_id: str) -> dict | None: ...
     # Push notification subscriptions (one per phone/browser that opted in on a visit page)
     def save_push_subscription(self, job_id: str, endpoint: str, p256dh: str, auth: str,
@@ -169,6 +176,14 @@ class Repository(Protocol):
 # ======================================================================
 #  Supabase
 # ======================================================================
+def _issue(i: dict, job: dict, has_photo: bool) -> dict:
+    """A problem report as the owner sees it: what, where, when. No customer name or phone."""
+    return {"id": i["id"], "job_id": i["job_id"], "kind": i["kind"], "note": i["note"], "has_photo": has_photo,
+            "created_at": str(i["created_at"]), "resolved_at": i.get("resolved_at"),
+            "address": job.get("address"), "scheduled_date": str(job.get("scheduled_date") or ""),
+            "zone_key": job.get("zone_key")}
+
+
 class SupabaseRepository:
     STOP_SELECT = (
         "id, route_id, job_id, sequence, leg_distance_m, leg_duration_s, eta, completed_at, notified_at,"
@@ -614,6 +629,35 @@ class SupabaseRepository:
         return (self.sb.table("job_photos").select("id, kind, created_at, member_id")
                 .eq("job_id", job_id).order("created_at").execute().data)
 
+    ISSUE_COLS = "id, job_id, member_id, kind, note, has_photo, created_at, resolved_at, jobs(address, scheduled_date, zone_key)"
+
+    def add_issue(self, job_id, member_id, kind, note, photo) -> dict:
+        row = self.sb.table("job_issues").insert({"job_id": job_id, "member_id": member_id, "kind": kind,
+                                                  "note": note, "photo": photo}).execute().data[0]
+        return {k: row[k] for k in ("id", "job_id", "kind", "note", "created_at")}
+
+    def list_issues(self, open_only=True, limit=50) -> list[dict]:
+        q = self.sb.table("job_issues").select(self.ISSUE_COLS)
+        if open_only:
+            q = q.is_("resolved_at", "null")
+        rows = q.order("created_at", desc=True).limit(limit).execute().data
+        return [_issue(r, r.get("jobs") or {}, bool(r.get("has_photo"))) for r in rows]
+
+    def issue_photo(self, issue_id: str) -> str | None:
+        rows = self.sb.table("job_issues").select("photo").eq("id", issue_id).limit(1).execute().data
+        return rows[0]["photo"] if rows else None
+
+    def resolve_issue(self, issue_id: str) -> bool:
+        return bool(self.sb.table("job_issues").update({"resolved_at": _now_iso()}).eq("id", issue_id)
+                    .is_("resolved_at", "null").execute().data)
+
+    def set_job_source(self, job_id: str, source: str) -> None:
+        self.sb.table("jobs").update({"source": source}).eq("id", job_id).execute()
+
+    def bookings_by_source(self, since: datetime) -> list[dict]:
+        return (self.sb.table("jobs").select("source, zone_key, status, amount_due, created_at")
+                .gte("created_at", since.isoformat()).execute().data)
+
     def job_photo(self, photo_id: str) -> dict | None:
         rows = self.sb.table("job_photos").select("id, job_id, photo").eq("id", photo_id).limit(1).execute().data
         return rows[0] if rows else None
@@ -644,6 +688,7 @@ class MemoryRepository:
         self.crew: dict[str, dict] = {}
         self.portfolio: dict[str, dict] = {}
         self.job_photos: dict[str, dict] = {}
+        self.job_issues: dict[str, dict] = {}
         self.push_subs: dict[str, dict] = {}     # endpoint → subscription
 
     def count_active_jobs(self, day: date) -> int:
@@ -1029,6 +1074,35 @@ class MemoryRepository:
              "created_at": _now_iso()}
         self.job_photos[p["id"]] = p
         return {k: p[k] for k in ("id", "job_id", "kind", "created_at")}
+
+    def add_issue(self, job_id, member_id, kind, note, photo) -> dict:
+        i = {"id": str(uuid.uuid4()), "job_id": job_id, "member_id": member_id, "kind": kind, "note": note,
+             "photo": photo, "created_at": _now_iso(), "resolved_at": None}
+        self.job_issues[i["id"]] = i
+        return {k: i[k] for k in ("id", "job_id", "kind", "note", "created_at")}
+
+    def list_issues(self, open_only=True, limit=50) -> list[dict]:
+        rows = sorted((i for i in self.job_issues.values() if not (open_only and i["resolved_at"])),
+                      key=lambda i: i["created_at"], reverse=True)[:limit]
+        return [_issue(i, self.jobs.get(i["job_id"], {}), bool(i["photo"])) for i in rows]
+
+    def issue_photo(self, issue_id: str) -> str | None:
+        return (self.job_issues.get(issue_id) or {}).get("photo")
+
+    def resolve_issue(self, issue_id: str) -> bool:
+        i = self.job_issues.get(issue_id)
+        if not i or i["resolved_at"]:
+            return False
+        i["resolved_at"] = _now_iso()
+        return True
+
+    def set_job_source(self, job_id: str, source: str) -> None:
+        if job_id in self.jobs:
+            self.jobs[job_id]["source"] = source
+
+    def bookings_by_source(self, since: datetime) -> list[dict]:
+        return [{k: j.get(k) for k in ("source", "zone_key", "status", "amount_due", "created_at")}
+                for j in self.jobs.values() if str(j["created_at"]) >= since.isoformat()]
 
     def list_job_photos(self, job_id: str) -> list[dict]:
         photos = sorted((p for p in self.job_photos.values() if p["job_id"] == job_id),

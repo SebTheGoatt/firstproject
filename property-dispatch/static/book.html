@@ -657,6 +657,8 @@
       data.sms_consent = $("sms-consent").checked;     // required box: texts about this booking
       delete data.scope;
       data.lang = window.I18N?.lang === "es" ? "es" : "en";   // their texts come in this language
+      const source = window.poSource?.();                      // which QR code / post / site sent them (marketing)
+      if (source) data.source = source;
       if (addressInput.dataset.picked === addressInput.value && latInput.value) {
         data.lat = Number(latInput.value);
         data.lng = Number(lngInput.value);

@@ -146,6 +146,14 @@
     .btn-nav { background: #1a73e8; border-color: #1a73e8; color: #fff; }
     .note-toggle { display: inline-flex; align-items: center; min-height: var(--tap); margin-top: 6px; font: inherit; font-weight: 600;
       background: none; border: 0; color: var(--brand); padding: 0 4px; cursor: pointer; }
+    .issue-toggle { display: inline-flex; align-items: center; min-height: var(--tap); margin: 6px 0 0 12px; font: inherit; font-weight: 600;
+      background: none; border: 0; color: #B42318; padding: 0 4px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+    .issue-why { margin: 0 0 12px; color: var(--muted); }
+    .issue-kinds { display: grid; gap: 8px; margin-bottom: 14px; }
+    .issue-kind { display: flex; align-items: center; gap: 12px; min-height: var(--tap); padding: 8px 14px; border: 1px solid var(--border-strong);
+      border-radius: 12px; font-weight: 600; cursor: pointer; }
+    .issue-kind:has(input:checked) { border-color: var(--brand); background: var(--brand-soft); }
+    .issue-kind input { width: 22px; height: 22px; accent-color: var(--brand); }
     .note-box textarea { width: 100%; min-height: 80px; font: inherit; padding: 10px; border: 1px solid var(--border); border-radius: 10px; }
     .note-box .btn { margin-top: var(--gap-s); }
     .note-saved { font-size: 1rem; color: var(--muted); }
@@ -338,7 +346,7 @@
   </main>
 
   <div id="dash" hidden>
-    <div id="route-map" role="button" tabindex="0" aria-label="Active Route Map: today's stops. Tap for turn-by-turn directions to the current stop."></div>
+    <div id="route-map" role="region" tabindex="0" aria-label="Active Route Map: today's stops. Press Enter for turn-by-turn directions to the current stop."></div>
     <button class="map-fit" id="map-fit" type="button" aria-label="Show the whole route on the map">⤢ Whole route</button>
 
     <section class="deck" id="deck" data-snap="peek" aria-label="Route Sequence Deck">
@@ -553,7 +561,8 @@
         el("button", { class: "note-toggle", type: "button", "aria-expanded": "false", onclick: (e) => {
           noteBox.hidden = !noteBox.hidden; e.currentTarget.setAttribute("aria-expanded", String(!noteBox.hidden));
         } }, notes[cur.stop_id] ? "📝 Note (1)" : "📝 Add a note"),
-        noteBox));
+        noteBox,
+        el("button", { class: "issue-toggle", type: "button", onclick: () => openIssueSheet(cur) }, "Report a problem")));
       $("note-text").value = notes[cur.stop_id] || "";
     }
 
@@ -877,6 +886,42 @@
         notes[stopId] = text.trim();
         $("note-saved").textContent = " Saved.";
       } catch (err) { toast(err.message); }
+    }
+
+    // Report a problem: damage, equipment, no access, running late. Saved with a photo and sent to the owner.
+    function openIssueSheet(cur) {
+      const kinds = [["damage", "Damage to the property"], ["equipment", "Equipment broke down"], ["access", "Couldn't get in"],
+                     ["delay", "Running late"], ["other", "Something else"]];
+      const radios = el("div", { class: "issue-kinds", role: "radiogroup", "aria-label": "What happened" },
+        ...kinds.map(([k, label], i) => el("label", { class: "issue-kind" },
+          el("input", { type: "radio", name: "issue-kind", value: k, ...(i === 0 ? { checked: "" } : {}) }), el("span", {}, label))));
+      const noteIn = el("textarea", { id: "issue-note", maxlength: "1000", placeholder: "What happened? e.g. mower hit a sprinkler head by the driveway" });
+      const photoIn = el("input", { id: "issue-photo", type: "file", accept: "image/*", capture: "environment" });
+      const send = el("button", { class: "btn btn-primary", type: "button" }, "Send to owner");
+      const close = () => bg.remove();
+      const bg = el("div", { class: "sheet-bg", onclick: (e) => { if (e.target === bg) close(); } },
+        el("div", { class: "sheet", role: "dialog", "aria-modal": "true", "aria-labelledby": "issue-title" },
+          el("h2", { id: "issue-title" }, "Report a problem"),
+          el("p", { class: "issue-why" }, "Say it right away, with a photo. The owner handles it before the customer has to call."),
+          radios,
+          el("div", { class: "field" }, el("label", { for: "issue-photo" }, "Photo"), photoIn),
+          el("div", { class: "field" }, el("label", { for: "issue-note" }, "Note"), noteIn),
+          el("div", { class: "row" }, el("button", { class: "btn", type: "button", onclick: close }, "Cancel"), send)));
+      send.addEventListener("click", async () => {
+        send.disabled = true; send.textContent = "Sending…";
+        try {
+          const body = { kind: radios.querySelector("input:checked").value, note: noteIn.value };
+          if (photoIn.files?.[0]) body.photo = await resizeImage(photoIn.files[0]);
+          const r = await api(`/api/stops/${cur.stop_id}/issues`, { method: "POST", json: body });
+          close();
+          toast(r.emailed ? "Sent. The owner got an email with it." : "Sent. It's on the owner screen.");
+        } catch (err) {
+          toast(err.message);
+          send.disabled = false; send.textContent = "Send to owner";
+        }
+      });
+      document.body.append(bg);
+      radios.querySelector("input").focus();
     }
 
     function openCompleteSheet() {
