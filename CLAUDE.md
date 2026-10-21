@@ -22,6 +22,13 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 - Design system: `property-dispatch/DESIGN.md`. Public site = Post Green bands, Big Shoulders uppercase headlines.
   Work app (crew/owner) = bright daylight theme, flat, sentence case. The owner disliked the dark "matrix" look.
 
+## Speed rules (from the full diagnostic)
+- Home page: the area map (MapLibre + tiles) loads only when scrolled near; Google address autocomplete loads on the
+  first touch of the address form. Keep heavy third-party scripts off the first paint.
+- Static files: `?v=<hash>` URLs are cached for a year; fonts/images/icons a week. New images get new file names.
+- Display pages reuse "bookings that day" counts for 30s (`cached_count`); taking a booking always counts fresh.
+- Route planning: exact Held-Karp up to 12 stops (milliseconds); OR-Tools above that with a scaled time budget.
+
 ## Standing decisions
 - **One area per day, enforced:** Mon Spring · Tue Klein · Wed New Caney & Splendora · Thu Colony Ridge ·
   Fri Cleveland & Plum Grove · Sat make-up only. Bookings on the wrong day are rejected; the route builder drops

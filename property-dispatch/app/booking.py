@@ -6,6 +6,7 @@
 * One area per day: an address can only be booked on its area's weekday (app/zones.py).
 """
 
+import time
 from datetime import date, datetime, timedelta
 
 from .config import Settings
@@ -29,6 +30,26 @@ def is_frozen(day: date, now: datetime, freeze_hour: int) -> bool:
     if day <= today:
         return True
     return day == today + timedelta(days=1) and now.hour >= freeze_hour
+
+
+COUNT_TTL_S = 30.0   # display-only booking counts are reused this long (one database round trip saved per page view)
+
+
+def cached_count(repo, day: date) -> int:
+    """Active bookings on a day, remembered for COUNT_TTL_S on this repository. For pages and day pickers only;
+    taking a booking always counts fresh (validate_booking), so a stale count can never overbook a day."""
+    cache = repo.__dict__.setdefault("_count_cache", {})
+    hit = cache.get(day)
+    if hit and time.monotonic() - hit[0] < COUNT_TTL_S:
+        return hit[1]
+    n = repo.count_active_jobs(day)
+    cache[day] = (time.monotonic(), n)
+    return n
+
+
+def forget_counts(repo) -> None:
+    """Drop the remembered counts after a booking is made, moved or cancelled."""
+    repo.__dict__.pop("_count_cache", None)
 
 
 def earliest_bookable_day(now: datetime, freeze_hour: int) -> date:

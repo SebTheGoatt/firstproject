@@ -75,11 +75,15 @@ def test_donations_from_before_the_split_show_no_ledger(client, repo, settings):
 
 
 def test_booking_info_counts_real_openings_on_the_next_route(client, settings, repo):
+    from app.booking import forget_counts   # the page reuses a count for 30s; start fresh for each case
     assert client.get("/api/booking-info").json()["spots_left"] == settings.daily_job_quota
+    forget_counts(repo)
     with patch.object(repo, "count_active_jobs", return_value=settings.daily_job_quota - 2):
         assert client.get("/api/booking-info").json()["spots_left"] == 2
+    forget_counts(repo)
     with patch.object(repo, "count_active_jobs", return_value=settings.daily_job_quota + 3):
         assert client.get("/api/booking-info").json()["spots_left"] == 0
+    forget_counts(repo)
     with patch.object(repo, "count_active_jobs", side_effect=RuntimeError("db down")):
         info = client.get("/api/booking-info").json()
     assert info["spots_left"] is None and info["earliest_date"]  # the page still loads
