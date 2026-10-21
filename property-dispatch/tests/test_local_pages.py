@@ -306,7 +306,7 @@ def test_server_pages_share_the_post_one_footer_and_hero(client):
         t = client.get(path, headers={"Accept": "text/html"}).text
         assert 'class="site local page-server-pages' in t and 'class="sp-hero' in t, path
         assert re.search(r'<p class="footer-copy">© \d{4} Post One Lawn Co\.</p>', t), path
-        assert '<p class="legal-line">Semper Green LLC · <a href="/privacy">Privacy</a>' in t, path
+        assert '<p class="legal-line">Post One Lawn Co. is operated by Semper Green LLC · <a href="/privacy">Privacy</a>' in t, path
         assert '<p class="footer-tagline">On post. On time.</p>' in t, path
 
 
