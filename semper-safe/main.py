@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-app = FastAPI(title="Enterprise Safety Automation Matrix", version="1.0.0")
+app = FastAPI(title="Semper Safe Enterprise Core Engine", version="1.0.0")
 
 # Cross-Origin Guardrails
 app.add_middleware(
@@ -171,6 +171,26 @@ async def execute_compliance_audit(
         raise HTTPException(status_code=500, detail=f"Audit completed but could not be saved: {str(e)}")
 
     return {"success": True, "data": parsed_audit_data}
+
+
+# Historical Log Audit Enumeration Endpoint
+@app.get("/api/v1/audits/history")
+async def retrieve_audit_history(stripe_customer_id: str, limit: int = 50):
+    tenant = await verify_active_tenant(stripe_customer_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Corporate profile footprint missing.")
+
+    try:
+        history_query = get_supabase().table("safety_audits")\
+            .select("id, filename, compliance_score, structured_findings, created_at")\
+            .eq("company_id", tenant['id'])\
+            .order("created_at", desc=True)\
+            .limit(max(1, min(limit, 200)))\
+            .execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database ledger readout failure: {str(e)}")
+
+    return {"success": True, "history": history_query.data}
 
 
 # Stripe subscription statuses that keep a tenant's access on

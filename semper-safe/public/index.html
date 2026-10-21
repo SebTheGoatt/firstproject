@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Semper Safe | Operational Compliance Terminal</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased selection:bg-emerald-500/30 selection:text-emerald-300">
+
+    <!-- Primary Control Header -->
+    <nav class="border-b border-slate-800/80 bg-slate-950/70 px-4 sm:px-8 py-4 sm:py-5 flex flex-wrap gap-3 justify-between items-center sticky top-0 z-50 backdrop-blur-md">
+        <div class="flex items-center space-x-3.5">
+            <div class="h-3 w-3 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)] animate-pulse"></div>
+            <span class="text-xl font-bold tracking-tight text-white">SemperSafe <span class="text-emerald-400 font-mono text-xs uppercase tracking-widest ml-2 px-2 py-0.5 rounded border border-emerald-500/20 bg-emerald-500/5">Enterprise</span></span>
+        </div>
+        <div class="flex items-center space-x-4 sm:space-x-6">
+            <div class="flex flex-col text-right">
+                <span class="text-xs text-slate-500 uppercase font-mono tracking-wider">Tenant Clearance ID</span>
+                <span class="text-sm font-mono text-slate-300" id="tenantId">cus_9060XT_Live</span>
+            </div>
+            <div class="bg-emerald-500/10 text-emerald-400 px-4 py-1.5 rounded-full text-xs font-semibold border border-emerald-500/20 shadow-inner">Operational Lock Active</div>
+        </div>
+    </nav>
+
+    <!-- Unified Master Dashboard Configuration Workspace -->
+    <main class="max-w-7xl mx-auto p-4 sm:p-8 grid grid-cols-1 lg:grid-cols-4 gap-6 sm:gap-8">
+
+        <!-- Left Side: Ingestion and Audit Logbook History Tracking Panel -->
+        <section class="lg:col-span-1 space-y-6">
+            <!-- File Processing Window -->
+            <div class="bg-slate-900/60 p-5 rounded-2xl border border-slate-800/90 shadow-2xl backdrop-blur-xl">
+                <h2 class="text-sm font-bold tracking-wider text-slate-200 uppercase font-mono mb-3">Ingestion Terminal</h2>
+                <div id="dropZone" class="border-2 border-dashed border-slate-700 hover:border-emerald-500/60 hover:bg-slate-800/20 transition-all rounded-xl p-6 text-center cursor-pointer bg-slate-950/40 group relative">
+                    <input type="file" id="logUpload" class="hidden" accept=".pdf" />
+                    <label for="logUpload" class="cursor-pointer space-y-3 block">
+                        <div class="text-3xl text-slate-600 group-hover:text-emerald-400 transition-colors duration-200">📄</div>
+                        <div class="text-xs font-medium text-slate-300" id="fileStatusLabel">Upload Operations PDF</div>
+                        <div class="text-[10px] text-slate-500 font-mono">PDF · max 15MB</div>
+                    </label>
+                </div>
+                <button id="runAuditBtn" class="w-full mt-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-wait text-white text-xs font-semibold py-3 rounded-xl transition-all border border-emerald-500/20 active:scale-[0.99]">
+                    Process System Audit
+                </button>
+            </div>
+
+            <!-- Historical System Database Logs Array -->
+            <div class="bg-slate-900/60 p-5 rounded-2xl border border-slate-800/90 shadow-2xl backdrop-blur-xl flex flex-col h-[320px]">
+                <h2 class="text-sm font-bold tracking-wider text-slate-200 uppercase font-mono mb-3">Audit Logbook History</h2>
+                <div id="historyLogContainer" class="flex-1 overflow-y-auto space-y-2 pr-1 text-xs text-slate-400">
+                    <div class="text-center py-8 text-slate-600 font-mono">No record entries cached.</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Side: Primary Analytical System Presentation Canvas -->
+        <section class="lg:col-span-3 space-y-6 scroll-mt-32">
+            <div class="bg-slate-900/60 p-5 sm:p-8 rounded-2xl border border-slate-800 shadow-2xl backdrop-blur-xl min-h-[500px] flex flex-col">
+                <div class="flex justify-between items-center gap-4 border-b border-slate-800/80 pb-5 mb-6">
+                    <div class="space-y-1">
+                        <h2 class="text-lg font-bold text-white tracking-tight">Compliance Evaluation Matrix</h2>
+                        <p class="text-xs text-slate-500" id="evaluationCaption">Structured system extraction summaries compiled from the operations stream.</p>
+                    </div>
+                    <div class="text-3xl sm:text-4xl font-black font-mono text-slate-700 bg-slate-950/50 px-4 sm:px-5 py-2 rounded-xl border border-slate-800/50 shadow-inner" id="scoreMetric">--%</div>
+                </div>
+
+                <!-- Dynamic Render Area Container -->
+                <div id="resultsWorkspace" class="flex-1 flex flex-col justify-center items-center text-slate-500 text-sm">
+                    <div class="text-center max-w-sm space-y-2.5">
+                        <div class="text-3xl opacity-40">⚙️</div>
+                        <div class="text-slate-400 font-medium">Platform Awaiting Data Streams</div>
+                        <p class="text-xs text-slate-500 leading-relaxed">Compliance tracking engine flags OSHA hazards, machinery fatigue limits, and mitigation routes automatically.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Core Pipeline Scripts Routing Execution -->
+    <script>
+        const MAX_BYTES = 15 * 1024 * 1024;
+        const tenantKey = document.getElementById('tenantId').innerText;
+        const fileInput = document.getElementById('logUpload');
+        const fileStatusLabel = document.getElementById('fileStatusLabel');
+        const dropZone = document.getElementById('dropZone');
+        const historyContainer = document.getElementById('historyLogContainer');
+        const runBtn = document.getElementById('runAuditBtn');
+        const workspace = document.getElementById('resultsWorkspace');
+
+        // Filenames and model output go into the page, so escape them before rendering
+        const escapeHtml = (s) => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+
+        const scoreTone = (score) => score >= 85 ? 'emerald' : score >= 70 ? 'amber' : 'rose';
+        const TONES = {
+            emerald: { text: 'text-emerald-400', pill: 'text-emerald-400 bg-emerald-500/5 border-emerald-500/10', ring: 'border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.05)]' },
+            amber:   { text: 'text-amber-400',   pill: 'text-amber-400 bg-amber-500/5 border-amber-500/10',       ring: 'border-amber-500/20' },
+            rose:    { text: 'text-rose-400',    pill: 'text-rose-400 bg-rose-500/5 border-rose-500/10',          ring: 'border-rose-500/20' },
+        };
+
+        const formatDate = (iso) => new Date(iso).toLocaleString([], {month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'});
+
+        // Ingestion View Status Sync
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                fileStatusLabel.innerText = fileInput.files[0].name;
+                fileStatusLabel.className = "text-xs font-mono font-bold text-emerald-400 truncate max-w-full block";
+                dropZone.className = "border-2 border-dashed border-emerald-500/40 bg-emerald-500/5 rounded-xl p-6 text-center cursor-pointer transition-all";
+            }
+        });
+
+        // Initialize Ledger Array Logs from Database History Endpoint
+        async function syncLedgerHistory() {
+            try {
+                const response = await fetch(`/api/v1/audits/history?stripe_customer_id=${encodeURIComponent(tenantKey)}`);
+                const payload = await response.json();
+                if (!payload.success || payload.history.length === 0) return;
+
+                historyContainer.innerHTML = '';
+                payload.history.forEach(audit => {
+                    const row = document.createElement('div');
+                    row.className = "p-3 bg-slate-950/40 border border-slate-800/80 rounded-xl hover:border-slate-700 cursor-pointer flex justify-between items-center gap-2 transition-all active:scale-[0.99]";
+                    row.onclick = () => mountRenderWorkspace(audit.compliance_score, audit.structured_findings, `${audit.filename} · ${formatDate(audit.created_at)}`);
+                    row.innerHTML = `
+                        <div class="space-y-0.5 min-w-0">
+                            <div class="text-slate-200 font-medium truncate">${escapeHtml(audit.filename)}</div>
+                            <div class="text-[10px] text-slate-500 font-mono">${formatDate(audit.created_at)}</div>
+                        </div>
+                        <div class="shrink-0 px-2 py-1 rounded font-mono font-bold text-[11px] border ${TONES[scoreTone(audit.compliance_score)].pill}">${audit.compliance_score}%</div>`;
+                    historyContainer.appendChild(row);
+                });
+            } catch (err) { console.error("Ledger sync block access dropped.", err); }
+        }
+
+        function renderFindings(title, dotColor, items, textColor) {
+            const body = items.length
+                ? `<ul class="space-y-1.5 ${textColor}">${items.map(i => `<li class="flex gap-2"><span>•</span><span>${escapeHtml(i)}</span></li>`).join('')}</ul>`
+                : '<p class="text-slate-600 text-xs font-mono">None flagged.</p>';
+            return `
+                <div class="bg-slate-950/40 p-4 rounded-xl border border-slate-800/60 shadow-inner">
+                    <h3 class="font-bold text-slate-200 text-xs font-mono uppercase tracking-wider mb-2.5 flex items-center gap-2"><span class="h-1.5 w-1.5 rounded-full ${dotColor}"></span>${title}</h3>
+                    ${body}
+                </div>`;
+        }
+
+        // Render Workspace Layout Update Logic
+        function mountRenderWorkspace(score, dataset, caption) {
+            const tone = TONES[scoreTone(score)];
+            const scoreElement = document.getElementById('scoreMetric');
+            scoreElement.innerText = score + '%';
+            scoreElement.className = `text-3xl sm:text-4xl font-black font-mono px-4 sm:px-5 py-2 rounded-xl border bg-slate-950/50 ${tone.text} ${tone.ring}`;
+            document.getElementById('evaluationCaption').innerText = caption;
+
+            workspace.className = "flex-1 space-y-6 text-sm w-full";
+            workspace.innerHTML = `
+                <div class="space-y-5 w-full">
+                    ${renderFindings('Critical OSHA Non-Compliance Hazards', 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]', dataset.criticalViolations, 'text-rose-300')}
+                    ${renderFindings('Machinery Fatigue &amp; Equipment Risks', 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]', dataset.equipmentRisks, 'text-amber-300')}
+                    ${renderFindings('Required Mitigation Routes', 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]', dataset.actionableSteps, 'text-emerald-300')}
+                </div>`;
+            // On phones the results sit below the history panel, so bring them into view
+            if (window.innerWidth < 1024) workspace.closest("section").scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function showError(message) {
+            workspace.className = "flex-1 flex flex-col justify-center items-center text-slate-500 text-sm";
+            workspace.innerHTML = `<div class="text-center p-4 border border-rose-500/20 bg-rose-500/5 text-rose-400 text-xs rounded-xl font-mono">[CRITICAL EXCEPTION ALERT]: ${escapeHtml(message)}</div>`;
+        }
+
+        runBtn.addEventListener('click', async () => {
+            const file = fileInput.files[0];
+            if (!file) return alert('No target document assets present inside ingestion window.');
+            if (file.size > MAX_BYTES) return alert('That file is over the 15MB limit.');
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            runBtn.disabled = true;
+            workspace.className = "flex-1 flex flex-col justify-center items-center text-slate-500 text-sm";
+            workspace.innerHTML = `
+                <div class="text-center space-y-3">
+                    <div class="w-7 h-7 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                    <p class="text-emerald-400 font-mono text-[11px] uppercase tracking-widest animate-pulse">Running advanced text compliance extraction...</p>
+                </div>`;
+
+            try {
+                const response = await fetch(`/api/v1/audit?stripe_customer_id=${encodeURIComponent(tenantKey)}`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    return showError(result.detail || 'Transaction execution failed.');
+                }
+                mountRenderWorkspace(result.data.complianceScore, result.data, `${file.name} · just now`);
+                await syncLedgerHistory(); // Re-index sidebar logs view dynamically
+            } catch (err) {
+                showError('Transaction execution failed. Verify infrastructure connection loops.');
+            } finally {
+                runBtn.disabled = false;
+            }
+        });
+
+        // Frame initialization loop setup
+        window.addEventListener('load', syncLedgerHistory);
+    </script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-# Safety Audit Engine
+# Semper Safe
 
 FastAPI service that reads a shop-log PDF, has Claude audit it for OSHA and equipment risks,
 and saves the result to Supabase. Access is gated on an active Stripe subscription.
@@ -6,7 +6,7 @@ and saves the result to Supabase. Access is gated on an active Stripe subscripti
 ## Run locally
 
 ```bash
-cd safety-audit
+cd semper-safe
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
 cp .env.example .env   # fill in your real keys; .env is git-ignored
@@ -26,4 +26,5 @@ The tests mock Stripe, Supabase, and Claude, so they need no keys and no network
 ## Endpoints
 
 - `POST /api/v1/audit?stripe_customer_id=cus_...` with form field `file` (PDF)
+- `GET /api/v1/audits/history?stripe_customer_id=cus_...`: the company's past audits, newest first
 - `POST /api/v1/webhooks/stripe`: point Stripe's subscription events here

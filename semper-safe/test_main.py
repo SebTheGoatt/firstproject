@@ -16,7 +16,7 @@ def supabase_returning(rows):
     """A Supabase client whose every query chain ends in .execute() -> rows."""
     client = MagicMock()
     query = client.table.return_value
-    for method in ("select", "eq", "insert", "update"):
+    for method in ("select", "eq", "insert", "update", "order", "limit"):
         getattr(query, method).return_value = query
     query.execute.return_value = SimpleNamespace(data=rows)
     return client
@@ -133,3 +133,22 @@ def test_webhook_with_bad_signature_returns_400(client):
         headers={"stripe-signature": "t=1,v1=bogus"},
     )
     assert response.status_code == 400
+
+
+def test_history_returns_only_this_companys_audits(client, stripe_subscriptions, supabase):
+    response = client.get("/api/v1/audits/history", params={"stripe_customer_id": "cus_Test8972"})
+
+    assert response.status_code == 200
+    assert response.json()["success"] is True
+    query = supabase.table.return_value
+    query.eq.assert_called_with("company_id", "company-uuid")
+    query.order.assert_called_once_with("created_at", desc=True)
+
+
+def test_history_requires_active_subscription(client, stripe_subscriptions, monkeypatch):
+    stripe_subscriptions.return_value = SimpleNamespace(data=[])
+    monkeypatch.setattr(main, "get_supabase", lambda: supabase_returning([]))
+
+    response = client.get("/api/v1/audits/history", params={"stripe_customer_id": "cus_Lapsed"})
+
+    assert response.status_code == 403

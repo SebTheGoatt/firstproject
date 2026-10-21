@@ -12,7 +12,7 @@ create table public.companies (
     updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 2. COMPLIANCE AUDITS DATA STORAGE
+-- 2. COMPLIANCE AUDITS DATA STORAGE (With History Tracking Support)
 create table public.safety_audits (
     id uuid default uuid_generate_v4() primary key,
     company_id uuid references public.companies(id) on delete cascade not null,
@@ -28,6 +28,6 @@ create table public.safety_audits (
 alter table public.companies enable row level security;
 alter table public.safety_audits enable row level security;
 
--- Direct relational index for fast dashboard lookups
+-- Serves the history panel: one company's audits, newest first.
 -- (stripe_customer_id is already indexed by its unique constraint)
-create index idx_audits_company on public.safety_audits(company_id);
+create index idx_audits_company_created on public.safety_audits(company_id, created_at desc);
