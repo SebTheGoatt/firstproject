@@ -355,3 +355,20 @@ def test_neighborhood_shortcuts_redirect_to_the_canonical_page(client):
                          ("/local/cleveland/Grand-Oaks-Reserve", "/local/cleveland/grand-oaks-reserve")):
         r = client.get(path, follow_redirects=False)
         assert r.status_code == 301 and r.headers["location"] == target, path
+
+
+def test_every_public_page_has_canonical_and_share_tags(client):
+    for path in ("/", "/book", "/about", "/team", "/privacy", "/terms", "/refunds", "/local", *AREA_PATHS, *HOOD_PATHS):
+        t = client.get(path).text
+        assert t.count('rel="canonical"') == 1 and f'<link rel="canonical" href="http://testserver{path}">' in t, path
+        assert t.count('property="og:image"') == 1 and 'content="http://testserver/static/icons/post-one-share.jpg"' in t, path
+
+
+def test_home_faq_days_match_the_area_schedule(client):
+    from app.zones import SERVICE_ZONES, WEEKDAY_NAMES
+    page = html.unescape(client.get("/").text)
+    assert 'id="faq"' in page and "Do I have to sign a contract?" in page
+    names = {"SPRING_LUXURY_LOOP": "Spring", "KLEIN_CORE": "Klein", "I69_HIGH_DENSITY_SPINE": "New Caney and Splendora",
+             "COLONY_RIDGE": "Colony Ridge", "CLEVELAND_HUB": "Cleveland and Plum Grove"}
+    for z in SERVICE_ZONES:
+        assert f"{names[z.key]} on {WEEKDAY_NAMES[z.service_weekday]}s" in page, z.key

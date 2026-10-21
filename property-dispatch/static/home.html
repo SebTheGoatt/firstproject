@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{{BUSINESS_NAME}} | Mowing, Bin Cleaning &amp; Gutters in Spring, TX</title>
   {{HOME_JSONLD}}
-  <meta name="description" content="Book lawn mowing, trash bin cleaning and gutter service online in Spring, Klein, New Caney, Splendora and Cleveland, TX. We text you when the crew is on the way.">
+  <meta name="description" content="Book lawn mowing, bin cleaning and gutter service online in Spring, Klein, New Caney, Splendora and Cleveland, TX. We text you when the crew is on the way.">
   <meta property="og:title" content="{{BUSINESS_NAME}}">
   <meta property="og:description" content="Every yard gets Post One attention. Veteran-owned mowing, bin cleaning and gutters around Spring, TX. Book online in about a minute.">
   <meta property="og:type" content="website">
@@ -70,7 +70,7 @@
           </div>
         </div>
 
-        <aside class="po-card" aria-labelledby="price-card-title">
+        <div class="po-card" role="group" aria-labelledby="price-card-title">
           <p class="po-kicker" id="price-card-title">Starting price</p>
           <p class="po-price" id="hero-price-line"><strong class="po-price-num" id="hero-price">$–</strong> <span>per mow, before tax</span></p>
           <p class="po-card-note" id="hero-price-note" hidden><span>Lawns up to <b id="hero-included"></b>.</span>
@@ -95,7 +95,7 @@
             <p class="hint" id="cutoff">Next-day booking closes at 5 PM.</p>
             <p class="spots-left" id="spots-left" hidden></p>
           </div>
-        </aside>
+        </div>
       </div>
     </section>
 
@@ -242,7 +242,7 @@
             </ul>
           </div>
           <div class="area-map-wrap" id="area-map-wrap">
-            <div id="area-map" class="area-map" role="img" aria-label="Map of our service areas around Spring, Klein, New Caney, Splendora, Cleveland, Plum Grove and Colony Ridge, Texas"></div>
+            <div id="area-map" class="area-map" role="region" aria-label="Map of our service areas around Spring, Klein, New Caney, Splendora, Cleveland, Plum Grove and Colony Ridge, Texas"></div>
             <p class="hint">Shaded areas are where we work today. Tap an area or a neighborhood to zoom in.</p>
           </div>
         </div>
@@ -259,6 +259,49 @@
         </header>
         <ul class="team-grid" id="crew-grid"></ul>
         <p><a class="btn btn-outline" href="/team">See everyone's work</a></p>
+      </div>
+    </section>
+
+    <section id="faq" class="section po-section" aria-labelledby="faq-title">
+      <div class="site-wrap">
+        <header class="section-head">
+          <h2 id="faq-title">Common questions</h2>
+          <p class="section-lede">Straight answers. The full details are in our <a href="/terms">terms</a> and <a href="/refunds">refund policy</a>.</p>
+        </header>
+        <div class="faq-list">
+          <details class="faq-item">
+            <summary>What day do you mow my area?</summary>
+            <p>Each area has its own day, so the crew stays in one place all day: Spring on Mondays, Klein on Tuesdays, New Caney and Splendora on Wednesdays, Colony Ridge on Thursdays, and Cleveland and Plum Grove on Fridays. Saturday is kept for make-up visits.</p>
+          </details>
+          <details class="faq-item">
+            <summary>How much does a mow cost?</summary>
+            <p>A flat price per visit, set by your lawn size and yard type. You see the full price with tax before you book. If 2 or more neighbors within half a mile are already booked, you get 5% off the mowing (10% with 5 or more).</p>
+          </details>
+          <details class="faq-item">
+            <summary>Do I have to sign a contract?</summary>
+            <p>No. There is no contract and no subscription. Book one visit at a time, whenever you need it.</p>
+          </details>
+          <details class="faq-item">
+            <summary>How do I pay?</summary>
+            <p>Pay the crew in cash at the visit, or by card through a private Stripe link we text you. Tips are never expected.</p>
+          </details>
+          <details class="faq-item">
+            <summary>What happens if it rains?</summary>
+            <p>We don&#39;t mow in lightning, heavy rain or on ground soft enough to rut. We move your visit to a make-up day and text you. If the new day doesn&#39;t work for you, you get a full refund.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Can I cancel?</summary>
+            <p>Yes. Cancel any time before the crew arrives: a full refund if you paid by card, nothing owed if you planned to pay cash.</p>
+          </details>
+          <details class="faq-item">
+            <summary>What if I&#39;m not happy with the work?</summary>
+            <p>Tell us within 48 hours, with a photo if you can. We come back and fix it at no charge. If it still isn&#39;t right, you get a full refund for that visit.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Do you mow outside these areas?</summary>
+            <p>Not yet. We only book addresses on our routes, so the crew isn&#39;t driving across town. Check your address at the top of the page to see if you&#39;re covered.</p>
+          </details>
+        </div>
       </div>
     </section>
 
@@ -437,7 +480,6 @@
           map.fitBounds([[w, s], [e, n]], { padding: 48, maxZoom: 12.5 });
           openPopup(id, [(w + e) / 2, (s + n) / 2]);
         });
-        el.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); el.click(); } });
       });
     }
 
@@ -531,16 +573,17 @@
       list.replaceChildren();
       info.zones.forEach((z, i) => {
         const li = document.createElement("li");
-        li.className = "area";
-        li.dataset.zone = z.key;
-        li.tabIndex = 0;
-        li.setAttribute("role", "button");
-        li.setAttribute("aria-label", `Show ${z.name} on the map`);
-        li.style.setProperty("--zone", ZONE_COLORS[i % ZONE_COLORS.length]);
+        const btn = document.createElement("button");     // a real button: Enter and Space work on their own
+        btn.type = "button";
+        btn.className = "area";
+        btn.dataset.zone = z.key;
+        btn.setAttribute("aria-label", `Show ${z.name} on the map`);
+        btn.style.setProperty("--zone", ZONE_COLORS[i % ZONE_COLORS.length]);
         const name = document.createElement("span");
         name.className = "area-name";
         name.textContent = z.name;
-        li.append(name);
+        btn.append(name);
+        li.append(btn);
         list.append(li);
       });
       if (isFinite(lowest)) drawAreaMap(info.zones, lowest); else document.getElementById("area-map-wrap").hidden = true;

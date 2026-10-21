@@ -12,11 +12,11 @@ settings (BUSINESS_EMAIL, BUSINESS_PHONE).
 
 import html
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 
-from .config import Settings
-from .local_pages import crumbs, layout, legal_footer_html  # noqa: F401  (legal_footer_html: main.py imports it from here)
+from .config import Settings, site_url
+from .local_pages import crumbs, layout, legal_footer_html, with_share_tags  # noqa: F401  (legal_footer_html: main.py imports it from here)
 
 esc = html.escape
 EFFECTIVE = "October 19, 2026"
@@ -277,17 +277,18 @@ def refunds_html(settings: Settings, version: str) -> str:
 
 
 def register_legal_pages(app: FastAPI, settings: Settings, version: str = "") -> None:
-    def html_page(text: str) -> HTMLResponse:
-        return HTMLResponse(text, headers={"Cache-Control": "no-cache"})
+    def html_page(text: str, request: Request) -> HTMLResponse:
+        return HTMLResponse(with_share_tags(text, site_url(settings, request), request.url.path),
+                            headers={"Cache-Control": "no-cache"})
 
     @app.get("/privacy", include_in_schema=False)
-    def privacy():
-        return html_page(privacy_html(settings, version))
+    def privacy(request: Request):
+        return html_page(privacy_html(settings, version), request)
 
     @app.get("/terms", include_in_schema=False)
-    def terms():
-        return html_page(terms_html(settings, version))
+    def terms(request: Request):
+        return html_page(terms_html(settings, version), request)
 
     @app.get("/refunds", include_in_schema=False)
-    def refunds():
-        return html_page(refunds_html(settings, version))
+    def refunds(request: Request):
+        return html_page(refunds_html(settings, version), request)
