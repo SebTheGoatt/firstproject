@@ -115,7 +115,8 @@ def test_home_page_carries_the_business_structured_data(client, settings, repo):
     d = json.loads(block)
     assert d["@type"] == "HomeAndConstructionBusiness" and "telephone" not in d     # no phone until BUSINESS_PHONE is set
     assert d["url"] == "http://testserver/" and d["address"]["postalCode"] == "77373"
-    assert [a["name"] for a in d["areaServed"]] == ["Spring, TX", "Klein, TX", "New Caney, TX", "Cleveland, TX", "Colony Ridge, TX"]
+    assert [a["name"] for a in d["areaServed"]] == ["Spring, TX", "Klein, TX", "New Caney, TX", "Cleveland, TX", "Colony Ridge, TX",
+                                                      "Splendora, TX", "Plum Grove, TX"]
     assert d["openingHoursSpecification"][0]["opens"] == "07:00"
     assert "streetAddress" not in d["address"] and "geo" not in d and "{{" not in t
     t = app_with(settings, repo, business_phone="(281) 555-0199").get("/").text
