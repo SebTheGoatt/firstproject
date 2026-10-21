@@ -16,7 +16,7 @@ from datetime import date, timedelta
 from fastapi import Depends, FastAPI, HTTPException, Request
 from pydantic import BaseModel
 
-from .booking import local_now
+from .booking import forget_counts, local_now
 from .zones import MAKEUP_WEEKDAY, WEEKDAY_NAMES, short_name, zone_by_key
 from .config import Settings
 from .notify import day_words, send_text
@@ -72,6 +72,7 @@ def register_change_routes(app: FastAPI, settings: Settings, owner, throttle, no
         """Cancel and refund. Never charges or refunds twice: the cancel is conditional on the visit still being open."""
         if not repo().cancel_job(b["id"]):
             raise HTTPException(status_code=409, detail="That visit can't be cancelled anymore.")
+        forget_counts(repo())
         refund = "none"
         if b["payment_method"] == "card" and b["payment_status"] == "paid":
             refund = "failed"
@@ -147,6 +148,7 @@ def register_change_routes(app: FastAPI, settings: Settings, owner, throttle, no
             raise HTTPException(status_code=422, detail=why)
         if not repo().move_job(job_id, body.day):
             raise HTTPException(status_code=409, detail="That visit is done or cancelled, so it can't move.")
+        forget_counts(repo())
         text(b, moved_text(b, settings.business_name, body.day, weather=False))
         return {"moved": True, "day": body.day}
 
@@ -162,6 +164,7 @@ def register_change_routes(app: FastAPI, settings: Settings, owner, throttle, no
                 continue
             b = repo().job_brief(j["job_id"])
             if b and not b.get("notified_at") and repo().move_job(j["job_id"], to):
+                forget_counts(repo())
                 text(b, moved_text(b, settings.business_name, to, weather=True))
                 moved += 1
         return {"moved": moved, "to": to}

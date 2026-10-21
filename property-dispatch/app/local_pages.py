@@ -31,7 +31,7 @@ from xml.sax.saxutils import escape as xml_escape
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
-from .booking import earliest_bookable_day, local_now
+from .booking import cached_count, earliest_bookable_day, local_now
 from .charity import causes
 from .config import Settings, site_url
 from .pricing import (ADD_ONS, MAX_SQFT, YARD_TYPES, YIELD_GIVING_RATE, YIELD_INCLUDED_SQFT, bracket_profile,
@@ -172,7 +172,7 @@ def next_open_day(settings: Settings, repo, zone=None) -> date:
     step = timedelta(days=7 if zone is not None else 1)
     last = now.date() + timedelta(days=settings.booking_horizon_days)
     try:
-        while day < last and repo.count_active_jobs(day) >= settings.daily_job_quota:
+        while day < last and cached_count(repo, day) >= settings.daily_job_quota:
             day += step
     except Exception:          # never fail the page over this
         pass

@@ -25,6 +25,7 @@ import hmac
 import html
 import json
 import logging
+import mimetypes
 import os
 import secrets
 from contextlib import asynccontextmanager
@@ -37,7 +38,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import deeplinks, push, reviews
-from .booking import (BookingRejected, check_area_day, earliest_bookable_day, local_now, next_service_day,
+from .booking import (BookingRejected, cached_count, check_area_day, forget_counts, earliest_bookable_day, local_now, next_service_day,
                       open_area_days, validate_booking)
 from .config import Settings, get_settings, site_url
 from .db import Repository, make_repository
@@ -182,6 +183,27 @@ async def review_loop(app: FastAPI) -> None:
             await asyncio.to_thread(send_review_requests, app, base_url)   # database + texts run in a worker thread
         except Exception:
             log.exception("Review request run failed")
+
+
+mimetypes.add_type("font/woff2", ".woff2")      # fonts were going out as application/octet-stream
+mimetypes.add_type("image/webp", ".webp")
+
+
+class CachedStatic(StaticFiles):
+    """Static files with browser caching. A file asked for with ?v=<deploy hash> never changes under that URL, so it
+    is cached for a year; fonts, images and icons for a week; anything else for an hour (and revalidated by ETag)."""
+
+    async def get_response(self, path, scope):
+        resp = await super().get_response(path, scope)
+        if resp.status_code == 200:
+            versioned = b"v=" in scope.get("query_string", b"")
+            if versioned:
+                resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            elif path.startswith(("fonts/", "img/", "icons/", "brand/")):
+                resp.headers["Cache-Control"] = "public, max-age=604800"
+            else:
+                resp.headers["Cache-Control"] = "public, max-age=3600"
+        return resp
 
 
 def create_app(
@@ -343,7 +365,7 @@ def create_app(
         return PlainTextResponse("User-agent: *\nAllow: /\nDisallow: /crew\nDisallow: /api/\n"
                                  f"Sitemap: {site_url(settings, request)}/sitemap.xml\n")
 
-    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+    app.mount("/static", CachedStatic(directory=STATIC_DIR), name="static")
 
     @app.get("/healthz")
     def healthz():
@@ -355,7 +377,7 @@ def create_app(
         now = local_now(settings)
         earliest = earliest_bookable_day(now, settings.freeze_hour)
         try:  # real openings on the next route (daily_job_quota minus active jobs); never blocks the page
-            spots_left = max(0, settings.daily_job_quota - request.app.state.repo.count_active_jobs(earliest))
+            spots_left = max(0, settings.daily_job_quota - cached_count(request.app.state.repo, earliest))
         except Exception:
             spots_left = None
         return {
@@ -446,7 +468,7 @@ def create_app(
             # One area per day: the only dates this address can be booked.
             "service_weekday": WEEKDAY_NAMES[zone.service_weekday] if zone else None,
             "area_short": short_name(zone) if zone else None,
-            "service_days": open_area_days(zone, local_now(settings), settings, repo.count_active_jobs) if zone else [],
+            "service_days": open_area_days(zone, local_now(settings), settings, lambda d: cached_count(repo, d)) if zone else [],
         }
 
     def scoped_sqft(add_ons, zone, client_sqft, repo):
@@ -482,7 +504,7 @@ def create_app(
         return {"in_area": True, "zone_name": zone.name, "flat_fee": zone.mow_rate,
                 # one area per day: the dates this address can be booked (its area's weekday)
                 "service_weekday": WEEKDAY_NAMES[zone.service_weekday], "area_short": short_name(zone),
-                "service_days": open_area_days(zone, local_now(settings), settings, repo.count_active_jobs),
+                "service_days": open_area_days(zone, local_now(settings), settings, lambda d: cached_count(repo, d)),
                 "service_label": order_label(body.service.value, list(q.add_ons)), **q.as_dict()}
 
     @app.post("/api/jobs", response_model=JobCreated, status_code=201)
@@ -551,6 +573,7 @@ def create_app(
             charity_amount=giving, giving_split=route_donation(giving, body.charity_choice) if giving else None,
             add_ons=add_ons, add_on_total=float(q.add_on_total), lang=body.lang,
         )
+        forget_counts(repo)                     # the day just got one fuller
         record_booking(job_id=str(job["id"]))   # the only booking counter (idempotent per job)
         if body.sms_consent:   # proof of consent for texting (TCPA): which booking, when, and the exact wording
             log.info("SMS consent: job %s at %s: %s", job["id"], now.isoformat(), SMS_CONSENT.format(brand=settings.business_name, legal=settings.legal_name))

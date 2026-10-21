@@ -129,3 +129,20 @@ def test_link_preview_uses_the_post_one_share_image(client):
     assert client.get("/static/icons/post-one-share.jpg").status_code == 200
     assert client.get("/static/icons/social.jpg").status_code == 404
     assert "post-one-share.jpg" in client.get("/local/spring").text
+
+
+def test_static_files_are_cached_by_version_and_fonts_have_their_type(client):
+    assert client.get("/static/styles.css?v=x").headers["cache-control"] == "public, max-age=31536000, immutable"
+    font = client.get("/static/fonts/public-sans-400.woff2")
+    assert font.headers["content-type"] == "font/woff2" and "max-age=604800" in font.headers["cache-control"]
+    assert client.get("/sw.js").headers["cache-control"] == "no-cache"           # the app shell always re-checks
+
+
+def test_display_counts_are_reused_but_booking_counts_fresh(client, repo):
+    from unittest.mock import patch
+    calls = []
+    real = repo.count_active_jobs
+    with patch.object(repo, "count_active_jobs", side_effect=lambda d: calls.append(d) or real(d)):
+        for _ in range(3):
+            client.get("/api/booking-info")
+    assert len(calls) == 1                                                        # one database trip, not three

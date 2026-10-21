@@ -76,3 +76,28 @@ def test_osrm_response_is_parsed_and_nulls_are_penalized():
     assert m.source == "osrm"
     assert m.distances_m[0][1] == 1000 and m.durations_s[0][1] == 91
     assert m.distances_m[1][0] == 10**9
+
+
+def test_exact_solver_finds_the_true_shortest_order_fast():
+    import itertools
+    import random
+    import time
+
+    from app.routing.solver import held_karp
+    rng = random.Random(11)
+    for n in (2, 4, 6, 7):
+        pts = [(30 + rng.random() * 0.1, -95.4 + rng.random() * 0.1) for _ in range(n + 2)]
+        c = haversine_matrix(pts).durations_s
+        cost = lambda o: c[0][o[0]] + sum(c[a][b] for a, b in zip(o, o[1:])) + c[o[-1]][n + 1]
+        assert cost(held_karp(c)) == min(cost(list(p)) for p in itertools.permutations(range(1, n + 1)))
+    pts = [(30 + rng.random() * 0.1, -95.4 + rng.random() * 0.1) for _ in range(14)]
+    t = time.perf_counter()
+    assert sorted(solve_tsp(haversine_matrix(pts), time_limit_s=10)) == list(range(1, 13))
+    assert time.perf_counter() - t < 2          # a 12-stop day no longer waits out the 10-second budget
+
+
+def test_a_round_trip_tie_visits_the_nearer_stop_first():
+    from app.routing.solver import held_karp
+    #            base  near  far   base
+    c = [[0, 1, 5, 0], [1, 0, 4, 1], [5, 4, 0, 5], [0, 1, 5, 0]]
+    assert held_karp(c) == [1, 2]

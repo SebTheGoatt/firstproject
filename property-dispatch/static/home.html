@@ -23,7 +23,6 @@
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Post One">
-  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
   <link rel="preload" href="/static/fonts/big-shoulders-display-800.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/static/fonts/public-sans-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/styles.css?v={{V}}">
@@ -405,7 +404,6 @@
     <a class="btn btn-primary" href="/book" tabindex="-1">Book a mow</a>
   </div>
 
-  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="/static/site.js?v={{V}}"></script>
   <script src="/static/places.js?v={{V}}"></script>
   <script>
@@ -413,7 +411,27 @@
     const money = (n) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
     const dollars = (n) => money(n).replace(/\.00$/, "");
     const pct = (x) => `${Math.round(x * 100)}%`;
-    const ZONE_COLORS = ["#2E7D4F", "#2b6cb0", "#b7791f", "#8a4fbf", "#c05621"];
+    const ZONE_COLORS = ["#2E7D4F", "#2b6cb0", "#8A5A12", "#8a4fbf", "#9C4221"];   // all 4.5:1+ behind white pin text
+
+    // The map library (about 600 KB with tiles) loads only when the map is about to scroll into view.
+    let mapLib = null;
+    function loadMapLib() {
+      if (!mapLib) mapLib = new Promise((resolve, reject) => {
+        const css = document.createElement("link");
+        css.rel = "stylesheet"; css.href = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css";
+        const js = document.createElement("script");
+        js.src = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"; js.onload = resolve; js.onerror = reject;
+        document.head.append(css, js);
+      });
+      return mapLib;
+    }
+    function whenNear(el, run) {
+      if (!("IntersectionObserver" in window)) { run(); return; }
+      const io = new IntersectionObserver((entries) => {
+        if (entries.some((e) => e.isIntersecting)) { io.disconnect(); run(); }
+      }, { rootMargin: "900px 0px" });
+      io.observe(el);
+    }
 
     // Realtor-style service-area map: shaded areas, price pins, and a list that
     // highlights the matching area on hover/tap (and vice versa).
@@ -625,7 +643,10 @@
         li.append(btn);
         list.append(li);
       });
-      if (isFinite(lowest)) drawAreaMap(info.zones, lowest); else document.getElementById("area-map-wrap").hidden = true;
+      const mapWrap = document.getElementById("area-map-wrap");
+      if (isFinite(lowest) && info.zones.length) {
+        whenNear(mapWrap, () => loadMapLib().then(() => drawAreaMap(info.zones, lowest)).catch(() => { mapWrap.hidden = true; }));
+      } else mapWrap.hidden = true;
       if (isFinite(lowest)) document.getElementById("mow-from").textContent = `Starting at ${dollars(lowest)} per visit`;
       // Scroll story: the starting price and the area days, from the same data
       if (isFinite(lowest)) document.getElementById("scrolly-from").textContent = `${dollars(lowest)} a visit`;
@@ -638,18 +659,30 @@
         const a = (info.add_ons || []).find((x) => x.key === el.dataset.addonPrice);
         if (a && a.price > 0) el.textContent = `+${dollars(a.price)} per visit`;
       });
-      // Google address dropdown on "Check your address" when the owner set the Maps key in Render.
+      // Google address dropdown on "Check your address" when the owner set the Maps key in Render. It loads on
+      // the first touch of the form (Google's scripts are about 380 KB), so the page itself opens fast; until
+      // then, and if Google fails, the plain address box works on its own.
       if (info.google_maps_key) {
         const input = document.getElementById("check-address"), slot = document.getElementById("check-picker");
-        SGPlaces.attach(info.google_maps_key, {
+        const form = document.getElementById("area-checker");
+        const start = () => {
+          ["pointerdown", "focusin", "keydown"].forEach((ev) => form.removeEventListener(ev, start));
+          SGPlaces.attach(info.google_maps_key, {
           slot, id: "check-autocomplete", label: "Check your address",
           onPick(text, lat, lng) {
             input.value = text; picked = { text, lat, lng };
             document.getElementById("area-checker").requestSubmit();   // check right away, no extra tap
           },
-          onReady() { input.hidden = true; input.required = false; },
+          onReady() {
+            if (input.value.trim()) { slot.replaceChildren(); slot.hidden = true; return; }   // already typing: keep the plain box
+            const hadFocus = document.activeElement === input;
+            input.hidden = true; input.required = false;
+            if (hadFocus) slot.firstElementChild?.focus?.();
+          },
           onFail() { slot.replaceChildren(); slot.hidden = true; input.hidden = false; input.required = true; },
-        });
+          });
+        };
+        ["pointerdown", "focusin", "keydown"].forEach((ev) => form.addEventListener(ev, start));
       }
     }).catch(() => {
       document.getElementById("next-day").textContent = "See the booking page";
