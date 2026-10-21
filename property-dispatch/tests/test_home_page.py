@@ -47,3 +47,14 @@ def test_home_makes_no_claims_the_settings_do_not_back(client, settings, repo):
         assert claim not in t, claim
     settings.business_phone = "(281) 555-0199"            # the phone shows only once the owner sets it
     assert 'href="tel:' in TestClient(create_app(settings, repo=repo, sms=None)).get("/").text
+
+
+def test_scroll_story_reads_prices_and_days_from_the_data(client):
+    t = client.get("/").text
+    story = t[t.index('<section id="scroll-story"'):t.index('<section id="how"')]
+    for el in ("scrolly-from", "scrolly-days", "scrolly-title"):
+        assert f'id="{el}"' in story
+    assert "$" not in story                                       # the price comes from /api/booking-info
+    assert not any(day in story for day in ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday"))
+    assert 'srcset="/static/img/lawn-stripes-tall.webp"' in story and 'loading="lazy"' in story
+    assert client.get("/static/img/lawn-stripes-wide.webp").status_code == 200
