@@ -36,6 +36,9 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 - **Pay first, then we mow:** while Stripe is set up, bookings are card only (Apple Pay / Google Pay included) and paid
   at booking. Cash bookings are refused, and an unpaid card booking stays off the crew's route (`prepay_required`
   in `app/config.py`; `unpaid_card()` in `app/nightly.py`). The owner screen marks them "Not paid yet".
+- **Working hours:** Mon–Fri 8 AM–5 PM, Saturday 8 AM–2 PM (make-ups only), Sunday off. The crew leaves base so
+  the first lawn is mowed at 8:00 (`first_mow_time`); the 5 PM booking cutoff and route build stay. Published to
+  Google from `weekday_hours` / `saturday_hours` in `app/config.py` — keep the Google Business Profile matching.
 - **Neighbor discount (option A):** 5% off the mowing with 2–4 customers booked within half a mile, 10% with 5+.
 - Pages only for places we actually mow. No near-duplicate town-swap pages.
 - The business phone number stays off the site unless the owner sets `BUSINESS_PHONE`.

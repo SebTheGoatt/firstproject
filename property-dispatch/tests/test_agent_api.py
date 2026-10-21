@@ -106,7 +106,7 @@ def test_rate_limit(client, on, monkeypatch):
 from datetime import date, datetime  # noqa: E402
 from zoneinfo import ZoneInfo  # noqa: E402
 
-MORNING = datetime(2026, 10, 15, 6, 45, tzinfo=ZoneInfo("America/Chicago"))      # the route day itself, near the first ETA
+MORNING = datetime(2026, 10, 15, 7, 45, tzinfo=ZoneInfo("America/Chicago"))      # the route day itself, near the first ETA
 
 
 def build_the_route(client, repo, settings):

@@ -88,8 +88,9 @@ def run_nightly(
         matrix=matrix,
     )
 
-    hh, mm = map(int, settings.crew_start_time.split(":"))
-    start_at = datetime.combine(day, time(hh, mm), tzinfo=settings.tz)
+    hh, mm = map(int, settings.first_mow_time.split(":"))
+    first_leg = result.order[0].duration_s if result.order else 0
+    start_at = datetime.combine(day, time(hh, mm), tzinfo=settings.tz) - timedelta(seconds=first_leg)   # leave base in time
     ordered = [jobs[leg.stop_index] for leg in result.order]
     etas = compute_etas(start_at, [(leg.duration_s, j.service_minutes) for leg, j in zip(result.order, ordered)])
 

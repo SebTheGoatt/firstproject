@@ -23,9 +23,13 @@ class Settings(BaseSettings):
     # End point defaults to the base; override for a different yard/dump site.
     end_lat: float | None = None
     end_lng: float | None = None
-    # First stop around 7 AM. Texas has no statewide lawn-hours law; cities and
-    # HOAs set noise rules, and 7 AM is a common earliest start. Change if needed.
-    crew_start_time: str = "07:00"  # local time the crew leaves the base
+    # Working hours, picked for lawns and neighbors: mowers start at 8 AM (dew is mostly off the grass, Houston's
+    # 7 AM-8 PM lawn-equipment window and stricter HOA "not before 8" rules are both met, and the crew drives
+    # out during the 7-8 AM traffic instead of mowing in it). The crew leaves base early enough to reach the
+    # day's first lawn at first_mow_time, so the time is right whether that area is 10 or 50 minutes away.
+    first_mow_time: str = "08:00"
+    weekday_hours: str = "08:00-17:00"      # Mon-Fri, published to Google; routes are sized to finish by 5 PM
+    saturday_hours: str = "08:00-14:00"     # make-up visits only, done before the afternoon heat
 
     # --- Runway quota & freeze ----------------------------------------
     prepay_required: bool = True    # card customers pay when they book; unpaid card bookings stay off the route.

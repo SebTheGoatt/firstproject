@@ -10,6 +10,7 @@ Everything runs in memory: no Stripe, Twilio, OSRM or geocoder calls leave the m
 Street names are real Spring-area streets; house numbers are placeholders (this repo is public).
 """
 
+from zoneinfo import ZoneInfo
 import asyncio
 import itertools
 import json
@@ -238,7 +239,7 @@ def test_m3_nightly_route_is_the_shortest_possible_loop_across_four_sectors(ops,
     assert {k for *_r, k in STOPS} == set(sectors)
     # ETAs run forward through the day.
     etas = [datetime.fromisoformat(s["eta"]) for s in stops]
-    assert etas == sorted(etas) and etas[0].hour == 7
+    assert etas == sorted(etas) and etas[0].astimezone(ZoneInfo("America/Chicago")).strftime("%H:%M") == "08:00"
 
 
 def test_m3_crew_dashboard_data_carries_the_scope_lock_and_time_by_lawn_size(ops):

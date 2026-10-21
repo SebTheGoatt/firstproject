@@ -263,9 +263,10 @@ def business_node(settings: Settings, site: str) -> dict:
             "paymentAccepted": ("Credit Card, Debit Card, Apple Pay, Google Pay" if settings.prepay_required and settings.stripe_enabled
                                 else "Cash"),
             "priceRange": f"{dollars(low)}-{dollars(high)}",
-            "openingHoursSpecification": [{"@type": "OpeningHoursSpecification",
-                                           "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
-                                           "opens": "07:00", "closes": "17:00"}],
+            "openingHoursSpecification": [
+                {"@type": "OpeningHoursSpecification", "dayOfWeek": days, "opens": hours.split("-")[0], "closes": hours.split("-")[1]}
+                for days, hours in ((["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], settings.weekday_hours),
+                                    (["Saturday"], settings.saturday_hours))],
             "knowsAbout": ["Lawn Mowing", "Gutter Cleaning", "Trash Bin Sanitization", "Holiday Lighting Installation"]}
     if settings.business_phone:
         node["telephone"] = e164(settings.business_phone)

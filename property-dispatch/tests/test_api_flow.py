@@ -48,7 +48,7 @@ def test_full_day_flow(client, repo, settings, sms):
     assert "origin=" in route["full_route_google_urls"][0]  # starts at base before any work
     assert route["timezone"] == "America/Chicago"
     etas = [datetime.fromisoformat(s["eta"]).astimezone(TZ) for s in stops]
-    assert etas == sorted(etas) and etas[0].hour == 7  # first stop around the 7 AM start
+    assert etas == sorted(etas) and etas[0].strftime("%H:%M") == "08:00"  # the first lawn is mowed at 8 AM
 
     # Crew completes stop 1 → stop 2's customer is texted
     r = client.post(f"/api/stops/{stops[0]['stop_id']}/complete", headers=CREW).json()
