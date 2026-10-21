@@ -4,3 +4,8 @@ node_modules/
 
 # Customer data - never commit (this repo is public)
 customer_audit.txt
+
+# Python
+__pycache__/
+.venv/
+.pytest_cache/
