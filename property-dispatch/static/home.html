@@ -120,6 +120,41 @@
       </ul>
     </div>
 
+    <!-- Scroll story: a slow flight over a striped lawn while four short chapters play as you scroll.
+         Without JavaScript, or with reduced motion, the chapters simply stack. Prices and days come from
+         /api/booking-info like the rest of the page. Lawn photo: Vadim Sherbakov on Unsplash (Unsplash License). -->
+    <section id="scroll-story" class="scrolly" aria-labelledby="scrolly-title">
+      <div class="scrolly-stage">
+        <picture class="scrolly-photo" aria-hidden="true">
+          <source media="(orientation: portrait)" srcset="/static/img/lawn-stripes-tall.webp" width="720" height="1280">
+          <img src="/static/img/lawn-stripes-wide.webp" width="1600" height="904" alt="" loading="lazy" decoding="async">
+        </picture>
+        <div class="scrolly-scrim" aria-hidden="true"></div>
+        <h2 class="visually-hidden" id="scrolly-title">How Post One works</h2>
+        <ol class="scrolly-chapters">
+          <li class="chapter">
+            <p class="chapter-big">Waiting all week for your <span>lawn guy?</span></p>
+          </li>
+          <li class="chapter">
+            <p class="chapter-big">See your price <span>before you book.</span></p>
+            <div class="chapter-card"><span>Lawn mowing from</span><strong id="scrolly-from">See the booking page</strong>
+              <small>Tax shown before you book. Your price is locked.</small></div>
+          </li>
+          <li class="chapter">
+            <p class="chapter-big">One area <span>a day.</span></p>
+            <ul class="chapter-days" id="scrolly-days"></ul>
+          </li>
+          <li class="chapter">
+            <p class="chapter-big">A text when <span>we're on the way.</span></p>
+            <div class="chapter-banner"><strong>Post One Lawn Co.</strong>
+              <p>We just finished the previous job and are heading your way, about 12 minutes out.</p></div>
+            <a class="btn btn-lg po-btn-fresh" href="/book">Get my price</a>
+          </li>
+        </ol>
+        <div class="scrolly-progress" aria-hidden="true"><span></span></div>
+      </div>
+    </section>
+
     <section id="how" class="section po-section" aria-labelledby="how-title">
       <div class="site-wrap">
         <h2 id="how-title">How it works</h2>
@@ -592,6 +627,12 @@
       });
       if (isFinite(lowest)) drawAreaMap(info.zones, lowest); else document.getElementById("area-map-wrap").hidden = true;
       if (isFinite(lowest)) document.getElementById("mow-from").textContent = `Starting at ${dollars(lowest)} per visit`;
+      // Scroll story: the starting price and the area days, from the same data
+      if (isFinite(lowest)) document.getElementById("scrolly-from").textContent = `${dollars(lowest)} a visit`;
+      document.getElementById("scrolly-days").replaceChildren(...(info.schedule || []).map((d) => {
+        const li = document.createElement("li"), b = document.createElement("b");
+        b.textContent = d.weekday.slice(0, 3); li.append(b, document.createTextNode(d.area)); return li;
+      }));
       // Service cards: add-on prices from the same list the booking form charges (no numbers in the HTML).
       document.querySelectorAll("[data-addon-price]").forEach((el) => {
         const a = (info.add_ons || []).find((x) => x.key === el.dataset.addonPrice);
@@ -658,6 +699,28 @@
         btn.disabled = false;
       }
     });
+
+    // Scroll story: section progress (0..1) drives the lawn's slow push-in and which chapter is showing.
+    // Skipped with reduced motion; the chapters then stack as plain content.
+    (() => {
+      const sec = document.getElementById("scroll-story");
+      if (!sec || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      sec.classList.add("is-scrolly");
+      const chapters = [...sec.querySelectorAll(".chapter")];
+      let queued = false;
+      const update = () => {
+        queued = false;
+        const r = sec.getBoundingClientRect(), span = Math.max(1, r.height - innerHeight);
+        const p = Math.min(1, Math.max(0, -r.top / span));
+        sec.style.setProperty("--p", p.toFixed(4));
+        const on = Math.min(chapters.length - 1, Math.floor(p * chapters.length * 0.999));
+        chapters.forEach((c, i) => c.classList.toggle("is-on", i === on));
+      };
+      const queue = () => { if (!queued) { queued = true; requestAnimationFrame(update); } };
+      addEventListener("scroll", queue, { passive: true });
+      addEventListener("resize", queue);
+      update();
+    })();
 
     // Mobile "Book a mow" bar: shown on small screens, hidden while another booking button is
     // already on screen or while the visitor is typing (so it never covers a field or the keyboard).

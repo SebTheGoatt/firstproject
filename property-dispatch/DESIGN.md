@@ -144,6 +144,8 @@ text. On Post Green use `#F5F6F1` and `#C9D3CD`.
 - **Logo A:** shield with a "1", Post Green fill, Dress Brass edge, Fresh Blade numeral
   (`static/brand/`). Never recolor the shield.
 - **One area a day:** the week shown as one column per day, each day naming its area.
+- **Scroll story (home page):** a sticky flight over the striped-lawn photo; the photo pushes in with scroll and
+  four chapters swap in place with a blurred rise. Stacks as plain content without JS or with reduced motion.
 - **Price shown before booking:** every price on the site is read from `app/pricing.py`, never typed into a page.
 
 ## Do's and don'ts
