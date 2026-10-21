@@ -255,7 +255,13 @@ def business_node(settings: Settings, site: str) -> dict:
             "image": f"{site}/static/icons/post-one-share.jpg",
             "address": {"@type": "PostalAddress", "addressLocality": "Spring", "addressRegion": "TX",
                         "postalCode": "77373", "addressCountry": "US"},
-            "areaServed": [{"@type": "AdministrativeArea", "name": f"{a.city}, TX"} for a in AREAS],
+            "logo": f"{site}/static/icons/icon-512.png",
+            "areaServed": [{"@type": "AdministrativeArea", "name": f"{a.city}, TX"} for a in AREAS]
+                          + [{"@type": "AdministrativeArea", "name": f"{alias.replace('-', ' ').title()}, TX"} for alias in ALIASES],
+            "currenciesAccepted": "USD",
+            # Pay first: card only while Stripe is set up (the booking form refuses cash then); cash otherwise.
+            "paymentAccepted": ("Credit Card, Debit Card, Apple Pay, Google Pay" if settings.prepay_required and settings.stripe_enabled
+                                else "Cash"),
             "priceRange": f"{dollars(low)}-{dollars(high)}",
             "openingHoursSpecification": [{"@type": "OpeningHoursSpecification",
                                            "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],

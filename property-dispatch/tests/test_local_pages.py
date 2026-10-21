@@ -121,7 +121,7 @@ def test_json_ld_business_service_and_breadcrumbs(client):
         assert biz["@id"] == "http://testserver/#business" and biz["name"] == "Post One Lawn Co."
         assert biz["legalName"] == "Semper Green LLC"
         assert biz["priceRange"] == f"$75-{dollars(yield_mow_fee(MAX_SQFT, 'STEEP_SLOPES'))}"
-        assert {c["name"] for c in biz["areaServed"]} == {f"{x.city}, TX" for x in AREAS}
+        assert {c["name"] for c in biz["areaServed"]} == {f"{x.city}, TX" for x in AREAS} | {"Splendora, TX", "Plum Grove, TX"}
         assert svc["serviceType"] == "Lawn mowing" and svc["provider"] == {"@id": biz["@id"]}
         assert svc["areaServed"] == {"@type": "City", "name": f"{a.city}, TX"}
         offers = svc["hasOfferCatalog"]["itemListElement"]
@@ -399,3 +399,12 @@ def test_services_index_and_links(client):
     r = client.get("/services/Lawn-Mowing", follow_redirects=False)
     assert r.status_code == 301 and r.headers["location"] == "/services/lawn-mowing"
     assert client.get("/services/pressure-washing", follow_redirects=False).headers["location"] == "/services"
+
+
+def test_business_data_lists_payment_and_never_a_fake_phone_or_pin(settings, repo):
+    for stripe, pay in (("", "Cash"), ("sk_test_x", "Credit Card, Debit Card, Apple Pay, Google Pay")):
+        c = app_with(settings, repo, stripe_secret_key=stripe, stripe_webhook_secret="whsec_x" if stripe else "")
+        biz = json.loads(LD_JSON.findall(c.get("/").text)[0])
+        assert biz["paymentAccepted"] == pay and biz["currenciesAccepted"] == "USD"
+        assert biz["logo"].endswith("/static/icons/icon-512.png")
+        assert "geo" not in biz and "telephone" not in biz      # no pin for a service-area business; phone only when set
