@@ -263,14 +263,17 @@ class SupabaseRepository:
     def list_routable_jobs(self, day: date) -> list[Job]:
         rows = (
             self.sb.table("jobs")
-            .select("id, address, formatted_address, lat, lng, service, service_minutes, status, customers(name, phone)")
+            .select("id, address, formatted_address, lat, lng, service, service_minutes, status, payment_method, payment_status,"
+                    " amount_due, customers(name, phone)")
             .eq("scheduled_date", day.isoformat()).in_("status", list(ACTIVE_STATUSES))
             .order("created_at").execute()
         ).data
         return [
             Job(id=r["id"], customer_name=r["customers"]["name"], phone=r["customers"]["phone"],
                 address=r["address"], lat=r["lat"], lng=r["lng"],
-                service=r["service"], service_minutes=r["service_minutes"], status=r["status"])
+                service=r["service"], service_minutes=r["service_minutes"], status=r["status"],
+                payment_method=r.get("payment_method"), payment_status=r.get("payment_status"),
+                amount_due=r.get("amount_due"))
             for r in rows
         ]
 
@@ -688,7 +691,9 @@ class MemoryRepository:
                 c = self.customers[j["customer_id"]]
                 out.append(Job(id=j["id"], customer_name=c["name"], phone=c["phone"],
                                address=j["address"], lat=j["lat"], lng=j["lng"],
-                               service=j["service"], service_minutes=j["service_minutes"], status=j["status"]))
+                               service=j["service"], service_minutes=j["service_minutes"], status=j["status"],
+                               payment_method=j.get("payment_method"), payment_status=j.get("payment_status"),
+                               amount_due=j.get("amount_due")))
         return out
 
     def save_route(self, *, day, start, end, total_distance_m, total_duration_s, matrix_source, stops) -> str:

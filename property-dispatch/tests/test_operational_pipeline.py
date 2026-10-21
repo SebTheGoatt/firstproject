@@ -89,6 +89,7 @@ def stripe_api():
 def ops(settings, repo, stripe_api):
     settings.stripe_secret_key, settings.stripe_webhook_secret = "sk_test_x", WHSEC
     settings.google_review_url = REVIEW_URL
+    settings.prepay_required = False      # this pipeline covers cash and pay-after-the-visit (tests/test_prepay.py: pay first)
     sms = FakeSMS()
     stripe = StripeClient(settings, httpx.Client(transport=httpx.MockTransport(stripe_api)))
     client = TestClient(create_app(settings, repo=repo, geocoder=MapGeocoder(), sms=sms, stripe=stripe))

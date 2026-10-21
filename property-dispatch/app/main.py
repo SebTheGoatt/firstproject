@@ -250,7 +250,7 @@ def create_app(
                 .replace("{{BRAND}}", brand_html(settings.business_name))
                 .replace("{{BRAND_SHORT}}", html.escape(brand_lines(settings.business_name)[0]))
                 .replace("{{LEGAL_FOOTER}}", legal_footer_html(settings))
-                .replace("{{SMS_CONSENT}}", html.escape(SMS_CONSENT.format(legal=settings.legal_name))))
+                .replace("{{SMS_CONSENT}}", html.escape(SMS_CONSENT.format(brand=settings.business_name, legal=settings.legal_name))))
 
     def page(name: str) -> HTMLResponse:
         return HTMLResponse(render(name), headers={"Cache-Control": "no-cache"})
@@ -395,6 +395,7 @@ def create_app(
             "causes": charity_causes(settings),           # the customer picks one at booking
             "business_name": settings.business_name,
             "card_payments": app.state.stripe is not None,
+            "prepay": settings.prepay_required and app.state.stripe is not None,   # card only, paid at booking
             "google_maps_key": settings.google_maps_browser_key or None,
         }
 
@@ -531,6 +532,9 @@ def create_app(
         giving = float(q.charity_amount) if q.charity_amount is not None else None
         if body.payment_method == "card" and app.state.stripe is None:
             raise HTTPException(status_code=422, detail="Card payments aren't available yet. Please choose cash.")
+        if settings.prepay_required and app.state.stripe is not None and body.payment_method != "card":
+            raise HTTPException(status_code=422, detail="Please pay by card, Apple Pay or Google Pay when you book. "
+                                                        "We collect payment before the visit.")
         pay_token = secrets.token_urlsafe(18)
         access_code = new_access_code()
 
@@ -549,12 +553,14 @@ def create_app(
         )
         record_booking(job_id=str(job["id"]))   # the only booking counter (idempotent per job)
         if body.sms_consent:   # proof of consent for texting (TCPA): which booking, when, and the exact wording
-            log.info("SMS consent: job %s at %s: %s", job["id"], now.isoformat(), SMS_CONSENT.format(legal=settings.legal_name))
+            log.info("SMS consent: job %s at %s: %s", job["id"], now.isoformat(), SMS_CONSENT.format(brand=settings.business_name, legal=settings.legal_name))
         base = site_url(settings, request)
         visit_url = f"{base}/visit/{access_code}"
         send_text(app.state.sms, body.phone, booking_message(
             body.name.split()[0], settings, service_words(body.service.value, add_ons, body.lang),
-            day_words(body.scheduled_date, body.lang), format_code(access_code), visit_url, lang=body.lang))
+            day_words(body.scheduled_date, body.lang), format_code(access_code), visit_url, lang=body.lang,
+            pay_url=f"{base}/pay/{pay_token}" if settings.prepay_required and body.payment_method == "card"
+            and q.total is not None else None))
         # Show the customer the house-level match when we have one; otherwise echo
         # their own address back (a street-level match would drop their house number).
         shown = geo.formatted_address if geo.precision == "address" else body.address

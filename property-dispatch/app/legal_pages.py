@@ -20,7 +20,7 @@ from .local_pages import crumbs, layout, legal_footer_html, with_share_tags  # n
 
 esc = html.escape
 EFFECTIVE = "October 19, 2026"
-SMS_CONSENT = ("I agree to get text messages from {legal} about this booking: confirmation, crew on the way, "
+SMS_CONSENT = ("I agree to get text messages from {brand} ({legal}) about this booking: confirmation, crew on the way, "
                "job done, payment link, and one note afterward asking how we did. Msg & data rates may apply; "
                "frequency varies. Reply STOP to opt out, HELP for help.")
 
@@ -178,7 +178,8 @@ def terms_html(settings: Settings, version: str) -> str:
         <h2>Prices and payment</h2>
         <ul>
           <li>You see the full price, including Texas sales tax, before you book. There are no hidden fees.</li>
-          <li>Pay the crew in cash at the visit, or by card through the private Stripe link we send.</li>
+          <li>You pay when you book, by card, Apple Pay or Google Pay through Stripe. The visit is set once payment goes
+            through; we don't come out for unpaid visits.</li>
           <li>Part of each visit's price goes to the cause you picked, as shown at booking. Anything extra you choose
             to give goes to that cause too. Tips are never expected.</li>
         </ul>
@@ -246,8 +247,7 @@ def refunds_html(settings: Settings, version: str) -> str:
 
         <h2>Cancel or change a visit</h2>
         <ul>
-          <li>Cancel any time before the crew arrives: <strong>full refund</strong> if you paid by card, nothing owed
-            if you planned to pay cash.</li>
+          <li>Cancel any time before the crew arrives: <strong>full refund</strong>.</li>
           <li>To cancel or move a visit, {contact}, with your access code if you have it handy.</li>
           <li>Moving to another day is free, subject to open spots on that day's route.</li>
         </ul>

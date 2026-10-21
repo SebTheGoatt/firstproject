@@ -78,16 +78,19 @@ def next_customer_message(stop: dict, settings: Settings, crew_name: str | None 
 
 
 def booking_message(first_name: str, settings: Settings, service_label: str, day_label: str,
-                    code: str, visit_url: str, lang: str = "en") -> str:
+                    code: str, visit_url: str, lang: str = "en", pay_url: str | None = None) -> str:
+    """The booking text. With pay_url (pay first), it asks for payment before the visit is set."""
     if lang == "es":
+        pay = f"Paga aquí para confirmar tu visita (el equipo solo va a visitas pagadas): {pay_url} . " if pay_url else ""
         return (
             f"Hola {first_name}, tu cita con {settings.business_name} quedó reservada: {service_label} el {day_label}. "
-            f"Tu código de acceso es {code}. Sigue tu visita y mira tus fotos de antes y después: {visit_url} . "
+            f"{pay}Tu código de acceso es {code}. Sigue tu visita y mira tus fotos de antes y después: {visit_url} . "
             f"Responde STOP para no recibir más mensajes."
         )
+    pay = f"Pay here to lock in your visit (the crew only goes to paid visits): {pay_url} . " if pay_url else ""
     return (
         f"Hi {first_name}, you're booked with {settings.business_name} for {service_label.lower()} on {day_label}. "
-        f"Your access code is {code}. Track your visit and see your before & after photos: {visit_url} . "
+        f"{pay}Your access code is {code}. Track your visit and see your before & after photos: {visit_url} . "
         f"Reply STOP to opt out."
     )
 

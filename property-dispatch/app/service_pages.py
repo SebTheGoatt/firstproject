@@ -181,7 +181,7 @@ def service_html(settings: Settings, version: str, s: Service, site: str) -> str
         <h2 id="how-title">Booking, paying and changing plans</h2>
         <ul class="spec-list">
           <li>No contract or subscription: each booking is one visit.</li>
-          <li>Pay the crew in cash, or by card through a private Stripe link.</li>
+          <li>Pay by card, Apple Pay or Google Pay when you book. The crew only goes to paid visits.</li>
           <li>We text you when the crew is on the way.</li>
           <li>Cancel any time before the crew arrives for a full refund.</li>
         </ul>

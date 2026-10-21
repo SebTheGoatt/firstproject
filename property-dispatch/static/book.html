@@ -141,7 +141,7 @@
           </fieldset>
           <!-- The customer picks the one cause their order's giving goes to (names come from Render settings). -->
           <fieldset class="impact-pick" id="impact-pick">
-            <legend>Direct Your Local Community Impact Token</legend>
+            <legend>Pick a local cause</legend>
             <p class="hint">Part of every order goes to a local cause. Pick where yours goes.</p>
             <div class="impact-options" id="impact-options">
               <input type="radio" name="charity_choice" id="cause-toys_for_tots" value="toys_for_tots" checked>
@@ -188,6 +188,7 @@
     const err = document.getElementById("err");
     const ok = document.getElementById("ok");
     const submit = document.getElementById("submit");
+    let prepay = false, SUBMIT_LABEL = "Book service";   // prepay: card only, paid right after booking
     const dateInput = document.getElementById("date");
     const $ = (id) => document.getElementById(id);
 
@@ -614,6 +615,16 @@
         $("pay-card").disabled = false;
         $("pay-card-note").textContent = "Pay securely now, or after the visit.";
       }
+      if (info.prepay) {
+        // Pay first, then we mow: card only, paid right after booking. The crew only goes to paid visits.
+        prepay = true;
+        $("pay-cash").checked = false; $("pay-cash").disabled = true;
+        $("pay-cash").hidden = true; document.querySelector('label[for="pay-cash"]').hidden = true;
+        $("pay-card").checked = true;
+        $("pay-card-note").textContent = "You pay when you book. Your visit is set once payment goes through.";
+        $("step-pay").lastChild.textContent = "Payment";
+        submit.textContent = SUBMIT_LABEL = "Book & pay";
+      }
     }).catch(() => { renderAddOns(); });
 
     function showError(msg, focusEl) {
@@ -668,10 +679,20 @@
         form.hidden = true;
         ok.innerHTML = "";
         const h = document.createElement("strong");
-        h.textContent = `You're booked for ${fmtDay(body.scheduled_date)}.`;
+        const mustPay = prepay && body.pay_url && body.total != null;
+        h.textContent = mustPay ? `One more step: pay ${money(body.total)} to lock in ${fmtDay(body.scheduled_date)}.`
+                                : `You're booked for ${fmtDay(body.scheduled_date)}.`;
         const p = document.createElement("div");
         p.textContent = `We'll text ${data.phone} when the crew is headed to ${body.formatted_address}.`;
         ok.append(h, p);
+        if (mustPay) {   // the pay button comes first: the crew only goes to paid visits
+          const pay = document.createElement("a");
+          pay.className = "btn btn-primary btn-lg btn-block"; pay.href = body.pay_url;
+          pay.textContent = `Pay ${money(body.total)} now`;
+          const why = document.createElement("div"); why.className = "hint";
+          why.textContent = "We collect payment before the visit. If we can't mow, you get a full refund.";
+          ok.append(pay, why);
+        }
         // Itemized confirmation: the server's own numbers, the same ones checkout charges.
         if (body.total != null) {
           const dl = document.createElement("dl"); dl.className = "price-lines confirm-lines";
@@ -713,7 +734,9 @@
           ok.append(nudge);
           window.SGPush?.setup(body.access_code, { box: nudge, btn: nudgeBtn, note: nudgeNote });
         }
-        if (body.pay_url) {
+        if (mustPay) {
+          // already shown at the top
+        } else if (body.pay_url) {
           const pay = document.createElement("a");
           pay.className = "btn btn-primary";
           pay.href = body.pay_url;
@@ -737,7 +760,7 @@
           : ex.message);
       } finally {
         submit.disabled = false;
-        submit.textContent = "Book service";
+        submit.textContent = SUBMIT_LABEL;
       }
     });
   </script>

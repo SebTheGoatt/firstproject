@@ -191,6 +191,7 @@ def book_supporter(client, letter="A", phone="0100", charity_choice="vfw"):
 
 
 def test_checkout_charges_the_bracket_total_and_tags_it_for_the_audit(card_client, repo, settings, stripe):
+    settings.prepay_required = False      # the stop number is tagged once an unpaid visit is routed
     r = book_supporter(card_client)
     token = r["pay_url"].rsplit("/", 1)[1]
     card_client.post(f"/api/pay/{token}/checkout", json={})

@@ -115,6 +115,7 @@
     .pill { display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--track); color: var(--ink-2); }
     .pill.routed { background: var(--green-soft); color: var(--green-ink); }
     .pill.done { background: var(--green); color: #fff; }
+    .pill.owed { background: #FBF3DF; color: var(--brass); }
     .bk li.wrong { background: #FFFAF9; }
     .wrong-note { grid-column: 2 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; color: var(--red); font-size: 13px; font-weight: 600; }
     .wrong-note span { margin-right: 4px; }
@@ -317,8 +318,9 @@
             el("div", { class: "who" }, t.name || t.ref),
             t.address ? el("div", { class: "addr" }, t.address) : null,
             el("div", { class: "meta" }, [short(t.area), t.sqft ? `${t.sqft.toLocaleString()} sq ft` : null, t.scope].filter(Boolean).join(" · "), " ",
-              el("span", { class: "pill " + (t.status === "DONE" ? "done" : t.status === "ROUTED" ? "routed" : "") },
-                t.status === "DONE" ? "Done" : t.status === "ROUTED" ? "On the route" : "Waiting for route"))),
+              el("span", { class: "pill " + (t.status === "DONE" ? "done" : t.status === "ROUTED" ? "routed" : t.status === "AWAITING PAYMENT" ? "owed" : "") },
+                t.status === "DONE" ? "Done" : t.status === "ROUTED" ? "On the route"
+                  : t.status === "AWAITING PAYMENT" ? "Not paid yet" : "Waiting for route"))),
           el("div", { class: "amt num" }, money(t.amount),
             el("small", { class: t.paid ? "paid" : "due" }, `${t.pay === "card" ? "Card" : "Cash"} · ${t.paid ? "paid" : "due"}`)));
         if (t.off_area && t.status !== "DONE") {

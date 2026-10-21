@@ -48,6 +48,11 @@ def next_area_day(zone, after: date) -> date | None:
     return after + timedelta(days=(zone.service_weekday - after.weekday()) % 7 or 7)
 
 
+def awaiting_payment(j: dict) -> bool:
+    """A card booking that hasn't paid yet: with pay-first on, it stays off the route until it does."""
+    return j.get("payment_method") == "card" and j.get("payment_status") != "paid" and j.get("amount_due") is not None
+
+
 def terminal_row(j: dict, day: date, today: date) -> dict:
     zone = zone_by_key(j.get("zone_key"))
     off = bool(zone_for_weekday(day.weekday()) and zone and zone.key != zone_for_weekday(day.weekday()).key)
@@ -62,7 +67,8 @@ def terminal_row(j: dict, day: date, today: date) -> dict:
         "sqft": j.get("lawn_sqft"),
         "scope": {"scope_yard": "Fenced core", "scope_full": "Full property"}.get(scope),
         "service": order_label(j["service"], j.get("add_ons")),
-        "status": "DONE" if j.get("completed_at") else ("ROUTED" if j.get("sequence") else "PENDING DISPATCH"),
+        "status": "DONE" if j.get("completed_at") else ("ROUTED" if j.get("sequence") else
+                  "AWAITING PAYMENT" if awaiting_payment(j) else "PENDING DISPATCH"),
         "pay": j.get("payment_method"),
         "paid": j.get("payment_status") == "paid",
         "amount": _money(j.get("amount_due")),

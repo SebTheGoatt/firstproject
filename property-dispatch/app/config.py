@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     crew_start_time: str = "07:00"  # local time the crew leaves the base
 
     # --- Runway quota & freeze ----------------------------------------
+    prepay_required: bool = True    # card customers pay when they book; unpaid card bookings stay off the route.
+                                    # While Stripe is set up, cash bookings are refused (nobody pays after the work).
     freeze_hour: int = 17           # 5 PM local (close of business): next day locks and its route is built
     daily_job_quota: int = 25       # max active jobs per service day
     booking_horizon_days: int = 60
