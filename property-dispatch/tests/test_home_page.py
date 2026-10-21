@@ -9,7 +9,7 @@ HOME = Path(__file__).resolve().parents[1].joinpath("static", "home.html")
 
 def test_home_has_the_post_one_sections_and_keeps_every_widget(client):
     t = client.get("/").text
-    assert '<p class="po-eyebrow">Veteran-owned · Spring, TX</p>' in t
+    assert '<p class="po-eyebrow">Lawn mowing · Veteran-owned · Spring, TX</p>' in t
     assert '<h1 id="hero-title">Every yard gets Post&nbsp;One attention.</h1>' in t
     assert '<a class="btn btn-lg po-btn-fresh" href="/book">Get my price</a>' in t and 'href="#pricing">See pricing</a>' in t
     for section in ("how", "pricing", "services", "areas", "story"):

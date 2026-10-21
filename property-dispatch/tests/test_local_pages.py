@@ -23,6 +23,8 @@ from .test_api_flow import NOW, TOMORROW, book
 
 AREA_PATHS = [f"/local/{a.slug}" for a in AREAS]
 HOOD_PATHS = [f"/local/{h.area}/{h.slug}" for h in HOODS]
+from app.service_pages import SERVICES  # noqa: E402
+SERVICE_PATHS = [f"/services/{s.slug}" for s in SERVICES]
 LD_JSON = re.compile(r'<script type="application/ld\+json">(.*?)</script>', re.S)
 
 
@@ -178,7 +180,7 @@ def test_sitemap_is_valid_xml_with_every_public_page(client):
     assert r.status_code == 200 and r.headers["content-type"].startswith("application/xml")
     ns = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
     locs = [e.text for e in ET.fromstring(r.content).findall("s:url/s:loc", ns)]
-    assert locs == [f"http://testserver{p}" for p in ("/", "/book", "/team", "/local", *AREA_PATHS, *HOOD_PATHS, "/about", "/privacy", "/terms", "/refunds")]
+    assert locs == [f"http://testserver{p}" for p in ("/", "/book", "/services", *SERVICE_PATHS, "/team", "/local", *AREA_PATHS, *HOOD_PATHS, "/about", "/privacy", "/terms", "/refunds")]
     for loc in locs:
         assert client.get(urlparse(loc).path, follow_redirects=False).status_code == 200, loc
 
@@ -358,7 +360,8 @@ def test_neighborhood_shortcuts_redirect_to_the_canonical_page(client):
 
 
 def test_every_public_page_has_canonical_and_share_tags(client):
-    for path in ("/", "/book", "/about", "/team", "/privacy", "/terms", "/refunds", "/local", *AREA_PATHS, *HOOD_PATHS):
+    for path in ("/", "/book", "/about", "/team", "/privacy", "/terms", "/refunds", "/local", "/services", *SERVICE_PATHS,
+                 *AREA_PATHS, *HOOD_PATHS):
         t = client.get(path).text
         assert t.count('rel="canonical"') == 1 and f'<link rel="canonical" href="http://testserver{path}">' in t, path
         assert t.count('property="og:image"') == 1 and 'content="http://testserver/static/icons/post-one-share.jpg"' in t, path
@@ -372,3 +375,27 @@ def test_home_faq_days_match_the_area_schedule(client):
              "COLONY_RIDGE": "Colony Ridge", "CLEVELAND_HUB": "Cleveland and Plum Grove"}
     for z in SERVICE_ZONES:
         assert f"{names[z.key]} on {WEEKDAY_NAMES[z.service_weekday]}s" in page, z.key
+
+
+def test_service_pages_quote_only_what_the_price_list_charges(client):
+    from app.pricing import ADD_ONS
+    for s, path in zip(SERVICES, SERVICE_PATHS):
+        r = client.get(path)
+        assert r.status_code == 200 and "{{" not in r.text, path
+        assert f'<h1 id="svc-title">{html.escape(s.name)} in Spring, TX</h1>' in r.text
+        crumbs = by_type(json_ld(r.text))["BreadcrumbList"]["itemListElement"]
+        assert [c["name"] for c in crumbs] == ["Home", "Services", s.name]
+        if s.add_on and ADD_ONS[s.add_on]["price"]:
+            assert f"{dollars(ADD_ONS[s.add_on]['price'])} per visit" in r.text
+    mow = client.get("/services/lawn-mowing").text
+    assert all(dollars(p) in mow for p in all_prices())
+    assert "Free quote" in client.get("/services/holiday-lighting").text
+
+
+def test_services_index_and_links(client):
+    page = client.get("/services").text
+    for path in SERVICE_PATHS:
+        assert f'href="{path}"' in page and f'href="{path}"' in client.get("/").text
+    r = client.get("/services/Lawn-Mowing", follow_redirects=False)
+    assert r.status_code == 301 and r.headers["location"] == "/services/lawn-mowing"
+    assert client.get("/services/pressure-washing", follow_redirects=False).headers["location"] == "/services"
