@@ -119,6 +119,17 @@
     .bk li.wrong { background: #FFFAF9; }
     .wrong-note { grid-column: 2 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; color: var(--red); font-size: 13px; font-weight: 600; }
     .wrong-note span { margin-right: 4px; }
+    .issues { margin-bottom: 24px; border-color: #F3C8C3; }
+    .issues > header { background: #FFF6F5; }
+    .issues h2 { color: var(--red); }
+    .iss { list-style: none; margin: 0; padding: 0; }
+    .iss li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px 16px; align-items: center; padding: 12px 16px; border-top: 1px solid var(--line); }
+    .iss li:first-child { border-top: 0; }
+    .iss-kind { font-weight: 600; }
+    .iss-meta { color: var(--muted); font-size: 13px; }
+    .iss-note { margin: 4px 0 0; color: var(--ink-2); }
+    .iss-photo { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); background: var(--track); }
+    @media (max-width: 760px) { .iss li { grid-template-columns: minmax(0, 1fr) auto; } .iss li .btn { grid-column: 1 / -1; } }
     .empty { padding: 28px 16px; margin: 0; color: var(--muted); text-align: center; }
     .bk li.empty { display: block; }
 
@@ -175,6 +186,7 @@
     <a class="brand" href="/owner/command"><img src="/static/brand/post-one-mark.svg" alt="" width="22" height="24">{{BRAND_SHORT}} <small>Owner</small></a>
     <nav aria-label="Owner screens">
       <a href="/owner/command" aria-current="page">Today</a>
+      <a href="/owner/marketing">Marketing</a>
       <a href="/crew">Bookings &amp; crew</a>
       <a href="/crew/dashboard">Route</a>
       <a href="/owner/readiness">Go-live</a>
@@ -193,6 +205,11 @@
           <button class="btn primary" type="button" id="build" hidden>Build route</button>
           <button class="btn" type="button" id="refresh">Refresh</button>
         </div>
+      </section>
+
+      <section class="panel issues" id="issues-panel" aria-labelledby="h-iss" hidden>
+        <header><h2 id="h-iss">Problems the crew reported</h2><small id="iss-count"></small></header>
+        <ul class="iss" id="issues"></ul>
       </section>
 
       <section class="week" id="week" aria-label="This week, one area a day" tabindex="0"></section>
@@ -278,10 +295,15 @@
       const wrong = d.terminal.filter((t) => t.off_area && t.status !== "DONE");
       const nr = d.next_route;
       $("h1").textContent = day(d.date, { weekday: "long", month: "long", day: "numeric" }) + (d.area_today ? ` · ${short(d.area_today)}` : "");
-      // The one finding first: a booking on the wrong day, then an unbuilt route, then the plain state.
+      // The one finding first: a crew problem report, a booking on the wrong day, an unbuilt route, then the plain state.
       const f = $("finding");
-      f.className = "finding" + (wrong.length ? " bad" : "");
-      if (wrong.length) {
+      const issues = d.issues || [];
+      f.className = "finding" + (wrong.length || issues.length ? " bad" : "");
+      renderIssues(issues);
+      if (issues.length) {
+        f.replaceChildren(el("b", {}, `The crew reported ${plural(issues.length, "problem", "problems")}.`),
+          " See the photos below and mark each one handled once it's taken care of.");
+      } else if (wrong.length) {
         f.replaceChildren(el("b", {}, `${plural(wrong.length, "booking is", "bookings are")} on the wrong area day.`),
           " Move each one to its area's day, or cancel it.");
       } else if (nr.date && !nr.built) {
@@ -365,6 +387,32 @@
         ? el("table", { class: "ph" }, el("thead", {}, el("tr", {}, el("th", {}, "Visit"), el("th", {}, "Before"), el("th", {}, "After"))),
             el("tbody", {}, ...df.photo_log.map((p) => el("tr", {}, el("td", { class: "num" }, p.ref), shot(p.before, p.done), shot(p.after, p.done)))))
         : el("p", { class: "empty" }, "No visits today."));
+    }
+
+    const ISSUE_KIND = { damage: "Damage to the property", equipment: "Equipment broke down", access: "Couldn't get in",
+                         delay: "Running late", other: "Something else" };
+    function renderIssues(list) {
+      $("issues-panel").hidden = !list.length;
+      $("iss-count").textContent = list.length ? `${list.length} open` : "";
+      $("issues").replaceChildren(...list.map((i) => {
+        const when = new Date(i.created_at).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" });
+        const li = el("li", {},
+          el("div", { class: "iss-main" },
+            el("div", { class: "iss-kind" }, ISSUE_KIND[i.kind] || i.kind),
+            el("div", { class: "iss-meta" }, [i.address, when].filter(Boolean).join(" · ")),
+            i.note ? el("p", { class: "iss-note" }, i.note) : null),
+          i.has_photo ? el("img", { class: "iss-photo", alt: `Photo: ${ISSUE_KIND[i.kind] || i.kind}`, width: "96", height: "96" }) : null);
+        if (i.has_photo) {   // the photo needs the owner's sign-in header, so fetch it rather than linking it
+          fetch(`/api/owner/issues/${i.id}/photo`, { headers: headers() }).then((r) => r.ok ? r.blob() : null)
+            .then((b) => { if (b) li.querySelector(".iss-photo").src = URL.createObjectURL(b); }).catch(() => {});
+        }
+        li.append(twoTap(el("button", { class: "btn sm", type: "button" }, "Mark handled"), async () => {
+          const r = await post(`/api/owner/issues/${i.id}/resolve`);
+          toast(r.ok ? "Marked handled." : (r.d.detail || "No signal. Try again."));
+          load();
+        }));
+        return li;
+      }));
     }
 
     function renderSite(s) {

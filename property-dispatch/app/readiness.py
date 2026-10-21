@@ -45,6 +45,9 @@ def checks(settings: Settings, repo, stripe_enabled: bool) -> list[dict]:
         add("sql_notes", "Database has the crew-notes column",
             db(lambda: repo.stop_notes("00000000-0000-0000-0000-000000000000")),
             "Supabase → SQL Editor: run supabase/migrations/20261026000000_crew_notes.sql")
+        add("sql_issues", "Database has crew problem reports and booking sources",
+            db(lambda: repo.list_issues(open_only=True, limit=1)) and db(lambda: repo.bookings_by_source(now)),
+            "Supabase → SQL Editor: run supabase/migrations/20261028000000_issues_and_sources.sql")
         mock = 0
         try:
             mock = repo.count_customers_named("MOCK ")

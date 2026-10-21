@@ -116,7 +116,7 @@ def test_prices_and_tax_are_read_live(client, monkeypatch):
 def test_json_ld_business_service_and_breadcrumbs(client):
     for a in AREAS:
         nodes = by_type(json_ld(client.get(f"/local/{a.slug}").text))
-        assert set(nodes) == {"HomeAndConstructionBusiness", "Service", "BreadcrumbList"}
+        assert set(nodes) == {"HomeAndConstructionBusiness", "Service", "BreadcrumbList", "FAQPage"}
         biz, svc, crumbs = nodes["HomeAndConstructionBusiness"], nodes["Service"], nodes["BreadcrumbList"]
         assert biz["@id"] == "http://testserver/#business" and biz["name"] == "Post One Lawn Co."
         assert biz["legalName"] == "Semper Green LLC"

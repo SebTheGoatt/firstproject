@@ -68,6 +68,8 @@ class JobRequest(BaseModel):
     package: Package | None = None   # older tier pricing (API callers); the booking form sends yard_type
     yard_type: YardType | None = None   # yield engine price (wins over package)
     lang: Literal["en", "es"] = "en"  # the customer's language, for their texts
+    # Where they found us: the ?ref= on a QR code, flyer or post (e.g. "yard-sign-klein"). Never personal data.
+    source: str | None = Field(default=None, max_length=48, pattern=r"^[a-z0-9-]{1,48}$")
     add_ons: list[AddOn] = Field(default_factory=list, max_length=4)
     # The one cause this order's giving goes to (app/charity.py CHOICES); none = the standard split.
     charity_choice: Literal["toys_for_tots", "vfw", "nicu"] | None = None

@@ -29,6 +29,16 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 - Display pages reuse "bookings that day" counts for 30s (`cached_count`); taking a booking always counts fresh.
 - Route planning: exact Held-Karp up to 12 stops (milliseconds); OR-Tools above that with a scaled time budget.
 
+## Marketing, SEO and GEO
+- Marketing hub `/owner/marketing` (`app/marketing.py`, `static/marketing.html`): this week's posts from live data
+  (EN/ES), tagged links + QR codes (`?ref=<channel>-<area>`), printable yard sign / door hanger / flyer, and a
+  scoreboard of bookings per channel. `static/site.js` keeps the visitor's source (ref, UTM, or Google / ChatGPT /
+  Perplexity referrer) 30 days and the booking saves it in `jobs.source`. Only short labels, never personal data.
+- GEO: `/llms.txt` (plain facts for AI assistants, live data), FAQPage data on home (parsed from the visible FAQ) and
+  on each area page (`area_faq`), robots.txt welcomes AI search crawlers, `sameAs` from the *_URL profile settings.
+- Crew "Report a problem" (`app/issues.py`): damage / equipment / access / delay with a photo; first item on the owner
+  screen; email via Resend when set. Needs `supabase/migrations/20261028000000_issues_and_sources.sql`.
+
 ## Standing decisions
 - **One area per day, enforced:** Mon Spring · Tue Klein · Wed New Caney & Splendora · Thu Colony Ridge ·
   Fri Cleveland & Plum Grove · Sat make-up only. Bookings on the wrong day are rejected; the route builder drops

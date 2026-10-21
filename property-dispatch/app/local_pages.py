@@ -23,6 +23,7 @@ in HOODS: a short hand-written list of subdivisions inside the zone boxes, each 
 
 import html
 import json
+import re
 from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
@@ -268,6 +269,10 @@ def business_node(settings: Settings, site: str) -> dict:
                 for days, hours in ((["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], settings.weekday_hours),
                                     (["Saturday"], settings.saturday_hours))],
             "knowsAbout": ["Lawn Mowing", "Gutter Cleaning", "Trash Bin Sanitization", "Holiday Lighting Installation"]}
+    profiles = [u.strip() for u in (settings.google_business_url, settings.facebook_url, settings.instagram_url,
+                                    settings.tiktok_url, settings.nextdoor_url, settings.yelp_url) if u.strip().startswith("https://")]
+    if profiles:
+        node["sameAs"] = profiles
     if settings.business_phone:
         node["telephone"] = e164(settings.business_phone)
     if settings.business_email:
@@ -277,6 +282,40 @@ def business_node(settings: Settings, site: str) -> dict:
 
 def home_structured_data(settings: Settings, site: str) -> str:
     return f'<script type="application/ld+json">{script_json({"@context": "https://schema.org", **business_node(settings, site)})}</script>'
+
+
+def area_faq(settings: Settings, area: Area) -> list[tuple[str, str]]:
+    """Questions people (and AI assistants) ask about this area, answered from the live data. Shown on the page
+    and given to search engines as FAQPage data, word for word."""
+    zone = zone_by_key(area.zone_key)
+    low, _ = price_range()
+    full = zone.full_property_sqft
+    wd = WEEKDAY_NAMES[zone.service_weekday]
+    return [
+        (f"What day do you mow in {area.city}?",
+         f"Every {wd}. The crew works only in {area.city} that day, so it isn't driving across town between lawns. "
+         f"Booking for a {wd} closes at {hour_words(settings.freeze_hour)} the day before."),
+        (f"How much does lawn mowing cost in {area.city}?",
+         f"From {dollars(low)} a visit before tax for a standard yard up to {YIELD_INCLUDED_SQFT:,} sq ft. A full property "
+         f"of about {full:,} sq ft is {dollars(yield_mow_fee(full, 'STANDARD'))} before the {percent(zone.tax_rate)}% sales tax. "
+         f"The booking form sizes your lawn from your address and shows your exact price before you book."),
+        (f"Which parts of {area.city} do you serve?",
+         f"{joined(area.places)}. The booking form checks your address before you book."),
+    ]
+
+
+def faq_node(qa: list[tuple[str, str]]) -> dict:
+    return {"@type": "FAQPage", "mainEntity": [
+        {"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in qa]}
+
+
+def home_faq_structured_data(page: str) -> str:
+    """FAQPage data built from the home page's own visible FAQ, so the two can never disagree."""
+    pairs = re.findall(r'<details class="faq-item">\s*<summary>(.*?)</summary>\s*<p>(.*?)</p>', page, re.S)
+    if not pairs:
+        return ""
+    qa = [(html.unescape(re.sub(r"<[^>]+>", "", q)).strip(), html.unescape(re.sub(r"<[^>]+>", "", a)).strip()) for q, a in pairs]
+    return f'<script type="application/ld+json">{script_json({"@context": "https://schema.org", **faq_node(qa)})}</script>'
 
 
 def structured_data(settings: Settings, area: Area, site: str) -> dict:
@@ -298,6 +337,7 @@ def structured_data(settings: Settings, area: Area, site: str) -> dict:
             {"@type": "ListItem", "position": 1, "name": "Home", "item": f"{site}/"},
             {"@type": "ListItem", "position": 2, "name": "Areas we serve", "item": f"{site}/local"},
             {"@type": "ListItem", "position": 3, "name": f"{area.city}, TX", "item": page_url}]},
+        faq_node(area_faq(settings, area)),
     ]}
 
 
@@ -583,6 +623,13 @@ def area_html(settings: Settings, version: str, area: Area, site: str, day: date
       </div>
     </section>
 
+    <section class="section" aria-labelledby="afaq-title">
+      <div class="site-wrap">
+        <h2 id="afaq-title">{city}: common questions</h2>
+        <div class="faq-list">{"".join(f'<details class="faq-item"><summary>{esc(q)}</summary><p>{esc(a)}</p></details>' for q, a in area_faq(settings, area))}</div>
+      </div>
+    </section>
+
     <section class="section" aria-labelledby="giving-title">
       <div class="site-wrap">
         <h2 id="giving-title">Giving back</h2>
@@ -833,6 +880,60 @@ def register_local_pages(app: FastAPI, settings: Settings, version: str = "") ->
         if target is None:
             return html_page(not_found_html(settings, version), 404)
         return RedirectResponse(f"/local/{target}", status_code=301)
+
+    @app.get("/llms.txt", include_in_schema=False)
+    def llms(request: Request):
+        """Plain facts for AI assistants (the llms.txt convention), from the same live data as the pages."""
+        site = site_url(settings, request)
+        from .service_pages import SERVICES
+        low, high = price_range()
+        days = "\n".join(f"- {WEEKDAY_NAMES[zone_by_key(a.zone_key).service_weekday]}: {a.city} "
+                         f"({', '.join(a.places)}) — {site}/local/{a.slug}"
+                         for a in sorted(AREAS, key=lambda a: zone_by_key(a.zone_key).service_weekday))
+        prices = "\n".join(f"- {size}: " + ", ".join(f"{y['label']} {dollars(p[k])}" for k, y in YARD_TYPES.items())
+                           for size, _, p in price_rows())
+        extras = "\n".join(f"- {label}: {price}" for label, price in add_on_rows())
+        hoods = "\n".join(f"- {h.name} ({AREA_BY_SLUG[h.area].city}): {site}/local/{h.area}/{h.slug}" for h in HOODS)
+        services = "\n".join(f"- {s.name}: {site}/services/{s.slug}" for s in SERVICES)
+        contact = f"\nEmail: {settings.business_email}" if settings.business_email else ""
+        pay = ("by card, Apple Pay or Google Pay when booking" if settings.prepay_required and settings.stripe_enabled
+               else "cash to the crew at the visit")
+        text = f"""# {settings.business_name}
+
+> Veteran-owned lawn mowing based in Spring, Texas, serving Spring, Klein, New Caney, Splendora, Colony Ridge,
+> Cleveland and Plum Grove on a one-area-a-day schedule. Customers book and pay online at {site}/book and see the
+> full price, tax included, before booking. Operated by {settings.legal_name}.
+
+## Key facts
+- Service: residential lawn mowing; bin cleaning and gutter cleaning as add-ons to a mowing visit; holiday lighting by quote.
+- Price: from {dollars(low)} to {dollars(high)} per visit before tax, set by lawn size and yard type. No contract or subscription.
+- Neighbor discount: {percent(density_pct(2))}% off the mowing with 2 or more customers booked within half a mile, {percent(density_pct(5))}% with 5 or more.
+- Payment: {pay}. Cancel any time before the crew arrives for a full refund.
+- Hours: Monday to Friday {settings.weekday_hours.replace('-', ' to ')}; Saturday {settings.saturday_hours.replace('-', ' to ')} for make-up visits; closed Sunday.
+- Booking for a day closes at {hour_words(settings.freeze_hour)} the day before. Customers get a text when the crew is on the way.
+- Languages: English and Spanish.{contact}
+
+## Which day each area is mowed
+{days}
+
+## Mowing prices per visit, before tax
+{prices}
+
+## Add-ons
+{extras}
+
+## Services
+{services}
+
+## Neighborhoods
+{hoods}
+
+## Policies
+- Terms: {site}/terms
+- Refunds and cancellations: {site}/refunds
+- Privacy: {site}/privacy
+"""
+        return Response(text, media_type="text/plain; charset=utf-8", headers={"Cache-Control": "public, max-age=3600"})
 
     @app.get("/sitemap.xml", include_in_schema=False)
     def sitemap(request: Request):

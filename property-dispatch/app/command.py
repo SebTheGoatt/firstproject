@@ -105,7 +105,12 @@ def register_command(app: FastAPI, settings: Settings, owner, page) -> None:
         # The next route to compute: the first upcoming day that has bookings.
         nxt = next((date.fromisoformat(w["date"]) for w in week if w["jobs"] and w["date"] > today.isoformat()), None)
         route = repo().get_route(nxt) if nxt else None
+        try:                                   # needs the 2026-10-28 database update; the screen works without it
+            issues = repo().list_issues(open_only=True, limit=20)
+        except Exception:
+            issues = None
         return {
+            "issues": issues,
             "next_route": {"date": nxt.isoformat() if nxt else None, "built": route is not None,
                            "stops": len(route["stops"]) if route else 0},
             "date": today.isoformat(),
