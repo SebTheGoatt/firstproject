@@ -18,7 +18,7 @@ from .test_starnet_client import site  # noqa: E402,F401
 from .test_starnet_setup import FakeRender, box, rkey  # noqa: E402,F401
 from .test_starnet_go import home  # noqa: E402,F401
 
-MORNING = datetime(2026, 10, 15, 6, 45, tzinfo=ZoneInfo("America/Chicago"))
+MORNING = datetime(2026, 10, 15, 7, 45, tzinfo=ZoneInfo("America/Chicago"))
 
 
 def route_ready(client, repo, settings):

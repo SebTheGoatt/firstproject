@@ -11,7 +11,7 @@ Rules:
 - No GPS → start from the last finished stop, or the base if none is finished yet.
 """
 
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 
 from .config import Settings
 from .db import Repository
@@ -49,8 +49,9 @@ def reoptimize_remaining(repo: Repository, settings: Settings, day: date, now: d
 
     # Pinned stops keep their old legs; their ETAs move with the clock.
     ordered = [(s, s["leg_distance_m"], s["leg_duration_s"]) for s in pinned] + ordered_free
-    hh, mm = map(int, settings.crew_start_time.split(":"))
-    start_at = max(now, datetime.combine(day, time(hh, mm), tzinfo=settings.tz))
+    hh, mm = map(int, settings.first_mow_time.split(":"))
+    first_leg = ordered[0][2] if ordered else 0
+    start_at = max(now, datetime.combine(day, time(hh, mm), tzinfo=settings.tz) - timedelta(seconds=first_leg))
     etas = compute_etas(start_at, [(dur, s.get("service_minutes") or 0) for s, _, dur in ordered])
 
     updates = [{"stop_id": s["stop_id"], "sequence": seq, "leg_distance_m": s["leg_distance_m"],

@@ -101,3 +101,23 @@ def test_a_round_trip_tie_visits_the_nearer_stop_first():
     #            base  near  far   base
     c = [[0, 1, 5, 0], [1, 0, 4, 1], [5, 4, 0, 5], [0, 1, 5, 0]]
     assert held_karp(c) == [1, 2]
+
+
+def test_the_first_lawn_is_mowed_at_8_whatever_the_drive():
+    from datetime import date, datetime
+    from app.config import Settings
+    from app.db import MemoryRepository
+    from app.nightly import run_nightly
+    from tests.conftest import FakeGeocoder
+    from app.models import Service
+    s = Settings(_env_file=None, data_backend="memory", osrm_url="", solver_time_limit_s=1)
+    repo = MemoryRepository(); day = date(2026, 10, 26)
+    for key in ("A", "B"):
+        geo = FakeGeocoder().geocode(f"100 {key} Example Rd")
+        repo.create_job(name=f"Customer {key}", phone="(281) 555-0100", address=f"100 {key} Example Rd", geo=geo,
+                        service=Service("mowing"), scheduled_date=day, service_minutes=30, zone_key="SPRING_LUXURY_LOOP",
+                        quoted_price=75.0)
+    run_nightly(repo, s, day)
+    first = min(repo.get_route(day)["stops"], key=lambda x: x["sequence"])
+    eta = first["eta"] if isinstance(first["eta"], datetime) else datetime.fromisoformat(str(first["eta"]))
+    assert eta.astimezone(s.tz).strftime("%H:%M") == "08:00"
