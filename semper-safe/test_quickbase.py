@@ -1,6 +1,8 @@
+import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -132,3 +134,67 @@ def test_skips_records_with_no_log_text(client, db, quickbase_api, claude):
 
     assert response.json()["status"] == "skipped"
     claude.assert_not_called()
+
+
+# Realistic crane log from a fabrication shop floor
+CRANE_LOG = (
+    "Shift entry: Overhead Crane #3 operational check completed. Lead noticed a slight hydraulic "
+    "shudder during maximum structural beam lifting at 0800. Also, Zone 2 staging block exit paths "
+    "are currently obstructed with unorganized scrap plate metal."
+)
+
+
+def test_full_pipeline_against_quickbase_http_api(client, db, claude, monkeypatch):
+    """Runs the real quickbase_post, faking only the network, so URLs, headers and bodies are checked."""
+    monkeypatch.setenv("QUICKBASE_REALM", "demo.quickbase.com")
+    monkeypatch.setenv("QUICKBASE_USER_TOKEN", "b7tok_123")
+    requests_seen = []
+
+    def quickbase_server(request):
+        requests_seen.append(request)
+        body = json.loads(request.content)
+        if request.url.path == "/v1/records/query":
+            return httpx.Response(200, json={"data": [{"6": {"value": CRANE_LOG}}]})
+        return httpx.Response(200, json={"data": [], "metadata": {"lineErrors": {}, "updatedRecordIds": [body["data"][0]["3"]["value"]]}})
+
+    real_client = httpx.AsyncClient
+    monkeypatch.setattr(quickbase.httpx, "AsyncClient",
+                        lambda **kw: real_client(transport=httpx.MockTransport(quickbase_server), **kw))
+
+    response = client.post(
+        "/api/v1/integrations/quickbase/webhook",
+        json={"recordId": 101, "tableId": "b3x7abcde", "appId": "br98zxyz", "stripe_customer_id": "cus_9060XT_Live"},
+        headers={"X-Semper-Safe-Token": SECRET},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "success", "record_id": 101, "score_updated": 64}
+    claude.assert_called_once_with(CRANE_LOG)
+
+    read, write = requests_seen
+    assert str(read.url) == "https://api.quickbase.com/v1/records/query"
+    assert read.headers["QB-Realm-Hostname"] == "demo.quickbase.com"
+    assert read.headers["Authorization"] == "QB-USER-TOKEN b7tok_123"
+    assert json.loads(read.content) == {"from": "b3x7abcde", "select": [6], "where": "{3.EX.101}"}
+
+    assert str(write.url) == "https://api.quickbase.com/v1/records"
+    written = json.loads(write.content)
+    assert written["to"] == "b3x7abcde"
+    assert written["data"][0]["3"] == {"value": 101}
+    assert written["data"][0]["12"] == {"value": 64}
+
+
+def test_quickbase_write_rejection_is_reported(client, db, claude, monkeypatch):
+    def quickbase_server(request):
+        if request.url.path == "/v1/records/query":
+            return httpx.Response(200, json={"data": [{"6": {"value": CRANE_LOG}}]})
+        return httpx.Response(200, json={"data": [], "metadata": {"lineErrors": {"1": ["Field 12 is read-only"]}}})
+
+    real_client = httpx.AsyncClient
+    monkeypatch.setattr(quickbase.httpx, "AsyncClient",
+                        lambda **kw: real_client(transport=httpx.MockTransport(quickbase_server), **kw))
+
+    response = post(client)
+
+    assert response.status_code == 502
+    assert db.inserted == []
