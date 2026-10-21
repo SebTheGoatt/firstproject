@@ -61,7 +61,7 @@ def about_html(settings: Settings, version: str) -> str:
     pillars = (   # (number, kicker, title, text as HTML)
         ("01", "No subscription", "Pay per visit",
          "Book one visit at a time. Pick your lawn size, yard type and add-ons, and the total, tax included, is shown "
-         "before you book. Pay by card at checkout or cash to the crew."),
+         "before you book, and you pay when you book."),
         ("02", "One area a day", "Lawns, not the road",
          f"We mow {esc(schedule_text())}. Each route locks at {hour_words(settings.freeze_hour)} the day before, "
          "so the crew drives less and your day is firm."),

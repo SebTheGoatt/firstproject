@@ -39,6 +39,14 @@ def compute_etas(start_at: datetime, legs: list[tuple[int, int]]) -> list[dateti
     return etas
 
 
+def unpaid_card(jobs: list, settings: Settings) -> tuple[list, list]:
+    """Pay first, then we mow: with prepay on, a card booking that isn't paid stays off the route."""
+    if not settings.prepay_required:
+        return jobs, []
+    owed = [j for j in jobs if j.payment_method == "card" and j.payment_status != "paid" and j.amount_due is not None]
+    return [j for j in jobs if j not in owed], owed
+
+
 def one_area(jobs: list, day: date) -> tuple[list, list]:
     """Hard rule: a route covers one area. The weekday's area (Saturday make-up: whichever area has the most
     visits) stays on the route; anything else is left off for the owner to move, never driven across the county."""
@@ -58,7 +66,11 @@ def run_nightly(
     *,
     matrix: TravelMatrix | None = None,
 ) -> dict:
-    jobs, off_area = one_area(repo.list_routable_jobs(day), day)
+    jobs, unpaid = unpaid_card(repo.list_routable_jobs(day), settings)
+    if unpaid:
+        log.warning("%s: %d card booking(s) not paid yet left off the route: %s", day, len(unpaid),
+                    ", ".join(j.id for j in unpaid))
+    jobs, off_area = one_area(jobs, day)
     if off_area:
         log.warning("%s: %d visit(s) outside the day's area left off the route: %s", day, len(off_area),
                     ", ".join(j.id for j in off_area))
@@ -109,6 +121,7 @@ def run_nightly(
         "drive_minutes": round(result.total_duration_s / 60),
         "matrix_source": result.matrix_source,
         "off_area": [j.id for j in off_area],     # booked outside the day's area: move them (owner dashboard)
+        "unpaid": [j.id for j in unpaid],         # card bookings not paid yet: the crew doesn't go
     }
     log.info("Route built: %s", summary)
     try:     # paper backup of the day in the owner's inbox (only when Resend is set up); never blocks the route

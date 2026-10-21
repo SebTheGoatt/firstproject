@@ -26,6 +26,9 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 - **One area per day, enforced:** Mon Spring · Tue Klein · Wed New Caney & Splendora · Thu Colony Ridge ·
   Fri Cleveland & Plum Grove · Sat make-up only. Bookings on the wrong day are rejected; the route builder drops
   off-area stops.
+- **Pay first, then we mow:** while Stripe is set up, bookings are card only (Apple Pay / Google Pay included) and paid
+  at booking. Cash bookings are refused, and an unpaid card booking stays off the crew's route (`prepay_required`
+  in `app/config.py`; `unpaid_card()` in `app/nightly.py`). The owner screen marks them "Not paid yet".
 - **Neighbor discount (option A):** 5% off the mowing with 2–4 customers booked within half a mile, 10% with 5+.
 - Pages only for places we actually mow. No near-duplicate town-swap pages.
 - The business phone number stays off the site unless the owner sets `BUSINESS_PHONE`.

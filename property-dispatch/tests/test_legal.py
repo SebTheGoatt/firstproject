@@ -76,7 +76,7 @@ def test_sitemap_lists_the_policies(client):
 def test_booking_form_asks_for_texting_consent(client):
     t = client.get("/book").text
     assert re.search(r'<input type="checkbox" id="sms-consent" name="sms_consent" required>', t)
-    assert html.escape(SMS_CONSENT.format(legal="Semper Green LLC")) in t and "Reply STOP to opt out" in t
+    assert html.escape(SMS_CONSENT.format(brand="Post One Lawn Co.", legal="Semper Green LLC")) in t and "Reply STOP to opt out" in t
     assert "{{SMS_CONSENT}}" not in t
 
 

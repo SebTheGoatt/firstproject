@@ -142,6 +142,9 @@ class Job(BaseModel):
     service: Service
     service_minutes: int
     status: str
+    payment_method: str | None = None
+    payment_status: str | None = None
+    amount_due: float | None = None      # None: priced on site (older bookings), so it can't be paid ahead
 
 
 class StopView(BaseModel):
