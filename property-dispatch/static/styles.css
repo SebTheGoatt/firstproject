@@ -969,7 +969,7 @@ label.check input { width: 18px; height: 18px; }
 .addon-card:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
 .addon-card.is-on { border-color: var(--fresh); background: var(--dark-raised); }
 .addon-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
-.addon-top h4 { margin: 0 0 4px; font-size: 0.95rem; color: var(--on-dark); }
+.addon-top h3 { margin: 0 0 4px; font-size: 0.95rem; color: var(--on-dark); }
 .addon-top p { margin: 0; font-size: 0.8rem; color: var(--on-dark-muted); }
 .addon-price { font: 800 1.15rem/1.2 var(--font-display); letter-spacing: 0.02em; color: var(--fresh); white-space: nowrap; }
 .addon-check { margin-top: 16px; display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--on-dark-muted); }
@@ -980,12 +980,12 @@ label.check input { width: 18px; height: 18px; }
 .trust-badges { padding: 24px; background: var(--dark-raised); border: 1px solid var(--dark-line); border-top: 3px solid var(--brass); border-radius: 16px;
   display: grid; gap: 24px; max-width: 576px; color: var(--on-dark); }
 .tb-head { padding-bottom: 12px; border-bottom: 1px solid var(--dark-line); }
-.tb-head h4 { margin: 0; color: var(--fresh); font: 700 0.75rem/1.4 var(--font-body); text-transform: uppercase; letter-spacing: 0.12em; }
-.tb-head h3 { margin: 4px 0 0; font-size: 1.45rem; color: var(--on-dark); }
+.tb-head .tb-kicker { margin: 0; color: var(--fresh); font: 700 0.75rem/1.4 var(--font-body); text-transform: uppercase; letter-spacing: 0.12em; }
+.tb-head h2 { margin: 4px 0 0; font-size: 1.45rem; color: var(--on-dark); }
 .tb-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 .tb-item { display: flex; align-items: flex-start; gap: 12px; }
 .tb-icon { padding: 8px; background: var(--brand-deep); border: 1px solid var(--dark-line); border-radius: 8px; line-height: 1; }
-.tb-item h5 { margin: 0; color: var(--on-dark); font: 700 0.8rem/1.4 var(--font-body); text-transform: uppercase; letter-spacing: 0.05em; }
+.tb-item h3 { margin: 0; color: var(--on-dark); font: 700 0.8rem/1.4 var(--font-body); text-transform: uppercase; letter-spacing: 0.05em; }
 .tb-item p { margin: 2px 0 0; color: var(--on-dark-muted); font-size: 0.8rem; line-height: 1.5; }
 .tb-foot { background: rgb(15 43 34 / 0.6); border: 1px solid var(--dark-line); padding: 12px; border-radius: 12px; text-align: center; }
 .tb-foot p { margin: 0; color: var(--on-dark-muted); font: 600 0.72rem/1.5 var(--font-body); text-transform: uppercase; letter-spacing: 0.06em; }
@@ -1060,7 +1060,7 @@ label.check input { width: 18px; height: 18px; }
 .page-booking .addon-card:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .page-booking .addon-card.is-on { background: var(--brand-soft); border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); }
 .page-booking .addon-top { grid-column: 2; grid-row: 1; }
-.page-booking .addon-top h4 { margin: 0 0 2px; color: var(--text); font-size: 1rem; }
+.page-booking .addon-top h3 { margin: 0 0 2px; color: var(--text); font-size: 1rem; }
 .page-booking .addon-top p { color: var(--muted); font-size: 0.85rem; line-height: 1.4; }
 .page-booking .addon-price, .page-booking .add-ons label span { color: var(--text); font: 800 1.35rem/1.1 var(--font-display); letter-spacing: 0.01em; }
 .page-booking .addon-check { grid-column: 1; grid-row: 1; margin: 1px 0 0; }
@@ -1072,10 +1072,10 @@ label.check input { width: 18px; height: 18px; }
 .page-booking .add-ons input:checked + label strong::before { content: none; }
 .page-booking .add-ons label span { grid-column: 3; grid-row: 1; white-space: nowrap; }
 .page-booking .add-ons label small { grid-column: 2 / -1; font-size: 0.85rem; }
-.page-booking .addon-check input, .page-booking .add-ons label::before { appearance: none; display: block; width: 22px; height: 22px; margin: 0;
+.page-booking .addon-check .addon-box, .page-booking .add-ons label::before { appearance: none; display: block; width: 22px; height: 22px; margin: 0;
   border: 2px solid var(--muted); border-radius: 6px; background: var(--surface) center / 14px no-repeat; }
 .page-booking .add-ons label::before { content: ""; grid-column: 1; grid-row: 1 / span 2; margin-top: 1px; }
-.page-booking .addon-check input:checked, .page-booking .add-ons input:checked + label::before { border-color: var(--brand); background-color: var(--brand);
+.page-booking .addon-card.is-on .addon-box, .page-booking .add-ons input:checked + label::before { border-color: var(--brand); background-color: var(--brand);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
 
 /* Texting consent, the cause line and the big Field Green button */
@@ -1540,11 +1540,11 @@ body.page-team { min-height: 100vh; min-height: 100dvh; display: flex; flex-dire
 .page-server-pages trust-badges { display: block; min-width: 0; }
 .page-server-pages .trust-badges { gap: 20px; }
 .page-server-pages .tb-head { border-bottom-color: var(--border); }
-.page-server-pages .tb-head h4 { color: var(--muted); font-size: 0.8125rem; }
+.page-server-pages .tb-head .tb-kicker { color: var(--muted); font-size: 0.8125rem; }
 .page-server-pages .tb-head h3 { color: var(--text); font-size: 1.75rem; line-height: 1; text-transform: uppercase; }
 .page-server-pages .tb-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
 .page-server-pages .tb-icon { background: var(--surface); border-color: var(--border); }
-.page-server-pages .tb-item h5 { color: var(--text); }
+.page-server-pages .tb-item h3 { color: var(--text); }
 .page-server-pages .tb-item p { color: var(--muted); font-size: 0.85rem; }
 .page-server-pages .tb-foot { background: var(--surface); border-color: var(--border); }
 .page-server-pages .tb-foot p { color: var(--muted); }
@@ -1737,3 +1737,24 @@ body.page-team { min-height: 100vh; min-height: 100dvh; display: flex; flex-dire
 .crew-body .toast { background: var(--text); color: #fff; border: 0; box-shadow: none; }
 .page-owner h1 { font: 700 1.5rem/1.25 var(--font-body); text-transform: none; letter-spacing: -0.01em; }
 @media (prefers-reduced-motion: reduce) { .crew-body .btn { transition: none; } }
+
+/* ===== home FAQ (Post One) ===== */
+.faq-list { display: grid; gap: 10px; max-width: 820px; }
+.faq-item { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+.faq-item summary { display: flex; justify-content: space-between; align-items: center; gap: 16px; min-height: 52px; padding: 12px 18px;
+  font-weight: 700; cursor: pointer; list-style: none; }
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary::after { content: "+"; flex: none; font-size: 1.4rem; line-height: 1; color: var(--brand); transition: transform 150ms ease-out; }
+.faq-item[open] summary::after { transform: rotate(45deg); }
+.faq-item p { margin: 0; padding: 0 18px 16px; color: var(--muted); max-width: 70ch; }
+@media (prefers-reduced-motion: reduce) { .faq-item summary::after { transition: none; } }
+
+/* Area chips on the home page are real buttons inside the list */
+button.area { width: 100%; font: inherit; color: inherit; text-align: left; align-items: flex-start; }
+.area-list > li { display: flex; }
+
+/* Add-on cards: the card is the checkbox (role="checkbox"); the box inside is only a picture of its state */
+.addon-box { flex: none; display: block; width: 18px; height: 18px; border: 2px solid currentColor; border-radius: 4px;
+  background: transparent center / 12px no-repeat; }
+.addon-card.is-on .addon-box { background-color: var(--brand); border-color: var(--brand);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }

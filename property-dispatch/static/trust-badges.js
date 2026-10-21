@@ -16,15 +16,15 @@ class TrustBadges extends HTMLElement {
                     <div class="tb-item">
                         <div class="tb-icon" aria-hidden="true">${icon}</div>
                         <div>
-                            <h5>${title}</h5>
+                            <h3>${title}</h3>
                             <p>${text}</p>
                         </div>
                     </div>`;
         this.innerHTML = `
             <div class="trust-badges">
                 <div class="tb-head">
-                    <h4>Who runs your route</h4>
-                    <h3>Training &amp; safety</h3>
+                    <p class="tb-kicker">Who runs your route</p>
+                    <h2>Training &amp; safety</h2>
                 </div>
                 <div class="tb-grid">
                     ${badge("🎖️", "Veteran-Owned", "Locally owned and run by a U.S. Marine veteran.")}

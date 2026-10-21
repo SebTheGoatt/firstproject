@@ -47,7 +47,7 @@ from .agent_api import register_agent_api
 from .live_feed import record_booking, register_live_routes
 from .about_page import register_about_page
 from .legal_pages import SMS_CONSENT, legal_footer_html, register_legal_pages
-from .local_pages import brand_html, brand_lines, home_structured_data, not_found_page, register_local_pages
+from .local_pages import brand_html, brand_lines, home_structured_data, not_found_page, register_local_pages, with_share_tags
 from .yield_engine import register_yield_engine
 from .command import register_command
 from .readiness import register_readiness
@@ -260,11 +260,12 @@ def create_app(
         # Link previews (texts, Facebook, Google) need the share image as a full https address.
         site = site_url(settings, request)
         text = render("home.html").replace("{{HOME_JSONLD}}", home_structured_data(settings, site)).replace("{{SITE}}", site)
-        return HTMLResponse(text, headers={"Cache-Control": "no-cache"})
+        return HTMLResponse(with_share_tags(text, site, "/"), headers={"Cache-Control": "no-cache"})
 
     @app.get("/book", include_in_schema=False)
-    def book_page():
-        return page("book.html")
+    def book_page(request: Request):
+        return HTMLResponse(with_share_tags(render("book.html"), site_url(settings, request), "/book"),
+                            headers={"Cache-Control": "no-cache"})
 
     @app.get("/crew", include_in_schema=False)
     def crew_page():
@@ -276,8 +277,9 @@ def create_app(
 
     @app.get("/team", include_in_schema=False)
     @app.get("/team/{slug}", include_in_schema=False)
-    def team_page(slug: str | None = None):
-        return page("team.html")
+    def team_page(request: Request, slug: str | None = None):
+        return HTMLResponse(with_share_tags(render("team.html"), site_url(settings, request), request.url.path),
+                            headers={"Cache-Control": "no-cache"})
 
     @app.get("/pay/{token}", include_in_schema=False)
     def pay_page(token: str):

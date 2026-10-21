@@ -394,6 +394,22 @@ def layout(settings: Settings, version: str, *, title: str, description: str, bo
 """
 
 
+def with_share_tags(text: str, site: str, path: str) -> str:
+    """Adds what a page's <head> is missing of: canonical link, og:url and the share image (absolute URLs).
+    Pages that already set one keep theirs."""
+    url = f"{site}{path}"
+    tags = []
+    if 'rel="canonical"' not in text:
+        tags.append(f'<link rel="canonical" href="{esc(url)}">')
+    if 'property="og:url"' not in text:
+        tags.append(f'<meta property="og:url" content="{esc(url)}">')
+    if 'property="og:image"' not in text:
+        img = esc(f"{site}/static/icons/post-one-share.jpg")
+        tags += [f'<meta property="og:image" content="{img}">', '<meta property="og:image:width" content="1200">',
+                 '<meta property="og:image:height" content="630">', '<meta name="twitter:card" content="summary_large_image">']
+    return text.replace("</head>", "".join(f"  {t}\n" for t in tags) + "</head>", 1) if tags else text
+
+
 def contact_line(settings: Settings) -> str:
     """" · email · phone" for the footer (the phone only once the owner sets it)."""
     out = ""
@@ -500,13 +516,13 @@ def area_html(settings: Settings, version: str, area: Area, site: str, day: date
             <a class="btn btn-lg sp-btn-line" href="#prices">See prices</a>
           </div>
         </div>
-        <aside class="sp-card next-open" aria-label="Next service day you can book">
+        <div class="sp-card next-open" role="group" aria-label="Next service day you can book">
           <p class="sp-kicker">Next day you can book</p>
           <p class="next-day">{day:%A, %B} {day.day}</p>
           <p class="hint">We mow {city} every {WEEKDAY_NAMES[zone.service_weekday]}, so the crew stays in your area all day.
             Booking closes at {hour_words(settings.freeze_hour)} the day before.</p>
           <a class="btn btn-primary btn-block" href="/book">Book this day</a>
-        </aside>
+        </div>
       </div>
     </section>
 
@@ -627,13 +643,13 @@ def hood_html(settings: Settings, version: str, hood: Hood, site: str, day: date
             <a class="btn btn-lg sp-btn-line" href="/local/{area.slug}#prices">See all prices</a>
           </div>
         </div>
-        <aside class="sp-card next-open" aria-label="Next service day you can book">
+        <div class="sp-card next-open" role="group" aria-label="Next service day you can book">
           <p class="sp-kicker">Next day you can book</p>
           <p class="next-day">{day:%A, %B} {day.day}</p>
           <p class="hint">{name} is mowed every {weekday} with the rest of {city}.
             Booking closes at {hour_words(settings.freeze_hour)} the day before.</p>
           <a class="btn btn-primary btn-block" href="/book">Book this day</a>
-        </aside>
+        </div>
       </div>
     </section>
 

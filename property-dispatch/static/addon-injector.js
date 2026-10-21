@@ -62,12 +62,10 @@ class AddonInjector extends HTMLElement {
 
     updateUI(addonKey) {
         const card = this.querySelector(`#addon-${addonKey === "binCleaning" ? "bin" : "gutter"}-card`);
-        const checkbox = this.querySelector(`#checkbox-${addonKey}`);
         if (!card) return;
         const on = this.state[addonKey];
         card.classList.toggle("is-on", on);
         card.setAttribute("aria-checked", String(on));
-        if (checkbox) checkbox.checked = on;
     }
 
     render() {
@@ -85,13 +83,13 @@ class AddonInjector extends HTMLElement {
                     <div id="addon-bin-card" class="addon-card" role="checkbox" aria-checked="false" tabindex="0" aria-labelledby="addon-bin-title">
                         <div class="addon-top">
                             <div>
-                                <h4 id="addon-bin-title">Bin Sanitization</h4>
+                                <h3 id="addon-bin-title">Bin Sanitization</h3>
                                 <p>Clean, deodorize, and kill bacteria setup.</p>
                             </div>
                             <span class="addon-price">${price("bin-price")}</span>
                         </div>
                         <div class="addon-check">
-                            <input type="checkbox" id="checkbox-binCleaning" tabindex="-1" aria-hidden="true">
+                            <span class="addon-box" id="checkbox-binCleaning" aria-hidden="true"></span>
                             <span>Add to current visit</span>
                         </div>
                     </div>
@@ -100,13 +98,13 @@ class AddonInjector extends HTMLElement {
                     <div id="addon-gutter-card" class="addon-card" role="checkbox" aria-checked="false" tabindex="0" aria-labelledby="addon-gutter-title">
                         <div class="addon-top">
                             <div>
-                                <h4 id="addon-gutter-title">Gutter Clearance</h4>
+                                <h3 id="addon-gutter-title">Gutter Clearance</h3>
                                 <p>Clear downspouts to restore water flow.</p>
                             </div>
                             <span class="addon-price">${price("gutter-price")}</span>
                         </div>
                         <div class="addon-check">
-                            <input type="checkbox" id="checkbox-gutterCleaning" tabindex="-1" aria-hidden="true">
+                            <span class="addon-box" id="checkbox-gutterCleaning" aria-hidden="true"></span>
                             <span>Add to current visit</span>
                         </div>
                     </div>

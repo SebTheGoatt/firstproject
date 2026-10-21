@@ -8,11 +8,11 @@ The founder's bio is his own words. The three "how we work" points only say what
 
 import html
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 
-from .config import Settings
-from .local_pages import cause_names, hour_words, joined, layout
+from .config import Settings, site_url
+from .local_pages import cause_names, hour_words, joined, layout, with_share_tags
 from .zones import schedule_text
 
 esc = html.escape
@@ -136,5 +136,6 @@ def about_html(settings: Settings, version: str) -> str:
 
 def register_about_page(app: FastAPI, settings: Settings, version: str = "") -> None:
     @app.get("/about", include_in_schema=False)
-    def about():
-        return HTMLResponse(about_html(settings, version), headers={"Cache-Control": "no-cache"})
+    def about(request: Request):
+        return HTMLResponse(with_share_tags(about_html(settings, version), site_url(settings, request), "/about"),
+                            headers={"Cache-Control": "no-cache"})
