@@ -21,6 +21,8 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 - Owner screen: `/owner/command` (`app/command.py` + `static/command.html`). Crew route screen: `/crew/dashboard`.
 - Design system: `property-dispatch/DESIGN.md`. Public site = Post Green bands, Big Shoulders uppercase headlines.
   Work app (crew/owner) = bright daylight theme, flat, sentence case. The owner disliked the dark "matrix" look.
+- Brand kit (private Claude design system built from the above): https://claude.ai/artifact/WNvx4f5pDcb9LnA5NMCUuc
+  Build slides, social posts, ads and print from it. If styles.css or the logos change, re-sync it.
 
 ## Speed rules (from the full diagnostic)
 - Home page: the area map (MapLibre + tiles) loads only when scrolled near; Google address autocomplete loads on the
@@ -49,6 +51,10 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 - **Working hours:** Mon–Fri 8 AM–5 PM, Saturday 8 AM–2 PM (make-ups only), Sunday off. The crew leaves base so
   the first lawn is mowed at 8:00 (`first_mow_time`); the 5 PM booking cutoff and route build stay. Published to
   Google from `weekday_hours` / `saturday_hours` in `app/config.py` — keep the Google Business Profile matching.
+- **Refunds (terms effective Oct 22, 2026):** cancel free until the "crew on the way" text (the app closes online
+  cancel then); after it, no refund. Light rain: we mow; lightning/heavy rain/soft ground → make-up day (usually
+  Saturday) or full refund. Locked out (gate, loose pet, blocked lawn): unreached parts not refunded. Hazards we
+  find: return visit or partial refund. Price is locked: never charge a card more on site without the customer's OK.
 - **Neighbor discount (option A):** 5% off the mowing with 2–4 customers booked within half a mile, 10% with 5+.
 - Pages only for places we actually mow. No near-duplicate town-swap pages.
 - The business phone number stays off the site unless the owner sets `BUSINESS_PHONE`.
