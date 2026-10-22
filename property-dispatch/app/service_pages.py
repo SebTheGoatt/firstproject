@@ -183,7 +183,7 @@ def service_html(settings: Settings, version: str, s: Service, site: str) -> str
           <li>No contract or subscription: each booking is one visit.</li>
           <li>Pay by card, Apple Pay or Google Pay when you book. The crew only goes to paid visits.</li>
           <li>We text you when the crew is on the way.</li>
-          <li>Cancel any time before the crew arrives for a full refund.</li>
+          <li>Cancel free, with a full refund, until we text that the crew is on the way.</li>
         </ul>
         <p class="hint">Details are in our <a href="/terms">terms</a> and <a href="/refunds">refund policy</a>.</p>
       </div>

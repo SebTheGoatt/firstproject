@@ -19,7 +19,7 @@ from .config import Settings, site_url
 from .local_pages import crumbs, layout, legal_footer_html, with_share_tags  # noqa: F401  (legal_footer_html: main.py imports it from here)
 
 esc = html.escape
-EFFECTIVE = "October 19, 2026"
+EFFECTIVE = "October 22, 2026"
 SMS_CONSENT = ("I agree to get text messages from {brand} ({legal}) about this booking: confirmation, crew on the way, "
                "job done, payment link, and one note afterward asking how we did. Msg & data rates may apply; "
                "frequency varies. Reply STOP to opt out, HELP for help.")
@@ -158,13 +158,16 @@ def terms_html(settings: Settings, version: str) -> str:
           <li><strong>What we mow:</strong> if you chose <em>Yard only</em>, we mow the main or fenced yard; if you chose
             <em>Full property</em>, we mow the whole lot except the house. The price shown for that choice is locked:
             we don't re-measure on site. Older bookings without that choice are confirmed on site.</li>
+          <li>If you want more than you booked (for example the full lot on a <em>Yard only</em> booking), the crew
+            mows what you booked and we quote the rest. We never charge your card more without your OK.</li>
           <li>Add-ons (for example bin or gutter cleaning) are done on the same visit.</li>
           <li>You must own the property or have the owner's permission for us to work there.</li>
         </ul>
 
         <h2>Your part</h2>
         <ul>
-          <li>Give us access: unlock gates, or leave the gate code in your booking or with us.</li>
+          <li>Give us access: unlock gates, or leave the gate code in your booking or with us. If the crew can't get
+            in, the parts it couldn't reach aren't refunded (see the <a href="/refunds">refund policy</a>).</li>
           <li>Keep pets indoors while we work. If a pet is loose in the area to be mowed, the crew may skip that area
             for everyone's safety.</li>
           <li>Pick up toys, hoses, furniture and pet waste from the lawn before the visit.</li>
@@ -185,8 +188,8 @@ def terms_html(settings: Settings, version: str) -> str:
         </ul>
 
         <h2>Weather and safety</h2>
-        <p>We don't mow in lightning, heavy rain or when the ground is soft enough to rut. We'll text you and
-          reschedule to the next open day. The crew may also skip a small area that is unsafe (a wasp nest, a steep
+        <p>We mow through light rain. We don't mow in lightning, heavy rain or when the ground is soft enough to rut;
+          we move the visit to a make-up day (usually that week's Saturday) and text you. The crew may also skip a small area that is unsafe (a wasp nest, a steep
           wet slope, standing water) and will tell you; see the <a href="/refunds">refund policy</a> for what happens then.</p>
 
         <h2 id="damage">Damage policy</h2>
@@ -227,7 +230,8 @@ def terms_html(settings: Settings, version: str) -> str:
           these terms limits any right you have that Texas law doesn't allow us to limit.</p>
 
         <h2>Changes and cancellations</h2>
-        <p>See the <a href="/refunds">refund policy</a>. We may cancel a visit we can't safely or legally do, and you
+        <p>You can cancel free until we text that the crew is on the way; the details are in the
+          <a href="/refunds">refund policy</a>. We may cancel a visit we can't safely or legally do, and you
           get a full refund.</p>
 
         <h2>Disputes</h2>
@@ -242,19 +246,24 @@ def terms_html(settings: Settings, version: str) -> str:
 def refunds_html(settings: Settings, version: str) -> str:
     contact = contact_words(settings)
     return page(settings, version, "Refund & Cancellation Policy",
-                "Cancel before the crew arrives for a full refund. Weather days are rescheduled or refunded in full.", f"""
-        <p>Simple version: <strong>if we don't do the work you paid for, you get your money back in full.</strong></p>
+                "Cancel free until we text that the crew is on the way. Weather days move to a make-up day or are "
+                "refunded in full.", f"""
+        <p>Simple version: <strong>cancel free until we text that the crew is on the way. If we or the weather
+          can't do the work you paid for, you get your money back in full.</strong></p>
 
         <h2>Cancel or change a visit</h2>
         <ul>
-          <li>Cancel any time before the crew arrives: <strong>full refund</strong>.</li>
-          <li>To cancel or move a visit, {contact}, with your access code if you have it handy.</li>
-          <li>Moving to another day is free, subject to open spots on that day's route.</li>
+          <li>Cancel any time before we text you that the crew is on the way: <strong>full refund</strong>. You can
+            cancel on your visit page, or {contact}.</li>
+          <li>Once that text goes out, the crew is already driving to you and your stop is set on the day's route, so
+            the visit can no longer be cancelled or refunded.</li>
+          <li>Moving to another day is free before the on-the-way text, to an open day for your area.</li>
         </ul>
 
         <h2>Weather</h2>
-        <p>If rain, lightning or wet ground stops the visit, we move it to the next open day and text you. If that day
-          doesn't work for you, you get a <strong>full refund</strong>.</p>
+        <p>We mow through light rain. Lightning, heavy rain or ground soft enough to rut stops the visit: we move it
+          to a make-up day (usually that week's Saturday, otherwise your area's next day) and text you the new day.
+          If that day doesn't work for you, you get a <strong>full refund</strong>.</p>
 
         <h2>Not happy with the work</h2>
         <ul>
@@ -263,9 +272,16 @@ def refunds_html(settings: Settings, version: str) -> str:
           <li>If it still isn't right, you get a <strong>full refund</strong> for that visit.</li>
         </ul>
 
-        <h2>Areas we couldn't mow</h2>
-        <p>If the crew had to skip part of the area you booked (for example a loose pet, a locked gate or a safety
-          hazard), we tell you, and you choose: we come back to finish it, or we refund that part of the visit.</p>
+        <h2>If the crew can't get in</h2>
+        <p>The crew can't mow what it can't reach. If a gate is locked without a code, a pet is loose in the yard, or
+          vehicles or items block the lawn, the crew mows what it can reach, takes a photo, and we let you know. The
+          parts the crew couldn't reach <strong>are not refunded</strong>, because the trip and the time were spent.
+          You can book a return visit for them.</p>
+
+        <h2>Hazards we find</h2>
+        <p>If the crew has to skip a spot for a safety reason that isn't about access (for example a wasp nest,
+          standing water or a downed line), we tell you, and you choose: we come back to finish it, or we refund that
+          part of the visit.</p>
 
         <h2>What is refunded</h2>
         <p>A full refund is everything you paid for that visit: the price, the sales tax, and any extra donation you

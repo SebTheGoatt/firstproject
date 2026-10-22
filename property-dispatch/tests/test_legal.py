@@ -139,3 +139,17 @@ def test_policies_name_the_dba_and_link_each_other(client, settings, repo):
     assert "between you and Semper Green LLC, doing business as Post One Lawn Co., when you book" in client.get("/terms").text
     t = app_with(settings, repo, business_name="Acme Lawn Care").get("/privacy").text
     assert "Semper Green LLC, doing business as Acme Lawn Care" in t and "Post One" not in t
+
+
+def test_refund_policy_matches_what_the_app_enforces(client):
+    """Online cancel closes at the on-the-way text (app/changes.py), weather goes to the Saturday make-up, a locked-out
+    visit isn't refunded, and the price is never raised on site without the customer's OK."""
+    t = client.get("/refunds").text
+    assert "until we text that the crew is on the way" in t and "can no longer be cancelled or refunded" in t
+    assert "We mow through light rain" in t and "Saturday" in t
+    assert "<strong>are not refunded</strong>" in t
+    assert "before the crew arrives" not in t
+    terms = client.get("/terms").text
+    assert "We never charge your card more without your OK" in terms and "October 22, 2026" in terms
+    for path in ("/", "/services/lawn-mowing", "/llms.txt"):
+        assert "before the crew arrives" not in client.get(path).text, path

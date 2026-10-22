@@ -908,7 +908,7 @@ def register_local_pages(app: FastAPI, settings: Settings, version: str = "") ->
 - Service: residential lawn mowing; bin cleaning and gutter cleaning as add-ons to a mowing visit; holiday lighting by quote.
 - Price: from {dollars(low)} to {dollars(high)} per visit before tax, set by lawn size and yard type. No contract or subscription.
 - Neighbor discount: {percent(density_pct(2))}% off the mowing with 2 or more customers booked within half a mile, {percent(density_pct(5))}% with 5 or more.
-- Payment: {pay}. Cancel any time before the crew arrives for a full refund.
+- Payment: {pay}. Cancel free, with a full refund, until we text that the crew is on the way. Weather days move to a make-up day or are refunded in full.
 - Hours: Monday to Friday {settings.weekday_hours.replace('-', ' to ')}; Saturday {settings.saturday_hours.replace('-', ' to ')} for make-up visits; closed Sunday.
 - Booking for a day closes at {hour_words(settings.freeze_hour)} the day before. Customers get a text when the crew is on the way.
 - Languages: English and Spanish.{contact}

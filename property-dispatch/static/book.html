@@ -692,7 +692,7 @@
           pay.className = "btn btn-primary btn-lg btn-block"; pay.href = body.pay_url;
           pay.textContent = `Pay ${money(body.total)} now`;
           const why = document.createElement("div"); why.className = "hint";
-          why.textContent = "We collect payment before the visit. If we can't mow, you get a full refund.";
+          why.textContent = "We collect payment before the visit. Cancel free until we text that the crew is on the way.";
           ok.append(pay, why);
         }
         // Itemized confirmation: the server's own numbers, the same ones checkout charges.

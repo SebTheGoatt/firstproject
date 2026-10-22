@@ -223,7 +223,7 @@
         crew.hidden = false;
       } else crew.hidden = true;
 
-      // Cancel: open until the crew is on the way (refund policy: full refund before they arrive).
+      // Cancel: open until the crew is on the way (refund policy: full refund until the on-the-way text).
       $("cancel-row").hidden = !(["pending", "scheduled"].includes(v.status) && !v.on_the_way_at);
       // Card customers pay from their own payment page (never for a cancelled visit).
       const payLink = $("v-pay-link"), payUrl = !cancelled && v.payment.status !== "paid" && v.payment.method === "card" && v.payment.pay_url;
