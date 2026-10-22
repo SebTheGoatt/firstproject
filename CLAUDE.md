@@ -21,6 +21,8 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 - Owner screen: `/owner/command` (`app/command.py` + `static/command.html`). Crew route screen: `/crew/dashboard`.
 - Design system: `property-dispatch/DESIGN.md`. Public site = Post Green bands, Big Shoulders uppercase headlines.
   Work app (crew/owner) = bright daylight theme, flat, sentence case. The owner disliked the dark "matrix" look.
+- Brand kit (private Claude design system built from the above): https://claude.ai/artifact/WNvx4f5pDcb9LnA5NMCUuc
+  Build slides, social posts, ads and print from it. If styles.css or the logos change, re-sync it.
 
 ## Speed rules (from the full diagnostic)
 - Home page: the area map (MapLibre + tiles) loads only when scrolled near; Google address autocomplete loads on the
