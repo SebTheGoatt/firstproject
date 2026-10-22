@@ -406,7 +406,7 @@ def layout(settings: Settings, version: str, *, title: str, description: str, bo
   <link rel="preload" href="/static/fonts/big-shoulders-display-800.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/static/fonts/public-sans-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/styles.css?v={esc(version)}">
-  <script src="/static/i18n.js?v={esc(version)}"></script>{head_extra}
+  <script src="/static/i18n.js?v={esc(version)}" defer></script>{head_extra}
 </head>
 <body class="{body_class}">
   <a class="skip-link" href="#main">Skip to content</a>
