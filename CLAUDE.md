@@ -27,6 +27,9 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 ## Speed rules (from the full diagnostic)
 - Home page: the area map (MapLibre + tiles) loads only when scrolled near; Google address autocomplete loads on the
   first touch of the address form. Keep heavy third-party scripts off the first paint.
+- Nothing render-blocking in `<head>` except styles.css: `i18n.js` loads with `defer` (it translates at
+  DOMContentLoaded anyway). Text filled in from an API keeps its space while loading (`.po-card-note.is-pending`),
+  and scroll code reads layout in `requestAnimationFrame`, never synchronously during page load.
 - Static files: `?v=<hash>` URLs are cached for a year; fonts/images/icons a week. New images get new file names.
 - Display pages reuse "bookings that day" counts for 30s (`cached_count`); taking a booking always counts fresh.
 - Route planning: exact Held-Karp up to 12 stops (milliseconds); OR-Tools above that with a scaled time budget.
@@ -64,6 +67,8 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 - Never ask the owner to paste secrets in chat (Supabase, Stripe, Twilio, VAPID, Resend, crew token). Secrets live
   only in Render's environment settings.
 - The repo is public: never commit customer names, addresses or phone numbers.
+- Photos never keep camera metadata (GPS would reveal a customer's home): `normalize_photo()` in `app/media.py`
+  strips EXIF/XMP/text on every upload. Any new photo route must go through it.
 - No claims that can't be backed up: insurance, background checks and ratings show only when the owner's settings
   say they're true. No fake stats, reviews or addresses.
 - No model names in commits, PRs or code.

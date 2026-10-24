@@ -26,7 +26,7 @@
   <link rel="preload" href="/static/fonts/big-shoulders-display-800.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/static/fonts/public-sans-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/styles.css?v={{V}}">
-  <script src="/static/i18n.js?v={{V}}"></script>
+  <script src="/static/i18n.js?v={{V}}" defer></script>
 </head>
 <body class="site home page-home">
   <a class="skip-link" href="#main">Skip to content</a>
@@ -72,8 +72,8 @@
         <div class="po-card" role="group" aria-labelledby="price-card-title">
           <p class="po-kicker" id="price-card-title">Starting price</p>
           <p class="po-price" id="hero-price-line"><strong class="po-price-num" id="hero-price">$–</strong> <span>per mow, before tax</span></p>
-          <p class="po-card-note" id="hero-price-note" hidden><span>Lawns up to <b id="hero-included"></b>.</span>
-            <span>Bigger lawns add <b id="hero-step"></b> per extra 1,000 sq ft.</span>
+          <p class="po-card-note is-pending" id="hero-price-note"><span>Lawns up to <b id="hero-included">0,000 sq ft</b>.</span>
+            <span>Bigger lawns add <b id="hero-step">00%</b> per extra 1,000 sq ft.</span>
             <span>Neighbors already on your route lower your price.</span></p>
 
           <form class="area-checker po-checker" id="area-checker" novalidate>
@@ -549,7 +549,7 @@
       document.getElementById("hero-price").textContent = dollars(y.base);
       document.getElementById("hero-included").textContent = `${y.included_sqft.toLocaleString("en-US")} sq ft`;
       document.getElementById("hero-step").textContent = pct(y.step);
-      document.getElementById("hero-price-note").hidden = false;
+      document.getElementById("hero-price-note").classList.remove("is-pending");
 
       const rows = [];
       const row = (label, sub, value, cls) => {
@@ -687,6 +687,7 @@
     }).catch(() => {
       document.getElementById("next-day").textContent = "See the booking page";
       document.getElementById("hero-price-line").hidden = true;      // no price shown rather than a guessed one
+      document.getElementById("hero-price-note").hidden = true;
       document.getElementById("area-list").replaceChildren();
     });
 
@@ -752,7 +753,7 @@
       const queue = () => { if (!queued) { queued = true; requestAnimationFrame(update); } };
       addEventListener("scroll", queue, { passive: true });
       addEventListener("resize", queue);
-      update();
+      queue();   // first read on the next frame, so the page isn't laid out twice while it's still loading
     })();
 
     // Mobile "Book a mow" bar: shown on small screens, hidden while another booking button is

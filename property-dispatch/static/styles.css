@@ -1165,6 +1165,8 @@ label.check input { width: 18px; height: 18px; }
 .page-home .po-price { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; color: var(--muted); }
 .page-home .po-price-num { font: 800 4.5rem/1 var(--font-display); letter-spacing: 0.01em; color: var(--text); }
 .page-home .po-card-note { margin: 0; font-size: 0.94rem; line-height: 1.5; }
+/* Holds its space (invisible, and hidden from screen readers) until the prices load, so the card doesn't jump. */
+.page-home .po-card-note.is-pending { visibility: hidden; }
 .page-home .po-checker { margin: 0; padding: 16px 0 0; border-top: 1px solid var(--border); }
 .page-home .po-checker label { font-size: 0.875rem; font-weight: 700; }
 .page-home .po-checker .checker-row input { min-height: 48px; background: var(--surface); }
