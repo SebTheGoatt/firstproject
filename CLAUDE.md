@@ -36,6 +36,10 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 - Crew route map: the day's area comes with the route (`RouteView.areas`, from the stops' zones) and is drawn as a
   solid green edge with a light veil outside, so an off-area stop stands out. 3D buildings were tried and dropped:
   OpenStreetMap has almost no houses mapped in our areas (0–3 per view vs 130+ downtown); revisit if that changes.
+- Rain radar on the route map ("Rain radar" toggle, remembered per phone; `/crew/dashboard?radar=1` from the owner's
+  "Check the radar" link next to Rain day): NOAA nowCOAST WMS, keyless and CORS-open — MRMS base reflectivity
+  (~4 min) + NLDN lightning density (~10 min), refreshed every 5 min, credited in the map attribution. Idea taken
+  from God's Eye View (bilawalsidhu/gods-eye-view); its camera/flight/satellite layers were left out on purpose.
 
 ## Marketing, SEO and GEO
 - Marketing hub `/owner/marketing` (`app/marketing.py`, `static/marketing.html`): this week's posts from live data
