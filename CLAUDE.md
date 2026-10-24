@@ -55,6 +55,11 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
   change or once postonelawn.com is live (pass the new URL), so new prints carry the right link.
 - GEO: `/llms.txt` (plain facts for AI assistants, live data), FAQPage data on home (parsed from the visible FAQ) and
   on each area page (`area_faq`), robots.txt welcomes AI search crawlers, `sameAs` from the *_URL profile settings.
+- Repeat bookings: after a visit is done, the visit page shows "Book your next mow" → `/book?again=<code>`, which fills
+  the form from `GET /api/visit/{code}/again` (name, phone, address, yard choice, yard type, add-ons; the code leaves
+  the address bar at once). Price, area check, consent and payment run as for any booking; tagged `source=rebook`
+  ("Repeat customer" on the scoreboard). Never put a "book again" pitch in the texts: SMS consent covers booking
+  updates only.
 - Crew "Report a problem" (`app/issues.py`): damage / equipment / access / delay with a photo; first item on the owner
   screen; email via Resend when set. Needs `supabase/migrations/20261028000000_issues_and_sources.sql`.
 
@@ -114,4 +119,8 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 - Competitors are mostly solo crews on directories plus marketplaces (LawnStarter, GreenPal, Lawn Love). "Texas
   Veteran Lawn Service" also brands as veteran-owned in Spring. Colony Ridge / Plum Grove have no dedicated
   providers online, and Spanish-language marketing is an open lane there.
+- Lessons from failed home-service startups (startupgraveyard.io): Homejoy kept ~25% of customers past month one and
+  <10% past six, lost workers to clients going direct, expanded too fast and was sued over worker classification;
+  Exec had high worker turnover, spiky demand and tried to do too many things. Post One's answers: repeat bookings in
+  one tap, one area a day, mowing first, no expansion beyond our areas. Crew pay/classification is the owner's call.
 

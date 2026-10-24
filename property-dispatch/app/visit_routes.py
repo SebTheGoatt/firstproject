@@ -31,7 +31,7 @@ from .zones import MAKEUP_WEEKDAY, short_name, zone_for_weekday
 from .charity import all_causes, describe as describe_charities, ledger
 from .changes import register_change_routes
 from .manifest import build_manifest
-from .pricing import PACKAGES
+from .pricing import PACKAGES, SCOPES, is_info, scope_of, yield_choice
 from .reviews import review_link
 from .config import Settings
 from .crew_auth import CrewIdentity
@@ -108,6 +108,33 @@ def register_visit_routes(app: FastAPI, settings: Settings, crew_auth):
         return who
 
     # ---------- Customer visit page ----------
+    def phone_words(phone: str) -> str:
+        """+12815550101 (how it's stored) back to (281) 555-0101 (how people type it)."""
+        d = re.sub(r"\D", "", phone or "")
+        d = d[1:] if len(d) == 11 and d.startswith("1") else d
+        return f"({d[:3]}) {d[3:6]}-{d[6:]}" if len(d) == 10 else phone
+
+    @app.get("/api/visit/{raw_code}/again")
+    def book_again(raw_code: str, request: Request, response: Response, r=Depends(repo)):
+        """The last booking's details, so "Book your next mow" opens the booking form already filled in. Only for
+        the code's holder (the customer); the form still re-checks the address, re-prices and takes payment as usual."""
+        if not visit_throttle.allow(request.client.host if request.client else "unknown"):
+            raise HTTPException(status_code=429, detail="Too many tries. Please wait a few minutes.")
+        code = normalize_code(raw_code)
+        v = r.get_visit(code) if code else None
+        b = r.job_brief(v["job_id"]) if v else None
+        if b is None:
+            raise HTTPException(status_code=404, detail="We couldn't find that code. Check it and try again.")
+        response.headers["Cache-Control"] = "no-store"
+        saved = yield_choice(b.get("add_ons"))
+        return {
+            "name": b["customer_name"], "phone": phone_words(b["phone"]), "address": v["address"], "service": b["service"],
+            "scope": scope_of(b.get("add_ons")), "yard_type": saved[0] if saved else None,
+            "add_ons": [a["key"] if isinstance(a, dict) else a for a in (b.get("add_ons") or [])
+                        if not is_info(a) and (a["key"] if isinstance(a, dict) else a) not in SCOPES],
+            "lang": b.get("lang") or "en",
+        }
+
     @app.get("/api/visit/{raw_code}")
     def visit(raw_code: str, request: Request, r=Depends(repo)):
         if not visit_throttle.allow(request.client.host if request.client else "unknown"):

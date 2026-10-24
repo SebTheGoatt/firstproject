@@ -41,6 +41,7 @@
 
       <form id="intake" class="card" novalidate>
         <div id="err" class="alert alert-error" role="alert" hidden></div>
+        <p id="again-note" class="alert alert-ok" role="status" hidden>Welcome back! Your details from your last visit are filled in. Check them, pick a day and you're set.</p>
 
         <section class="step" aria-labelledby="step-where">
           <h2 class="step-title" id="step-where"><span>1</span>Your address</h2>
@@ -560,6 +561,32 @@
     renderRates();
     renderEstimate();
 
+    // ---------- "Book your next mow" (/book?again=<visit code>): fill the form in from the last visit ----------
+    // Name, phone, address, yard choice, yard type and add-ons; the address is re-checked and the price re-quoted
+    // like any booking. The code leaves the address bar at once so it can't end up in a shared or copied link.
+    let rebook = false;
+    const againCode = new URLSearchParams(location.search).get("again");
+    if (againCode) {
+      history.replaceState(null, "", "/book");
+      fetch(`/api/visit/${encodeURIComponent(againCode)}/again`).then((r) => (r.ok ? r.json() : null)).then((last) => {
+        if (!last) return;
+        rebook = true;
+        $("name").value = last.name || "";
+        $("phone").value = last.phone || "";
+        if (last.scope && SCOPE_LABEL[last.scope]) {
+          scope = last.scope;
+          const pick = document.querySelector(`input[name="scope"][value="${last.scope}"]`);
+          if (pick) pick.checked = true;
+        }
+        if (last.yard_type && yieldCfg.yard_types.some((y) => y.key === last.yard_type)) { yardKey = last.yard_type; renderRates(); }
+        for (const k of last.add_ons || []) chosenAddOns.add(k);
+        customElements.whenDefined("addon-injector").then(() => $("addon-injector").select([...chosenAddOns]));
+        renderAddOns();
+        if (last.address) { addressInput.value = last.address; checkArea(); }
+        $("again-note").hidden = false;
+      }).catch(() => {});
+    }
+
     // ---------- Optional Google address dropdown (Places API (New)) ----------
     // Only loads when the owner sets GOOGLE_MAPS_API_KEY (or GOOGLE_MAPS_BROWSER_KEY); otherwise customers type normally.
     function usePlainAddressBox() {
@@ -657,7 +684,7 @@
       data.sms_consent = $("sms-consent").checked;     // required box: texts about this booking
       delete data.scope;
       data.lang = window.I18N?.lang === "es" ? "es" : "en";   // their texts come in this language
-      const source = window.poSource?.();                      // which QR code / post / site sent them (marketing)
+      const source = rebook ? "rebook" : window.poSource?.();  // a repeat booking, or which QR code / post / site sent them
       if (source) data.source = source;
       if (addressInput.dataset.picked === addressInput.value && latInput.value) {
         data.lat = Number(latInput.value);
