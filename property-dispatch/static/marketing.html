@@ -252,6 +252,8 @@
             <header><h2 id="h-maps">Area map images</h2><small>for posts and ads</small></header>
             <p class="note">Every street in each area, with the part we mow outlined. Post the square one with that area's day, or use it as an ad image. Each area page already uses the wide one as its link preview.</p>
             <ul class="maps" id="maps"></ul>
+            <p class="note" id="poster-row" hidden><b>Service map poster</b> (18×24 in, all areas and days, QR code that books, tagged "poster"):
+              <a id="poster-pdf" download>PDF for the print shop</a> · <a id="poster-jpg" download>Image</a></p>
           </section>
 
           <section class="panel sec" aria-labelledby="h-build">
@@ -380,6 +382,7 @@
         el("span", { class: "row-btns" },
           el("a", { class: "btn", href: m.square, download: "" }, "Square"),
           el("a", { class: "btn", href: m.wide, download: "" }, "Wide")))));
+      if (data.poster) { $("poster-pdf").href = data.poster.pdf; $("poster-jpg").href = data.poster.jpg; $("poster-row").hidden = false; }
     }
     function renderBuilder() {
       $("channel").replaceChildren(...Object.entries(data.channels).map(([k, v]) => el("option", { value: k }, v)));

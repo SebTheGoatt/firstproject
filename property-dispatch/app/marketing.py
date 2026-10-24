@@ -10,6 +10,7 @@ from the bookings. Tracking is a short ?ref= label on the link (e.g. "yard-sign-
 by static/site.js. No personal data is collected, and nothing here claims more than the business does.
 """
 
+import hashlib
 import html
 import io
 import re
@@ -35,6 +36,7 @@ CHANNELS = {
     "yard-sign": "Yard sign", "door-hanger": "Door hanger", "flyer": "Flyer", "truck": "Truck or trailer magnet",
     "business-card": "Business card", "google-business": "Google Business post", "facebook": "Facebook",
     "nextdoor": "Nextdoor", "instagram": "Instagram", "tiktok": "TikTok", "email": "Email", "text": "Text message",
+    "poster": "Service map poster",
 }
 # Labels the site sets on its own from where a visitor came from (static/site.js).
 AUTO_SOURCES = {"google": "Google search", "bing": "Bing search", "yelp": "Yelp", "ai-chatgpt": "ChatGPT",
@@ -57,6 +59,13 @@ TARGET_PATHS = {t["path"] for t in targets()}
 
 def tagged(site: str, path: str, ref: str) -> str:
     return f"{site}{path}?ref={ref}"
+
+
+def poster_path(ext: str = "jpg") -> str:
+    """The service map poster (tools/make_area_poster.py). Its name carries a fingerprint of the areas, boxes and days,
+    so a schedule change can't keep offering an old poster: tests/test_area_cards.py fails until it is made again."""
+    plan = repr(sorted((z.key, z.service_weekday, z.boxes) for z in SERVICE_ZONES)).encode()
+    return f"/static/img/service-map-{hashlib.sha256(plan).hexdigest()[:8]}.{ext}"
 
 
 def qr_svg(url: str, dark: str = "#0F2B22") -> bytes:
@@ -220,6 +229,7 @@ def register_marketing(app: FastAPI, settings: Settings, owner, page, version: s
             "map_cards": [{"area": short_name(zone_by_key(a.zone_key)),
                            "day": WEEKDAY_NAMES[zone_by_key(a.zone_key).service_weekday],
                            "square": area_card_path(a, square=True), "wide": area_card_path(a)} for a in AREAS],
+            "poster": {"jpg": poster_path("jpg"), "pdf": poster_path("pdf")},
         }
 
     @app.get("/marketing/qr.svg", include_in_schema=False)
