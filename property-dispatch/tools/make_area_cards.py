@@ -30,9 +30,9 @@ INK = {"ground": "#0f2b22", "water": "#0b2119", "minor": "#4f8a6a", "mid": "#7fb
        "brass": "#c9a227", "on_dark": "#f5f6f1", "muted": "#c9d3cd", "fresh": "#9bd15a"}
 
 
-def style() -> dict:
+def style(scale: float = K) -> dict:
     road = lambda cls: ["match", ["get", "class"], cls, True, False]  # noqa: E731
-    width = lambda px: px * K  # noqa: E731   card pixels, drawn on the 3x map
+    width = lambda px: px * scale  # noqa: E731   output pixels, drawn on the enlarged map
     return {
         "version": 8,
         "sources": {"omt": {"type": "vector", "url": "https://tiles.openfreemap.org/planet"}},

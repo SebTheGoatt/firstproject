@@ -46,6 +46,9 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
   the mowed area outlined in brass) as `static/img/area-<slug>-<weekday>.jpg` (1200x630, the area and neighborhood
   pages' share image) and `-square.jpg` (posts; downloadable on the marketing hub). Re-run it when an area's boxes
   or day change; `tests/test_area_cards.py` fails until you do. Keep the OpenStreetMap credit on the cards.
+- Service map poster: `tools/make_area_poster.py` (18x24 in, 150 dpi, JPEG + PDF) shows every area with its day and a
+  QR code to `/?ref=poster`. File name = fingerprint of areas/boxes/days (`poster_path()`); re-run after a schedule
+  change or once postonelawn.com is live (pass the new URL), so new prints carry the right link.
 - GEO: `/llms.txt` (plain facts for AI assistants, live data), FAQPage data on home (parsed from the visible FAQ) and
   on each area page (`area_faq`), robots.txt welcomes AI search crawlers, `sameAs` from the *_URL profile settings.
 - Crew "Report a problem" (`app/issues.py`): damage / equipment / access / delay with a photo; first item on the owner
