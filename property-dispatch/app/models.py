@@ -191,6 +191,11 @@ class StopView(BaseModel):
     flat_fee: float | None = None   # mowing minimum for this stop's area (for the crew's live price)
 
 
+class RouteArea(BaseModel):
+    name: str
+    boxes: list[tuple[float, float, float, float]]   # (min_lng, min_lat, max_lng, max_lat), as in app/zones.py
+
+
 class RouteView(BaseModel):
     route_date: date
     timezone: str
@@ -200,6 +205,7 @@ class RouteView(BaseModel):
     optimized_at: datetime | None
     stops: list[StopView]
     full_route_google_urls: list[str]
+    areas: list[RouteArea] = []       # the day's area(s), outlined on the crew's route map
 
 
 # ---------- Crew profiles ----------------------------------------------

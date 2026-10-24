@@ -33,6 +33,9 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 - Static files: `?v=<hash>` URLs are cached for a year; fonts/images/icons a week. New images get new file names.
 - Display pages reuse "bookings that day" counts for 30s (`cached_count`); taking a booking always counts fresh.
 - Route planning: exact Held-Karp up to 12 stops (milliseconds); OR-Tools above that with a scaled time budget.
+- Crew route map: the day's area comes with the route (`RouteView.areas`, from the stops' zones) and is drawn as a
+  solid green edge with a light veil outside, so an off-area stop stands out. 3D buildings were tried and dropped:
+  OpenStreetMap has almost no houses mapped in our areas (0–3 per view vs 130+ downtown); revisit if that changes.
 
 ## Marketing, SEO and GEO
 - Marketing hub `/owner/marketing` (`app/marketing.py`, `static/marketing.html`): this week's posts from live data

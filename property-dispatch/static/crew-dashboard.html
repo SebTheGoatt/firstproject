@@ -748,8 +748,22 @@
       const b = all.reduce((bb, p) => bb.extend(p), new maplibregl.LngLatBounds(all[0], all[0]));
       map.fitBounds(b, { padding: mapPadding(), maxZoom: 15, duration: animate ? 400 : 0 });
     }
+    // Today's area: a solid green edge (route legs are dashed), everything outside it under a light veil, so a stop off the area stands out.
+    const areaRing = ([w, s, e, n]) => [[w, s], [e, s], [e, n], [w, n], [w, s]];
+    function areaData() {
+      const boxes = (route.areas || []).flatMap((a) => a.boxes);
+      const world = [[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]];
+      return {
+        veil: boxes.length ? { type: "Feature", geometry: { type: "Polygon", coordinates: [world, ...boxes.map((b) => areaRing(b).reverse())] } }
+                           : { type: "FeatureCollection", features: [] },
+        edge: { type: "FeatureCollection", features: boxes.map((b) => ({ type: "Feature", geometry: { type: "Polygon", coordinates: [areaRing(b)] } })) },
+      };
+    }
     function setMapData(refit = true) {
       const cur = current();
+      const area = areaData();
+      map.getSource("area-veil").setData(area.veil);
+      map.getSource("area-edge").setData(area.edge);
       map.getSource("line").setData({ type: "Feature", geometry: { type: "LineString", coordinates: route.stops.map((s) => [s.lng, s.lat]) } });
       map.getSource("stops").setData({ type: "FeatureCollection", features: groupStops(cur) });
       map.getSource("preview").setData(preview.path && cur && preview.stopId === cur.stop_id
@@ -770,6 +784,11 @@
         map.addControl(new maplibregl.AttributionControl({ compact: true }), "top-right");
       } catch { map = null; $("route-map").hidden = true; $("map-fit").hidden = true; return; }
       map.on("load", () => {
+        map.addSource("area-veil", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+        map.addSource("area-edge", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+        map.addLayer({ id: "area-veil", type: "fill", source: "area-veil", paint: { "fill-color": "#ffffff", "fill-opacity": 0.5 } });
+        map.addLayer({ id: "area-edge", type: "line", source: "area-edge",
+          paint: { "line-color": "#2E7D4F", "line-width": 2, "line-opacity": 0.75 } });
         map.addSource("line", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
         map.addSource("preview", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
         map.addSource("stops", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
