@@ -19,7 +19,7 @@
   <header class="site-header">
     <div class="site-wrap header-row">
       <a class="brand" href="/">{{BRAND}}</a>
-      <a class="btn btn-sm" href="/book">Book again</a>
+      <a class="btn btn-sm" href="/book" data-again>Book again</a>
     </div>
   </header>
 
@@ -53,7 +53,13 @@
         <section class="card vp-cancelled" id="v-cancelled" hidden>
           <h2 class="vp-cancelled-title">This visit was cancelled.</h2>
           <p class="muted">Pick another day whenever you're ready.</p>
-          <a class="btn btn-primary btn-block" href="/book">Book again</a>
+          <a class="btn btn-primary btn-block" href="/book" data-again>Book again</a>
+        </section>
+
+        <section class="card vp-again" id="v-again" aria-labelledby="v-again-title" hidden>
+          <h2 class="card-title" id="v-again-title">Book your next mow</h2>
+          <p class="muted">Your address, yard choice and add-ons are already filled in. Pick a day, check the price and you're set.</p>
+          <a class="btn btn-primary btn-block" href="/book" data-again>Book your next mow</a>
         </section>
 
         <section class="card visit-head" id="v-status">
@@ -141,6 +147,8 @@
       if (!res.ok) { showForm(body.detail || "We couldn't open that visit."); return; }
       try { localStorage.setItem(KEY, code); } catch {}
       if (location.pathname !== `/visit/${code}`) history.replaceState(null, "", `/visit/${code}`);
+      // "Book again" opens the booking form filled in from this visit (the form drops the code from its address bar).
+      document.querySelectorAll("[data-again]").forEach((a) => { a.href = `/book?again=${encodeURIComponent(code)}`; });
       render(body);
       SGPush.setup(code, { box: $("v-push"), btn: $("push-btn"), note: $("push-note") });
       watchVisit(code, body);
@@ -180,6 +188,7 @@
       $("v-what").textContent = v.service_label;
       $("v-where").textContent = v.address;
       $("v-hello").textContent = `Hi ${v.first_name}`;
+      $("v-again").hidden = v.status !== "completed";
       $("v-code").textContent = `Access code ${v.access_code}`;
       for (const id of ["v-what", "v-where", "v-meta"]) $(id).hidden = false;
 

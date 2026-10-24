@@ -40,7 +40,8 @@ CHANNELS = {
 }
 # Labels the site sets on its own from where a visitor came from (static/site.js).
 AUTO_SOURCES = {"google": "Google search", "bing": "Bing search", "yelp": "Yelp", "ai-chatgpt": "ChatGPT",
-                "ai-perplexity": "Perplexity", "ai-assistant": "Other AI assistant"}
+                "ai-perplexity": "Perplexity", "ai-assistant": "Other AI assistant",
+                "rebook": "Repeat customer (Book your next mow)"}
 PRINTS = {"yard-sign": "Yard sign (18×24 in)", "door-hanger": "Door hanger (4.25×11 in)", "flyer": "Flyer (letter)"}
 REF = re.compile(r"^[a-z0-9-]{1,48}$")
 

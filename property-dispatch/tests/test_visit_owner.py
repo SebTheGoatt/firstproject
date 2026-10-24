@@ -149,3 +149,30 @@ def test_outlook_and_owner_only(client):
     h = {"X-Crew-Token": client.post("/api/crew/login", json={"member_id": sam["id"], "code": "4321"}).json()["token"]}
     assert client.get(f"/api/owner/day/{TOMORROW}", headers=h).status_code == 403
     assert client.get(f"/api/owner/day/{TOMORROW}").status_code == 401
+
+
+# ---------- "Book your next mow" ----------
+def test_book_again_fills_the_form_from_the_last_visit(client):
+    with patch("app.main.local_now", return_value=NOW), patch("app.visit_routes.local_now", return_value=NOW):
+        r = client.post("/api/jobs", json={
+            "name": "Customer A", "phone": "(281) 555-0177", "address": "100 A Example Rd", "service": "mowing",
+            "lawn_sqft": 5000, "yard_type": "COMPLEX_OBSTACLES", "add_ons": ["scope_full", "bin_cleaning"],
+            "scheduled_date": TOMORROW.isoformat()})
+    assert r.status_code == 201, r.text
+    code = r.json()["access_code"].replace("-", "")
+    again = client.get(f"/api/visit/{code}/again")
+    assert again.status_code == 200 and again.headers["cache-control"] == "no-store"
+    assert again.json() == {"name": "Customer A", "phone": again.json()["phone"], "address": "100 A Example Rd",
+                            "service": "mowing", "scope": "scope_full", "yard_type": "COMPLEX_OBSTACLES",
+                            "add_ons": ["bin_cleaning"], "lang": "en"}          # the scope and price notes aren't add-ons
+    assert again.json()["phone"] == "(281) 555-0177"                       # as people type it, not +1...
+    assert client.get("/api/visit/ZZZZZZZZ/again").status_code == 404
+
+
+def test_book_again_shows_after_the_visit_and_counts_as_a_repeat_booking(client):
+    visit, book_page = client.get("/visit").text, client.get("/book").text
+    assert 'id="v-again"' in visit and "/book?again=" in visit and "data-again" in visit
+    assert "/again`" in book_page and 'history.replaceState(null, "", "/book")' in book_page
+    assert 'rebook ? "rebook"' in book_page
+    from app.marketing import channel_of
+    assert channel_of("rebook") == "Repeat customer (Book your next mow)"

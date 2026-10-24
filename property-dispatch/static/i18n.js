@@ -119,6 +119,11 @@
     "Visit updates are on for this phone.": "Los avisos de tu visita están activados en este teléfono.",
     "We couldn't turn updates on. Please try again.": "No pudimos activar los avisos. Inténtalo de nuevo.",
     "Book again": "Reservar otra vez",
+    "Book your next mow": "Reserva tu próximo corte",
+    "Your address, yard choice and add-ons are already filled in. Pick a day, check the price and you're set.":
+      "Tu dirección, tu elección de jardín y tus extras ya están llenos. Elige un día, revisa el precio y listo.",
+    "Welcome back! Your details from your last visit are filled in. Check them, pick a day and you're set.":
+      "¡Bienvenido de nuevo! Tus datos de la última visita ya están llenos. Revísalos, elige un día y listo.",
     "Close": "Cerrar",
     "Total": "Total",
     "Subtotal": "Subtotal",
