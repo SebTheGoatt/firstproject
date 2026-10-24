@@ -58,7 +58,7 @@ from .readiness import register_readiness
 from .crew_auth import CrewIdentity
 from .crew_routes import register_crew_routes
 from .models import (SERVICE_LABELS, order_label, AddressCheck, CompleteStopRequest, GeoPoint, JobCreated,
-                     JobRequest, OptimizeRouteRequest, QuoteRequest, RouteView, Service, StopNote, StopView)
+                     JobRequest, OptimizeRouteRequest, QuoteRequest, RouteArea, RouteView, Service, StopNote, StopView)
 from .charity import causes as charity_causes, chosen_cause, charity_names, describe as describe_charities, route_donation
 from .pricing import (ADD_ONS, BRACKET_PROFILES, FEATURED_PACKAGE, PRICE_BRACKETS, mow_minutes, scope_of, MAX_SQFT, MIN_SQFT, PACKAGES, LawnSizeError, check_sqft, in_season, package_for_rate,
                       quote, season_text, count_nearby, real_add_ons, yield_choice, YARD_TYPES, YIELD_BASE,
@@ -73,7 +73,7 @@ from .notify import (TwilioClient, booking_message, day_words, notify_next_custo
 from .pay_routes import register_pay_routes
 from .visit_routes import format_code, new_access_code, register_visit_routes
 from .payments import StripeClient
-from .zones import SERVICE_ZONES, WEEKDAY_NAMES, find_zone, short_name, zone_by_key
+from .zones import SERVICE_ZONES, WEEKDAY_NAMES, find_zone, short_name, zone_by_key, zone_for_weekday
 
 log = logging.getLogger(__name__)
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
@@ -166,7 +166,17 @@ def build_route_view(route: dict, settings: Settings) -> RouteView:
         optimized_at=route.get("optimized_at"),
         stops=stops,
         full_route_google_urls=deeplinks.google_full_route(origin, remaining, end) if remaining else [],
+        areas=route_areas(route),
     )
+
+
+def route_areas(route: dict) -> list[RouteArea]:
+    """The area(s) the day's stops are in (Saturday make-ups can mix areas); the weekday's area if there are none."""
+    keys = list(dict.fromkeys(s.get("zone_key") for s in route["stops"] if s.get("zone_key")))
+    day = route["route_date"]
+    day = day if isinstance(day, date) else date.fromisoformat(str(day)[:10])     # Supabase returns text
+    zones = [z for k in keys if (z := zone_by_key(k))] or [z for z in [zone_for_weekday(day.weekday())] if z]
+    return [RouteArea(name=short_name(z), boxes=list(z.boxes)) for z in zones]
 
 
 def send_review_requests(app: FastAPI, base_url: str) -> dict:

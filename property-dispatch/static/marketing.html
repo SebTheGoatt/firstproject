@@ -204,6 +204,11 @@
     .qr-box { text-align: center; }
     .qr-box img { width: 220px; height: 220px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
     .row-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+    .maps { list-style: none; margin: 0; padding: 16px; display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+    .maps li { display: grid; gap: 8px; align-content: start; min-width: 0; }
+    .maps img { width: 100%; height: auto; aspect-ratio: 1; border-radius: 8px; border: 1px solid var(--line); background: #0f2b22; }
+    .maps b { font-size: 14px; }
+    .maps .row-btns a { font-size: 13px; }
     .checks2 { list-style: none; margin: 0; padding: 0; }
     .checks2 li { display: flex; gap: 12px; padding: 10px 16px; border-top: 1px solid var(--line); }
     .checks2 li:first-child { border-top: 0; }
@@ -241,6 +246,12 @@
               </span></header>
             <p class="note">One post per area day that can still be booked, written from your real prices and openings. Each link carries its own tag, so bookings from it show up in the scoreboard.</p>
             <div class="days" id="posts"></div>
+          </section>
+
+          <section class="panel sec" aria-labelledby="h-maps">
+            <header><h2 id="h-maps">Area map images</h2><small>for posts and ads</small></header>
+            <p class="note">Every street in each area, with the part we mow outlined. Post the square one with that area's day, or use it as an ad image. Each area page already uses the wide one as its link preview.</p>
+            <ul class="maps" id="maps"></ul>
           </section>
 
           <section class="panel sec" aria-labelledby="h-build">
@@ -362,6 +373,14 @@
         el("a", { class: "btn sm", href: `/owner/marketing/print?kind=${k}&path=${encodeURIComponent(t.path)}&ref=${k}${t.area ? "-" + t.area : ""}`, target: "_blank", rel: "noopener" }, `Print ${label.toLowerCase()}`)));
     }
 
+    function renderMaps() {
+      $("maps").replaceChildren(...(data.map_cards || []).map((m) => el("li", {},
+        el("img", { src: m.square, alt: `Street map of ${m.area} with the area we mow outlined`, loading: "lazy", width: "180", height: "180" }),
+        el("b", {}, `${m.area} · ${m.day}s`),
+        el("span", { class: "row-btns" },
+          el("a", { class: "btn", href: m.square, download: "" }, "Square"),
+          el("a", { class: "btn", href: m.wide, download: "" }, "Wide")))));
+    }
     function renderBuilder() {
       $("channel").replaceChildren(...Object.entries(data.channels).map(([k, v]) => el("option", { value: k }, v)));
       $("target").replaceChildren(...data.targets.map((t) => el("option", { value: t.path }, t.label)));
@@ -383,7 +402,7 @@
       if (!res || !res.ok) { $("msg").hidden = false; $("msg").textContent = res && res.status === 403 ? "Only the owner can see this." : "Couldn't load. Sign in again in the crew app."; return; }
       data = await res.json();
       $("app").hidden = false;
-      renderPosts(); renderScore(); renderBuilder();
+      renderPosts(); renderScore(); renderBuilder(); renderMaps();
     })();
   </script>
 </body>

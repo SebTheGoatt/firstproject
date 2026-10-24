@@ -195,3 +195,25 @@ def test_crew_and_owner_pages_wear_the_post_one_look(client):
         assert '<p class="crew-brandbar-name">Post One · <span>Owner</span></p>' in page and "{{" not in page, path
         assert 'style="' not in page, path                       # styled from styles.css only
     assert '<body class="site page-team">' in client.get("/team").text
+
+
+def test_route_view_carries_the_days_area_for_the_map_outline():
+    from datetime import date
+
+    from app.main import route_areas
+    from app.zones import zone_by_key
+
+    cleveland = zone_by_key("CLEVELAND_HUB")
+    stops = [{"zone_key": "CLEVELAND_HUB"}, {"zone_key": "CLEVELAND_HUB"}]
+    [area] = route_areas({"route_date": date(2026, 10, 30), "stops": stops})
+    assert area.name == "Cleveland & Plum Grove" and [tuple(b) for b in area.boxes] == list(cleveland.boxes)   # Plum Grove too
+    # A Saturday make-up can mix areas; an empty route falls back to the weekday's area (text dates as Supabase sends them).
+    mixed = route_areas({"route_date": date(2026, 10, 31), "stops": [{"zone_key": "KLEIN_CORE"}, {"zone_key": "COLONY_RIDGE"}]})
+    assert [a.name for a in mixed] == ["Klein", "Colony Ridge"]
+    assert [a.name for a in route_areas({"route_date": "2026-10-27", "stops": []})] == ["Klein"]
+    assert route_areas({"route_date": "2026-11-01", "stops": []}) == []                                 # Sunday: none
+
+
+def test_route_map_outlines_the_area(client):
+    page = client.get("/crew/dashboard").text
+    assert 'id: "area-edge"' in page and 'id: "area-veil"' in page

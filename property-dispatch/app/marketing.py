@@ -22,7 +22,7 @@ from fastapi.responses import HTMLResponse, Response
 
 from .booking import cached_count, earliest_bookable_day, local_now
 from .config import Settings, site_url
-from .local_pages import AREA_BY_SLUG, AREAS, HOODS, dollars, layout, percent, price_range
+from .local_pages import AREA_BY_SLUG, AREAS, HOODS, area_card_path, dollars, layout, percent, price_range
 from .pricing import density_pct
 from .reviews import review_link
 from .service_pages import SERVICES
@@ -217,6 +217,9 @@ def register_marketing(app: FastAPI, settings: Settings, owner, page, version: s
             "posts": week_posts(settings, app.state.repo, site, today),
             "targets": targets(), "channels": CHANNELS, "prints": PRINTS, "site": site,
             "review_link": bool(review_link(settings)),
+            "map_cards": [{"area": short_name(zone_by_key(a.zone_key)),
+                           "day": WEEKDAY_NAMES[zone_by_key(a.zone_key).service_weekday],
+                           "square": area_card_path(a, square=True), "wide": area_card_path(a)} for a in AREAS],
         }
 
     @app.get("/marketing/qr.svg", include_in_schema=False)
