@@ -67,6 +67,8 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 - Never ask the owner to paste secrets in chat (Supabase, Stripe, Twilio, VAPID, Resend, crew token). Secrets live
   only in Render's environment settings.
 - The repo is public: never commit customer names, addresses or phone numbers.
+- Photos never keep camera metadata (GPS would reveal a customer's home): `normalize_photo()` in `app/media.py`
+  strips EXIF/XMP/text on every upload. Any new photo route must go through it.
 - No claims that can't be backed up: insurance, background checks and ratings show only when the owner's settings
   say they're true. No fake stats, reviews or addresses.
 - No model names in commits, PRs or code.
