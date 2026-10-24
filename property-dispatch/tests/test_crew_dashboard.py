@@ -217,3 +217,10 @@ def test_route_view_carries_the_days_area_for_the_map_outline():
 def test_route_map_outlines_the_area(client):
     page = client.get("/crew/dashboard").text
     assert 'id: "area-edge"' in page and 'id: "area-veil"' in page
+
+
+def test_route_map_has_a_noaa_rain_radar_toggle(client):
+    page = client.get("/crew/dashboard").text
+    assert 'id="map-radar"' in page and "nowcoast.noaa.gov/geoserver/observations" in page
+    assert "conus_base_reflectivity_mosaic" in page and "ldn_lightning_strike_density" in page
+    assert 'href="/crew/dashboard?radar=1"' in client.get("/crew").text      # next to the owner's Rain day button

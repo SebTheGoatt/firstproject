@@ -69,8 +69,12 @@
     #dash { position: fixed; inset: var(--hud-h) 0 0 0; z-index: 1; overflow: hidden;
       display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); grid-template-areas: "stage"; }
     #route-map { grid-area: stage; min-height: 0; background: #eef2ef; transform: translate3d(0, 0, 0); }
-    .map-fit { grid-area: stage; align-self: start; justify-self: start; z-index: 5; margin: var(--gap);
-      min-height: var(--tap); min-width: var(--tap); padding: 0 14px; border: 2px solid #000; border-radius: 12px;
+    .map-tools { grid-area: stage; align-self: start; justify-self: start; z-index: 5; margin: var(--gap);
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .map-fit[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: #ffffff; }
+    .radar-note { padding: 6px 10px; border-radius: 999px; background: rgb(255 255 255 / 0.92); color: #14201B;
+      font: 600 0.8rem/1.2 var(--font-body); box-shadow: 0 2px 10px rgb(0 0 0 / 0.12); }
+    .map-fit { min-height: var(--tap); min-width: var(--tap); padding: 0 14px; border: 2px solid #000; border-radius: 12px;
       background: #ffffff; color: #000; font: 700 1rem/1 var(--font-body); cursor: pointer; box-shadow: 0 2px 10px rgb(0 0 0 / 0.18); --focus: var(--brand); }
 
     /* Bottom sheet. It only ever moves with transform (GPU), never top/height. */
@@ -108,7 +112,7 @@
     /* Landscape phones and tablets: Route Sequence Deck (left) + Active Route Map (right). */
     @media (orientation: landscape) and (min-width: 640px), (min-width: 900px) {
       #dash { grid-template-columns: 35% 65%; grid-template-areas: "deck map"; }
-      #route-map, .map-fit { grid-area: map; }
+      #route-map, .map-tools { grid-area: map; }
       .deck { grid-area: deck; justify-self: stretch; width: auto; height: 100%; border-radius: 0; border-top: 0;
         border-right: 1px solid var(--dark-line); box-shadow: none; transform: translate3d(0, 0, 0); transition: none; }
       .deck-handle { display: none; }
@@ -347,7 +351,11 @@
 
   <div id="dash" hidden>
     <div id="route-map" role="region" tabindex="0" aria-label="Active Route Map: today's stops. Press Enter for turn-by-turn directions to the current stop."></div>
-    <button class="map-fit" id="map-fit" type="button" aria-label="Show the whole route on the map">⤢ Whole route</button>
+    <div class="map-tools" id="map-tools">
+      <button class="map-fit" id="map-fit" type="button" aria-label="Show the whole route on the map">⤢ Whole route</button>
+      <button class="map-fit" id="map-radar" type="button" aria-pressed="false">Rain radar</button>
+      <span class="radar-note" id="radar-note" role="status" hidden></span>
+    </div>
 
     <section class="deck" id="deck" data-snap="peek" aria-label="Route Sequence Deck">
       <button class="deck-handle" id="deck-handle" type="button" aria-label="Show more of the route" aria-expanded="false"><span class="grip"></span></button>
@@ -759,6 +767,29 @@
         edge: { type: "FeatureCollection", features: boxes.map((b) => ({ type: "Feature", geometry: { type: "Polygon", coordinates: [areaRing(b)] } })) },
       };
     }
+    // Rain radar for the rain-day call: NOAA nowCOAST (keyless, open to browsers). MRMS base reflectivity updates about
+    // every 4 minutes and lightning strike density every 10; both sit under the route and stops and refresh every 5 minutes.
+    const NOAA = "https://nowcoast.noaa.gov/geoserver/observations";
+    const radar = { on: store.get("po-radar") === "1" || new URLSearchParams(location.search).has("radar"), timer: null };
+    const wms = (service, layer, stamp) => `${NOAA}/${service}/ows?service=WMS&version=1.1.1&request=GetMap&layers=${layer}` +
+      `&styles=&format=image/png&transparent=true&srs=EPSG:3857&bbox={bbox-epsg-3857}&width=256&height=256&_=${stamp}`;
+    function setRadar(on) {
+      radar.on = on; store.set("po-radar", on ? "1" : "0");
+      $("map-radar").setAttribute("aria-pressed", String(on));
+      clearTimeout(radar.timer);
+      if (!map || !map.getLayer("line")) return;      // applied once the map has loaded
+      for (const id of ["radar", "lightning"]) { if (map.getLayer(id)) map.removeLayer(id); if (map.getSource(id)) map.removeSource(id); }
+      $("radar-note").hidden = !on;
+      if (!on) return;
+      const stamp = Math.floor(Date.now() / 240000);   // a new picture every 4 minutes, cached in between
+      const attribution = "Radar and lightning: NOAA nowCOAST (MRMS, NLDN)";
+      map.addSource("radar", { type: "raster", tileSize: 256, attribution, tiles: [wms("weather_radar", "conus_base_reflectivity_mosaic", stamp)] });
+      map.addSource("lightning", { type: "raster", tileSize: 256, tiles: [wms("lightning_detection", "ldn_lightning_strike_density", stamp)] });
+      map.addLayer({ id: "radar", type: "raster", source: "radar", paint: { "raster-opacity": 0.7, "raster-fade-duration": 0 } }, "line");
+      map.addLayer({ id: "lightning", type: "raster", source: "lightning", paint: { "raster-opacity": 0.85, "raster-fade-duration": 0 } }, "line");
+      $("radar-note").textContent = `Radar ${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} · NOAA`;
+      radar.timer = setTimeout(() => setRadar(true), 5 * 60 * 1000);
+    }
     function setMapData(refit = true) {
       const cur = current();
       const area = areaData();
@@ -775,14 +806,14 @@
       if (refit) fitMap();
     }
     function drawMap() {
-      if (!window.maplibregl) { $("route-map").hidden = true; $("map-fit").hidden = true; return; }
+      if (!window.maplibregl) { $("route-map").hidden = true; $("map-tools").hidden = true; return; }
       if (map) { if (map.getSource("line")) setMapData(); return; }
       const first = route.stops[0];
       try {
         map = new maplibregl.Map({ container: "route-map", style: "https://tiles.openfreemap.org/styles/positron",
                                    center: first ? [first.lng, first.lat] : [-95.4, 30.1], zoom: 11, attributionControl: false });
         map.addControl(new maplibregl.AttributionControl({ compact: true }), "top-right");
-      } catch { map = null; $("route-map").hidden = true; $("map-fit").hidden = true; return; }
+      } catch { map = null; $("route-map").hidden = true; $("map-tools").hidden = true; return; }
       map.on("load", () => {
         map.addSource("area-veil", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
         map.addSource("area-edge", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
@@ -805,6 +836,7 @@
         // Start with the credits folded behind the (i) button so they don't sit on top of the pins.
         map.getContainer().querySelector(".maplibregl-ctrl-attrib")?.classList.remove("maplibregl-compact-show");
         setMapData();
+        if (radar.on) setRadar(true);
       });
       // Tap the map (a tap, not a drag or pinch) → turn-by-turn to the current stop.
       map.on("click", () => { const c = current(); if (c) startNav(c); });
@@ -1181,6 +1213,8 @@
 
     $("cta").addEventListener("click", onCta);
     $("map-fit").addEventListener("click", () => fitMap(true));
+    $("map-radar").setAttribute("aria-pressed", String(radar.on));
+    $("map-radar").addEventListener("click", () => setRadar(!radar.on));
     $("route-map").addEventListener("keydown", (e) => {
       if (e.target !== e.currentTarget || (e.key !== "Enter" && e.key !== " ")) return;
       e.preventDefault();
