@@ -39,6 +39,10 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
   (EN/ES), tagged links + QR codes (`?ref=<channel>-<area>`), printable yard sign / door hanger / flyer, and a
   scoreboard of bookings per channel. `static/site.js` keeps the visitor's source (ref, UTM, or Google / ChatGPT /
   Perplexity referrer) 30 days and the booking saves it in `jobs.source`. Only short labels, never personal data.
+- Area map cards: `tools/make_area_cards.py` draws every street of each area (OpenFreeMap tiles, Post One colors,
+  the mowed area outlined in brass) as `static/img/area-<slug>-<weekday>.jpg` (1200x630, the area and neighborhood
+  pages' share image) and `-square.jpg` (posts; downloadable on the marketing hub). Re-run it when an area's boxes
+  or day change; `tests/test_area_cards.py` fails until you do. Keep the OpenStreetMap credit on the cards.
 - GEO: `/llms.txt` (plain facts for AI assistants, live data), FAQPage data on home (parsed from the visible FAQ) and
   on each area page (`area_faq`), robots.txt welcomes AI search crawlers, `sameAs` from the *_URL profile settings.
 - Crew "Report a problem" (`app/issues.py`): damage / equipment / access / delay with a photo; first item on the owner

@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 
 from fastapi.testclient import TestClient
 
-from app.local_pages import AREAS, HOODS
+from app.local_pages import AREAS, HOODS, area_card_path
 from app.main import create_app
 from app.local_pages import SAMPLE_SIZES, dollars
 from app.pricing import MAX_SQFT, YARD_TYPES, yield_mow_fee
@@ -364,7 +364,9 @@ def test_every_public_page_has_canonical_and_share_tags(client):
                  *AREA_PATHS, *HOOD_PATHS):
         t = client.get(path).text
         assert t.count('rel="canonical"') == 1 and f'<link rel="canonical" href="http://testserver{path}">' in t, path
-        assert t.count('property="og:image"') == 1 and 'content="http://testserver/static/icons/post-one-share.jpg"' in t, path
+        area = next((x for x in AREAS if path.startswith(f"/local/{x.slug}")), None)   # area pages share their street map
+        image = area_card_path(area) if area else "/static/icons/post-one-share.jpg"
+        assert t.count('property="og:image"') == 1 and f'content="http://testserver{image}"' in t, path
 
 
 def test_home_faq_days_match_the_area_schedule(client):

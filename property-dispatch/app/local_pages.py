@@ -136,6 +136,13 @@ def hoods_in(area: Area) -> list[Hood]:
     return [h for h in HOODS if h.area == area.slug]
 
 
+def area_card_path(area: Area, square: bool = False) -> str:
+    """The area's street-map card (made by tools/make_area_cards.py). The mowing day is in the name, so a changed
+    day can't keep showing the old one: tests/test_area_cards.py fails until the cards are made again."""
+    day = WEEKDAY_NAMES[zone_by_key(area.zone_key).service_weekday].lower()
+    return f"/static/img/area-{area.slug}-{day}{'-square' if square else ''}.jpg"
+
+
 def resolve(slug: str) -> str | None:
     """The area slug a URL points at (aliases and capitals folded in), or None if we don't serve it."""
     key = ALIASES.get(slug.lower(), slug.lower())
@@ -653,7 +660,7 @@ def area_html(settings: Settings, version: str, area: Area, site: str, day: date
                    f"Flat prices from {dollars(low)} a visit before tax. Veteran-owned. Book online.")
     ld = f'\n  <script type="application/ld+json">{script_json(structured_data(settings, area, site))}</script>'
     return layout(settings, version, title=title, description=description, body=body, canonical=page_url,
-                  og_image=f"{site}/static/icons/post-one-share.jpg", head_extra=ld, page="area")
+                  og_image=f"{site}{area_card_path(area)}", head_extra=ld, page="area")
 
 
 def hood_structured_data(settings: Settings, area: Area, hood: Hood, site: str) -> dict:
@@ -742,7 +749,7 @@ def hood_html(settings: Settings, version: str, hood: Hood, site: str, day: date
                    f"Flat prices from {dollars(low)} a visit before tax. Veteran-owned. Book online.")
     ld = f'\n  <script type="application/ld+json">{script_json(hood_structured_data(settings, area, hood, site))}</script>'
     return layout(settings, version, title=title, description=description, body=body, canonical=page_url,
-                  og_image=f"{site}/static/icons/post-one-share.jpg", head_extra=ld, page="area")
+                  og_image=f"{site}{area_card_path(area)}", head_extra=ld, page="area")
 
 
 def area_links(areas) -> str:
