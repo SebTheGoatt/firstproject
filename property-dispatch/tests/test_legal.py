@@ -153,3 +153,11 @@ def test_refund_policy_matches_what_the_app_enforces(client):
     assert "We never charge your card more without your OK" in terms and "October 22, 2026" in terms
     for path in ("/", "/services/lawn-mowing", "/llms.txt"):
         assert "before the crew arrives" not in client.get(path).text, path
+
+
+def test_pages_never_say_the_price_changes_on_site(client):
+    """The terms lock the price at booking; the home page and booking form say the same."""
+    for path in ("/", "/book"):
+        t = client.get(path).text
+        assert "the price only changes if" not in t, path
+        assert "never charged more without your OK" in t, path
