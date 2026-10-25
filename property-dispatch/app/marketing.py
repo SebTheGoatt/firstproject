@@ -62,6 +62,83 @@ def tagged(site: str, path: str, ref: str) -> str:
     return f"{site}{path}?ref={ref}"
 
 
+def business_facts(settings: Settings, site: str) -> str:
+    """What an AI assistant may say about Post One, from live data and the owner's settings. Every prompt in the
+    pack carries it, so drafts quote the real areas, days, prices and policy instead of inventing them."""
+    low, high = (dollars(x) for x in price_range())
+    days = "; ".join(f"{WEEKDAY_NAMES[z.service_weekday]}: {short_name(z)}"
+                     for z in sorted(SERVICE_ZONES, key=lambda z: z.service_weekday))
+    pay = ("Customers pay by card, Apple Pay or Google Pay when they book; the crew only goes to paid visits."
+           if settings.prepay_required and settings.stripe_enabled else "Payment is taken by card or cash.")
+    contact = ", ".join(x for x in (settings.business_email, settings.business_phone) if x) or "reply to any of our texts"
+    lines = [
+        f"- Business: {settings.business_name} (operated by {settings.legal_name}), veteran-owned lawn mowing based in "
+        f"Spring, TX. Website: {site}",
+        "- Service: residential lawn mowing. Bin cleaning and gutter cleaning are add-ons to a mowing visit. "
+        "Holiday lighting is by quote only, in season.",
+        f"- One area a day: {days}. Saturday is for weather make-ups only. Sunday off.",
+        f"- Price: {low} to {high} a visit before tax, set by lawn size and yard type. The full price with tax is shown "
+        "before booking. No contract or subscription. The price is locked: we never charge more on site without the "
+        "customer's OK.",
+        f"- Neighbor discount: {percent(density_pct(2))}% off the mowing with 2-4 customers booked within half a mile, "
+        f"{percent(density_pct(5))}% with 5 or more.",
+        f"- {pay}",
+        "- Cancel free, with a full refund, until we text that the crew is on the way; after that text, no refund.",
+        "- Weather: we mow through light rain. Lightning, heavy rain or soft ground moves the visit to a make-up day "
+        "(usually Saturday), or a full refund if that day doesn't work.",
+        "- Locked out (locked gate, loose pet, blocked lawn): the parts we couldn't reach are not refunded.",
+        "- Not happy: tell us within 48 hours; we come back and fix it at no charge; if it's still not right, a full "
+        "refund for that visit.",
+        f"- Insurance: {settings.liability_coverage} in general liability." if settings.liability_coverage.strip()
+        else "- Insurance: never mention it.",
+        "- Crew background checks: every crew member has passed one." if settings.crew_background_checked
+        else "- Background checks: never mention them.",
+        f"- How customers reach us: {contact}.",
+    ]
+    rules = ("Rules: plain, short, friendly sentences. Write as \"we\" to \"you\". No military jargon or role-play. "
+             "No emoji unless I ask. Never invent reviews, ratings, numbers, prices, discounts or promises: use only "
+             "the facts above, and if something isn't covered, say we'll check and get back to them. "
+             "In Spanish use \"usted\".")
+    return "Facts about the business (use only these):\n" + "\n".join(lines) + "\n\n" + rules
+
+
+PROMPTS = (
+    ("review", "Reply to a Google review", "Someone left a review, good or bad.",
+     "Write a short public reply (2 to 4 sentences) to this Google review of our lawn mowing business. Thank them by "
+     "first name. If it's negative, own the specific problem, say what we'll do about it within the policy below, and "
+     "ask them to reply to our texts so we can fix it. Don't offer a discount or a free mow unless I add one here: "
+     "[OPTIONAL: what I'm offering].\n\nThe review:\n[PASTE THE REVIEW]"),
+    ("customer", "Answer a customer", "A text or email asking about price, a day, rain, a refund or a problem.",
+     "Draft my reply to this customer message, as a text under 320 characters (or a short email if they emailed). "
+     "Answer exactly what they asked, using only the policy below. If they want something the policy doesn't allow, "
+     "say no kindly and offer what it does allow.\n\nTheir message:\n[PASTE THEIR MESSAGE]"),
+    ("partner", "Email a property manager or HOA", "Reaching out to a business that manages homes in our areas.",
+     "Write a cold email (under 120 words) to this property manager or HOA management company. Open with one specific "
+     "detail from their website, then explain how a set mowing day for their homes in our areas, the price shown up "
+     "front and before/after photos make their job easier. Ask for a 10-minute call. Don't claim we already work with "
+     "anyone. Leave a line at the end for our postal address and an unsubscribe sentence (required by law before "
+     "sending).\n\nTheir company and what their website says:\n[PASTE NAME, AREA AND A DETAIL FROM THEIR SITE]"),
+    ("video", "Caption a before & after video", "Posting a Reel, TikTok or Short from a job.",
+     "Write a caption for a short before & after mowing video: a hook first line under 8 words, one line on what we "
+     "did, the area and its mowing day, \"book at the link in our bio\", and 5 hashtags. Then the same caption in "
+     "Spanish. Never name the customer or show their address.\n\nWhat's in the video:\n[DESCRIBE THE VIDEO AND THE AREA]"),
+    ("spanish", "Translate into Spanish", "Any message, post or sign for Spanish-speaking customers.",
+     "Translate this into natural Spanish as spoken in the Houston area, using \"usted\". Keep prices, dates, links "
+     "and our name exactly as they are. Make it sound written in Spanish, not translated.\n\nThe text:\n[PASTE THE TEXT]"),
+    ("week", "Plan next week from the scoreboard", "Once a week, after checking where bookings came from.",
+     "Here are my booking numbers by channel from my marketing scoreboard. Give me 3 specific things to do next week, "
+     "most important first, each one sentence, based only on these numbers and the facts below. If the numbers are "
+     "too small to tell, say so.\n\nMy numbers:\n[PASTE \"WHERE BOOKINGS COME FROM\" AND \"BEST LINKS AND SIGNS\"]"),
+)
+
+
+def prompt_pack(settings: Settings, site: str) -> list[dict]:
+    """Copy-ready prompts for ChatGPT, Claude or any assistant: the owner's recurring writing jobs, each with the live
+    facts and rules attached. Fill in the [BRACKETS] and send."""
+    facts = business_facts(settings, site)
+    return [{"key": k, "title": t, "when": w, "prompt": f"{task}\n\n{facts}"} for k, t, w, task in PROMPTS]
+
+
 def poster_path(ext: str = "jpg") -> str:
     """The service map poster (tools/make_area_poster.py). Its name carries a fingerprint of the areas, boxes and days,
     so a schedule change can't keep offering an old poster: tests/test_area_cards.py fails until it is made again."""
@@ -231,6 +308,7 @@ def register_marketing(app: FastAPI, settings: Settings, owner, page, version: s
                            "day": WEEKDAY_NAMES[zone_by_key(a.zone_key).service_weekday],
                            "square": area_card_path(a, square=True), "wide": area_card_path(a)} for a in AREAS],
             "poster": {"jpg": poster_path("jpg"), "pdf": poster_path("pdf")},
+            "prompts": prompt_pack(settings, site),
         }
 
     @app.get("/marketing/qr.svg", include_in_schema=False)

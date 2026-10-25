@@ -109,3 +109,20 @@ def test_social_profiles_appear_only_when_set(settings, repo):
     settings.facebook_url, settings.instagram_url, settings.yelp_url = "https://facebook.com/postone", "not-a-link", ""
     c = TestClient(create_app(settings, repo=repo, geocoder=FakeGeocoder(), sms=None))
     assert json.loads(LD.findall(c.get("/").text)[0])["sameAs"] == ["https://facebook.com/postone"]
+
+
+def test_prompt_pack_carries_live_facts_and_only_true_claims(client, settings):
+    from app.local_pages import dollars, price_range
+    from app.marketing import prompt_pack
+    pack = client.get("/api/owner/marketing", headers=CREW).json()["prompts"]
+    assert [p["key"] for p in pack] == ["review", "customer", "partner", "video", "spanish", "week"]
+    text = pack[0]["prompt"]
+    for day in ("Monday: Spring", "Tuesday: Klein", "Wednesday: New Caney & Splendora", "Thursday: Colony Ridge",
+                "Friday: Cleveland & Plum Grove"):
+        assert day in text
+    assert dollars(price_range()[0]) in text and "until we text that the crew is on the way" in text
+    assert "Insurance: never mention it." in text and "Background checks: never mention them." in text
+    settings.liability_coverage, settings.crew_background_checked = "$1,000,000", True
+    text = prompt_pack(settings, "https://example.com")[1]["prompt"]
+    assert "$1,000,000 in general liability" in text and "passed one" in text and "never mention" not in text
+    assert all("[" in p["prompt"] for p in pack)                         # each one has a blank to fill in
