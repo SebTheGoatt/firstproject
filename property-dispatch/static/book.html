@@ -462,7 +462,7 @@
       if (lockedScope(q)) priceNote.append(Object.assign(document.createElement("span"),
         { className: "verify-badge", textContent: "✓ Price locked" }), " ",
         "You pay this total for the area you chose. No surprise changes on site.");
-      else priceNote.append("Your crew confirms the lawn size on site; the price only changes if it's different.");
+      else priceNote.append("Your price is locked when you book. Want more mowed than you booked? The crew quotes it first; you're never charged more without your OK.");
       if ((q.add_ons || []).some((a) => !a.scope && !a.info && a.price == null))   // a quote add-on, not the yard / size notes
         priceNote.append(" Holiday lighting is a free quote: the crew takes a look and you decide later. Nothing is charged for it.");
     }

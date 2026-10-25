@@ -475,8 +475,8 @@
     "We don't serve that address yet.": "Todavía no damos servicio en esa dirección.",
     "Holiday lighting is a free quote: the crew takes a look and you decide later. Nothing is charged for it.":
       "Las luces navideñas son una cotización gratis: el equipo revisa y tú decides después. No se cobra nada por ella.",
-    "Your crew confirms the lawn size on site; the price only changes if it's different.":
-      "El equipo confirma el tamaño del césped en el lugar; el precio solo cambia si es diferente.",
+    "Your price is locked when you book. Want more mowed than you booked? The crew quotes it first; you're never charged more without your OK.":
+      "Su precio queda fijo al reservar. ¿Quiere que cortemos más de lo que reservó? El equipo le da el precio primero; nunca le cobramos más sin su permiso.",
     "Pay your way": "Paga como prefieras",
     "Payment method": "Forma de pago",
     "Cash to the crew": "Efectivo al equipo",
