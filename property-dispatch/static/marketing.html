@@ -204,6 +204,13 @@
     .qr-box { text-align: center; }
     .qr-box img { width: 220px; height: 220px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
     .row-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+    .prompts { list-style: none; margin: 0; padding: 0; }
+    .prompts li { padding: 12px 16px; border-top: 1px solid var(--line); display: grid; gap: 6px; }
+    .prompts .post-h { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .prompts .when { margin: 0; color: var(--muted); font-size: 14px; }
+    .prompts summary { cursor: pointer; font-size: 14px; color: var(--green-ink); width: fit-content; }
+    .prompts pre { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: inherit; font-size: 13px; line-height: 1.5; background: var(--ground);
+      border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; max-height: 280px; overflow: auto; }
     .maps { list-style: none; margin: 0; padding: 16px; display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
     .maps li { display: grid; gap: 8px; align-content: start; min-width: 0; }
     .maps img { width: 100%; height: auto; aspect-ratio: 1; border-radius: 8px; border: 1px solid var(--line); background: #0f2b22; }
@@ -254,6 +261,12 @@
             <ul class="maps" id="maps"></ul>
             <p class="note" id="poster-row" hidden><b>Service map poster</b> (18×24 in, all areas and days, QR code that books, tagged "poster"):
               <a id="poster-pdf" download>PDF for the print shop</a> · <a id="poster-jpg" download>Image</a></p>
+          </section>
+
+          <section class="panel sec" aria-labelledby="h-prompts">
+            <header><h2 id="h-prompts">AI prompts</h2><small>for ChatGPT, Claude or any assistant</small></header>
+            <p class="note">Copy one, paste it into the chat, fill in the [BRACKETS] and send. Each prompt carries today's areas, days, prices and policies, so the answer stays true to how we work.</p>
+            <ul class="prompts" id="prompts"></ul>
           </section>
 
           <section class="panel sec" aria-labelledby="h-build">
@@ -377,6 +390,13 @@
         el("a", { class: "btn sm", href: `/owner/marketing/print?kind=${k}&path=${encodeURIComponent(t.path)}&ref=${k}${t.area ? "-" + t.area : ""}`, target: "_blank", rel: "noopener" }, `Print ${label.toLowerCase()}`)));
     }
 
+    function renderPrompts() {
+      $("prompts").replaceChildren(...(data.prompts || []).map((p) => el("li", {},
+        el("div", { class: "post-h" }, el("b", {}, p.title),
+          Object.assign(el("button", { class: "btn sm", type: "button", "aria-label": `Copy the "${p.title}" prompt` }, "Copy"), { onclick: () => copy(p.prompt) })),
+        el("p", { class: "when" }, p.when),
+        el("details", {}, el("summary", {}, "See the prompt"), el("pre", { tabindex: "0" }, p.prompt)))));
+    }
     function renderMaps() {
       $("maps").replaceChildren(...(data.map_cards || []).map((m) => el("li", {},
         el("img", { src: m.square, alt: `Street map of ${m.area} with the area we mow outlined`, loading: "lazy", width: "180", height: "180" }),
@@ -407,7 +427,7 @@
       if (!res || !res.ok) { $("msg").hidden = false; $("msg").textContent = res && res.status === 403 ? "Only the owner can see this." : "Couldn't load. Sign in again in the crew app."; return; }
       data = await res.json();
       $("app").hidden = false;
-      renderPosts(); renderScore(); renderBuilder(); renderMaps();
+      renderPosts(); renderScore(); renderBuilder(); renderMaps(); renderPrompts();
     })();
   </script>
 </body>

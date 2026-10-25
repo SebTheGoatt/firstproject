@@ -60,6 +60,10 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
   the address bar at once). Price, area check, consent and payment run as for any booking; tagged `source=rebook`
   ("Repeat customer" on the scoreboard). Never put a "book again" pitch in the texts: SMS consent covers booking
   updates only.
+- AI prompt pack on the marketing hub (`prompt_pack()` / `business_facts()` in `app/marketing.py`): six copy-ready
+  prompts (review reply, customer reply, property-manager email, video caption, Spanish, weekly plan), each carrying
+  live areas/days/prices/policy and the claim rules (insurance and background checks only when the settings say so).
+  When a policy or fact changes, it changes there too. Inspired by prompts.chat; generic libraries don't know us.
 - Crew "Report a problem" (`app/issues.py`): damage / equipment / access / delay with a photo; first item on the owner
   screen; email via Resend when set. Needs `supabase/migrations/20261028000000_issues_and_sources.sql`.
 
