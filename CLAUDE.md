@@ -34,8 +34,15 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 - Display pages reuse "bookings that day" counts for 30s (`cached_count`); taking a booking always counts fresh.
 - Route planning: exact Held-Karp up to 12 stops (milliseconds); OR-Tools above that with a scaled time budget.
 - Crew route map: the day's area comes with the route (`RouteView.areas`, from the stops' zones) and is drawn as a
-  solid green edge with a light veil outside, so an off-area stop stands out. 3D buildings were tried and dropped:
-  OpenStreetMap has almost no houses mapped in our areas (0–3 per view vs 130+ downtown); revisit if that changes.
+  solid green edge with a light veil outside, so an off-area stop stands out. 3D buildings from OpenStreetMap were
+  dropped (0–3 houses per view in our areas); Overture Maps buildings cover them (1,351 in one Klein view, 358 in
+  Colony Ridge) and are used on the owner's dispatch board.
+- Owner dispatch board `/owner/dispatch` (`app/dispatch_board.py` + `static/dispatch.html`, "Dispatch" in the owner
+  menu): the week (area, bookings vs quota, money), the day's real road path (OSRM multi-stop `route_path()`, kept in
+  memory per built route; straight legs if OSRM is down), numbered stops, base, area outline, 3D Overture buildings
+  (PMTiles `overturemaps-extras-us-west-2/tiles/<release>/buildings.pmtiles`, keyless, CORS-open; bump the release
+  now and then), NOAA radar toggle, finish time vs closing ("Done by 2:37 PM · 2h 23m to spare"), visits not on the
+  route with the reason, and Build/Rebuild, Rain day, Manifest and Move. Inspired by TopoExport.
 - Rain radar on the route map ("Rain radar" toggle, remembered per phone; `/crew/dashboard?radar=1` from the owner's
   "Check the radar" link next to Rain day): NOAA nowCOAST WMS, keyless and CORS-open — MRMS base reflectivity
   (~4 min) + NLDN lightning density (~10 min), refreshed every 5 min, credited in the map attribution. Idea taken

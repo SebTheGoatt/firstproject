@@ -49,6 +49,7 @@ from .live_feed import record_booking, register_live_routes
 from .about_page import register_about_page
 from .issues import register_issues
 from .marketing import register_marketing
+from .dispatch_board import register_dispatch_board
 from .service_pages import register_service_pages
 from .legal_pages import SMS_CONSENT, legal_footer_html, register_legal_pages
 from .local_pages import brand_html, brand_lines, home_faq_structured_data, home_structured_data, not_found_page, register_local_pages, with_share_tags
@@ -340,6 +341,7 @@ def create_app(
     register_command(app, settings, owner_auth, page)     # owner's command view: /owner/command
     register_issues(app, settings, crew_auth, owner_auth)  # crew problem reports with photos → owner
     register_marketing(app, settings, owner_auth, page, version)   # owner marketing hub: /owner/marketing
+    register_dispatch_board(app, settings, owner_auth, page, build_route_view, route_areas)   # /owner/dispatch
     register_agent_api(app, settings, build={"static_version": version, "commit": os.environ.get("RENDER_GIT_COMMIT", "")[:7]})   # scoped, audited keys for StarNet agents (off unless AGENT_KEY_READ / AGENT_KEY_OPS are set)
     register_agent_routes(app, settings, crew_auth)   # owner-only Ollama dispatch assistant (off unless OLLAMA_BASE_URL is set)
     register_local_pages(app, settings, version)      # server-rendered /local area pages + /sitemap.xml for search engines

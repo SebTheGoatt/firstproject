@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Dispatch | {{BUSINESS_NAME}}</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#FFFFFF">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="preload" href="/static/fonts/public-sans-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/public-sans-600.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <style>
+    /* Dispatch board. The owner screen's daylight look: flat sheets, one data hue (Field Green), red only when
+       something is wrong. The map is the stage; the week sits on top, the day's numbers and stops on the left. */
+    @font-face { font-family: "Public Sans"; font-weight: 400; font-display: swap; src: url(/static/fonts/public-sans-400.woff2) format("woff2"); }
+    @font-face { font-family: "Public Sans"; font-weight: 600; font-display: swap; src: url(/static/fonts/public-sans-600.woff2) format("woff2"); }
+    @font-face { font-family: "Public Sans"; font-weight: 700; font-display: swap; src: url(/static/fonts/public-sans-700.woff2) format("woff2"); }
+    :root {
+      --ground: #F6F7F3; --sheet: #FFFFFF; --line: #E3E6DF; --line-strong: #CFD4CB; --track: #EDEFEA;
+      --ink: #14201B; --ink-2: #3D4A44; --muted: #5F6B65;
+      --green: #2E7D4F; --green-soft: #E6F1EA; --green-ink: #1F5A3C; --brass: #8A6210; --red: #B42318; --red-soft: #FBE9E7;
+      --radius: 10px; --font: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--ground); }
+    body { margin: 0; background: var(--ground); color: var(--ink); font: 400 14px/1.5 var(--font); -webkit-font-smoothing: antialiased; }
+    a { color: var(--green-ink); text-underline-offset: 3px; }
+    :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; border-radius: 4px; }
+    .num { font-variant-numeric: tabular-nums; }
+
+    .bar { height: 56px; display: flex; align-items: center; gap: 16px; padding: 0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+      border-bottom: 1px solid var(--line); background: var(--sheet); position: sticky; top: 0; z-index: 5; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--ink); text-decoration: none; white-space: nowrap; }
+    .brand small { font-weight: 400; color: var(--muted); font-size: 14px; }
+    .bar nav { display: flex; gap: 4px; margin-left: auto; overflow-x: auto; scrollbar-width: none; }
+    .bar nav::-webkit-scrollbar { display: none; }
+    .bar nav a { color: var(--ink-2); text-decoration: none; padding: 8px 12px; border-radius: 8px; white-space: nowrap; font-weight: 500; }
+    .bar nav a:hover { background: var(--ground); }
+    .bar nav a[aria-current="page"] { background: var(--track); color: var(--ink); }
+
+    .msg { max-width: 640px; margin: 48px auto; padding: 0 16px; color: var(--ink-2); }
+
+    /* The week: one tile per working day, each naming its area. */
+    .week { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; padding: 12px max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left));
+      background: var(--sheet); border-bottom: 1px solid var(--line); }
+    .day { display: grid; gap: 2px; text-align: left; padding: 10px 12px; min-height: 76px; border: 1px solid var(--line); border-radius: var(--radius);
+      background: var(--sheet); color: var(--ink); font: inherit; cursor: pointer; transition: border-color 120ms ease-out, background-color 120ms ease-out; }
+    .day:hover { border-color: var(--line-strong); }
+    .day[aria-pressed="true"] { border-color: var(--green); background: var(--green-soft); }
+    .day .d { font-weight: 700; }
+    .day .a { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .day[aria-pressed="true"] .a { color: var(--green-ink); }
+    .day .cap { height: 4px; border-radius: 99px; background: var(--track); overflow: hidden; margin-top: 6px; }
+    .day .cap span { display: block; height: 100%; background: var(--green); }
+    .day .n { font-size: 12px; color: var(--muted); }
+
+    /* The board: day panel left, map right. */
+    .board { display: grid; grid-template-columns: minmax(340px, 400px) minmax(0, 1fr); height: calc(100dvh - 56px - 101px); min-height: 560px; }
+    .panel { overflow-y: auto; border-right: 1px solid var(--line); background: var(--ground); padding: 16px; display: grid; gap: 14px; align-content: start; }
+    .stage { position: relative; min-width: 0; }
+    #map { position: absolute; inset: 0; background: #eef1ec; }
+
+    .head h1 { margin: 0; font-size: 22px; line-height: 1.25; letter-spacing: -0.01em; }
+    .head p { margin: 2px 0 0; color: var(--ink-2); }
+    .verdict { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 4px 10px; border-radius: 999px; font-weight: 600; font-size: 13px;
+      background: var(--green-soft); color: var(--green-ink); }
+    .verdict.late { background: var(--red-soft); color: var(--red); }
+    .verdict.none { background: var(--track); color: var(--ink-2); }
+
+    .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .stat { background: var(--sheet); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; min-width: 0; }
+    .stat .v { font-size: 18px; font-weight: 700; line-height: 1.2; }
+    .stat .k { color: var(--muted); font-size: 12px; }
+
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .btn { font: 600 14px/1 var(--font); min-height: 40px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--line-strong);
+      background: var(--sheet); color: var(--ink); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+      transition: background-color 120ms ease-out, transform 120ms ease-out; }
+    .btn:hover { background: var(--ground); }
+    .btn:active { transform: scale(0.97); }
+    .btn.primary { background: var(--green); border-color: var(--green); color: #fff; }
+    .btn.primary:hover { background: var(--green-ink); }
+    .btn[data-armed] { background: var(--ink); border-color: var(--ink); color: #fff; }
+    .btn:disabled { opacity: 0.55; cursor: default; transform: none; }
+    .btn.sm { min-height: 34px; padding: 0 10px; font-size: 13px; }
+
+    .card { background: var(--sheet); border: 1px solid var(--line); border-radius: var(--radius); }
+    .card > h2 { margin: 0; padding: 12px 14px; font-size: 14px; font-weight: 700; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; }
+    .card > h2 small { font-weight: 400; color: var(--muted); }
+    .empty { margin: 0; padding: 14px; color: var(--muted); }
+
+    .stops { list-style: none; margin: 0; padding: 0; }
+    .stop { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 4px 10px; padding: 10px 14px; border-top: 1px solid var(--line); }
+    .stop:first-child { border-top: 0; }
+    .stop.on { background: var(--green-soft); }
+    .seq { grid-row: span 3; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px;
+      background: var(--green); color: #fff; border: 0; cursor: pointer; font-family: var(--font); }
+    .stop.done .seq { background: var(--line-strong); color: var(--ink); }
+    .who { display: flex; justify-content: space-between; gap: 8px; min-width: 0; }
+    .who b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .who .eta { color: var(--ink-2); white-space: nowrap; }
+    .addr { color: var(--ink-2); font-size: 13px; overflow-wrap: anywhere; }
+    .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); }
+    .chip { display: inline-flex; padding: 2px 8px; border-radius: 999px; font-weight: 600; font-size: 12px; background: var(--track); color: var(--ink-2); }
+    .chip.paid { background: var(--green-soft); color: var(--green-ink); }
+    .chip.owed { background: #FFF4D6; color: #7A5300; }
+    .chip.bad { background: var(--red-soft); color: var(--red); }
+    .move { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
+    .move input { font: inherit; min-height: 34px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--sheet); color: var(--ink); }
+    .reason { color: var(--red); font-size: 13px; font-weight: 600; }
+
+    /* Map controls: flat white chips over the map. */
+    .tools { position: absolute; top: 12px; left: 12px; z-index: 2; display: flex; flex-wrap: wrap; gap: 8px; }
+    .tool { font: 600 13px/1 var(--font); min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: rgba(255,255,255,0.96);
+      color: var(--ink); cursor: pointer; box-shadow: 0 1px 2px rgba(20,32,27,0.08); }
+    .tool[aria-pressed="true"] { background: var(--green); border-color: var(--green); color: #fff; }
+    .legend { position: absolute; left: 12px; bottom: 28px; z-index: 2; display: flex; flex-wrap: wrap; gap: 6px 12px; padding: 6px 10px; border-radius: 8px;
+      background: rgba(255,255,255,0.94); border: 1px solid var(--line); font-size: 12px; color: var(--ink-2); max-width: calc(100% - 24px); }
+    .legend i { display: inline-block; width: 18px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
+    .base-pin { width: 30px; height: 33px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25)); }
+    .maplibregl-ctrl-attrib { font-size: 11px; }
+    .maplibregl-ctrl-attrib a { text-decoration: underline; }
+
+    @media (max-width: 900px) {
+      .week { grid-template-columns: repeat(6, minmax(112px, 1fr)); overflow-x: auto; }
+      .board { display: flex; flex-direction: column; height: auto; }
+      .stage { height: 58vh; min-height: 360px; order: -1; }
+      .panel { border-right: 0; overflow: visible; }
+      .legend { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) { .btn, .day { transition: none; } .btn:active { transform: none; } }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="/owner/command"><img src="/static/brand/post-one-mark.svg" alt="" width="22" height="24">{{BRAND_SHORT}} <small>Owner</small></a>
+    <nav aria-label="Owner screens">
+      <a href="/owner/command">Today</a>
+      <a href="/owner/dispatch" aria-current="page">Dispatch</a>
+      <a href="/owner/marketing">Marketing</a>
+      <a href="/crew">Bookings &amp; crew</a>
+      <a href="/crew/dashboard">Crew route</a>
+      <a href="/owner/readiness">Go-live</a>
+    </nav>
+  </header>
+
+  <p class="msg" id="msg" hidden></p>
+  <div id="app" hidden>
+    <nav class="week" id="week" aria-label="Pick a day"></nav>
+    <div class="board">
+      <section class="panel" aria-label="The day">
+        <div class="head">
+          <h1 id="day-title">Dispatch</h1>
+          <p id="day-sub"></p>
+          <span class="verdict none" id="verdict" role="status"></span>
+        </div>
+        <div class="stats" id="stats"></div>
+        <div class="actions">
+          <button class="btn primary" type="button" id="build">Build route</button>
+          <button class="btn" type="button" id="rain">Rain day</button>
+          <button class="btn" type="button" id="manifest">Manifest</button>
+        </div>
+        <section class="card" aria-labelledby="h-stops">
+          <h2 id="h-stops">Stops in order <small id="stops-note"></small></h2>
+          <ol class="stops" id="stops"></ol>
+        </section>
+        <section class="card" aria-labelledby="h-off" id="off-card" hidden>
+          <h2 id="h-off">Not on the route <small id="off-note"></small></h2>
+          <ul class="stops" id="off"></ul>
+        </section>
+      </section>
+      <section class="stage" aria-label="Route map">
+        <div id="map" role="region" aria-label="Map of the day's route: base, numbered stops and the road path"></div>
+        <div class="tools">
+          <button class="tool" type="button" id="fit">Whole route</button>
+          <button class="tool" type="button" id="tilt" aria-pressed="false">3D</button>
+          <button class="tool" type="button" id="radar" aria-pressed="false">Rain radar</button>
+        </div>
+        <div class="legend" aria-hidden="true"><span><i style="background:#2E7D4F"></i>Road path</span><span><i style="background:#9aa7a0"></i>Done</span><span><i style="background:#2E7D4F;height:2px;opacity:.8"></i>Area edge</span></div>
+      </section>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/pmtiles@3.2.1/dist/pmtiles.js"></script>
+  <script>
+    let token = null;
+    try { token = localStorage.getItem("crewToken"); } catch {}
+    const headers = () => ({ "X-Crew-Token": token, "Content-Type": "application/json" });
+    const $ = (id) => document.getElementById(id);
+    function el(tag, attrs = {}, ...kids) {
+      const e = document.createElement(tag);
+      for (const [k, v] of Object.entries(attrs)) k === "class" ? (e.className = v) : e.setAttribute(k, v);
+      e.append(...kids.filter((x) => x != null && x !== false));
+      return e;
+    }
+    const money = (n) => (n ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
+    const miles = (m) => `${((m || 0) / 1609.344).toFixed(1)} mi`;
+    const hm = (min) => { min = Math.round(min || 0); const h = Math.floor(min / 60), m = min % 60; return h ? `${h}h ${String(m).padStart(2, "0")}m` : `${m} min`; };
+    let tz = "America/Chicago";
+    const clock = (iso) => iso ? new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: tz }) : "–";
+    const dayName = (iso, o) => new Date(iso + "T12:00:00").toLocaleDateString("en-US", o);
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    async function api(path, opts = {}) {
+      const res = await fetch(path, { ...opts, headers: headers() });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.detail || "Something went wrong. Try again.");
+      return body;
+    }
+    function twoTap(btn, run) {
+      btn.addEventListener("click", async () => {
+        const label = btn.dataset.label || btn.textContent;
+        if (!btn.dataset.armed) {
+          btn.dataset.label = label; btn.dataset.armed = "1"; btn.textContent = "Tap again to confirm";
+          setTimeout(() => { if (btn.dataset.armed) { delete btn.dataset.armed; btn.textContent = btn.dataset.label; } }, 4000);
+          return;
+        }
+        delete btn.dataset.armed; btn.disabled = true;
+        try { await run(); } catch (e) { alert(e.message); }
+        btn.disabled = false; btn.textContent = btn.dataset.label;
+      });
+      return btn;
+    }
+
+    let day = new URLSearchParams(location.search).get("day"), data = null, week = [];
+
+    // ---------- The week ----------
+    function renderWeek() {
+      $("week").replaceChildren(...week.filter((w) => new Date(w.date + "T12:00:00").getDay() !== 0).slice(0, 6).map((w) => {
+        const full = Math.min(100, Math.round((100 * w.jobs) / Math.max(1, w.quota)));
+        const b = el("button", { class: "day", type: "button", "aria-pressed": String(w.date === day) },
+          el("span", { class: "d" }, dayName(w.date, { weekday: "short", month: "short", day: "numeric" })),
+          el("span", { class: "a" }, w.area || "Off"),
+          el("span", { class: "cap", "aria-hidden": "true" }, el("span", { style: `width:${full}%` })),
+          el("span", { class: "n num" }, `${w.jobs}/${w.quota} booked · ${money(w.expected)}`));
+        b.addEventListener("click", () => { day = w.date; history.replaceState(null, "", `?day=${day}`); renderWeek(); loadDay(); });
+        return b;
+      }));
+    }
+
+    // ---------- The day ----------
+    function renderDay() {
+      const d = data, r = d.route;
+      tz = d.timezone || tz;
+      $("day-title").textContent = `${dayName(d.date, { weekday: "long", month: "long", day: "numeric" })}${d.area ? " · " + d.area : ""}`;
+      $("day-sub").textContent = d.hours ? `Working hours ${d.hours.start}–${d.hours.end}. First mow at ${d.hours.start}.` : "Closed.";
+      const v = $("verdict");
+      if (!r) { v.className = "verdict none"; v.textContent = "Route not built yet"; }
+      else if (d.minutes_to_spare != null && d.minutes_to_spare < 0) {
+        v.className = "verdict late"; v.textContent = `Runs ${hm(-d.minutes_to_spare)} past ${d.hours.end}`;
+      } else if (d.minutes_to_spare != null) { v.className = "verdict"; v.textContent = `Done by ${clock(d.finish_at)} · ${hm(d.minutes_to_spare)} to spare`; }
+      else { v.className = "verdict none"; v.textContent = "Route built"; }
+
+      const stops = r ? r.stops : [];
+      const done = stops.filter((s) => s.completed_at).length;
+      const stat = (v, k) => el("div", { class: "stat" }, el("div", { class: "v num" }, v), el("div", { class: "k" }, k));
+      $("stats").replaceChildren(
+        stat(r ? `${done}/${stops.length}` : "0", "Stops done"),
+        stat(r ? miles(d.path ? d.path.distance_m : r.total_distance_m) : "–", "Driving"),
+        stat(r ? hm((d.path ? d.path.duration_s : r.total_duration_s) / 60) : "–", "Drive time"),
+        stat(r ? hm(d.on_site_min) : "–", "On lawns"),
+        stat(money(d.money.expected), "Booked"),
+        stat(money(d.money.collected), d.money.unpaid ? `Paid · ${d.money.unpaid} not yet` : "Paid"));
+      $("build").textContent = r ? "Rebuild route" : "Build route";
+      $("build").hidden = d.date < d.today;
+      $("rain").hidden = !r || d.date < d.today;
+      $("manifest").hidden = !r;
+      $("stops-note").textContent = r ? `${stops.length} stop${stops.length === 1 ? "" : "s"}` : "";
+
+      $("stops").replaceChildren(...(stops.length ? stops.map((s) => stopRow(s)) : [el("li", { class: "empty" },
+        d.hours ? "No route yet. Bookings get routed at 5 PM the day before, or build it now." : "Sunday: no visits.")]));
+      const off = d.unrouted || [];
+      $("off-card").hidden = !off.length;
+      $("off-note").textContent = off.length ? `${off.length}` : "";
+      $("off").replaceChildren(...off.map((j) => el("li", { class: "stop" },
+        el("span", { class: "seq", style: "background:var(--red-soft);color:var(--red)", "aria-hidden": "true" }, "!"),
+        el("div", { class: "who" }, el("b", {}, j.customer_name), el("span", { class: "eta num" }, j.amount_due != null ? money(j.amount_due) : "")),
+        el("div", { class: "addr" }, j.address),
+        el("div", {}, el("div", { class: "reason" }, j.reason), moveBox(j.job_id)))));
+    }
+    function stopRow(s) {
+      const paid = s.payment_status === "paid";
+      const chip = paid ? el("span", { class: "chip paid" }, "Paid")
+        : s.payment_method === "cash" ? el("span", { class: "chip owed" }, `Cash ${money(s.amount_due)}`)
+        : el("span", { class: "chip bad" }, "Not paid");
+      const state = s.completed_at ? el("span", { class: "chip" }, `Done ${clock(s.completed_at)}`)
+        : s.notified_at ? el("span", { class: "chip paid" }, "On the way") : null;
+      const li = el("li", { class: "stop" + (s.completed_at ? " done" : ""), id: `s-${s.stop_id}` },
+        el("button", { class: "seq", type: "button", "aria-label": `Show stop ${s.sequence} on the map` }, String(s.sequence)),
+        el("div", { class: "who" }, el("b", {}, s.customer_name), el("span", { class: "eta num" }, clock(s.eta))),
+        el("div", { class: "addr" }, s.address),
+        el("div", { class: "meta" }, el("span", {}, s.service_label), el("span", {}, `· ${s.service_minutes || 0} min on site`),
+          s.leg_duration_s ? el("span", {}, `· ${Math.max(1, Math.round(s.leg_duration_s / 60))} min drive`) : null, chip, state,
+          s.completed_at ? null : moveBox(s.job_id)));
+      li.querySelector(".seq").addEventListener("click", () => focusStop(s));
+      return li;
+    }
+    function moveBox(jobId) {
+      const input = el("input", { type: "date", "aria-label": "Move this visit to", min: data.today });
+      const btn = twoTap(el("button", { class: "btn sm", type: "button" }, "Move"), async () => {
+        if (!input.value) throw new Error("Pick a day to move it to.");
+        await api(`/api/owner/jobs/${jobId}/move`, { method: "POST", body: JSON.stringify({ day: input.value }) });
+        await loadDay(); loadWeek();
+      });
+      return el("span", { class: "move" }, input, btn);
+    }
+
+    // ---------- The map ----------
+    const BUILDINGS = "https://overturemaps-extras-us-west-2.s3.us-west-2.amazonaws.com/tiles/2026-10-21.0/buildings.pmtiles";
+    const NOAA = "https://nowcoast.noaa.gov/geoserver/observations";
+    let map = null, ready = false, basePin = null, tilted = false, radarOn = false, drawAnim = 0;
+    const ring = ([w, s, e, n]) => [[w, s], [e, s], [e, n], [w, n], [w, s]];
+    function initMap() {
+      if (!window.maplibregl) { $("map").textContent = "The map couldn't load."; return; }
+      try {
+        const proto = new pmtiles.Protocol(); maplibregl.addProtocol("pmtiles", proto.tile);
+      } catch {}
+      map = new maplibregl.Map({ container: "map", style: "https://tiles.openfreemap.org/styles/positron", center: [-95.3, 30.15], zoom: 10,
+        attributionControl: { compact: true, customAttribution: "Buildings © Overture Maps Foundation" } });
+      map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
+      map.on("load", () => {
+        const labels = map.getStyle().layers.find((l) => l.type === "symbol")?.id;
+        try {
+          map.addSource("bldg", { type: "vector", url: "pmtiles://" + BUILDINGS });
+          map.addLayer({ id: "bldg", type: "fill-extrusion", source: "bldg", "source-layer": "building", minzoom: 14,
+            paint: { "fill-extrusion-color": "#e3e7df", "fill-extrusion-opacity": 0.92,
+                     "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 14, 0, 15.5, ["coalesce", ["get", "height"], 5]],
+                     "fill-extrusion-base": 0 } }, labels);
+        } catch {}
+        for (const id of ["veil", "edge", "path", "stops"]) map.addSource(id, { type: "geojson", data: { type: "FeatureCollection", features: [] }, ...(id === "path" ? { lineMetrics: true } : {}) });
+        map.addLayer({ id: "veil", type: "fill", source: "veil", paint: { "fill-color": "#ffffff", "fill-opacity": 0.5 } });
+        map.addLayer({ id: "edge", type: "line", source: "edge", paint: { "line-color": "#2E7D4F", "line-width": 2, "line-opacity": 0.8 } });
+        map.addLayer({ id: "path-casing", type: "line", source: "path", layout: { "line-cap": "round", "line-join": "round" },
+          paint: { "line-color": "#ffffff", "line-width": 9 } });
+        map.addLayer({ id: "path", type: "line", source: "path", layout: { "line-cap": "round", "line-join": "round" },
+          paint: { "line-width": 5, "line-gradient": grad(1) } });
+        map.addLayer({ id: "stops", type: "circle", source: "stops", paint: {
+          "circle-radius": ["case", ["get", "on"], 15, 12], "circle-color": ["case", ["get", "done"], "#9aa7a0", "#2E7D4F"],
+          "circle-stroke-color": ["case", ["get", "on"], "#14201B", "#ffffff"], "circle-stroke-width": ["case", ["get", "on"], 3, 2] } });
+        map.addLayer({ id: "stop-n", type: "symbol", source: "stops", layout: { "text-field": ["get", "n"], "text-size": 12,
+          "text-font": ["Noto Sans Bold"], "text-allow-overlap": true }, paint: { "text-color": "#ffffff" } });
+        map.on("click", "stops", (e) => { const s = data?.route?.stops.find((x) => x.stop_id === e.features[0].properties.id); if (s) focusStop(s); });
+        map.on("mouseenter", "stops", () => { map.getCanvas().style.cursor = "pointer"; });
+        map.on("mouseleave", "stops", () => { map.getCanvas().style.cursor = ""; });
+        ready = true;
+        if (data) drawMap(true);
+      });
+    }
+    // The road path draws itself in, start to finish (instant with reduced motion).
+    function grad(p) {
+      return p >= 1 ? ["interpolate", ["linear"], ["line-progress"], 0, "#2E7D4F", 1, "#2E7D4F"]
+        : ["interpolate", ["linear"], ["line-progress"], 0, "#2E7D4F", Math.max(p, 0.0001), "#2E7D4F", Math.min(p + 0.0002, 1), "rgba(46,125,79,0)"];
+    }
+    function animatePath() {
+      cancelAnimationFrame(drawAnim);
+      if (reduced) { map.setPaintProperty("path", "line-gradient", grad(1)); return; }
+      const t0 = performance.now(), dur = 1400;
+      const step = (t) => {
+        const p = Math.min(1, (t - t0) / dur), eased = 1 - Math.pow(1 - p, 3);
+        map.setPaintProperty("path", "line-gradient", grad(eased));
+        if (p < 1) drawAnim = requestAnimationFrame(step);
+      };
+      drawAnim = requestAnimationFrame(step);
+    }
+    function drawMap(refit) {
+      if (!ready || !data) return;
+      const d = data, r = d.route, boxes = (d.areas || []).flatMap((a) => a.boxes);
+      const world = [[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]];
+      map.getSource("veil").setData(boxes.length ? { type: "Feature", geometry: { type: "Polygon", coordinates: [world, ...boxes.map((b) => ring(b).reverse())] } } : { type: "FeatureCollection", features: [] });
+      map.getSource("edge").setData({ type: "FeatureCollection", features: boxes.map((b) => ({ type: "Feature", geometry: { type: "Polygon", coordinates: [ring(b)] } })) });
+      const stops = r ? r.stops : [];
+      const line = d.path ? d.path.path : (r && d.base ? [[d.base.lng, d.base.lat], ...stops.map((s) => [s.lng, s.lat]), [d.base.lng, d.base.lat]] : []);
+      map.getSource("path").setData(line.length > 1 ? { type: "Feature", geometry: { type: "LineString", coordinates: line } } : { type: "FeatureCollection", features: [] });
+      setStops(null);
+      if (basePin) { basePin.remove(); basePin = null; }
+      if (d.base) {
+        const img = el("img", { src: "/static/brand/post-one-mark.svg", alt: "", class: "base-pin" });
+        basePin = new maplibregl.Marker({ element: img, anchor: "bottom" }).setLngLat([d.base.lng, d.base.lat]).addTo(map);
+      }
+      if (refit) fit(false);
+      if (line.length > 1) animatePath();
+    }
+    function setStops(onId) {
+      const stops = data?.route?.stops || [];
+      map.getSource("stops").setData({ type: "FeatureCollection", features: stops.map((s) => ({ type: "Feature",
+        properties: { id: s.stop_id, n: String(s.sequence), done: !!s.completed_at, on: s.stop_id === onId },
+        geometry: { type: "Point", coordinates: [s.lng, s.lat] } })) });
+      document.querySelectorAll(".stop.on").forEach((x) => x.classList.remove("on"));
+      if (onId) $(`s-${onId}`)?.classList.add("on");
+    }
+    function fit(animate = true) {
+      const d = data; if (!d || !ready) return;
+      const pts = [...(d.route ? d.route.stops.map((s) => [s.lng, s.lat]) : []), ...(d.base ? [[d.base.lng, d.base.lat]] : [])];
+      const boxes = (d.areas || []).flatMap((a) => a.boxes);
+      if (!pts.length && boxes.length) boxes.forEach((b) => pts.push([b[0], b[1]], [b[2], b[3]]));
+      if (!pts.length) return;
+      const bounds = pts.reduce((b, p) => b.extend(p), new maplibregl.LngLatBounds(pts[0], pts[0]));
+      map.fitBounds(bounds, { padding: 70, maxZoom: 15, pitch: tilted ? 50 : 0, bearing: tilted ? -15 : 0, duration: animate && !reduced ? 700 : 0 });
+    }
+    function focusStop(s) {
+      setStops(s.stop_id);
+      $(`s-${s.stop_id}`)?.scrollIntoView({ block: "nearest", behavior: reduced ? "auto" : "smooth" });
+      // Up close and tilted, so the houses stand up around the stop.
+      map.flyTo({ center: [s.lng, s.lat], zoom: 17, pitch: 58, bearing: -20, duration: reduced ? 0 : 1100 });
+      tilted = true; $("tilt").setAttribute("aria-pressed", "true");
+    }
+    $("fit").addEventListener("click", () => fit(true));
+    $("tilt").addEventListener("click", () => {
+      tilted = !tilted; $("tilt").setAttribute("aria-pressed", String(tilted));
+      map.easeTo({ pitch: tilted ? 55 : 0, bearing: tilted ? -15 : 0, zoom: Math.max(map.getZoom(), tilted ? 15 : map.getZoom()), duration: reduced ? 0 : 700 });
+    });
+    $("radar").addEventListener("click", () => {
+      radarOn = !radarOn; $("radar").setAttribute("aria-pressed", String(radarOn));
+      for (const id of ["radar", "lightning"]) { if (map.getLayer(id)) map.removeLayer(id); if (map.getSource(id)) map.removeSource(id); }
+      if (!radarOn) return;
+      const stamp = Math.floor(Date.now() / 240000);
+      const wms = (svc, layer) => `${NOAA}/${svc}/ows?service=WMS&version=1.1.1&request=GetMap&layers=${layer}&styles=&format=image/png&transparent=true&srs=EPSG:3857&bbox={bbox-epsg-3857}&width=256&height=256&_=${stamp}`;
+      map.addSource("radar", { type: "raster", tileSize: 256, attribution: "Radar and lightning: NOAA nowCOAST", tiles: [wms("weather_radar", "conus_base_reflectivity_mosaic")] });
+      map.addSource("lightning", { type: "raster", tileSize: 256, tiles: [wms("lightning_detection", "ldn_lightning_strike_density")] });
+      map.addLayer({ id: "radar", type: "raster", source: "radar", paint: { "raster-opacity": 0.7 } }, "path-casing");
+      map.addLayer({ id: "lightning", type: "raster", source: "lightning", paint: { "raster-opacity": 0.85 } }, "path-casing");
+    });
+
+    // ---------- Actions ----------
+    twoTap($("build"), async () => { await api(`/api/owner/routes/${day}/build`, { method: "POST" }); await loadDay(); loadWeek(); });
+    twoTap($("rain"), async () => {
+      const r = await api(`/api/owner/days/${day}/rain`, { method: "POST" });
+      alert(`${r.moved} visit${r.moved === 1 ? "" : "s"} moved to ${dayName(r.to, { weekday: "long", month: "short", day: "numeric" })}. Each customer got a text.`);
+      await loadDay(); loadWeek();
+    });
+    $("manifest").addEventListener("click", async () => {
+      const res = await fetch(`/api/owner/manifest/${day}`, { headers: headers() });
+      if (!res.ok) return alert("No manifest for this day yet.");
+      const w = window.open("", "_blank");
+      if (!w) return alert("Allow pop-ups to open the manifest.");
+      const pre = w.document.createElement("pre"); pre.textContent = await res.text();
+      pre.style.cssText = "font: 13px/1.45 ui-monospace, Menlo, monospace; white-space: pre-wrap; padding: 16px";
+      w.document.title = `Manifest ${day}`; w.document.body.append(pre);
+    });
+
+    // ---------- Loading ----------
+    async function loadWeek() {
+      try { week = await api("/api/owner/outlook?days=8"); renderWeek(); } catch {}
+    }
+    async function loadDay() {
+      try { data = await api(`/api/owner/dispatch/${day}`); }
+      catch (e) { $("msg").hidden = false; $("msg").textContent = e.message; return; }
+      renderDay(); drawMap(true);
+    }
+    async function start() {
+      if (!token) { $("msg").hidden = false; $("msg").innerHTML = 'Sign in as the owner in the <a href="/crew">crew app</a> first.'; return; }
+      try { week = await api("/api/owner/outlook?days=8"); }
+      catch (e) { $("msg").hidden = false; $("msg").textContent = /owner/i.test(e.message) ? "Only the owner can see this." : "Couldn't load. Sign in again in the crew app."; return; }
+      if (!day) {   // today if it's a working day, else the next one
+        const open = week.filter((w) => new Date(w.date + "T12:00:00").getDay() !== 0);
+        day = (open[0] || week[0]).date;
+      }
+      $("app").hidden = false;
+      renderWeek(); initMap(); loadDay();
+    }
+    start();
+  </script>
+</body>
+</html>
