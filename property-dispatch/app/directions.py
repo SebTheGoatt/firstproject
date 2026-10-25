@@ -92,3 +92,26 @@ def get_directions(osrm_url: str, origin: LatLng, dest: LatLng, client: httpx.Cl
     } for leg in route["legs"] for s in leg["steps"]]
     return {"distance_m": round(route["distance"]), "duration_s": round(route["duration"]),
             "path": route["geometry"]["coordinates"], "steps": steps}
+
+
+def route_path(osrm_url: str, points: list[LatLng], client: httpx.Client | None = None) -> dict:
+    """The road path through every point in order (lat, lng), for drawing a whole day's route on a map.
+    Returns GeoJSON [lng, lat] pairs plus each leg's distance and time. No turn-by-turn steps."""
+    if not osrm_url:
+        raise DirectionsUnavailable("Road paths aren't set up (no OSRM_URL).")
+    if len(points) < 2:
+        raise DirectionsUnavailable("A path needs at least two points.")
+    coords = ";".join(f"{lng:.6f},{lat:.6f}" for lat, lng in points)
+    http = client or _http()
+    try:
+        resp = http.get(f"{osrm_url}/route/v1/driving/{coords}", params={"overview": "full", "geometries": "geojson"})
+        resp.raise_for_status()
+        data = resp.json()
+    except (httpx.HTTPError, ValueError) as exc:
+        raise DirectionsUnavailable("The road service didn't answer.") from exc
+    if data.get("code") != "Ok" or not data.get("routes"):
+        raise DirectionsUnavailable("No driving route was found.")
+    route = data["routes"][0]
+    return {"distance_m": round(route["distance"]), "duration_s": round(route["duration"]),
+            "path": route["geometry"]["coordinates"],
+            "legs": [{"distance_m": round(leg["distance"]), "duration_s": round(leg["duration"])} for leg in route["legs"]]}
