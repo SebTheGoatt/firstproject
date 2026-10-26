@@ -21,7 +21,7 @@ import segno
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, Response
 
-from .booking import cached_count, earliest_bookable_day, local_now
+from .booking import cached_count, earliest_bookable_day, local_now, preorder_count, preorders_open
 from .config import Settings, site_url
 from .local_pages import AREA_BY_SLUG, AREAS, HOODS, area_card_path, dollars, layout, percent, price_range
 from .pricing import density_pct
@@ -146,6 +146,18 @@ def poster_path(ext: str = "jpg") -> str:
     return f"/static/img/service-map-{hashlib.sha256(plan).hexdigest()[:8]}.{ext}"
 
 
+def preorder_info(settings: Settings, repo) -> dict:
+    """For the owner: are pre-orders open (LAUNCH_DATE), and how many are booked (the real count, however small)."""
+    now = local_now(settings)
+    if not preorders_open(now, settings):
+        return {"open": False}
+    try:
+        count = preorder_count(repo, now, settings)
+    except Exception:
+        count = None
+    return {"open": True, "launch_date": settings.launch_date.isoformat(), "count": count}
+
+
 def target_data_path() -> str:
     """Where to knock first (tools/make_target_map.py): Census block groups in our areas, ranked. Fingerprinted on
     the areas, boxes and days like the poster, so tests/test_target_map.py fails until it is made again."""
@@ -190,10 +202,12 @@ def week_posts(settings: Settings, repo, site: str, today: date) -> list[dict]:
     """Ready-to-post copy for each area day in the next week that can still be booked: Facebook / Nextdoor,
     Instagram / TikTok and Google Business, in English and Spanish, each with its own tracking link."""
     low = dollars(price_range()[0])
-    first = earliest_bookable_day(local_now(settings), settings.freeze_hour)
+    first = earliest_bookable_day(local_now(settings), settings.freeze_hour, settings.launch_date)
+    start = max(today, first - timedelta(days=1))      # while pre-orders are open: the opening week's area days
+    preorder = preorders_open(local_now(settings), settings)
     out = []
     for i in range(1, 8):
-        day = today + timedelta(days=i)
+        day = start + timedelta(days=i)
         zone = next((z for z in SERVICE_ZONES if z.service_weekday == day.weekday()), None)
         if zone is None or day < first:
             continue
@@ -207,8 +221,11 @@ def week_posts(settings: Settings, repo, site: str, today: date) -> list[dict]:
         name, wd = short_name(zone), WEEKDAY_NAMES[day.weekday()]
         when = f"{wd}, {day:%b} {day.day}"
         few = spots is not None and 0 < spots <= 8          # only mention the count when it's genuinely short
-        open_en = f"only {spots} openings left" if few else "booking now"
-        open_es = f"solo quedan {spots} lugares" if few else "reservando ahora"
+        open_en = (f"only {spots} openings left" if few else
+                   "pre-orders open for our first week (cancel free until we're on the way)" if preorder else "booking now")
+        open_es = (f"solo quedan {spots} lugares" if few else
+                   "reservas abiertas para nuestra primera semana (cancele gratis hasta que vayamos en camino)"
+                   if preorder else "reservando ahora")
         wd_es = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"][day.weekday()]
         link = lambda ch: tagged(site, f"/local/{area.slug}", f"{ch}-{area.slug}")
         tag = re.sub(r"[^A-Za-z]", "", area.city)
@@ -315,6 +332,7 @@ def register_marketing(app: FastAPI, settings: Settings, owner, page, version: s
                            "day": WEEKDAY_NAMES[zone_by_key(a.zone_key).service_weekday],
                            "square": area_card_path(a, square=True), "wide": area_card_path(a)} for a in AREAS],
             "poster": {"jpg": poster_path("jpg"), "pdf": poster_path("pdf")},
+            "preorders": preorder_info(settings, app.state.repo),
             "prompts": prompt_pack(settings, site),
         }
 

@@ -29,6 +29,8 @@
       <div class="wrap">
         <h1>Book a service</h1>
         <p>Calculate your mowing price, add any extras, and book your visit. You'll see the full itemized total before you book.</p>
+        <p class="preorder-note" id="preorder-note" hidden><strong>Pre-orders are open.</strong> <span id="preorder-day"></span>
+          <span>You pay when you book and can cancel free until the crew is on the way.</span></p>
         <details id="areas" class="hint" hidden>
           <summary>Where we service</summary>
           <ul id="area-list"></ul>
@@ -617,6 +619,11 @@
     }
 
     fetch("/api/booking-info").then(r => r.json()).then(info => {
+      if (info.preorder && info.preorder.open) {
+        const d = new Date(info.preorder.launch_date + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+        $("preorder-day").textContent = `We start mowing ${d}.`;
+        $("preorder-note").hidden = false;
+      }
       if (info.schedule) $("schedule-hint").textContent =
         "Our week: " + info.schedule.map((s) => `${s.weekday.slice(0, 3)} ${s.area}`).join(" · ") +
         `. Bookings close at ${((info.freeze_hour + 11) % 12) + 1} ${info.freeze_hour < 12 ? "AM" : "PM"} the day before.`;

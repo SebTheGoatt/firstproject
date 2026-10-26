@@ -50,23 +50,56 @@ def cached_count(repo, day: date) -> int:
 def forget_counts(repo) -> None:
     """Drop the remembered counts after a booking is made, moved or cancelled."""
     repo.__dict__.pop("_count_cache", None)
+    repo.__dict__.pop("_preorder_cache", None)
 
 
-def earliest_bookable_day(now: datetime, freeze_hour: int) -> date:
+def earliest_bookable_day(now: datetime, freeze_hour: int, launch: date | None = None) -> date:
     day = now.date() + timedelta(days=1)
     while is_frozen(day, now, freeze_hour):
         day += timedelta(days=1)
-    return day
+    return max(day, launch) if launch else day
+
+
+def latest_bookable_day(now: datetime, settings: Settings) -> date:
+    """The booking window runs booking_horizon_days from today, or from the launch day while pre-orders are open."""
+    return max(now.date(), settings.launch_date or now.date()) + timedelta(days=settings.booking_horizon_days)
+
+
+def preorders_open(now: datetime, settings: Settings) -> bool:
+    """Before LAUNCH_DATE every booking is a pre-order for opening day or later."""
+    return settings.launch_date is not None and now.date() < settings.launch_date
+
+
+PREORDER_TTL_S = 60.0
+PREORDER_SHOW_MIN = 5   # the public count appears from 5 pre-orders (a real number either way; small ones read as empty)
+
+
+def preorder_count(repo, now: datetime, settings: Settings) -> int:
+    """Real pre-orders: active bookings from the launch day on, while pre-orders are open (60 s cache per repository)."""
+    if not preorders_open(now, settings):
+        return 0
+    cache = repo.__dict__.setdefault("_preorder_cache", {})
+    hit = cache.get(settings.launch_date)
+    if hit and time.monotonic() - hit[0] < PREORDER_TTL_S:
+        return hit[1]
+    n = repo.count_active_jobs_between(settings.launch_date, latest_bookable_day(now, settings))
+    cache[settings.launch_date] = (time.monotonic(), n)
+    return n
 
 
 def validate_booking(day: date, now: datetime, active_jobs_that_day: int, settings: Settings) -> None:
     if is_frozen(day, now, settings.freeze_hour):
-        first = earliest_bookable_day(now, settings.freeze_hour)
+        first = earliest_bookable_day(now, settings.freeze_hour, settings.launch_date)
         raise BookingRejected(
             f"That day's route is already locked. The earliest available day is {first.strftime('%A, %b')} {first.day}."
         )
-    if day > now.date() + timedelta(days=settings.booking_horizon_days):
-        raise BookingRejected(f"Please book within the next {settings.booking_horizon_days} days.")
+    if preorders_open(now, settings) and day < settings.launch_date:
+        first = settings.launch_date
+        raise BookingRejected(f"We start mowing on {first.strftime('%A, %B')} {first.day}. "
+                              "Pre-orders are open for that day and after.")
+    if day > latest_bookable_day(now, settings):
+        raise BookingRejected(f"Please book within {settings.booking_horizon_days} days of "
+                              f"{'opening day' if preorders_open(now, settings) else 'today'}.")
     if active_jobs_that_day >= settings.daily_job_quota:
         raise BookingRejected("That day is fully booked. Please choose another day.")
 
@@ -81,8 +114,8 @@ def check_area_day(day: date, zone: ServiceZone) -> None:
 
 def open_area_days(zone: ServiceZone, now: datetime, settings: Settings, count_active) -> list[dict]:
     """The area's bookable days in the booking window, with spots left (full days included, marked 0)."""
-    first = earliest_bookable_day(now, settings.freeze_hour)
-    last = now.date() + timedelta(days=settings.booking_horizon_days)
+    first = earliest_bookable_day(now, settings.freeze_hour, settings.launch_date)
+    last = latest_bookable_day(now, settings)
     out = []
     for d in service_days(zone, first, last):
         try:
