@@ -5,6 +5,7 @@ sometimes resends the same reel with a different share tail. Add one row per ite
 
 | Sent | What it was | Verdict | Where it landed |
 |---|---|---|---|
+| Oct 2026, owner request | Use open data to target homeowners who pay for lawn care; pre-orders before launch | Adopt | PR: `/owner/targets` ranked Census map; PR: `LAUNCH_DATE` pre-orders |
 | Oct 2026, upload | "How to 5X your AI usage": when a result is good, say "this is the standard" and turn the method into a skill | Adopt | This skill (`.claude/skills/post-one-standard`) |
 | Oct 2026, upload (taco truck) | "The line is the valuable part": pick one person and problem, presell, build after | No code needed | Distribution plan in chat; folded into `business-lens.md` |
 | reel `DcSfP2luzsy` (sent twice) | "10 things to do after publishing your website" (Search Console, sitemap, analytics, Business Profile, keywords, titles, mobile, speed, backlinks) | Adapt | PR #87: Google/Bing verification tags, go-live checks. Analytics skipped (first-party tracking already) |

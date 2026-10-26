@@ -74,6 +74,11 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
   prompts (review reply, customer reply, property-manager email, video caption, Spanish, weekly plan), each carrying
   live areas/days/prices/policy and the claim rules (insurance and background checks only when the settings say so).
   When a policy or fact changes, it changes there too. Inspired by prompts.chat; generic libraries don't know us.
+- Where to knock first `/owner/targets` (linked from the marketing hub): every Census block group in our areas ranked by
+  owner-lived single-family homes, weighted by median income (ACS 5-year via Census Reporter, keyless; the Census API now
+  needs a key). `tools/make_target_map.py` writes `static/data/targets-<fingerprint>.json` (neighborhood totals only);
+  re-run after an area/box/day change (`tests/test_target_map.py` fails until you do) or when a new ACS release is out
+  (each December). Plan copy uses EDDM ~$0.65/home all-in and 0.5–1.5% response (2026 industry estimates).
 - Crew "Report a problem" (`app/issues.py`): damage / equipment / access / delay with a photo; first item on the owner
   screen; email via Resend when set. Needs `supabase/migrations/20261028000000_issues_and_sources.sql`.
 
