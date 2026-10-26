@@ -85,4 +85,5 @@ def _any_day_for_older_tests(request, monkeypatch):
     not the weekday rule, so the rule is relaxed for them; tests marked area_days keep it on."""
     if request.node.get_closest_marker("area_days") is None:
         monkeypatch.setattr("app.main.check_area_day", lambda day, zone: None)
+        monkeypatch.setattr("app.community.check_area_day", lambda day, zone: None)
         monkeypatch.setattr("app.nightly.one_area", lambda jobs, day: (jobs, []))

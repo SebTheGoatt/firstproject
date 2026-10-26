@@ -425,6 +425,7 @@ def layout(settings: Settings, version: str, *, title: str, description: str, bo
         <a href="/local">Service areas</a>
         <a href="/team">Meet the crew</a>
         <a href="/about">About</a>
+        <a href="/community">Community</a>
       </nav>
       <a class="btn btn-primary btn-sm header-cta" href="/book">Book now</a>
     </div>
@@ -447,6 +448,7 @@ def layout(settings: Settings, version: str, *, title: str, description: str, bo
         <a href="/local">Service areas</a>
         <a href="/team">Meet the crew</a>
         <a href="/about">About</a>
+        <a href="/community">Community</a>
         <a href="/visit">View my visit</a>
       </nav>
       <nav class="footer-areas" aria-label="Areas we serve">
@@ -948,7 +950,7 @@ def register_local_pages(app: FastAPI, settings: Settings, version: str = "") ->
         from .service_pages import SERVICES   # imported here: service_pages builds on this module
         paths = ["/", "/book", "/services", *(f"/services/{s.slug}" for s in SERVICES),
                  "/team", "/local", *(f"/local/{a.slug}" for a in AREAS),
-                 *(f"/local/{h.area}/{h.slug}" for h in HOODS), "/about", "/privacy", "/terms", "/refunds"]
+                 *(f"/local/{h.area}/{h.slug}" for h in HOODS), "/about", "/community", "/privacy", "/terms", "/refunds"]
         urls = "".join(f"  <url><loc>{xml_escape(site + p)}</loc></url>\n" for p in paths)
         body = ('<?xml version="1.0" encoding="UTF-8"?>\n'
                 f'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n{urls}</urlset>\n')

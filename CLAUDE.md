@@ -89,6 +89,11 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
   Saturday) or full refund. Locked out (gate, loose pet, blocked lawn): unreached parts not refunded. Hazards we
   find: return visit or partial refund. Price is locked: never charge a card more on site without the customer's OK.
 - **Neighbor discount (option A):** 5% off the mowing with 2–4 customers booked within half a mile, 10% with 5+.
+- **Nothing is free (owner, Oct 2026):** no free mows. Giving = the cause share of every paid mow, an optional
+  round-up on the pay page (to the next $5, all to the customer's cause), and "Sponsor a neighbor's mow" (add-on at
+  full YIELD_BASE price, taxed). `/community` (`app/community.py`) shows real totals and takes private nominations;
+  the owner books a sponsored mow on `/owner/community` only against a paid, unused sponsorship, after calling the
+  neighbor (consent box), on their area's day (`payment_method = sponsored`, $0 due). Never show nominee details publicly.
 - Pages only for places we actually mow. No near-duplicate town-swap pages.
 - The business phone number stays off the site unless the owner sets `BUSINESS_PHONE`.
 - Ciro stays in the pending founders list until the owner says otherwise.
@@ -120,6 +125,7 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 - Stripe public business name and statement descriptor → Post One.
 - Delete the mock bookings from testing.
 - Run `supabase/migrations/20261028000000_issues_and_sources.sql` (problem reports + booking sources).
+- Run `supabase/migrations/20261029000000_community.sql` (sponsored mows + nominations).
 - Claim the same name, hours, site and service area on Bing Places, Apple Business Connect, Yelp and Nextdoor (AI
   assistants pull from these); set the *_URL profile settings in Render as each one goes live.
 

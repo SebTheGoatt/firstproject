@@ -65,6 +65,7 @@
               and we pass every donation on: <span id="charity-list">33% to the VFW, 33% to NICU families and 34% to at-risk youth programs</span>.</span></p>
             <div class="chips" id="chips" role="radiogroup" aria-label="Donation amount">
               <button type="button" class="chip is-on" data-amt="0" role="radio" aria-checked="true">No thanks</button>
+              <button type="button" class="chip" data-amt="round" role="radio" aria-checked="false" id="round-chip" hidden>Round up</button>
               <button type="button" class="chip" data-amt="5" role="radio" aria-checked="false">$5</button>
               <button type="button" class="chip" data-amt="10" role="radio" aria-checked="false">$10</button>
               <button type="button" class="chip" data-amt="20" role="radio" aria-checked="false">$20</button>
@@ -150,10 +151,15 @@
         show("no-card");
       } else {
         show("pay-form");
+        const r = roundUp(info.amount_due), chip = $("round-chip");
+        chip.hidden = !(r > 0); chip.dataset.round = r;
+        chip.textContent = `Round up to ${money(info.amount_due + r)} (+${money(r)})`;
         updateTotal();
       }
     }
 
+    // Round up: the cents that take the total to the next $5 (none when it's already a multiple of $5).
+    const roundUp = (due) => { const c = Math.round((due || 0) * 100); return ((500 - (c % 500)) % 500) / 100; };
     function updateTotal() {
       const total = (info.amount_due || 0) + donation;
       const sp = splitDonation(donation), box = $("split");
@@ -177,7 +183,7 @@
       document.querySelectorAll(".chip").forEach((c) => { c.classList.toggle("is-on", c === chip); c.setAttribute("aria-checked", c === chip); });
       const other = chip.dataset.amt === "other";
       show("other-wrap", other);
-      donation = other ? (parseFloat($("other").value) || 0) : Number(chip.dataset.amt);
+      donation = other ? (parseFloat($("other").value) || 0) : chip.dataset.amt === "round" ? Number(chip.dataset.round) : Number(chip.dataset.amt);
       if (other) $("other").focus();
       updateTotal();
     });

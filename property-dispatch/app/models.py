@@ -28,13 +28,15 @@ SERVICE_LABELS: dict[Service, str] = {
 }
 
 # Add-ons to a mowing visit (prices and minutes in app/pricing.py).
-AddOn = Literal["bin_cleaning", "gutters", "holiday_lights", "scope_yard", "scope_full"]
+AddOn = Literal["bin_cleaning", "gutters", "holiday_lights", "scope_yard", "scope_full", "sponsor_mow"]
 YardType = Literal["STANDARD", "COMPLEX_OBSTACLES", "STEEP_SLOPES"]   # yield engine (app/pricing.py YARD_TYPES)
 
 
 def order_label(service: str, add_ons: list | None = None) -> str:
     """'Mowing + Gutter cleaning + Holiday lighting quote' for a booking with add-ons."""
-    parts = [SERVICE_LABELS[Service(service)]] + [a["label"] for a in (add_ons or []) if not a.get("info")]
+    # A sponsorship is paid here but mowed elsewhere (a neighbor's lawn), so the crew's stop doesn't list it.
+    parts = [SERVICE_LABELS[Service(service)]] + [a["label"] for a in (add_ons or [])
+                                                  if not a.get("info") and a.get("key") != "sponsor_mow"]
     return " + ".join(parts)
 
 
@@ -173,7 +175,7 @@ class StopView(BaseModel):
     notified_at: datetime | None = None   # when the customer was told the crew is on the way
     google_maps_url: str
     apple_maps_url: str
-    payment_method: Literal["cash", "card"] = "cash"
+    payment_method: Literal["cash", "card", "sponsored"] = "cash"   # sponsored: paid by a sponsor (app/community.py)
     payment_status: Literal["unpaid", "paid"] = "unpaid"
     amount_due: float | None = None
     amount_paid: float | None = None

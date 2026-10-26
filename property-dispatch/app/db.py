@@ -165,6 +165,13 @@ class Repository(Protocol):
     def resolve_issue(self, issue_id: str) -> bool: ...
     def set_job_source(self, job_id: str, source: str) -> None: ...
     def bookings_by_source(self, since: datetime) -> list[dict]: ...
+    # Community (app/community.py): nominations, sponsorships and public totals
+    def add_nomination(self, fields: dict) -> dict: ...
+    def list_nominations(self) -> list[dict]: ...
+    def get_nomination(self, nomination_id: str) -> dict | None: ...
+    def set_nomination(self, nomination_id: str, status: str, job_id: str | None = None) -> bool: ...
+    def sponsorships(self) -> dict: ...          # {"paid": n sponsorships paid, "used": n sponsored mows scheduled}
+    def community_totals(self) -> dict: ...      # {"sponsored_done": n, "given": $ to causes from paid visits}
     def job_photo(self, photo_id: str) -> dict | None: ...
     # Push notification subscriptions (one per phone/browser that opted in on a visit page)
     def save_push_subscription(self, job_id: str, endpoint: str, p256dh: str, auth: str,
@@ -658,6 +665,38 @@ class SupabaseRepository:
         return (self.sb.table("jobs").select("source, zone_key, status, amount_due, created_at")
                 .gte("created_at", since.isoformat()).execute().data)
 
+    NOMINATION_COLS = ("id, zone_key, nominee_name, nominee_address, nominee_phone, reason, nominator_name, "
+                       "nominator_contact, status, job_id, created_at")
+
+    def add_nomination(self, fields: dict) -> dict:
+        return self.sb.table("nominations").insert(fields).execute().data[0]
+
+    def list_nominations(self) -> list[dict]:
+        return self.sb.table("nominations").select(self.NOMINATION_COLS).order("created_at", desc=True).limit(200).execute().data
+
+    def get_nomination(self, nomination_id: str) -> dict | None:
+        rows = self.sb.table("nominations").select(self.NOMINATION_COLS).eq("id", nomination_id).limit(1).execute().data
+        return rows[0] if rows else None
+
+    def set_nomination(self, nomination_id: str, status: str, job_id: str | None = None) -> bool:
+        fields = {"status": status, **({"job_id": job_id} if job_id else {})}
+        return bool(self.sb.table("nominations").update(fields).eq("id", nomination_id).execute().data)
+
+    def sponsorships(self) -> dict:
+        paid = (self.sb.table("jobs").select("id", count="exact").eq("payment_status", "paid").neq("status", "cancelled")
+                .contains("add_ons", [{"key": "sponsor_mow"}]).limit(1).execute().count or 0)
+        used = (self.sb.table("jobs").select("id", count="exact").eq("payment_method", "sponsored")
+                .neq("status", "cancelled").limit(1).execute().count or 0)
+        return {"paid": paid, "used": used}
+
+    def community_totals(self) -> dict:
+        rows = (self.sb.table("jobs").select("charity_amount, donation").eq("payment_status", "paid")
+                .neq("status", "cancelled").execute().data)
+        done = (self.sb.table("jobs").select("id", count="exact").eq("payment_method", "sponsored")
+                .eq("status", "completed").limit(1).execute().count or 0)
+        return {"sponsored_done": done, "given": round(sum(float(r.get("charity_amount") or 0) + float(r.get("donation") or 0)
+                                                           for r in rows), 2)}
+
     def job_photo(self, photo_id: str) -> dict | None:
         rows = self.sb.table("job_photos").select("id, job_id, photo").eq("id", photo_id).limit(1).execute().data
         return rows[0] if rows else None
@@ -689,6 +728,7 @@ class MemoryRepository:
         self.portfolio: dict[str, dict] = {}
         self.job_photos: dict[str, dict] = {}
         self.job_issues: dict[str, dict] = {}
+        self.nominations: dict[str, dict] = {}
         self.push_subs: dict[str, dict] = {}     # endpoint → subscription
 
     def count_active_jobs(self, day: date) -> int:
@@ -1099,6 +1139,39 @@ class MemoryRepository:
     def set_job_source(self, job_id: str, source: str) -> None:
         if job_id in self.jobs:
             self.jobs[job_id]["source"] = source
+
+    def add_nomination(self, fields: dict) -> dict:
+        n = {"id": str(uuid.uuid4()), **fields, "status": "new", "job_id": None, "created_at": _now_iso()}
+        self.nominations[n["id"]] = n
+        return dict(n)
+
+    def list_nominations(self) -> list[dict]:
+        return [dict(n) for n in sorted(self.nominations.values(), key=lambda n: n["created_at"], reverse=True)]
+
+    def get_nomination(self, nomination_id: str) -> dict | None:
+        n = self.nominations.get(nomination_id)
+        return dict(n) if n else None
+
+    def set_nomination(self, nomination_id: str, status: str, job_id: str | None = None) -> bool:
+        n = self.nominations.get(nomination_id)
+        if n is None:
+            return False
+        n["status"] = status
+        if job_id:
+            n["job_id"] = job_id
+        return True
+
+    def sponsorships(self) -> dict:
+        live = [j for j in self.jobs.values() if j["status"] != "cancelled"]
+        paid = sum(1 for j in live if j["payment_status"] == "paid"
+                   and any((a.get("key") if isinstance(a, dict) else a) == "sponsor_mow" for a in (j.get("add_ons") or [])))
+        return {"paid": paid, "used": sum(1 for j in live if j["payment_method"] == "sponsored")}
+
+    def community_totals(self) -> dict:
+        paid = [j for j in self.jobs.values() if j["payment_status"] == "paid" and j["status"] != "cancelled"]
+        done = sum(1 for j in self.jobs.values() if j["payment_method"] == "sponsored" and j["status"] == "completed")
+        return {"sponsored_done": done,
+                "given": round(sum(float(j.get("charity_amount") or 0) + float(j.get("donation") or 0) for j in paid), 2)}
 
     def bookings_by_source(self, since: datetime) -> list[dict]:
         return [{k: j.get(k) for k in ("source", "zone_key", "status", "amount_due", "created_at")}

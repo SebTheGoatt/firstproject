@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Community | {{BUSINESS_NAME}}</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#FFFFFF">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="preload" href="/static/fonts/public-sans-400.woff2" as="font" type="font/woff2" crossorigin>
+  <style>
+    /* Owner: sponsored mows. Daylight work-app look (flat sheets, sentence case), like Today and Dispatch. */
+    @font-face { font-family: "Public Sans"; font-weight: 400; font-display: swap; src: url(/static/fonts/public-sans-400.woff2) format("woff2"); }
+    @font-face { font-family: "Public Sans"; font-weight: 600; font-display: swap; src: url(/static/fonts/public-sans-600.woff2) format("woff2"); }
+    @font-face { font-family: "Public Sans"; font-weight: 700; font-display: swap; src: url(/static/fonts/public-sans-700.woff2) format("woff2"); }
+    :root {
+      --ground: #F6F7F3; --sheet: #FFFFFF; --line: #E3E6DF; --line-strong: #CFD4CB; --track: #EDEFEA;
+      --ink: #14201B; --ink-2: #3D4A44; --muted: #5F6B65;
+      --green: #2E7D4F; --green-soft: #E6F1EA; --green-ink: #1F5A3C; --red: #B42318; --red-soft: #FBE9E7;
+      --radius: 10px; --font: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--ground); }
+    body { margin: 0; background: var(--ground); color: var(--ink); font: 400 15px/1.5 var(--font); -webkit-font-smoothing: antialiased; }
+    a { color: var(--green-ink); text-underline-offset: 3px; }
+    :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; border-radius: 4px; }
+    .num { font-variant-numeric: tabular-nums; }
+    .bar { height: 56px; display: flex; align-items: center; gap: 16px; padding: 0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+      border-bottom: 1px solid var(--line); background: var(--sheet); position: sticky; top: 0; z-index: 5; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--ink); text-decoration: none; white-space: nowrap; }
+    .brand small { font-weight: 400; color: var(--muted); font-size: 14px; }
+    .bar nav { display: flex; gap: 4px; margin-left: auto; overflow-x: auto; scrollbar-width: none; }
+    .bar nav::-webkit-scrollbar { display: none; }
+    .bar nav a { color: var(--ink-2); text-decoration: none; padding: 8px 12px; border-radius: 8px; white-space: nowrap; font-weight: 500; }
+    .bar nav a:hover { background: var(--ground); }
+    .bar nav a[aria-current="page"] { background: var(--track); color: var(--ink); }
+    main { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; display: grid; gap: 20px; }
+    h1 { margin: 0; font-size: 24px; }
+    h2 { margin: 0 0 4px; font-size: 17px; }
+    .lede { margin: 4px 0 0; color: var(--ink-2); max-width: 70ch; }
+    .msg { max-width: 640px; margin: 48px auto; padding: 0 16px; color: var(--ink-2); }
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .stat { background: var(--sheet); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+    .stat b { display: block; font-size: 26px; line-height: 1.2; }
+    .stat span { color: var(--ink-2); font-size: 14px; }
+    .stat.go { border-color: var(--green); background: var(--green-soft); }
+    .sheet { background: var(--sheet); border: 1px solid var(--line); border-radius: var(--radius); }
+    .noms { list-style: none; margin: 0; padding: 0; }
+    .nom { padding: 16px; border-top: 1px solid var(--line); display: grid; gap: 8px; }
+    .nom:first-child { border-top: 0; }
+    .nom-head { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: baseline; }
+    .nom-head b { font-size: 16px; }
+    .tag { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--track); color: var(--ink-2); }
+    .tag.new { background: var(--green-soft); color: var(--green-ink); }
+    .why { margin: 0; color: var(--ink-2); }
+    .meta { color: var(--muted); font-size: 14px; }
+    .act { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .act label.ok { display: flex; gap: 8px; align-items: center; min-height: 44px; }
+    .act input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--green); }
+    select { font: inherit; min-height: 44px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--sheet); color: var(--ink); }
+    .btn { font: inherit; font-weight: 600; min-height: 44px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--sheet); color: var(--ink); cursor: pointer; }
+    .btn.primary { background: var(--green); border-color: var(--green); color: #fff; }
+    .btn:disabled { opacity: .55; cursor: not-allowed; }
+    .err { color: var(--red); font-size: 14px; margin: 0; }
+    .empty { padding: 20px 16px; margin: 0; color: var(--ink-2); }
+    @media (max-width: 720px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="/owner/command"><img src="/static/brand/post-one-mark.svg" alt="" width="22" height="24">{{BRAND_SHORT}} <small>Owner</small></a>
+    <nav aria-label="Owner screens">
+      <a href="/owner/command">Today</a>
+      <a href="/owner/dispatch">Dispatch</a>
+      <a href="/owner/community" aria-current="page">Community</a>
+      <a href="/owner/marketing">Marketing</a>
+      <a href="/crew">Bookings &amp; crew</a>
+      <a href="/crew/dashboard">Crew route</a>
+      <a href="/owner/readiness">Go-live</a>
+    </nav>
+  </header>
+  <p class="msg" id="msg" role="status" hidden></p>
+  <main id="app" hidden>
+    <section>
+      <h1>Sponsored mows</h1>
+      <p class="lede">Customers pay for a neighbor's mow at full price. Each paid sponsorship books one mow for a nominated
+        neighbor on their area's day. Call the neighbor first; book only with their OK.
+        <a href="/community">See the public page</a>.</p>
+    </section>
+    <section class="stats" aria-label="Sponsorships">
+      <div class="stat" id="s-wait"><b class="num" id="n-wait">0</b><span>sponsorships waiting</span></div>
+      <div class="stat"><b class="num" id="n-paid">0</b><span>sponsorships paid</span></div>
+      <div class="stat"><b class="num" id="n-done">0</b><span>sponsored mows done</span></div>
+      <div class="stat"><b class="num" id="n-given">$0</b><span>to causes from paid visits</span></div>
+    </section>
+    <section class="sheet" aria-labelledby="noms-title">
+      <div style="padding:16px 16px 0"><h2 id="noms-title">Nominations</h2>
+        <p class="meta" id="noms-note" style="margin:0 0 12px">Private: names, addresses and stories never leave this screen.</p></div>
+      <ul class="noms" id="noms"></ul>
+    </section>
+  </main>
+  <script>
+    let token = null;
+    try { token = localStorage.getItem("crewToken"); } catch {}
+    const $ = (id) => document.getElementById(id);
+    const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    const money = (n) => (n ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
+    function el(tag, attrs = {}, ...kids) {
+      const e = document.createElement(tag);
+      for (const [k, v] of Object.entries(attrs)) k === "class" ? (e.className = v) : e.setAttribute(k, v);
+      e.append(...kids.filter((x) => x != null && x !== false));
+      return e;
+    }
+    async function api(path, opts = {}) {
+      const res = await fetch(path, { ...opts, headers: { "X-Crew-Token": token, "Content-Type": "application/json" } });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.detail || "Something went wrong. Try again.");
+      return body;
+    }
+    // The next four dates on an area's weekday (Monday = 0, as in app/zones.py), starting tomorrow.
+    function areaDates(weekday) {
+      const out = [], d = new Date(); d.setHours(12, 0, 0, 0);
+      while (out.length < 4) { d.setDate(d.getDate() + 1); if ((d.getDay() + 6) % 7 === weekday) out.push(new Date(d)); }
+      return out;
+    }
+    const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    let data = null;
+    function render() {
+      const s = data.sponsorships, t = data.totals || { sponsored_done: 0, given: 0 };
+      $("n-wait").textContent = s.waiting; $("n-paid").textContent = s.paid;
+      $("n-done").textContent = t.sponsored_done; $("n-given").textContent = money(t.given);
+      $("s-wait").classList.toggle("go", s.waiting > 0);
+      const areas = Object.fromEntries(data.areas.map((a) => [a.key, a]));
+      const list = $("noms");
+      if (!data.nominations.length) { list.replaceChildren(el("li", { class: "empty" }, "No nominations yet. They arrive from the public Community page.")); return; }
+      list.replaceChildren(...data.nominations.map((n) => {
+        const area = areas[n.zone_key];
+        const head = el("div", { class: "nom-head" }, el("b", {}, n.nominee_name),
+          el("span", { class: `tag ${n.status}` }, n.status === "new" ? "New" : n.status === "scheduled" ? "Scheduled" : "Declined"),
+          el("span", { class: "meta" }, area ? `${area.name} · ${DAYS[area.weekday]}s` : n.zone_key));
+        const li = el("li", { class: "nom" }, head, el("p", { class: "why" }, n.reason),
+          el("p", { class: "meta" }, `${n.nominee_address}${n.nominee_phone ? " · " + n.nominee_phone : " · no phone yet"} · from ${n.nominator_name} (${n.nominator_contact})`));
+        if (n.status !== "new") return li;
+        const err = el("p", { class: "err", role: "alert" });
+        const pick = el("select", { "aria-label": `Day for ${n.nominee_name}` },
+          ...(area ? areaDates(area.weekday) : []).map((d) => el("option", { value: iso(d) }, d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }))));
+        const ok = el("input", { type: "checkbox", id: `ok-${n.id}` });
+        const book = el("button", { class: "btn primary", type: "button" }, "Book sponsored mow");
+        const no = el("button", { class: "btn", type: "button" }, "Decline");
+        book.disabled = s.waiting <= 0;
+        if (s.waiting <= 0) err.textContent = "No paid sponsorship is waiting yet.";
+        book.addEventListener("click", async () => {
+          err.textContent = ""; book.disabled = true;
+          try { await api(`/api/owner/nominations/${n.id}/schedule`, { method: "POST", body: JSON.stringify({ day: pick.value, consent: ok.checked }) }); await load(); }
+          catch (e) { err.textContent = e.message; book.disabled = false; }
+        });
+        no.addEventListener("click", async () => {
+          if (!confirm(`Decline the nomination for ${n.nominee_name}?`)) return;
+          try { await api(`/api/owner/nominations/${n.id}/decline`, { method: "POST" }); await load(); } catch (e) { err.textContent = e.message; }
+        });
+        li.append(el("div", { class: "act" }, pick, el("label", { class: "ok", for: ok.id }, ok, "They said yes to the mow and the visit texts"), book, no), err);
+        return li;
+      }));
+    }
+    async function load() { data = await api("/api/owner/community"); render(); }
+    (async () => {
+      if (!token) { $("msg").hidden = false; $("msg").innerHTML = 'Sign in as the owner in the <a href="/crew">crew app</a> first.'; return; }
+      try { await load(); $("app").hidden = false; }
+      catch (e) { $("msg").hidden = false; $("msg").textContent = /owner/i.test(e.message) ? "Only the owner can see this." : e.message; }
+    })();
+  </script>
+</body>
+</html>

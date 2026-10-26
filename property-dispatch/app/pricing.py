@@ -116,6 +116,9 @@ ADD_ONS: dict[str, dict] = {
                        "season": ((10, 15), (1, 15))},
     # What to mow (pick one). No charge of their own: they set the lawn size the server prices, and they
     # lock the price (the crew mows the area booked; no on-site re-measuring). They show on the crew's stop.
+    # Pay for a neighbor in need: a full-price mow, paid by this customer, done for a nominated neighbor on their own
+    # area day (app/community.py). Taxed like any mow; no time on this stop. Must equal YIELD_BASE (tests check it).
+    "sponsor_mow":    {"label": "Sponsor a neighbor's mow",  "price": Decimal("75.00"), "minutes": 0, "sponsor": True},
     "scope_yard":     {"label": "Yard only",                 "price": Decimal("0.00"), "minutes": 0, "scope": True},
     "scope_full":     {"label": "Full property",             "price": Decimal("0.00"), "minutes": 0, "scope": True},
 }

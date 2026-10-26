@@ -424,7 +424,8 @@
         label.append(name, price);
         const note = document.createElement("small");
         note.textContent = a.quote ? (open ? `No charge. Seasonal: ${a.season}` : `Available for ${a.season} visits`)
-          : a.key === "bin_cleaning" ? "Sanitized, not just rinsed" : "Added to your mowing visit";
+          : a.key === "bin_cleaning" ? "Sanitized, not just rinsed"
+          : a.sponsor ? "Paid by you, mowed for a neighbor in need on their area day. We never share who." : "Added to your mowing visit";
         label.append(note);
         input.addEventListener("change", () => {
           input.checked ? chosenAddOns.add(a.key) : chosenAddOns.delete(a.key);   // a Set: never added twice
