@@ -84,6 +84,10 @@ merchant of record, so it collects sales tax (Texas taxes digital products). Upl
 `dist/Five-Paragraph-Plan-Field-Kit.zip` (run `python3 build.py` to make it), price $30, then rebuild with
 `python3 build.py --buy-url <product link>` and republish so every Buy button points at checkout.
 
+**Guarantee.** 30-day money-back, no questions asked: it takes the risk out of deciding, which is the main reason
+people stall at "I need to think about it". Refund from the Gumroad sale page. Gumroad may keep its fee on a refund,
+so each one costs about $3.50.
+
 **Next products, after the mission is met:**
 1. Paid workshops for veteran orgs, schools and companies ("plan the quarter in 5 paragraphs").
 2. Printed notebook through print-on-demand (Amazon KDP): no inventory, no upfront cost.

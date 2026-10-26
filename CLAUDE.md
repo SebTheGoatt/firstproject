@@ -109,6 +109,10 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
   this repo is public. Sales page artifact: https://claude.ai/artifact/U2VeVjKPCV2PrBA64Z19PB. `LAUNCH.md` is the
   go-to-market order (checkout on Gumroad, merchant of record). Military framing is the point here; the no-jargon rule
   is for Post One customer copy only. Plans stay on the buyer's device; no data collected.
+- **30-day money-back guarantee (owner, Oct 2026):** a buyer replies to the receipt email within 30 days for a full
+  refund, no questions asked. Shown in the hero, the price line, the FAQ and "Start here.txt".
+- **Moving to a private repo (owner, Oct 2026):** the product source leaves this public repo once the owner creates an
+  empty private `five-paragraph-plan` repo (Claude can't create repos). Then push the folder there and drop it here.
 
 ## Hard rules
 - Never ask the owner to paste secrets in chat (Supabase, Stripe, Twilio, VAPID, Resend, crew token). Secrets live

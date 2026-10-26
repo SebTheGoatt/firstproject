@@ -60,6 +60,7 @@ def main():
         "   order on that device only.\n"
         "2. Print 'Field Notebook.pdf' (US Letter, black and white is fine), or fill it in on a tablet.\n"
         "3. Read page 2 of the notebook first.\n\n"
+        "Not working for you? Reply to your receipt email within 30 days for a full refund. No questions asked.\n\n"
         "Thank you for buying it. Now go write your order.\n")
     shutil.make_archive(str(kit), "zip", kit.parent, kit.name)
     print(f"index.html written; kit in {kit} ({pages}-page notebook) and {kit}.zip")
