@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Numbers | {{BUSINESS_NAME}}</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#FFFFFF">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="preload" href="/static/fonts/public-sans-400.woff2" as="font" type="font/woff2" crossorigin>
+  <style>
+    /* Owner: the numbers. Daylight work-app look; green for money made, brass for costs, red only when below break-even. */
+    @font-face { font-family: "Public Sans"; font-weight: 400; font-display: swap; src: url(/static/fonts/public-sans-400.woff2) format("woff2"); }
+    @font-face { font-family: "Public Sans"; font-weight: 600; font-display: swap; src: url(/static/fonts/public-sans-600.woff2) format("woff2"); }
+    @font-face { font-family: "Public Sans"; font-weight: 700; font-display: swap; src: url(/static/fonts/public-sans-700.woff2) format("woff2"); }
+    :root {
+      --ground: #F6F7F3; --sheet: #FFFFFF; --line: #E3E6DF; --line-strong: #CFD4CB; --track: #EDEFEA;
+      --ink: #14201B; --ink-2: #3D4A44; --muted: #5F6B65;
+      --green: #2E7D4F; --green-soft: #E6F1EA; --green-ink: #1F5A3C; --brass: #8A6210; --red: #B42318; --red-soft: #FBE9E7;
+      --radius: 10px; --font: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--ground); }
+    body { margin: 0; background: var(--ground); color: var(--ink); font: 400 14px/1.5 var(--font); -webkit-font-smoothing: antialiased; }
+    a { color: var(--green-ink); text-underline-offset: 3px; }
+    :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; border-radius: 4px; }
+    .num { font-variant-numeric: tabular-nums; }
+    .bar { height: 56px; display: flex; align-items: center; gap: 16px; padding: 0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+      border-bottom: 1px solid var(--line); background: var(--sheet); position: sticky; top: 0; z-index: 5; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--ink); text-decoration: none; white-space: nowrap; }
+    .brand small { font-weight: 400; color: var(--muted); font-size: 14px; }
+    .bar nav { display: flex; gap: 4px; margin-left: auto; overflow-x: auto; scrollbar-width: none; }
+    .bar nav::-webkit-scrollbar { display: none; }
+    .bar nav a { color: var(--ink-2); text-decoration: none; padding: 8px 12px; border-radius: 8px; white-space: nowrap; font-weight: 500; }
+    .bar nav a:hover { background: var(--ground); }
+    .bar nav a[aria-current="page"] { background: var(--track); color: var(--ink); }
+    main { max-width: 1120px; margin: 0 auto; padding: 24px 16px 64px; display: grid; gap: 20px; }
+    h1 { margin: 0; font-size: 24px; letter-spacing: -0.01em; }
+    h2 { margin: 0; font-size: 15px; font-weight: 600; }
+    .lede { margin: 4px 0 0; color: var(--ink-2); max-width: 78ch; }
+    .msg { max-width: 640px; margin: 48px auto; padding: 0 16px; color: var(--ink-2); }
+    .head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px; }
+    .seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; }
+    .seg button { font: 600 13px/1 var(--font); min-height: 40px; padding: 0 14px; border: 0; background: var(--sheet); color: var(--ink-2); cursor: pointer; }
+    .seg button + button { border-left: 1px solid var(--line-strong); }
+    .seg button[aria-pressed="true"] { background: var(--green); color: #fff; }
+    .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .tile { background: var(--sheet); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+    .tile b { display: block; font-size: 24px; line-height: 1.2; }
+    .tile span { color: var(--ink-2); font-size: 13px; }
+    .tile small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .panel { background: var(--sheet); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; min-width: 0; }
+    .panel > header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    .panel > header small { color: var(--muted); font-size: 13px; }
+    .pad { padding: 16px; }
+    .unit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 0; }
+    .inputs { padding: 16px; display: grid; gap: 10px; border-right: 1px solid var(--line); align-content: start; }
+    .inputs label { display: grid; grid-template-columns: minmax(0, 1fr) 120px; align-items: center; gap: 10px; font-weight: 500; }
+    .inputs input { font: inherit; min-height: 40px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; text-align: right; width: 100%; }
+    .inputs .hint { margin: 0; color: var(--muted); font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; }
+    td, th { padding: 8px 16px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+    th { font-size: 12px; font-weight: 600; color: var(--muted); }
+    td:first-child, th:first-child { text-align: left; white-space: normal; }
+    tr.total td { font-weight: 700; border-top: 2px solid var(--ink); }
+    tr.cost td:last-child { color: var(--brass); }
+    .verdict { margin: 0; padding: 12px 16px; background: var(--green-soft); color: var(--green-ink); font-weight: 600; }
+    .verdict.low { background: var(--red-soft); color: var(--red); }
+    .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+    .weeks { display: grid; gap: 6px; padding: 16px; }
+    .wk { display: grid; grid-template-columns: 150px minmax(0, 1fr) 56px; align-items: center; gap: 10px; font-size: 13px; }
+    .wk .track { height: 10px; border-radius: 99px; background: var(--track); overflow: hidden; }
+    .wk .track span { display: block; height: 100%; background: var(--green); }
+    .src { color: var(--muted); font-size: 12px; margin: 0; max-width: 100ch; }
+    .basis { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 12px; font-weight: 600; background: var(--track); color: var(--ink-2); }
+    @media (max-width: 900px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .unit, .two { grid-template-columns: minmax(0, 1fr); }
+      .inputs { border-right: 0; border-bottom: 1px solid var(--line); } }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="/owner/command"><img src="/static/brand/post-one-mark.svg" alt="" width="22" height="24">{{BRAND_SHORT}} <small>Owner</small></a>
+    <nav aria-label="Owner screens">
+      <a href="/owner/command">Today</a>
+      <a href="/owner/numbers" aria-current="page">Numbers</a>
+      <a href="/owner/dispatch">Dispatch</a>
+      <a href="/owner/community">Community</a>
+      <a href="/owner/marketing">Marketing</a>
+      <a href="/crew">Bookings &amp; crew</a>
+      <a href="/crew/dashboard">Crew route</a>
+      <a href="/owner/readiness">Go-live</a>
+    </nav>
+  </header>
+  <p class="msg" id="msg" role="status" hidden></p>
+  <main id="app" hidden>
+    <section class="head">
+      <div>
+        <h1>Numbers</h1>
+        <p class="lede">What a mow really earns after every cost, how many it takes to break even, and whether the business is
+          getting healthier. Costs are your own estimates, kept on this phone; everything else comes from real bookings and routes.</p>
+      </div>
+      <div class="seg" role="group" aria-label="Period" id="period">
+        <button type="button" data-days="30">30 days</button><button type="button" data-days="90" aria-pressed="true">90 days</button><button type="button" data-days="365">1 year</button>
+      </div>
+    </section>
+
+    <section class="tiles" aria-label="Key numbers" id="tiles"></section>
+
+    <section class="panel" aria-labelledby="h-unit">
+      <header><h2 id="h-unit">One mow, every dollar</h2><span class="basis" id="basis"></span></header>
+      <div class="unit">
+        <form class="inputs" id="costs" onsubmit="return false">
+          <label for="c-pay">Crew pay per hour, each<input id="c-pay" type="number" inputmode="decimal" min="0" step="0.5" data-key="pay"></label>
+          <label for="c-crew">People per crew<input id="c-crew" type="number" inputmode="numeric" min="1" step="1" data-key="crew"></label>
+          <label for="c-mile">Truck and trailer, per mile<input id="c-mile" type="number" inputmode="decimal" min="0" step="0.01" data-key="mile"></label>
+          <label for="c-supply">Fuel, blades, wear, per mow<input id="c-supply" type="number" inputmode="decimal" min="0" step="0.5" data-key="supply"></label>
+          <label for="c-fixed">Fixed costs per month<input id="c-fixed" type="number" inputmode="decimal" min="0" step="50" data-key="fixed"></label>
+          <label for="c-goal">Owner pay goal per month<input id="c-goal" type="number" inputmode="decimal" min="0" step="100" data-key="goal"></label>
+          <p class="hint">Fixed = insurance, truck payment, phone, software, storage: what you pay even in a week with no mows.
+            Per-mile default is the IRS 2025 business mileage rate (70¢).</p>
+        </form>
+        <div>
+          <table aria-label="One mow, every dollar"><tbody id="waterfall"></tbody></table>
+          <p class="verdict" id="verdict" role="status"></p>
+        </div>
+      </div>
+    </section>
+
+    <div class="two">
+      <section class="panel" aria-labelledby="h-price">
+        <header><h2 id="h-price">Price check</h2><small>what $10 does</small></header>
+        <table><thead><tr><th scope="col">Price per mow</th><th scope="col">Earns per mow</th><th scope="col">Break-even / week</th></tr></thead><tbody id="price"></tbody></table>
+        <p class="src pad">Local mowing is usually quoted at $35–$55 (Oct 2026). A lower price needs many more mows to cover the same costs; sell the set day, the locked price and the texts instead.</p>
+      </section>
+      <section class="panel" aria-labelledby="h-gear">
+        <header><h2 id="h-gear">Should I buy it?</h2><small>equipment payback</small></header>
+        <form class="inputs" style="border:0" onsubmit="return false">
+          <label for="g-cost">Price of the equipment<input id="g-cost" type="number" inputmode="decimal" min="0" step="100" value="9000"></label>
+          <label for="g-save">Minutes it saves per mow<input id="g-save" type="number" inputmode="decimal" min="0" step="1" value="10"></label>
+        </form>
+        <p class="verdict" id="gear" role="status"></p>
+      </section>
+    </div>
+
+    <div class="two">
+      <section class="panel" aria-labelledby="h-ahead">
+        <header><h2 id="h-ahead">Next 4 weeks</h2><small id="fill"></small></header>
+        <div class="weeks" id="ahead"></div>
+      </section>
+      <section class="panel" aria-labelledby="h-areas">
+        <header><h2 id="h-areas">By area</h2><small>done visits in the period</small></header>
+        <table><thead><tr><th scope="col">Area</th><th scope="col">Visits</th><th scope="col">Before tax</th></tr></thead><tbody id="areas"></tbody></table>
+      </section>
+    </div>
+    <p class="src">Card fee: Stripe's standard 2.9% + 30¢ on the total with tax. Giving: the cause share each mow already sets aside.
+      Labor counts drive time and lawn time, since the crew is paid for both. Until a few visits are done, per-mow time and miles
+      are planning numbers (a standard yard, 10 minutes and 4 miles between stops).</p>
+  </main>
+  <script>
+    let token = null;
+    try { token = localStorage.getItem("crewToken"); } catch {}
+    const $ = (id) => document.getElementById(id);
+    const el = (tag, attrs = {}, ...kids) => { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) k === "class" ? (e.className = v) : e.setAttribute(k, v); e.append(...kids.filter((x) => x != null)); return e; };
+    const money = (n) => (n < 0 ? "−" : "") + "$" + Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const whole = (n) => Math.round(n).toLocaleString("en-US");
+    const pct = (x) => x == null ? "–" : Math.round(x * 100) + "%";
+    const DEFAULTS = { pay: 18, crew: 2, mile: 0.70, supply: 4, fixed: 1200, goal: 3000 };
+    let costs = { ...DEFAULTS }, data = null, days = 90;
+    try { costs = { ...DEFAULTS, ...JSON.parse(localStorage.getItem("ownerCosts") || "{}") }; } catch {}
+
+    // One mow: price, minus each cost, leaves what the mow contributes toward fixed costs and owner pay.
+    function perMow(ticket) {
+      const u = data.unit, hours = (u.onsite_min + u.drive_min) / 60;
+      const lines = [
+        ["Price before tax", ticket],
+        ["Giving (cause share)", -ticket * u.giving_rate],
+        ["Card fee", -(ticket * (1 + data.tax_rate) * data.card_fee.rate + data.card_fee.fixed)],
+        [`Crew pay (${costs.crew} × ${Math.round(u.onsite_min + u.drive_min)} min)`, -costs.crew * costs.pay * hours],
+        [`Truck (${u.miles.toFixed(1)} mi)`, -u.miles * costs.mile],
+        ["Fuel, blades, wear", -costs.supply],
+      ];
+      return { lines, earns: lines.reduce((t, [, v]) => t + v, 0) };
+    }
+    function renderTiles() {
+      const a = data.actual;
+      const tile = (v, k, s) => el("div", { class: "tile" }, el("b", { class: "num" }, v), el("span", {}, k), s ? el("small", {}, s) : null);
+      $("tiles").replaceChildren(
+        tile(whole(a.visits), "Visits done", `${a.visits_per_week} a week`),
+        tile(money(a.revenue), "Earned before tax", a.avg_ticket ? `${money(a.avg_ticket)} a visit` : "no visits yet"),
+        tile(pct(a.repeat_rate), "Repeat customers", `${a.customers} customers, past year`),
+        tile(pct(a.lawn_share), "Crew time on lawns", "the rest is driving"),
+        tile(a.per_crew_hour ? money(a.per_crew_hour) : "–", "Earned per crew hour", "before costs"),
+        tile(pct(data.fill_rate), "Next 4 weeks booked", "of the daily limit"),
+        tile(pct(a.cancel_rate), "Cancelled", "of bookings in the period"),
+        tile(money(a.giving), "Given to causes", "from done visits"));
+    }
+    function renderUnit() {
+      const u = data.unit, { lines, earns } = perMow(u.ticket);
+      $("basis").textContent = u.basis === "actual" ? "From your real visits" : "Planning numbers (no visits yet)";
+      $("waterfall").replaceChildren(...lines.map(([k, v], i) => el("tr", { class: i ? "cost" : "" }, el("td", {}, k), el("td", { class: "num" }, money(v)))),
+        el("tr", { class: "total" }, el("td", {}, "Each mow earns"), el("td", { class: "num" }, money(earns))));
+      const v = $("verdict");
+      if (earns <= 0) { v.className = "verdict low"; v.textContent = "Each mow loses money at these costs. Raise the price, trim costs, or cut drive time between stops."; return; }
+      const be = costs.fixed / earns, goal = (costs.fixed + costs.goal) / earns, week = data.actual.visits_per_week;
+      const margin = earns / u.ticket;
+      v.className = "verdict" + (u.basis === "actual" && week * 4.33 < be ? " low" : "");
+      v.textContent = `Keeps ${Math.round(margin * 100)}% of the price. Break-even: ${whole(Math.ceil(be))} mows a month `
+        + `(${whole(Math.ceil(be / 4.33))} a week, about ${whole(Math.ceil(be / 4.33 / 5))} per area day). `
+        + `With your ${money(costs.goal).replace(".00", "")} pay goal: ${whole(Math.ceil(goal))} a month.`
+        + (u.basis === "actual" ? ` You're doing ${week} a week.` : "");
+    }
+    function renderPrice() {
+      $("price").replaceChildren(...[-10, 0, 10].map((d) => {
+        const t = data.unit.ticket + d, { earns } = perMow(t);
+        return el("tr", {}, el("td", { class: "num" }, money(t) + (d ? "" : " (now)")), el("td", { class: "num" }, money(earns)),
+          el("td", { class: "num" }, earns > 0 ? whole(Math.ceil(costs.fixed / earns / 4.33)) : "never"));
+      }));
+    }
+    function renderGear() {
+      const cost = +$("g-cost").value || 0, save = +$("g-save").value || 0;
+      const perMowSaved = costs.crew * costs.pay * save / 60;
+      const pace = data.unit.basis === "actual" && data.actual.visits_per_week > 0 ? data.actual.visits_per_week : Math.ceil(costs.fixed / Math.max(1, perMow(data.unit.ticket).earns) / 4.33);
+      $("gear").className = "verdict";
+      $("gear").textContent = perMowSaved > 0
+        ? `Saves ${money(perMowSaved)} of crew pay a mow, so it pays for itself after ${whole(Math.ceil(cost / perMowSaved))} mows: about ${whole(Math.ceil(cost / perMowSaved / pace))} weeks at ${pace} mows a week. Time saved can also fit more lawns into an area day.`
+        : "Enter the minutes it saves on each mow.";
+    }
+    function renderAhead() {
+      $("fill").textContent = `${pct(data.fill_rate)} of the limit`;
+      // One row per area (its 4 area days together): the emptiest area is where the next door hangers go.
+      const by = new Map();
+      for (const d of data.ahead) { const a = by.get(d.area) || { area: d.area, weekday: d.weekday, booked: 0, quota: 0 }; a.booked += d.booked; a.quota += d.quota; by.set(d.area, a); }
+      const week = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      $("ahead").replaceChildren(...[...by.values()].sort((x, y) => week.indexOf(x.weekday) - week.indexOf(y.weekday)).map((d) => el("div", { class: "wk" },
+        el("span", {}, `${d.weekday} · ${d.area}`),
+        el("span", { class: "track", role: "img", "aria-label": `${d.booked} of ${d.quota} booked` }, el("span", { style: `width:${Math.min(100, 100 * d.booked / d.quota)}%` })),
+        el("span", { class: "num" }, `${d.booked}/${d.quota}`))));
+      $("areas").replaceChildren(...(data.areas.length ? data.areas.map((a) => el("tr", {}, el("td", {}, a.area), el("td", { class: "num" }, whole(a.visits)), el("td", { class: "num" }, money(a.revenue))))
+        : [el("tr", {}, el("td", { colspan: "3" }, "No visits done in this period yet."))]));
+    }
+    function renderAll() { renderTiles(); renderUnit(); renderPrice(); renderGear(); renderAhead(); }
+    async function load() {
+      const res = await fetch(`/api/owner/numbers?days=${days}`, { headers: { "X-Crew-Token": token } });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(/owner/i.test(body.detail || "") ? "Only the owner can see this." : body.detail || "Couldn't load.");
+      data = body; renderAll();
+    }
+    document.querySelectorAll("#costs input").forEach((i) => {
+      i.value = costs[i.dataset.key];
+      i.addEventListener("input", () => {
+        const v = parseFloat(i.value); if (!isFinite(v) || v < 0) return;
+        costs[i.dataset.key] = i.dataset.key === "crew" ? Math.max(1, Math.round(v)) : v;
+        try { localStorage.setItem("ownerCosts", JSON.stringify(costs)); } catch {}
+        if (data) { renderUnit(); renderPrice(); renderGear(); }
+      });
+    });
+    ["g-cost", "g-save"].forEach((id) => $(id).addEventListener("input", () => data && renderGear()));
+    $("period").addEventListener("click", async (e) => {
+      const b = e.target.closest("button"); if (!b) return;
+      days = +b.dataset.days; document.querySelectorAll("#period button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      try { await load(); } catch (err) { $("msg").hidden = false; $("msg").textContent = err.message; }
+    });
+    (async () => {
+      if (!token) { $("msg").hidden = false; $("msg").innerHTML = 'Sign in as the owner in the <a href="/crew">crew app</a> first.'; return; }
+      try { await load(); $("app").hidden = false; }
+      catch (e) { $("msg").hidden = false; $("msg").textContent = e.message; }
+    })();
+  </script>
+</body>
+</html>

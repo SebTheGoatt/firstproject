@@ -74,6 +74,12 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
   prompts (review reply, customer reply, property-manager email, video caption, Spanish, weekly plan), each carrying
   live areas/days/prices/policy and the claim rules (insurance and background checks only when the settings say so).
   When a policy or fact changes, it changes there too. Inspired by prompts.chat; generic libraries don't know us.
+- Owner numbers `/owner/numbers` (`app/numbers.py`, "Numbers" in the owner menu): KPIs from real bookings and routes
+  (visits a week, average ticket, repeat customers, crew time on lawns, earned per crew hour, next 4 weeks booked,
+  cancellations, giving), one mow's contribution after giving, card fee, crew pay, truck miles and supplies, break-even
+  and owner-pay goal, a ±$10 price check and equipment payback. Cost assumptions are typed on the page and kept on that
+  phone (localStorage). Planning numbers until 3 visits are done. The skill's `references/graduate-toolkit.md` maps the
+  owner's MBA courses onto these decisions.
 - Where to knock first `/owner/targets` (linked from the marketing hub): every Census block group in our areas ranked by
   owner-lived single-family homes, weighted by median income (ACS 5-year via Census Reporter, keyless; the Census API now
   needs a key). `tools/make_target_map.py` writes `static/data/targets-<fingerprint>.json` (neighborhood totals only);
