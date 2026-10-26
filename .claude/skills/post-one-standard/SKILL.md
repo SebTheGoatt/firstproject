@@ -71,7 +71,10 @@ The repo is public. Before anything is written to disk in the repo, sort what yo
 
 ### 3. Judge: the business lens
 
-Read `references/business-lens.md` for the full lens. The short version, in the order that usually decides it:
+Read `references/business-lens.md` for the full lens, and `references/graduate-toolkit.md` for the owner's ten MBA
+courses mapped onto Post One (strategy, marketing, managerial economics, corporate finance, business analysis, legal
+and ethical, organization, leadership, AI in business, crisis management). Name the course that settles a call and
+the KPI on `/owner/numbers` that will show whether it worked. The short version, in the order that usually decides it:
 
 1. **Does it build the line?** More paying customers in our areas (distribution beats building; the site already
    does more than competitors).

@@ -150,6 +150,9 @@ class Repository(Protocol):
     # Owner dashboard + customer visit page
     def list_jobs(self, day: date) -> list[dict]: ...
     def list_jobs_between(self, start: date, end: date) -> list[dict]: ...
+    # The owner's numbers (app/numbers.py): money, time and repeat customers. No names or phones.
+    def business_rows(self, start: date, end: date) -> list[dict]: ...   # every booking in range, cancelled too
+    def route_totals_between(self, start: date, end: date) -> list[dict]: ...
     def get_visit(self, access_code: str) -> dict | None: ...
     def forget_customer(self, access_code: str) -> str: ...   # "deleted" | "upcoming" | "not_found"
     def count_customers_named(self, prefix: str) -> int: ...  # test data check before going live
@@ -556,6 +559,17 @@ class SupabaseRepository:
             .gte("scheduled_date", start.isoformat()).lte("scheduled_date", end.isoformat())
             .neq("status", "cancelled").execute()
         ).data
+
+    BUSINESS_COLS = ("customer_id, scheduled_date, status, zone_key, subtotal, tax_amount, amount_due, amount_paid,"
+                     " charity_amount, donation, payment_status, service_minutes, source, created_at")
+
+    def business_rows(self, start: date, end: date) -> list[dict]:
+        return (self.sb.table("jobs").select(self.BUSINESS_COLS)
+                .gte("scheduled_date", start.isoformat()).lte("scheduled_date", end.isoformat()).execute().data)
+
+    def route_totals_between(self, start: date, end: date) -> list[dict]:
+        return (self.sb.table("routes").select("route_date, total_distance_m, total_duration_s")
+                .gte("route_date", start.isoformat()).lte("route_date", end.isoformat()).execute().data)
 
     def count_customers_named(self, prefix: str) -> int:
         res = self.sb.table("customers").select("id", count="exact", head=True).like("name", f"{prefix}%").execute()
@@ -1051,6 +1065,14 @@ class MemoryRepository:
     def list_jobs_between(self, start: date, end: date) -> list[dict]:
         return [{k: j.get(k) for k in ("scheduled_date", "status", "payment_status", "amount_due", "amount_paid", "donation", "tax_amount")}
                 for j in self.jobs.values() if start <= j["scheduled_date"] <= end and j["status"] != "cancelled"]
+
+    def business_rows(self, start: date, end: date) -> list[dict]:
+        return [{k: j.get(k) for k in ("customer_id", "scheduled_date", "status", "zone_key", "subtotal", "tax_amount", "amount_due", "amount_paid", "charity_amount", "donation", "payment_status", "service_minutes", "source", "created_at")}
+                for j in self.jobs.values() if start <= j["scheduled_date"] <= end]
+
+    def route_totals_between(self, start: date, end: date) -> list[dict]:
+        return [{k: r[k] for k in ("route_date", "total_distance_m", "total_duration_s")}
+                for r in self.routes.values() if start <= r["route_date"] <= end]
 
     def count_customers_named(self, prefix: str) -> int:
         return sum(1 for c in self.customers.values() if c["name"].startswith(prefix))
