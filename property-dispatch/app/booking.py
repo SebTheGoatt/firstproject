@@ -6,6 +6,7 @@
 * One area per day: an address can only be booked on its area's weekday (app/zones.py).
 """
 
+import html
 import time
 from datetime import date, datetime, timedelta
 
@@ -53,6 +54,36 @@ def forget_counts(repo) -> None:
     repo.__dict__.pop("_preorder_cache", None)
 
 
+def closed_through(now: datetime, settings: Settings) -> date | None:
+    """Storm mode: the last closed day, while it's still today or ahead."""
+    c = settings.closed_until
+    return c if c and now.date() <= c else None
+
+
+def service_floor(now: datetime, settings: Settings) -> date | None:
+    """The first day that can be booked: opening day while pre-orders run, the day after a storm closure."""
+    closed = closed_through(now, settings)
+    floors = [d for d in (settings.launch_date if preorders_open(now, settings) else None,
+                          closed + timedelta(days=1) if closed else None) if d]
+    return max(floors) if floors else None
+
+
+def closed_message(day: date) -> str:
+    return f"We're closed through {day.strftime('%A, %B')} {day.day} for the weather. Please pick a day after that."
+
+
+def storm_banner(now: datetime, settings: Settings) -> str:
+    """The storm-mode notice at the top of every page (inline styles: owner pages don't load the site stylesheet)."""
+    closed = closed_through(now, settings)
+    if not closed:
+        return ""
+    note = html.escape(settings.closed_note.strip()) or "If you're booked in those days, we'll text you a new day."
+    return ('<div class="storm-banner" role="status" style="margin:0;padding:12px 16px;background:#FFF4D6;color:#5C3E00;'
+            'border-bottom:1px solid #E8C979;font:600 15px/1.45 \'Public Sans\',system-ui,sans-serif;text-align:center">'
+            f"<strong>Storm update:</strong> <span>We're closed through {closed.strftime('%A, %B')} {closed.day}.</span> "
+            f"<span>{note}</span></div>")
+
+
 def earliest_bookable_day(now: datetime, freeze_hour: int, launch: date | None = None) -> date:
     day = now.date() + timedelta(days=1)
     while is_frozen(day, now, freeze_hour):
@@ -62,7 +93,7 @@ def earliest_bookable_day(now: datetime, freeze_hour: int, launch: date | None =
 
 def latest_bookable_day(now: datetime, settings: Settings) -> date:
     """The booking window runs booking_horizon_days from today, or from the launch day while pre-orders are open."""
-    return max(now.date(), settings.launch_date or now.date()) + timedelta(days=settings.booking_horizon_days)
+    return max(now.date(), service_floor(now, settings) or now.date()) + timedelta(days=settings.booking_horizon_days)
 
 
 def preorders_open(now: datetime, settings: Settings) -> bool:
@@ -89,10 +120,13 @@ def preorder_count(repo, now: datetime, settings: Settings) -> int:
 
 def validate_booking(day: date, now: datetime, active_jobs_that_day: int, settings: Settings) -> None:
     if is_frozen(day, now, settings.freeze_hour):
-        first = earliest_bookable_day(now, settings.freeze_hour, settings.launch_date)
+        first = earliest_bookable_day(now, settings.freeze_hour, service_floor(now, settings))
         raise BookingRejected(
             f"That day's route is already locked. The earliest available day is {first.strftime('%A, %b')} {first.day}."
         )
+    closed = closed_through(now, settings)
+    if closed and day <= closed:
+        raise BookingRejected(closed_message(closed))
     if preorders_open(now, settings) and day < settings.launch_date:
         first = settings.launch_date
         raise BookingRejected(f"We start mowing on {first.strftime('%A, %B')} {first.day}. "
@@ -114,7 +148,7 @@ def check_area_day(day: date, zone: ServiceZone) -> None:
 
 def open_area_days(zone: ServiceZone, now: datetime, settings: Settings, count_active) -> list[dict]:
     """The area's bookable days in the booking window, with spots left (full days included, marked 0)."""
-    first = earliest_bookable_day(now, settings.freeze_hour, settings.launch_date)
+    first = earliest_bookable_day(now, settings.freeze_hour, service_floor(now, settings))
     last = latest_bookable_day(now, settings)
     out = []
     for d in service_days(zone, first, last):

@@ -23,6 +23,7 @@ import asyncio
 import hashlib
 import hmac
 import html
+import re
 import json
 import logging
 import mimetypes
@@ -39,8 +40,8 @@ from pydantic import BaseModel
 
 from . import deeplinks, push, reviews
 from .booking import (PREORDER_SHOW_MIN, BookingRejected, cached_count, check_area_day, forget_counts, earliest_bookable_day,
-                      latest_bookable_day, local_now, next_service_day, open_area_days, preorder_count, preorders_open,
-                      validate_booking)
+                      closed_through, latest_bookable_day, local_now, next_service_day, open_area_days, preorder_count,
+                      preorders_open, service_floor, storm_banner, validate_booking)
 from .config import Settings, get_settings, site_url, verification_meta
 from .db import Repository, make_repository
 from .geocode import GeocodingError, GeocoderUnavailable, NominatimGeocoder
@@ -284,12 +285,14 @@ def create_app(
         # Static pages are UTF-8 regardless of the host process locale (Windows hosts default to a legacy code page).
         text = (STATIC_DIR / name).read_text(encoding="utf-8")
         # {{BRAND}} is the header/footer logo (mark + two-line wordmark), {{BRAND_SHORT}} its first line ("Post One").
-        return (text.replace("{{BUSINESS_NAME}}", html.escape(settings.business_name)).replace("{{V}}", version)
+        text = (text.replace("{{BUSINESS_NAME}}", html.escape(settings.business_name)).replace("{{V}}", version)
                 .replace("{{BRAND}}", brand_html(settings.business_name))
                 .replace("{{BRAND_SHORT}}", html.escape(brand_lines(settings.business_name)[0]))
                 .replace("{{LEGAL_FOOTER}}", legal_footer_html(settings))
                 .replace("{{SMS_CONSENT}}", html.escape(SMS_CONSENT.format(brand=settings.business_name, legal=settings.legal_name)))
                 .replace("</head>", verification_meta(settings) + "\n</head>", 1))
+        banner = storm_banner(local_now(settings), settings)       # storm mode: the notice tops every page
+        return re.sub(r"<main\b[^>]*>", lambda m: m.group(0) + banner, text, count=1) if banner else text
 
     def page(name: str) -> HTMLResponse:
         return HTMLResponse(render(name), headers={"Cache-Control": "no-cache"})
@@ -404,7 +407,8 @@ def create_app(
     @app.get("/api/booking-info")
     def booking_info(request: Request):
         now = local_now(settings)
-        earliest = earliest_bookable_day(now, settings.freeze_hour, settings.launch_date)
+        earliest = earliest_bookable_day(now, settings.freeze_hour, service_floor(now, settings))
+        closed = closed_through(now, settings)
         try:  # real openings on the next route (daily_job_quota minus active jobs); never blocks the page
             spots_left = max(0, settings.daily_job_quota - cached_count(request.app.state.repo, earliest))
         except Exception:
@@ -419,6 +423,7 @@ def create_app(
             "spots_left": spots_left,
             "latest_date": latest_bookable_day(now, settings),
             # Pre-orders (LAUNCH_DATE): the opening day, and the real count shown once it's worth showing.
+            "closed": {"until": closed, "note": settings.closed_note.strip() or None} if closed else None,
             "preorder": {"open": preorder, "launch_date": settings.launch_date if preorder else None,
                          "count": preorders if preorders >= PREORDER_SHOW_MIN else None},
             "freeze_hour": settings.freeze_hour,

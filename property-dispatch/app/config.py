@@ -43,7 +43,12 @@ class Settings(BaseSettings):
     # every booking is a pre-order (paid at booking, free to cancel until the crew is on the way). Blank = open now.
     launch_date: date | None = None
 
-    @field_validator("launch_date", mode="before")
+    # Storm mode (hurricane, flood, freeze): no service through CLOSED_UNTIL (e.g. 2027-07-10). The site shows a notice,
+    # bookings start the day after, and the owner moves booked days with Rain day. It turns itself off after that date.
+    closed_until: date | None = None
+    closed_note: str = ""            # optional extra line on the notice, e.g. "Stay safe. We'll text you a new day."
+
+    @field_validator("launch_date", "closed_until", mode="before")
     @classmethod
     def blank_launch(cls, v):
         return None if isinstance(v, str) and not v.strip() else v

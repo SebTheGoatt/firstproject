@@ -303,7 +303,11 @@
       const issues = d.issues || [];
       f.className = "finding" + (wrong.length || issues.length ? " bad" : "");
       renderIssues(issues);
-      if (issues.length) {
+      if (d.closed && d.closed.affected) {
+        f.className = "finding bad";
+        f.replaceChildren(el("b", {}, `Storm mode through ${day(d.closed.until, { weekday: "long", month: "short", day: "numeric" })}: ${plural(d.closed.affected, "booked visit needs", "booked visits need")} a new day.`),
+          " Open each closed day on Dispatch and press Rain day: it moves them and texts each customer.");
+      } else if (issues.length) {
         f.replaceChildren(el("b", {}, `The crew reported ${plural(issues.length, "problem", "problems")}.`),
           " See the photos below and mark each one handled once it's taken care of.");
       } else if (wrong.length) {
