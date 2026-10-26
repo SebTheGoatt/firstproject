@@ -34,7 +34,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from .booking import cached_count, earliest_bookable_day, local_now
 from .charity import causes
-from .config import Settings, site_url
+from .config import Settings, site_url, verification_meta
 from .pricing import (ADD_ONS, MAX_SQFT, YARD_TYPES, YIELD_GIVING_RATE, YIELD_INCLUDED_SQFT, bracket_profile,
                       density_pct, season_text, yield_mow_fee)
 from .zones import WEEKDAY_NAMES, zone_by_key
@@ -413,7 +413,7 @@ def layout(settings: Settings, version: str, *, title: str, description: str, bo
   <link rel="preload" href="/static/fonts/big-shoulders-display-800.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/static/fonts/public-sans-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/styles.css?v={esc(version)}">
-  <script src="/static/i18n.js?v={esc(version)}" defer></script>{head_extra}
+  <script src="/static/i18n.js?v={esc(version)}" defer></script>{head_extra}{verification_meta(settings)}
 </head>
 <body class="{body_class}">
   <a class="skip-link" href="#main">Skip to content</a>

@@ -40,7 +40,7 @@ from pydantic import BaseModel
 from . import deeplinks, push, reviews
 from .booking import (BookingRejected, cached_count, check_area_day, forget_counts, earliest_bookable_day, local_now, next_service_day,
                       open_area_days, validate_booking)
-from .config import Settings, get_settings, site_url
+from .config import Settings, get_settings, site_url, verification_meta
 from .db import Repository, make_repository
 from .geocode import GeocodingError, GeocoderUnavailable, NominatimGeocoder
 from .agent import register_agent_routes
@@ -286,7 +286,8 @@ def create_app(
                 .replace("{{BRAND}}", brand_html(settings.business_name))
                 .replace("{{BRAND_SHORT}}", html.escape(brand_lines(settings.business_name)[0]))
                 .replace("{{LEGAL_FOOTER}}", legal_footer_html(settings))
-                .replace("{{SMS_CONSENT}}", html.escape(SMS_CONSENT.format(brand=settings.business_name, legal=settings.legal_name))))
+                .replace("{{SMS_CONSENT}}", html.escape(SMS_CONSENT.format(brand=settings.business_name, legal=settings.legal_name)))
+                .replace("</head>", verification_meta(settings) + "\n</head>", 1))
 
     def page(name: str) -> HTMLResponse:
         return HTMLResponse(render(name), headers={"Cache-Control": "no-cache"})

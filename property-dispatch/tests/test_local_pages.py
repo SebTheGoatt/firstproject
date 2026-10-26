@@ -410,3 +410,14 @@ def test_business_data_lists_payment_and_never_a_fake_phone_or_pin(settings, rep
         assert biz["paymentAccepted"] == pay and biz["currenciesAccepted"] == "USD"
         assert biz["logo"].endswith("/static/icons/icon-512.png")
         assert "geo" not in biz and "telephone" not in biz      # no pin for a service-area business; phone only when set
+
+
+def test_search_engine_verification_tags(client, settings, repo):
+    assert "google-site-verification" not in client.get("/").text            # nothing printed until the owner sets it
+    c = app_with(settings, repo, google_site_verification="abcDEF123_-xyz", bing_site_verification="0123456789ABCDEF")
+    for path in ("/", "/community", "/local", "/book"):
+        page = c.get(path).text
+        assert '<meta name="google-site-verification" content="abcDEF123_-xyz">' in page, path
+        assert '<meta name="msvalidate.01" content="0123456789ABCDEF">' in page, path
+    bad = app_with(settings, repo, google_site_verification='x"><script>alert(1)</script>')
+    assert "<script>alert(1)" not in bad.get("/").text and "google-site-verification" not in bad.get("/").text

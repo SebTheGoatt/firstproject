@@ -123,7 +123,9 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 - Render env: `LIABILITY_COVERAGE` only once insured; `BUSINESS_EMAIL`, Stripe and Twilio keys.
 - File the Texas assumed-name certificate (Form 503) for Post One Lawn Co.
 - Buy postonelawn.com and point it at Render.
-- Google Search Console: add the site and submit `/sitemap.xml`. Google Business Profile: primary category
+- Google Search Console: add the site (URL prefix, HTML tag method: paste only the code into Render
+  `GOOGLE_SITE_VERIFICATION`), verify, submit `/sitemap.xml`. Same for Bing Webmaster Tools (`BING_SITE_VERIFICATION`;
+  Bing feeds Copilot and ChatGPT search). The go-live page (`/owner/readiness`) tracks both. Google Business Profile: primary category
   "Lawn care service", website link, ask first customers for reviews.
 - Stripe public business name and statement descriptor → Post One.
 - Delete the mock bookings from testing.
