@@ -118,6 +118,15 @@
     .legend { position: absolute; left: 12px; bottom: 28px; z-index: 2; display: flex; flex-wrap: wrap; gap: 6px 12px; padding: 6px 10px; border-radius: 8px;
       background: rgba(255,255,255,0.94); border: 1px solid var(--line); font-size: 12px; color: var(--ink-2); max-width: calc(100% - 24px); }
     .legend i { display: inline-block; width: 18px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
+    /* Play the day: the truck, the clock over the map, and a screen-reader line per stop reached. */
+    .truck { width: 34px; height: 34px; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.35)); }
+    .hud { position: absolute; right: 12px; bottom: 28px; z-index: 2; display: grid; gap: 2px; min-width: 190px; padding: 10px 14px; border-radius: 10px;
+      background: rgba(15,43,34,0.94); color: #F5F6F1; border-top: 3px solid #C9A227; }
+    .hud .t { font: 700 22px/1.1 var(--font); font-variant-numeric: tabular-nums; }
+    .hud .l { font-size: 13px; color: #C9D3CD; max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hud .bar2 { height: 4px; border-radius: 99px; background: rgba(255,255,255,0.18); overflow: hidden; margin-top: 6px; }
+    .hud .bar2 span { display: block; height: 100%; width: 0; background: #9BD15A; }
+    .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
     .base-pin { width: 30px; height: 33px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25)); }
     .maplibregl-ctrl-attrib { font-size: 11px; }
     .maplibregl-ctrl-attrib a { text-decoration: underline; }
@@ -128,6 +137,7 @@
       .stage { height: 58vh; min-height: 360px; order: -1; }
       .panel { border-right: 0; overflow: visible; }
       .legend { display: none; }
+      .hud { bottom: 64px; min-width: 160px; }
     }
     @media (prefers-reduced-motion: reduce) { .btn, .day { transition: none; } .btn:active { transform: none; } }
   </style>
@@ -177,8 +187,11 @@
           <button class="tool" type="button" id="fit">Whole route</button>
           <button class="tool" type="button" id="tilt" aria-pressed="false">3D</button>
           <button class="tool" type="button" id="radar" aria-pressed="false">Rain radar</button>
+          <button class="tool" type="button" id="play" aria-pressed="false">Play the day</button>
         </div>
-        <div class="legend" aria-hidden="true"><span><i style="background:#2E7D4F"></i>Road path</span><span><i style="background:#9aa7a0"></i>Done</span><span><i style="background:#2E7D4F;height:2px;opacity:.8"></i>Area edge</span></div>
+        <div class="hud" id="hud" aria-hidden="true" hidden><span class="t num" id="hud-t"></span><span class="l" id="hud-l"></span><span class="bar2"><span id="hud-p"></span></span></div>
+        <p class="sr" id="play-say" aria-live="polite"></p>
+        <div class="legend" aria-hidden="true"><span><i style="background:#2E7D4F"></i>Road path</span><span><i style="background:#9aa7a0"></i>Done</span><span><i style="background:#2E7D4F;height:2px;opacity:.8"></i>Area edge</span><span><i style="background:#C9A227"></i>Driven (Play the day)</span><span><i style="background:#2E7D4F;width:6px;height:12px"></i>Stop: taller = longer on site</span></div>
       </section>
     </div>
   </div>
@@ -329,12 +342,19 @@
                      "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 14, 0, 15.5, ["coalesce", ["get", "height"], 5]],
                      "fill-extrusion-base": 0 } }, labels);
         } catch {}
+        for (const id of ["ribbon", "pillars"]) map.addSource(id, { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+        // The route as a raised ribbon and each stop as a pillar (taller = more minutes on the lawn): read in 3D.
+        map.addLayer({ id: "ribbon", type: "fill-extrusion", source: "ribbon", minzoom: 14.5, paint: {
+          "fill-extrusion-color": ribbonColor(-1), "fill-extrusion-height": 3, "fill-extrusion-base": 0, "fill-extrusion-opacity": 0.9 } }, labels);
+        map.addLayer({ id: "pillars", type: "fill-extrusion", source: "pillars", minzoom: 12, paint: {
+          "fill-extrusion-color": ["case", ["get", "on"], "#C9A227", ["get", "done"], "#9aa7a0", "#2E7D4F"],
+          "fill-extrusion-height": ["get", "h"], "fill-extrusion-base": 0, "fill-extrusion-opacity": 0.95 } }, labels);
         for (const id of ["veil", "edge", "path", "stops"]) map.addSource(id, { type: "geojson", data: { type: "FeatureCollection", features: [] }, ...(id === "path" ? { lineMetrics: true } : {}) });
         map.addLayer({ id: "veil", type: "fill", source: "veil", paint: { "fill-color": "#ffffff", "fill-opacity": 0.5 } });
         map.addLayer({ id: "edge", type: "line", source: "edge", paint: { "line-color": "#2E7D4F", "line-width": 2, "line-opacity": 0.8 } });
-        map.addLayer({ id: "path-casing", type: "line", source: "path", layout: { "line-cap": "round", "line-join": "round" },
+        map.addLayer({ id: "path-casing", type: "line", source: "path", maxzoom: 14.5, layout: { "line-cap": "round", "line-join": "round" },
           paint: { "line-color": "#ffffff", "line-width": 9 } });
-        map.addLayer({ id: "path", type: "line", source: "path", layout: { "line-cap": "round", "line-join": "round" },
+        map.addLayer({ id: "path", type: "line", source: "path", maxzoom: 14.5, layout: { "line-cap": "round", "line-join": "round" },
           paint: { "line-width": 5, "line-gradient": grad(1) } });
         map.addLayer({ id: "stops", type: "circle", source: "stops", paint: {
           "circle-radius": ["case", ["get", "on"], 15, 12], "circle-color": ["case", ["get", "done"], "#9aa7a0", "#2E7D4F"],
@@ -342,6 +362,7 @@
         map.addLayer({ id: "stop-n", type: "symbol", source: "stops", layout: { "text-field": ["get", "n"], "text-size": 12,
           "text-font": ["Noto Sans Bold"], "text-allow-overlap": true }, paint: { "text-color": "#ffffff" } });
         map.on("click", "stops", (e) => { const s = data?.route?.stops.find((x) => x.stop_id === e.features[0].properties.id); if (s) focusStop(s); });
+        map.on("dragstart", () => { if (play) play.follow = false; });   // the owner took the camera: the truck keeps driving
         map.on("mouseenter", "stops", () => { map.getCanvas().style.cursor = "pointer"; });
         map.on("mouseleave", "stops", () => { map.getCanvas().style.cursor = ""; });
         ready = true;
@@ -372,6 +393,8 @@
       map.getSource("edge").setData({ type: "FeatureCollection", features: boxes.map((b) => ({ type: "Feature", geometry: { type: "Polygon", coordinates: [ring(b)] } })) });
       const stops = r ? r.stops : [];
       const line = d.path ? d.path.path : (r && d.base ? [[d.base.lng, d.base.lat], ...stops.map((s) => [s.lng, s.lat]), [d.base.lng, d.base.lat]] : []);
+      stopPlay(); routeLine = line;
+      map.getSource("ribbon").setData(ribbon(line));
       map.getSource("path").setData(line.length > 1 ? { type: "Feature", geometry: { type: "LineString", coordinates: line } } : { type: "FeatureCollection", features: [] });
       setStops(null);
       if (basePin) { basePin.remove(); basePin = null; }
@@ -384,9 +407,13 @@
     }
     function setStops(onId) {
       const stops = data?.route?.stops || [];
+      const done = (s) => !!s.completed_at || reached.has(s.stop_id);
       map.getSource("stops").setData({ type: "FeatureCollection", features: stops.map((s) => ({ type: "Feature",
-        properties: { id: s.stop_id, n: String(s.sequence), done: !!s.completed_at, on: s.stop_id === onId },
+        properties: { id: s.stop_id, n: String(s.sequence), done: done(s), on: s.stop_id === onId },
         geometry: { type: "Point", coordinates: [s.lng, s.lat] } })) });
+      map.getSource("pillars").setData({ type: "FeatureCollection", features: stops.map((s) => ({ type: "Feature",
+        properties: { done: done(s), on: s.stop_id === onId, h: 6 + 0.5 * (s.service_minutes || 30) },
+        geometry: { type: "Polygon", coordinates: [disc([s.lng, s.lat], 10)] } })) });
       document.querySelectorAll(".stop.on").forEach((x) => x.classList.remove("on"));
       if (onId) $(`s-${onId}`)?.classList.add("on");
     }
@@ -400,6 +427,7 @@
       map.fitBounds(bounds, { padding: 70, maxZoom: 15, pitch: tilted ? 50 : 0, bearing: tilted ? -15 : 0, duration: animate && !reduced ? 700 : 0 });
     }
     function focusStop(s) {
+      if (play) play.follow = false;
       setStops(s.stop_id);
       $(`s-${s.stop_id}`)?.scrollIntoView({ block: "nearest", behavior: reduced ? "auto" : "smooth" });
       // Up close and tilted, so the houses stand up around the stop.
@@ -422,6 +450,117 @@
       map.addLayer({ id: "radar", type: "raster", source: "radar", paint: { "raster-opacity": 0.7 } }, "path-casing");
       map.addLayer({ id: "lightning", type: "raster", source: "lightning", paint: { "raster-opacity": 0.85 } }, "path-casing");
     });
+
+    // ---------- 3D geometry (local meters; fine at a city's scale) ----------
+    let routeLine = [], reached = new Set();
+    const mPer = (lat) => [111320 * Math.cos((lat * Math.PI) / 180), 110540];
+    const meters = (a, b) => { const [mx, my] = mPer((a[1] + b[1]) / 2); return Math.hypot((b[0] - a[0]) * mx, (b[1] - a[1]) * my); };
+    function disc([lng, lat], r, n = 18) {
+      const [mx, my] = mPer(lat), ring = [];
+      for (let i = 0; i <= n; i++) { const a = (2 * Math.PI * i) / n; ring.push([lng + (r * Math.cos(a)) / mx, lat + (r * Math.sin(a)) / my]); }
+      return ring;
+    }
+    function ribbon(line, half = 5) {   // up close the flat line hands over to this: one 10 m wide quad per leg of the path, tagged with how far along it starts
+      const out = []; let m = 0;
+      for (let i = 1; i < line.length; i++) {
+        const a = line[i - 1], b = line[i], [mx, my] = mPer(a[1]), len = meters(a, b);
+        if (len < 0.5) continue;
+        const nx = (-(b[1] - a[1]) * my) / len, ny = ((b[0] - a[0]) * mx) / len;   // unit normal, in meters
+        const ox = (nx * half) / mx, oy = (ny * half) / my;
+        out.push({ type: "Feature", properties: { m },
+          geometry: { type: "Polygon", coordinates: [[[a[0] + ox, a[1] + oy], [b[0] + ox, b[1] + oy], [b[0] - ox, b[1] - oy], [a[0] - ox, a[1] - oy], [a[0] + ox, a[1] + oy]]] } });
+        m += len;
+      }
+      return { type: "FeatureCollection", features: out };
+    }
+    const ribbonColor = (driven) => ["case", ["<", ["get", "m"], driven], "#C9A227", "#2E7D4F"];
+
+    // ---------- Play the day: the truck drives the real road path, stop by stop, on a sped-up clock ----------
+    const PLAY_SECONDS = 45;   // the whole working day plays in about this long
+    let play = null;
+    const truckSvg = '<svg class="truck" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="15" fill="#0F2B22" stroke="#C9A227" stroke-width="2.5"/><path d="M17 7 L25 25 L17 21 L9 25 Z" fill="#9BD15A"/></svg>';
+    function timeline(line, stops) {
+      const cum = [0];
+      for (let i = 1; i < line.length; i++) cum.push(cum[i - 1] + meters(line[i - 1], line[i]));
+      const total = cum[cum.length - 1], legs = [];
+      let from = 0, idx = 0, t = 0;
+      const drive = (m, secs) => { const dur = Math.max(1, secs || (m - from) / 11); legs.push({ t, dur, m0: from, m1: m }); t += dur; from = m; };
+      for (const s of stops) {   // each stop sits at the nearest point of the path past the previous one
+        let best = idx, bestD = Infinity;
+        for (let i = idx; i < line.length; i++) { const d = meters(line[i], [s.lng, s.lat]); if (d < bestD) { bestD = d; best = i; } }
+        idx = best; drive(Math.max(from, cum[best]), s.leg_duration_s);
+        legs.push({ t, dur: Math.max(60, (s.service_minutes || 30) * 60), m0: from, m1: from, stop: s }); t += legs[legs.length - 1].dur;
+      }
+      drive(total, null);
+      return { cum, total, legs, length: t };
+    }
+    function at(tl, m) {   // [lng, lat] and heading at m meters along the path
+      const { cum } = tl, line = routeLine;
+      let lo = 0, hi = cum.length - 1;
+      while (lo < hi - 1) { const mid = (lo + hi) >> 1; cum[mid] <= m ? (lo = mid) : (hi = mid); }
+      const a = line[lo], b = line[Math.min(lo + 1, line.length - 1)], seg = cum[hi] - cum[lo] || 1, f = Math.min(1, Math.max(0, (m - cum[lo]) / seg));
+      const [mx, my] = mPer(a[1]);
+      return { p: [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f], heading: (Math.atan2((b[0] - a[0]) * mx, (b[1] - a[1]) * my) * 180) / Math.PI };
+    }
+    function startPlay() {
+      const stops = data?.route?.stops || [];
+      if (!ready || routeLine.length < 2 || !stops.length) return alert("Build the route first: there's nothing to play yet.");
+      stopPlay(); cancelAnimationFrame(drawAnim); map.setPaintProperty("path", "line-gradient", grad(1));
+      const tl = timeline(routeLine, stops);
+      const first = stops[0], startAt = first.eta ? new Date(first.eta).getTime() - (first.leg_duration_s || 0) * 1000 : null;
+      const el2 = document.createElement("div"); el2.innerHTML = truckSvg;
+      const truck = new maplibregl.Marker({ element: el2.firstChild, rotationAlignment: "map", pitchAlignment: "map" }).setLngLat(routeLine[0]).addTo(map);
+      play = { tl, truck, t0: performance.now(), rate: tl.length / PLAY_SECONDS, follow: !reduced, bearing: map.getBearing(), lastPaint: 0, leg: -1, startAt, zoom: map.getZoom(), pitch: map.getPitch() };
+      reached = new Set(); setStops(null);
+      $("play").setAttribute("aria-pressed", "true"); $("play").textContent = "Stop";
+      $("hud").hidden = false;
+      tilted = true; $("tilt").setAttribute("aria-pressed", "true");
+      if (!play.follow) fit(false);
+      $("play-say").textContent = `Playing the day: ${stops.length} stops.`;
+      play.raf = requestAnimationFrame(frame);
+    }
+    function frame(now) {
+      if (!play) return;
+      const { tl } = play, t = ((now - play.t0) / 1000) * play.rate;
+      const i = tl.legs.findIndex((l) => t < l.t + l.dur), leg = tl.legs[i < 0 ? tl.legs.length - 1 : i];
+      const f = Math.min(1, (t - leg.t) / leg.dur), m = leg.m0 + (leg.m1 - leg.m0) * f, pos = at(tl, m);
+      play.truck.setLngLat(pos.p);
+      if (leg.m1 > leg.m0) {   // driving: turn with the road (smoothed so the camera doesn't snap)
+        const d = ((pos.heading - play.bearing + 540) % 360) - 180;
+        play.bearing += d * 0.08;
+      }
+      play.truck.setRotation(play.bearing);
+      if (play.follow) {   // glide in to street level, then ride along
+        play.zoom += (16.2 - play.zoom) * 0.04; play.pitch += (62 - play.pitch) * 0.05;
+        map.jumpTo({ center: pos.p, bearing: play.bearing, pitch: play.pitch, zoom: play.zoom });
+      }
+      if (i !== play.leg) {
+        play.leg = i;
+        if (leg.stop) {
+          reached.add(leg.stop.stop_id); setStops(leg.stop.stop_id);
+          $("play-say").textContent = `Stop ${leg.stop.sequence}, ${leg.stop.customer_name}, ${leg.stop.service_minutes || 30} minutes on site.`;
+        }
+      }
+      if (now - play.lastPaint > 200) {
+        play.lastPaint = now;
+        map.setPaintProperty("path", "line-gradient", trail(m / (tl.total || 1)));
+        map.setPaintProperty("ribbon", "fill-extrusion-color", ribbonColor(m));
+      }
+      $("hud-t").textContent = play.startAt ? clock(new Date(play.startAt + t * 1000).toISOString()) : hm(t / 60);
+      $("hud-l").textContent = leg.stop ? `Stop ${leg.stop.sequence} · ${leg.stop.customer_name}` : i < 0 || i === tl.legs.length - 1 ? "Heading back to base" : "Driving";
+      $("hud-p").style.width = `${Math.min(100, (100 * t) / tl.length)}%`;
+      if (t >= tl.length) { $("play-say").textContent = "Day done: back at base."; return stopPlay(true); }
+      play.raf = requestAnimationFrame(frame);
+    }
+    const trail = (p) => p <= 0 ? grad(1) : ["interpolate", ["linear"], ["line-progress"], 0, "#C9A227", Math.min(p, 0.9998), "#C9A227", Math.min(p + 0.0002, 1), "#2E7D4F"];
+    function stopPlay(finished) {
+      if (!play) return;
+      cancelAnimationFrame(play.raf); play.truck.remove(); play = null;
+      $("play").setAttribute("aria-pressed", "false"); $("play").textContent = "Play the day";
+      if (!finished) { $("hud").hidden = true; reached = new Set(); if (ready) { setStops(null); map.setPaintProperty("path", "line-gradient", grad(1)); map.setPaintProperty("ribbon", "fill-extrusion-color", ribbonColor(-1)); } }
+      else fit(true);
+    }
+    $("play").addEventListener("click", () => (play ? stopPlay() : startPlay()));
 
     // ---------- Actions ----------
     twoTap($("build"), async () => { await api(`/api/owner/routes/${day}/build`, { method: "POST" }); await loadDay(); loadWeek(); });
