@@ -11,7 +11,7 @@ from datetime import date, timedelta
 
 from fastapi import Depends, FastAPI
 
-from .booking import local_now
+from .booking import closed_through, local_now
 from .config import Settings
 from .models import order_label
 from .zones import MAKEUP_WEEKDAY, short_name, zone_by_key, zone_for_weekday
@@ -109,7 +109,14 @@ def register_command(app: FastAPI, settings: Settings, owner, page) -> None:
             issues = repo().list_issues(open_only=True, limit=20)
         except Exception:
             issues = None
+        closed = closed_through(local_now(settings), settings)
+        try:
+            affected = repo().count_active_jobs_between(today, closed) if closed else 0
+        except Exception:
+            affected = None
         return {
+            # Storm mode (CLOSED_UNTIL): booked visits inside the closure still need moving with Rain day.
+            "closed": {"until": closed.isoformat(), "affected": affected} if closed else None,
             "issues": issues,
             "next_route": {"date": nxt.isoformat() if nxt else None, "built": route is not None,
                            "stops": len(route["stops"]) if route else 0},

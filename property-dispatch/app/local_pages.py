@@ -32,7 +32,7 @@ from xml.sax.saxutils import escape as xml_escape
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
-from .booking import cached_count, earliest_bookable_day, latest_bookable_day, local_now
+from .booking import cached_count, earliest_bookable_day, latest_bookable_day, local_now, service_floor, storm_banner
 from .charity import causes
 from .config import Settings, site_url, verification_meta
 from .pricing import (ADD_ONS, MAX_SQFT, YARD_TYPES, YIELD_GIVING_RATE, YIELD_INCLUDED_SQFT, bracket_profile,
@@ -174,7 +174,7 @@ def next_open_day(settings: Settings, repo, zone=None) -> date:
     """The first day after the 5 PM cutoff that still has room (for one area: its next area day, a week apart).
     Reads only how many jobs a day has."""
     now = local_now(settings)
-    day = earliest_bookable_day(now, settings.freeze_hour, settings.launch_date)
+    day = earliest_bookable_day(now, settings.freeze_hour, service_floor(now, settings))
     if zone is not None:
         day += timedelta(days=(zone.service_weekday - day.weekday()) % 7)
     step = timedelta(days=7 if zone is not None else 1)
@@ -431,7 +431,7 @@ def layout(settings: Settings, version: str, *, title: str, description: str, bo
     </div>
   </header>
 
-  <main id="main">{body}
+  <main id="main">{storm_banner(local_now(settings), settings)}{body}
   </main>
 
   <footer class="site-footer">

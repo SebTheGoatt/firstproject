@@ -107,6 +107,10 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
   rules, free to cancel until the "on the way" text. Home and booking pages say "Opening day · pre-order now"; the
   public count shows only from 5 real pre-orders (`PREORDER_SHOW_MIN`); the owner sees the exact count on the
   marketing hub, and this week's posts point at opening week. Blank = ordinary booking.
+- **Storm mode (crisis plan):** `CLOSED_UNTIL` (+ optional `CLOSED_NOTE`) in Render closes service through that date:
+  a notice tops every page (`storm_banner()`), closed days are refused, booking starts the day after, and the owner's
+  Today screen counts booked visits inside the closure (move each day with Rain day, which texts customers). It turns
+  itself off after the date. Use it for hurricanes, flooding and freezes; single bad days stay with Rain day.
 - **Neighbor discount (option A):** 5% off the mowing with 2–4 customers booked within half a mile, 10% with 5+.
 - **Nothing is free (owner, Oct 2026):** no free mows. Giving = the cause share of every paid mow, an optional
   round-up on the pay page (to the next $5, all to the customer's cause), and "Sponsor a neighbor's mow" (add-on at

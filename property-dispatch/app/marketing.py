@@ -21,7 +21,7 @@ import segno
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, Response
 
-from .booking import cached_count, earliest_bookable_day, local_now, preorder_count, preorders_open
+from .booking import cached_count, earliest_bookable_day, local_now, preorder_count, preorders_open, service_floor
 from .config import Settings, site_url
 from .local_pages import AREA_BY_SLUG, AREAS, HOODS, area_card_path, dollars, layout, percent, price_range
 from .pricing import density_pct
@@ -202,7 +202,7 @@ def week_posts(settings: Settings, repo, site: str, today: date) -> list[dict]:
     """Ready-to-post copy for each area day in the next week that can still be booked: Facebook / Nextdoor,
     Instagram / TikTok and Google Business, in English and Spanish, each with its own tracking link."""
     low = dollars(price_range()[0])
-    first = earliest_bookable_day(local_now(settings), settings.freeze_hour, settings.launch_date)
+    first = earliest_bookable_day(local_now(settings), settings.freeze_hour, service_floor(local_now(settings), settings))
     start = max(today, first - timedelta(days=1))      # while pre-orders are open: the opening week's area days
     preorder = preorders_open(local_now(settings), settings)
     out = []

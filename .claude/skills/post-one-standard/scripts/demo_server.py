@@ -1,12 +1,13 @@
 """Run the app locally with made-up demo data, for page checks and screenshots. Nothing touches the real database.
 
-    python3 .claude/skills/post-one-standard/scripts/demo_server.py --port 8940 [--osrm] [--launch 2027-03-01]
+    python3 .claude/skills/post-one-standard/scripts/demo_server.py --port 8940 [--osrm] [--launch 2027-03-01] [--closed 2026-11-04]
 
 Use a new port every run (never pkill: it takes the shell down with it). Demo data, all on next Monday (Spring):
 five cash bookings "Customer A–E" at the test addresses with a built route, one paid "Sponsor a neighbor's mow"
 booking, and two private nominations. Owner token for page_check.py --token: crew-test-token-123.
 --osrm uses the public road router for the dispatch board's real road path (slower; off by default).
 --launch sets LAUNCH_DATE (pre-orders open until then); the demo bookings move to the first Monday on or after it.
+--closed sets CLOSED_UNTIL (storm mode: the notice on every page, bookings start the day after).
 Prints the demo day and the pay page path, then serves until stopped.
 """
 
@@ -36,6 +37,7 @@ def main() -> None:
     ap.add_argument("--port", type=int, required=True)
     ap.add_argument("--osrm", action="store_true")
     ap.add_argument("--launch", type=date.fromisoformat)
+    ap.add_argument("--closed", type=date.fromisoformat)
     a = ap.parse_args()
     community.check_area_day = lambda day, zone: None
     nightly.one_area = lambda jobs, day: (jobs, [])
@@ -73,6 +75,8 @@ def main() -> None:
     print(f"demo day: {monday}  (dispatch: /owner/dispatch?day={monday})")
     print(f"pay page: /pay/{repo.jobs[unpaid['id']].get('pay_token')}")
     print(f"owner token: {TOKEN}  ·  http://127.0.0.1:{a.port}")
+    if a.closed:                      # set after the demo bookings exist, so some fall inside the closure
+        settings.closed_until = a.closed
     uvicorn.run(app, port=a.port, log_level="warning")
 
 
