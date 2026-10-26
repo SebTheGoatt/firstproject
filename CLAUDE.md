@@ -102,10 +102,13 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 - Ciro stays in the pending founders list until the owner says otherwise.
 
 ## Side product: The Five-Paragraph Plan
-- `five-paragraph-plan/` is a separate, free self-help tool (owner's idea, Oct 2026): a worksheet that writes a personal
-  five-paragraph order, saved only in the visitor's browser, $0 to run. Live as a Claude artifact:
-  https://claude.ai/artifact/U2VeVjKPCV2PrBA64Z19PB. `LAUNCH.md` is its go-to-market order. Military framing is the point
-  here; the no-jargon rule is for Post One customer copy only. Tool stays free; paid extras only after the launch goal.
+- `five-paragraph-plan/` is a separate self-help product (owner's idea, Oct 2026): the **Field Kit, $30 one-time**
+  (owner's price). Full planner + 28-page Field Notebook PDF (`notebook.py`) + four example orders. Source is
+  `src/app.html` + `src/examples.json`; `python3 build.py [--buy-url ...]` writes the public `index.html` (sales page,
+  paragraphs 1–2 free) and the paid kit into git-ignored `dist/`. Never commit `dist/` or the full planner build:
+  this repo is public. Sales page artifact: https://claude.ai/artifact/U2VeVjKPCV2PrBA64Z19PB. `LAUNCH.md` is the
+  go-to-market order (checkout on Gumroad, merchant of record). Military framing is the point here; the no-jargon rule
+  is for Post One customer copy only. Plans stay on the buyer's device; no data collected.
 
 ## Hard rules
 - Never ask the owner to paste secrets in chat (Supabase, Stripe, Twilio, VAPID, Resend, crew token). Secrets live

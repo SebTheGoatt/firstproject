@@ -5,9 +5,11 @@ customer copy. This product is built on the military format on purpose.
 
 ## 1. Situation
 
-**Ground truth.** The product is live: a free worksheet that turns any goal into a five-paragraph order, with a
-pocket card and a weekly after action review. It costs $0 to run (no server, no accounts, no data collected) and the
-same page works for one person or one million.
+**Ground truth.** The product is the **Field Kit, $30 one-time**: the full planner (all five paragraphs, weekly review,
+pocket card; a file buyers keep, works offline) plus the 28-page printable Field Notebook PDF with four finished
+orders. The public page is the storefront: paragraphs 1 and 2 free, then "Finish your order · $30". It costs $0 to run
+(no server, no accounts, no data collected). After checkout fees about $25 of each $30 sale is ours (Gumroad: 10% +
+$0.50, plus card processing; check their pricing page when listing).
 
 **Working against us.**
 - Self-help is crowded. Habit apps, planners and coaches all promise the same thing.
@@ -24,13 +26,13 @@ window of the year. Veterans Day (Nov 11) is 16 days out.
 
 ## 2. Mission
 
-We put The Five-Paragraph Plan in front of 10,000 people and hear back from 1,000 who finished an order by 31 JAN 2027, using only
-free channels, so that we prove people want it before spending a dollar on anything else.
+We sell 100 Field Kits (about $2,500 after fees) by 31 JAN 2027, using only free channels, so that we prove people
+will pay before spending a dollar on ads or anything else.
 
 ## 3. Execution
 
-**Intent.** A free tool people finish and share, a list of people who asked for more, and real proof of which
-audience cares most (veterans, parents, students, or teams). Revenue comes after proof, not before.
+**Intent.** Paying buyers who finish their order and tell someone, plus real proof of which audience buys most
+(veterans, parents, students, or teams). The free paragraphs 1 and 2 do the selling: every post sends people there.
 
 **Phase 1 (Oct 27 – Nov 11): First formation.**
 - Share the page's link publicly (Share menu on the artifact) or host the file free on GitHub Pages / Netlify.
@@ -77,12 +79,16 @@ literally one of the example orders.
 | Email list | Free tiers (Kit up to 10,000 subscribers, MailerLite 1,000) |
 | Measuring | A link per channel (`?ref=reddit`), weekly counts in a spreadsheet |
 
-**Making money later, still $0 up front** (only after the mission is met):
-1. Pay-what-you-want printable field notebook (PDF) on Gumroad or Payhip: they take a cut only when something sells.
-2. Paid workshops for veteran orgs, schools and companies ("plan the quarter in 5 paragraphs").
-3. Printed notebook through print-on-demand (Amazon KDP): no inventory, no upfront cost.
-The tool itself stays free; it is the front door. Same rule as Post One: nothing is free that should be paid for, but
-the front door is.
+**Selling, still $0 up front.** Gumroad lists the kit free and takes its cut only when something sells. It is the
+merchant of record, so it collects sales tax (Texas taxes digital products). Upload
+`dist/Five-Paragraph-Plan-Field-Kit.zip` (run `python3 build.py` to make it), price $30, then rebuild with
+`python3 build.py --buy-url <product link>` and republish so every Buy button points at checkout.
+
+**Next products, after the mission is met:**
+1. Paid workshops for veteran orgs, schools and companies ("plan the quarter in 5 paragraphs").
+2. Printed notebook through print-on-demand (Amazon KDP): no inventory, no upfront cost.
+3. A classroom license for teachers and JROTC.
+Only paragraphs 1 and 2 are free; they are the front door. Same rule as Post One: nothing is free.
 
 **Support.** Spouse first. A veteran or two who'll give honest feedback on the early version.
 
@@ -97,8 +103,8 @@ the front door is.
 **Command.** The founder.
 **Second in command.** Pick one person to check the Sunday numbers with you.
 **Check-ins.** Sunday after action review:
-- The page collects nothing, so count what you can see: link clicks per channel (free link-shortener stats), people
-  who reply or comment "done", shares
+- Kits sold and money in (Gumroad dashboard), sales per channel (`?ref=` on each link shows in Gumroad's referrers)
+- Link clicks per channel, people who reply or comment "done", shares
 - Email sign-ups (once a list exists)
 - One quote from a real user
 
@@ -108,4 +114,4 @@ the front door is.
 - Spending money before the mission is met
 
 **Challenge:** What's the mission?
-**Password:** Ten thousand seen, one thousand finished.
+**Password:** One hundred kits.
