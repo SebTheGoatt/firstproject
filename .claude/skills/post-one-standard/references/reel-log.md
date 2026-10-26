@@ -24,3 +24,4 @@ sometimes resends the same reel with a different share tail. Add one row per ite
 | link nosignups.net | No-signup tool list | Adapt | PR #76 Free tools panel on the marketing hub |
 | reel (brand kit video) | Build a brand kit | Adopt | Private brand kit artifact (see `CLAUDE.md`) |
 | upload (Operation Radical Reclamation playbook, OPORD format) | Five-paragraph self-help product | Adapt | Separate product: `five-paragraph-plan/` (free tool + launch order). Playbook claims ($35 base, chemical applicator, "unlicensed" competitors) not used for Post One |
+| tiktok.com/t/ZPLAWhAAG (@influenceengineering, "social engineer" sales video) | Literacy, decision freeze, identity marketing | Adapt | Kept: plain words (pages already read at about a 2nd–3rd grade level), one product/one price, identity line "For people who'd rather have a plan than a pep talk." Skipped: "compulsion"/psyop tactics and his unsourced stats |
