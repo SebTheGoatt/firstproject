@@ -48,6 +48,8 @@ def checks(settings: Settings, repo, stripe_enabled: bool) -> list[dict]:
         add("sql_issues", "Database has crew problem reports and booking sources",
             db(lambda: repo.list_issues(open_only=True, limit=1)) and db(lambda: repo.bookings_by_source(now)),
             "Supabase → SQL Editor: run supabase/migrations/20261028000000_issues_and_sources.sql")
+        add("sql_community", "Database has sponsored mows and nominations", db(repo.sponsorships),
+            "Supabase → SQL Editor: run supabase/migrations/20261029000000_community.sql")
         mock = 0
         try:
             mock = repo.count_customers_named("MOCK ")
@@ -77,6 +79,17 @@ def checks(settings: Settings, repo, stripe_enabled: bool) -> list[dict]:
         required=False)
     add("manifest_email", "Nightly manifest emailed as a backup", settings.resend_api_key and settings.operational_alert_email,
         "Render: RESEND_API_KEY and OPERATIONAL_ALERT_EMAIL (verify your domain in Resend, then set RESEND_FROM)", required=False)
+    # Search engines (do these the day the site goes live): prove ownership, then submit the sitemap.
+    add("search_console", "Google Search Console verified",
+        settings.google_site_verification,
+        "Search Console → Add property → URL prefix (your site) → HTML tag: copy only the content=\"…\" code into "
+        "Render: GOOGLE_SITE_VERIFICATION, redeploy, press Verify, then Sitemaps → submit sitemap.xml", required=False)
+    add("bing", "Bing Webmaster Tools verified (Bing, Copilot and ChatGPT search use Bing)",
+        settings.bing_site_verification,
+        "bing.com/webmasters → Add site (or import from Search Console) → HTML meta tag: copy the content code into "
+        "Render: BING_SITE_VERIFICATION, redeploy, Verify, then submit sitemap.xml", required=False)
+    add("business_profile_link", "Google Business Profile linked to the site", settings.google_business_url,
+        "Render: GOOGLE_BUSINESS_URL (your profile's share link), and put the site address on the profile", required=False)
     add("base_yard", "Crew start location set", (settings.base_lat, settings.base_lng) != (30.0799, -95.4172),
         "Render: BASE_YARD_LATITUDE / BASE_YARD_LONGITUDE (where the crew leaves from each morning)", required=False)
     add("charity_names", "Charity names confirmed",

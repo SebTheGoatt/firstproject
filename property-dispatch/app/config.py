@@ -1,5 +1,6 @@
 """Runtime configuration, loaded from environment variables / .env."""
 
+import re
 from functools import lru_cache
 from zoneinfo import ZoneInfo
 
@@ -116,6 +117,10 @@ class Settings(BaseSettings):
     tiktok_url: str = ""
     nextdoor_url: str = ""
     yelp_url: str = ""
+    # Search engine ownership checks (public codes, not secrets): the "content" value of the HTML-tag method in
+    # Google Search Console (URL-prefix property) and Bing Webmaster Tools. Printed as <meta> tags on every page.
+    google_site_verification: str = ""
+    bing_site_verification: str = ""
     review_requests_every_min: int = 5     # how often the web process looks for jobs to follow up on (0 = off)
 
     # --- Stripe card payments (leave blank to take cash only) ---------
@@ -164,6 +169,14 @@ def get_settings() -> Settings:
 
 
 LOCAL_HOSTS = ("localhost", "127.0.0.1", "0.0.0.0", "testserver")
+
+
+def verification_meta(settings: "Settings") -> str:
+    """<meta> tags that prove to Google / Bing we own the site. Codes are letters, digits, - and _ only."""
+    tags = (("google-site-verification", settings.google_site_verification), ("msvalidate.01", settings.bing_site_verification))
+    codes = ((name, code.strip()) for name, code in tags)
+    return "".join(f'\n  <meta name="{name}" content="{code}">' for name, code in codes
+                   if re.fullmatch(r"[A-Za-z0-9_-]{8,100}", code))
 
 
 def site_url(settings: "Settings", request) -> str:
