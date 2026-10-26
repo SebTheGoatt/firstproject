@@ -101,6 +101,12 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 - The business phone number stays off the site unless the owner sets `BUSINESS_PHONE`.
 - Ciro stays in the pending founders list until the owner says otherwise.
 
+## Side product: The Five-Paragraph Plan
+- `five-paragraph-plan/` is a separate, free self-help tool (owner's idea, Oct 2026): a worksheet that writes a personal
+  five-paragraph order, saved only in the visitor's browser, $0 to run. Live as a Claude artifact:
+  https://claude.ai/artifact/U2VeVjKPCV2PrBA64Z19PB. `LAUNCH.md` is its go-to-market order. Military framing is the point
+  here; the no-jargon rule is for Post One customer copy only. Tool stays free; paid extras only after the launch goal.
+
 ## Hard rules
 - Never ask the owner to paste secrets in chat (Supabase, Stripe, Twilio, VAPID, Resend, crew token). Secrets live
   only in Render's environment settings.

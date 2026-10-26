@@ -23,3 +23,4 @@ sometimes resends the same reel with a different share tail. Add one row per ite
 | reels (City Roads, map poster) | Street-map art | Adopt | PR #77 area map cards, PR #78 service map poster |
 | link nosignups.net | No-signup tool list | Adapt | PR #76 Free tools panel on the marketing hub |
 | reel (brand kit video) | Build a brand kit | Adopt | Private brand kit artifact (see `CLAUDE.md`) |
+| upload (Operation Radical Reclamation playbook, OPORD format) | Five-paragraph self-help product | Adapt | Separate product: `five-paragraph-plan/` (free tool + launch order). Playbook claims ($35 base, chemical applicator, "unlicensed" competitors) not used for Post One |

@@ -1,0 +1,457 @@
+<title>The Five-Paragraph Plan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Write a plan for your own life in the same five-paragraph format the military uses for every operation. Free, no sign-up, stays on your device.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Stencil+One&family=Public+Sans:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a field desk. Left, the worksheet (paragraphs 1–5 in order); right, the typed order on paper, updating as you write. */
+:root {
+  --bg: #e6e8df;        /* field-green grey */
+  --paper: #fbfbf6;
+  --ink: #1d231e;
+  --muted: #5a6458;
+  --line: #c9cdbf;
+  --olive: #4b5a2a;
+  --brass: #94721f;
+  --field: #ffffff;
+  --display: "Saira Stencil One", "Arial Black", Impact, sans-serif;
+  --body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141814; --paper: #1d221d; --ink: #e5e8de; --muted: #9ba596; --line: #343c33;
+    --olive: #a7b97a; --brass: #d4b25a; --field: #232923; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141814; --paper: #1d221d; --ink: #e5e8de; --muted: #9ba596; --line: #343c33;
+  --olive: #a7b97a; --brass: #d4b25a; --field: #232923; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.55 var(--body); }
+.wrap { max-width: 1240px; margin: 0 auto; padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+header.top { display: grid; gap: 10px; padding-bottom: 22px; border-bottom: 2px solid var(--ink); margin-bottom: 24px; }
+.eyebrow { font: 600 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--brass); }
+h1 { font: 400 clamp(38px, 6vw, 68px)/.95 var(--display); margin: 0; letter-spacing: .01em; text-wrap: balance; }
+.lede { max-width: 62ch; margin: 0; color: var(--muted); font-size: 17px; }
+.promise { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 4px 0 0; padding: 0; list-style: none; font: 600 13px/1.3 var(--mono); }
+.promise li::before { content: "■ "; color: var(--olive); }
+
+.bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 18px; }
+.bar label { font-weight: 600; font-size: 14px; }
+select, input, textarea { font: inherit; color: var(--ink); background: var(--field); border: 1px solid var(--line); border-radius: 4px; padding: 9px 11px; width: 100%; }
+select { width: auto; }
+textarea { min-height: 76px; resize: vertical; }
+input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible { outline: 3px solid var(--brass); outline-offset: 1px; }
+button { font: 600 14px/1 var(--body); padding: 11px 14px; border-radius: 4px; border: 1px solid var(--ink); background: var(--ink); color: var(--paper); cursor: pointer; }
+button.ghost { background: transparent; color: var(--ink); }
+button:hover { filter: brightness(1.12); }
+
+.notice { border: 1px dashed var(--brass); background: var(--paper); padding: 10px 14px; border-radius: 4px; font-size: 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+.sheet { display: grid; gap: 22px; min-width: 0; }
+fieldset { border: 0; border-top: 1px solid var(--ink); margin: 0; padding: 14px 0 0; display: grid; gap: 14px; min-width: 0; }
+legend { display: flex; align-items: baseline; gap: 12px; padding: 0 10px 0 0; }
+legend .n { font: 400 34px/1 var(--display); color: var(--olive); }
+legend .t { font: 700 20px/1.1 var(--body); }
+legend .mil { font: 600 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.why { margin: -6px 0 0; color: var(--muted); font-size: 14.5px; max-width: 60ch; }
+.f { display: grid; gap: 5px; min-width: 0; }
+.f > label { font-weight: 600; font-size: 14.5px; }
+.f .hint { font-size: 13px; color: var(--muted); }
+.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.note { font-size: 13.5px; border-left: 3px solid var(--olive); padding: 6px 10px; background: var(--paper); }
+
+.order-col { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); display: grid; gap: 12px; min-width: 0; }
+@media (max-width: 900px) { .order-col { position: static; } }
+.meter { display: flex; align-items: center; gap: 10px; font: 600 12px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.meter .track { flex: 1; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.meter .fill { height: 100%; background: var(--olive); width: 0; transition: width .25s; }
+.paper { background: var(--paper); border: 1px solid var(--line); box-shadow: 0 1px 0 var(--line), 0 10px 30px -18px rgba(0,0,0,.35); padding: 22px 22px 26px; font: 13.5px/1.6 var(--mono); max-height: 70vh; overflow: auto; }
+@media (max-width: 900px) { .paper { max-height: none; } }
+.paper .class { text-align: center; font-weight: 600; letter-spacing: .2em; font-size: 11px; color: var(--muted); }
+.paper h2 { font: 400 22px/1.15 var(--display); margin: 10px 0 2px; text-align: center; text-wrap: balance; }
+.paper .dtg { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 14px; }
+.paper h3 { font: 600 13.5px/1.3 var(--mono); margin: 16px 0 4px; letter-spacing: .06em; }
+.paper p, .paper ul { margin: 0 0 6px; }
+.paper ul { padding-left: 1.3em; }
+.paper .sub { font-weight: 600; }
+.paper .empty { color: var(--muted); font-style: italic; }
+.paper .missionline { border: 1px solid var(--ink); padding: 8px 10px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.status { font-size: 13px; color: var(--olive); min-height: 1.2em; }
+
+.card { background: var(--ink); color: var(--paper); border-radius: 8px; padding: 16px 18px; display: grid; gap: 8px; max-width: 420px; font-size: 14px; }
+.card .k { font: 600 10.5px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; opacity: .7; }
+.card .v { font-weight: 600; }
+.card .pw { font: 400 20px/1.1 var(--display); color: var(--brass); }
+
+.confirm { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; }
+footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; display: grid; gap: 6px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <span class="eyebrow">Free planning tool · Paragraphs 1 to 5</span>
+    <h1>The Five-Paragraph Plan</h1>
+    <p class="lede">Every military operation starts with the same five paragraphs: where we stand, what we're doing, how, what keeps us going, and who's in charge. It works just as well for paying off a card, getting back in shape, or starting a new chapter. Fill in the worksheet and your order writes itself.</p>
+    <ul class="promise"><li>Free</li><li>No sign-up</li><li>Saves on this device only</li><li>About 20 minutes</li></ul>
+  </header>
+
+  <div class="bar">
+    <label for="tpl">Start from</label>
+    <select id="tpl">
+      <option value="">Choose an example…</option>
+      <option value="debt">Get out of credit card debt</option>
+      <option value="fit">Get back in shape</option>
+      <option value="career">Leave the service, land a job</option>
+      <option value="parent">Be a present parent</option>
+      <option value="blank">Blank order</option>
+    </select>
+  </div>
+
+  <div class="notice" id="exampleNotice" hidden>
+    <span><strong>This is an example order.</strong> Change anything to make it yours, or start from a blank one.</span>
+    <button type="button" class="ghost" id="goBlank">Start blank</button>
+  </div>
+
+  <div class="grid">
+    <form class="sheet" id="sheet" autocomplete="off">
+      <div class="f">
+        <label for="op_name">Name your operation</label>
+        <input id="op_name" placeholder="e.g. Clean Slate">
+        <span class="hint">A name makes it real. Pick something you'd say out loud.</span>
+      </div>
+
+      <fieldset>
+        <legend><span class="n">1</span><span class="t">Where you stand</span><span class="mil">Situation</span></legend>
+        <p class="why">Ground truth first. A plan built on how you wish things were falls apart on day three.</p>
+        <div class="f"><label for="sit_ground">The honest picture today</label><textarea id="sit_ground" placeholder="Numbers if you have them: weight, balance owed, hours a week, how long this has been going on."></textarea></div>
+        <div class="f"><label for="sit_against">What's working against you</label><textarea id="sit_against" placeholder="One per line. Habits, triggers, people, schedule, money."></textarea><span class="hint">In an order this is the enemy. Name it so you can plan around it.</span></div>
+        <div class="f"><label for="sit_for">What's on your side</label><textarea id="sit_for" placeholder="One per line. People, skills, savings, benefits, past wins."></textarea></div>
+        <div class="f"><label for="sit_terrain">Time and terrain</label><textarea id="sit_terrain" placeholder="When you actually have free time, where you'll do the work, what's coming up (holidays, a move, a new baby)."></textarea></div>
+      </fieldset>
+
+      <fieldset>
+        <legend><span class="n">2</span><span class="t">The mission</span><span class="mil">Mission</span></legend>
+        <p class="why">One sentence: who, what, when, where and why. If you can't say it in one breath, it's two missions.</p>
+        <div class="row">
+          <div class="f"><label for="mis_who">Who</label><input id="mis_who" placeholder="I"></div>
+          <div class="f"><label for="mis_when">By when</label><input id="mis_when" type="date"></div>
+        </div>
+        <div class="f"><label for="mis_what">Will do what</label><input id="mis_what" placeholder="pay off the $6,400 on my Visa"></div>
+        <div class="f"><label for="mis_where">Where</label><input id="mis_where" placeholder="at home, on our current income"></div>
+        <div class="f"><label for="mis_why">In order to</label><input id="mis_why" placeholder="stop losing $110 a month to interest and sleep at night"></div>
+      </fieldset>
+
+      <fieldset>
+        <legend><span class="n">3</span><span class="t">How you'll do it</span><span class="mil">Execution</span></legend>
+        <p class="why">Intent is what "done" looks like, so you can adapt when the plan breaks. Phases keep it from feeling like one giant hill.</p>
+        <div class="f"><label for="exe_intent">What done looks like</label><textarea id="exe_intent" placeholder="Describe the end state. If everything else went wrong, what must still be true?"></textarea><span class="hint">Commander's intent.</span></div>
+        <div class="f"><label for="exe_p1">Phase 1</label><input id="exe_p1" placeholder="Weeks 1–2: set up, get the first win"></div>
+        <div class="f"><label for="exe_p2">Phase 2</label><input id="exe_p2" placeholder="Weeks 3–8: build the routine"></div>
+        <div class="f"><label for="exe_p3">Phase 3</label><input id="exe_p3" placeholder="Week 9 on: finish strong, make it permanent"></div>
+        <div class="f"><label for="exe_daily">Daily and weekly tasks</label><textarea id="exe_daily" placeholder="One per line. Small enough to do on a bad day."></textarea></div>
+        <div class="f"><label for="exe_ifthen">If this happens, then I will</label><textarea id="exe_ifthen" placeholder="One per line. If I miss a day, then I do the 5-minute version and don't miss two."></textarea><span class="hint">Contingencies. Decide now, while you're calm.</span></div>
+      </fieldset>
+
+      <fieldset>
+        <legend><span class="n">4</span><span class="t">What keeps you going</span><span class="mil">Sustainment</span></legend>
+        <p class="why">Most plans don't fail on effort. They run out of fuel, money or support.</p>
+        <div class="f"><label for="sus_fuel">Fuel: sleep, food, energy</label><textarea id="sus_fuel" placeholder="Bedtime, meals, water, what drains you."></textarea></div>
+        <div class="f"><label for="sus_supply">Supply: money, tools, time</label><textarea id="sus_supply" placeholder="What it costs, what you need, what you'll cut to make room."></textarea></div>
+        <div class="f"><label for="sus_support">Support: health and the people behind you</label><textarea id="sus_support" placeholder="Who you can call. Doctor, counselor, chaplain, group, friend."></textarea></div>
+        <p class="note">If things get heavy, you don't have to carry it alone. In the US, call or text <strong>988</strong> any time. Veterans and service members can press <strong>1</strong> after dialing to reach the Veterans Crisis Line.</p>
+      </fieldset>
+
+      <fieldset>
+        <legend><span class="n">5</span><span class="t">Who's in charge and how you'll check in</span><span class="mil">Command &amp; signal</span></legend>
+        <p class="why">You're in command. Pick a second in command who'll ask how it's going, and set the time you'll report.</p>
+        <div class="f"><label for="cmd_partner">Second in command</label><input id="cmd_partner" placeholder="A first name and how you'll reach them (text, call, coffee)"><span class="hint">Accountability partner. A first name is plenty.</span></div>
+        <div class="f"><label for="cmd_checkin">Check-ins</label><input id="cmd_checkin" placeholder="Daily: 2-minute log at 9 PM. Weekly: Sunday review."></div>
+        <div class="f"><label for="cmd_signals">Warning signs I'm off track</label><textarea id="cmd_signals" placeholder="One per line. What you'll notice before it falls apart."></textarea></div>
+        <div class="row">
+          <div class="f"><label for="cmd_challenge">Challenge</label><input id="cmd_challenge" placeholder="Why am I doing this?"></div>
+          <div class="f"><label for="cmd_password">Password</label><input id="cmd_password" placeholder="So my son never has to."></div>
+        </div>
+        <span class="hint">The question you'll ask yourself on a hard day, and the answer you've already decided on.</span>
+      </fieldset>
+
+      <fieldset>
+        <legend><span class="n">+</span><span class="t">Weekly review</span><span class="mil">After action review</span></legend>
+        <p class="why">Once a week, four questions, five minutes. No blame. This is where the plan gets better.</p>
+        <div class="f"><label for="aar_planned">What was supposed to happen?</label><input id="aar_planned"></div>
+        <div class="f"><label for="aar_happened">What actually happened?</label><input id="aar_happened"></div>
+        <div class="f"><label for="aar_why">Why was there a difference?</label><input id="aar_why"></div>
+        <div class="f"><label for="aar_next">What do I keep, and what do I change this week?</label><textarea id="aar_next"></textarea></div>
+      </fieldset>
+    </form>
+
+    <aside class="order-col" aria-label="Your order">
+      <div class="meter"><span id="meterLabel">0 of 5 paragraphs</span><span class="track"><span class="fill" id="meterFill"></span></span></div>
+      <article class="paper" id="paper" aria-live="polite"></article>
+      <div class="actions">
+        <button type="button" id="copyBtn">Copy my order</button>
+        <button type="button" class="ghost" id="clearBtn">Clear everything</button>
+      </div>
+      <div class="confirm" id="confirmClear" hidden>
+        <span>Erase this order from this device?</span>
+        <button type="button" id="confirmYes">Erase it</button>
+        <button type="button" class="ghost" id="confirmNo">Keep it</button>
+      </div>
+      <div class="status" id="status" role="status"></div>
+      <div class="card" aria-label="Pocket card">
+        <span class="k">Pocket card · screenshot it for your lock screen</span>
+        <span class="k">Mission</span><span class="v" id="cardMission">—</span>
+        <span class="k">Done looks like</span><span class="v" id="cardIntent">—</span>
+        <span class="k" id="cardChallenge">Challenge</span><span class="pw" id="cardPassword">—</span>
+      </div>
+    </aside>
+  </div>
+
+  <footer>
+    <span>Your order is saved in this browser only. Nothing is sent anywhere, and nobody else can see it.</span>
+    <span>The five-paragraph order (Situation, Mission, Execution, Sustainment, Command and Signal) is the standard US military planning format. This is a planning aid, not medical, financial or legal advice.</span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var FIELDS = ["op_name","sit_ground","sit_against","sit_for","sit_terrain","mis_who","mis_what","mis_when","mis_where","mis_why",
+    "exe_intent","exe_p1","exe_p2","exe_p3","exe_daily","exe_ifthen","sus_fuel","sus_supply","sus_support",
+    "cmd_partner","cmd_checkin","cmd_signals","cmd_challenge","cmd_password","aar_planned","aar_happened","aar_why","aar_next"];
+  var KEY = "five-paragraph-plan:v1";
+
+  function inDays(n) { var d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
+
+  var EXAMPLES = {
+    debt: {
+      op_name: "Clean Slate",
+      sit_ground: "$6,400 on one card at 24% APR. Paying the $140 minimum, about $110 of it goes to interest. Been stuck at this balance for a year.",
+      sit_against: "Eating out when tired (about $280 a month)\nNo budget, I check the balance and hope\nAutopay only covers the minimum",
+      sit_for: "Steady paycheck every two weeks\nSpouse is on board\nI finished boot camp, I can do hard things for 12 months",
+      sit_terrain: "Free time is 8–9 PM after the kid is down. Holidays in December will be the hardest stretch.",
+      mis_who: "I", mis_what: "pay off the $6,400 on my Visa", mis_when: inDays(365), mis_where: "on our current income",
+      mis_why: "stop losing $110 a month to interest and sleep at night",
+      exe_intent: "Card at $0, still open but not carried. A one-page budget we both look at weekly, and $1,000 in savings so a flat tire doesn't go back on the card.",
+      exe_p1: "Weeks 1–2: list every bill, cancel 2 subscriptions, build $500 starter savings",
+      exe_p2: "Months 1–10: $600 a month to the card, autopay set on payday",
+      exe_p3: "Months 11–12: finish the card, grow savings to $1,000",
+      exe_daily: "Log every purchase in the notes app (30 seconds)\nPack lunch Mon–Thu\nSunday: 10-minute money check with my spouse",
+      exe_ifthen: "If I eat out, then it comes out of next week's fun money, not the card\nIf a surprise bill hits, then savings covers it and I pause extra payments one month\nIf I miss a Sunday check, then we do it Monday night, no skipping two",
+      sus_fuel: "In bed by 10:30. Tired me spends money.",
+      sus_supply: "Free budget sheet. Cut streaming ($32) and the gym I don't use ($45).",
+      sus_support: "Spouse. A free credit counseling call if I get stuck.",
+      cmd_partner: "Marcus, text every Sunday with the balance",
+      cmd_checkin: "Daily: log purchases. Weekly: Sunday money check. Monthly: screenshot the balance.",
+      cmd_signals: "I stop logging purchases\nI avoid opening the card app\nTwo takeout nights in a row",
+      cmd_challenge: "Why am I doing this?", cmd_password: "So my family never pays a bank for my bad week.",
+      aar_planned: "", aar_happened: "", aar_why: "", aar_next: ""
+    },
+    fit: {
+      op_name: "Back on Line",
+      sit_ground: "40 lb over where I felt good. Winded on stairs. Haven't run since I got out three years ago.",
+      sit_against: "Late-night snacking\nKnee aches on long runs\nNo set workout time",
+      sit_for: "I know how to train\nA park two streets over\nA friend who also wants to get moving",
+      sit_terrain: "Mornings before work, 5:45–6:30. Weekends are open until 9.",
+      mis_who: "I", mis_what: "lose 20 lb and run a 5K without stopping", mis_when: inDays(120), mis_where: "at the park and at home",
+      mis_why: "keep up with my son and feel like myself again",
+      exe_intent: "Moving 4 days a week out of habit, not willpower. Eating mostly at home. A finished 5K with a time on paper.",
+      exe_p1: "Weeks 1–3: walk 30 minutes, 4 mornings a week. Stop eating after 8 PM.",
+      exe_p2: "Weeks 4–10: run/walk intervals, bodyweight circuit twice a week",
+      exe_p3: "Weeks 11–16: run 3 miles straight, sign up for a local 5K",
+      exe_daily: "Shoes by the door the night before\nWater bottle filled before bed\nProtein at breakfast",
+      exe_ifthen: "If my knee hurts, then I bike or swim that day\nIf I sleep through the alarm, then 15 minutes at lunch\nIf I blow a meal, then the next one is normal, no 'starting Monday'",
+      sus_fuel: "Lights out by 10. Meal prep Sunday for 4 lunches.",
+      sus_supply: "Running shoes ($90). Free run/walk app. Nothing else needed.",
+      sus_support: "Doctor checkup before week 4. Run buddy on Saturdays.",
+      cmd_partner: "Dee, Saturday runs and a weekly weigh-in text",
+      cmd_checkin: "Daily: check the box on the calendar. Weekly: Saturday run and weigh-in.",
+      cmd_signals: "Two missed mornings in a row\nShoes not by the door\nSnacking after 9",
+      cmd_challenge: "What's the standard?", cmd_password: "Show up. Every time.",
+      aar_planned: "", aar_happened: "", aar_why: "", aar_next: ""
+    },
+    career: {
+      op_name: "Next Post",
+      sit_ground: "EAS in 6 months. Resume is my military record. No civilian job offers yet.",
+      sit_against: "Military jargon on my resume\nNo network outside the service\nI don't know what I want to do",
+      sit_for: "GI Bill and SkillBridge eligibility\nLeadership and logistics experience\nSecurity clearance (current)",
+      sit_terrain: "Evenings and one weekend day. Two field ops coming up in month 2.",
+      mis_who: "I", mis_what: "land a full-time civilian job offer", mis_when: inDays(180), mis_where: "in the Houston area",
+      mis_why: "start civilian life with a paycheck and no gap",
+      exe_intent: "A signed offer before my last day, in a field I picked on purpose, with a plan for school if I want it.",
+      exe_p1: "Month 1: pick 2 target jobs, translate resume, set up LinkedIn",
+      exe_p2: "Months 2–4: 3 coffee chats a week, apply to SkillBridge, 5 applications a week",
+      exe_p3: "Months 5–6: interviews, negotiate, sign",
+      exe_daily: "One message to a veteran working in my target field\nOne application or follow-up\nFriday: update my tracker",
+      exe_ifthen: "If I'm in the field, then I queue messages before I go\nIf I get rejected, then I ask for feedback and send two more\nIf nothing moves in 6 weeks, then I change the target, not the effort",
+      sus_fuel: "Keep PT up. It's the best stress relief I have.",
+      sus_supply: "Free resume help at the base transition office. One interview outfit.",
+      sus_support: "Transition counselor. Two Marines who got out last year.",
+      cmd_partner: "Sgt. Ruiz (ret.), call every other Sunday",
+      cmd_checkin: "Weekly: Friday tracker review. Every other Sunday: call with my mentor.",
+      cmd_signals: "No messages sent in 3 days\nAvoiding the tracker\nSaying 'I'll figure it out after I get out'",
+      cmd_challenge: "What's next?", cmd_password: "Whatever I plan for.",
+      aar_planned: "", aar_happened: "", aar_why: "", aar_next: ""
+    },
+    parent: {
+      op_name: "Home Front",
+      sit_ground: "I'm home every night but on my phone most of it. My 2-year-old asks me to play and I say 'in a minute'.",
+      sit_against: "Phone in my hand after work\nWork stress follows me home\nTired by 7 PM",
+      sit_for: "Bedtime is a routine I already do\nMy spouse wants this too\nWeekends are mostly free",
+      sit_terrain: "5:30–7:30 PM weekdays is family time. Saturdays mornings are ours.",
+      mis_who: "I", mis_what: "give my son 30 phone-free minutes every day", mis_when: inDays(90), mis_where: "at home and outside",
+      mis_why: "be the dad he remembers playing with",
+      exe_intent: "He runs to me when I get home. My phone lives in a drawer at dinner. My spouse gets a break every evening.",
+      exe_p1: "Weeks 1–2: phone in the drawer 5:30–6:30, sit on the floor and follow his lead",
+      exe_p2: "Weeks 3–8: one outside adventure every Saturday morning",
+      exe_p3: "Weeks 9–12: I own bath and bedtime 4 nights a week",
+      exe_daily: "Phone in drawer at the front door\nOne book at bedtime, his pick\nAsk my spouse: what can I take off your plate?",
+      exe_ifthen: "If work calls, then I step out, handle it, and come back. No 'quick scroll'\nIf I'm wiped out, then quiet play on the floor still counts",
+      sus_fuel: "Eat a snack before I walk in the door. Hungry dad is short-tempered dad.",
+      sus_supply: "A drawer. A park pass. Library card for books.",
+      sus_support: "My spouse. A dads' group at church. A counselor if the stress stays heavy.",
+      cmd_partner: "My spouse, quick check after bedtime",
+      cmd_checkin: "Daily: 30 minutes done? Weekly: Sunday night, what worked.",
+      cmd_signals: "He stops asking me to play\nPhone at the dinner table\nSnapping over small things",
+      cmd_challenge: "Who's watching?", cmd_password: "He is. Always.",
+      aar_planned: "", aar_happened: "", aar_why: "", aar_next: ""
+    }
+  };
+
+  var $ = function (id) { return document.getElementById(id); };
+  var isExample = false;
+
+  function load() { try { var raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : null; } catch (e) { return null; } }
+  function save() {
+    var data = { isExample: isExample };
+    FIELDS.forEach(function (f) { data[f] = $(f).value; });
+    try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {}
+  }
+  function fill(data) { FIELDS.forEach(function (f) { $(f).value = (data && data[f]) || ""; }); }
+
+  function val(f) { return $(f).value.trim(); }
+  function lines(f) { return val(f).split(/\n+/).map(function (s) { return s.replace(/^[-•*]\s*/, "").trim(); }).filter(Boolean); }
+  function esc(s) { return s.replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  var MON = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+  function milDate(d) { return String(d.getDate()).padStart(2, "0") + " " + MON[d.getMonth()] + " " + d.getFullYear(); }
+  function milFromInput(s) { if (!s) return ""; var p = s.split("-"); return milDate(new Date(+p[0], +p[1] - 1, +p[2])); }
+
+  function missionSentence() {
+    var who = val("mis_who") || "I", what = val("mis_what"), when = milFromInput(val("mis_when")),
+        where = val("mis_where"), why = val("mis_why");
+    if (!what) return "";
+    var s = who + " will " + what;
+    if (when) s += " by " + when;
+    if (where) s += ", " + where;
+    if (why) s += ", in order to " + why;
+    return s.replace(/\s+/g, " ").replace(/[.\s]*$/, ".");
+  }
+
+  function para(label, text) { return '<p><span class="sub">' + label + "</span> " + (text ? esc(text) : '<span class="empty">not written yet</span>') + "</p>"; }
+  function list(label, items) {
+    if (!items.length) return para(label, "");
+    return '<p class="sub">' + label + "</p><ul>" + items.map(function (i) { return "<li>" + esc(i) + "</li>"; }).join("") + "</ul>";
+  }
+
+  var SECTIONS = [
+    ["sit_ground","sit_against","sit_for","sit_terrain"], ["mis_what"],
+    ["exe_intent","exe_p1","exe_daily"], ["sus_fuel","sus_supply","sus_support"], ["cmd_partner","cmd_checkin","cmd_password"]
+  ];
+
+  function render() {
+    var name = val("op_name");
+    var phases = ["exe_p1","exe_p2","exe_p3"].map(val).filter(Boolean);
+    var m = missionSentence();
+    var h = '<div class="class">PERSONAL · FOR MY EYES AND MY SECOND IN COMMAND</div>' +
+      "<h2>OPERATION " + esc((name || "Unnamed").toUpperCase()) + "</h2>" +
+      '<div class="dtg">Issued ' + milDate(new Date()) + "</div>" +
+      "<h3>1. SITUATION</h3>" + para("a. Ground truth.", val("sit_ground")) + list("b. Working against me.", lines("sit_against")) +
+      list("c. On my side.", lines("sit_for")) + para("d. Time and terrain.", val("sit_terrain")) +
+      "<h3>2. MISSION</h3>" + (m ? '<p class="missionline">' + esc(m) + "</p>" : '<p class="empty">Who, what, when, where, why.</p>') +
+      "<h3>3. EXECUTION</h3>" + para("a. Intent.", val("exe_intent")) + list("b. Phases.", phases) +
+      list("c. Tasks.", lines("exe_daily")) + list("d. If–then.", lines("exe_ifthen")) +
+      "<h3>4. SUSTAINMENT</h3>" + para("a. Fuel.", val("sus_fuel")) + para("b. Supply.", val("sus_supply")) + para("c. Support.", val("sus_support")) +
+      "<h3>5. COMMAND AND SIGNAL</h3>" + para("a. Command.", "Me.") + para("b. Second in command.", val("cmd_partner")) +
+      para("c. Check-ins.", val("cmd_checkin")) + list("d. Warning signs.", lines("cmd_signals")) +
+      para("e. Challenge / password.", val("cmd_challenge") || val("cmd_password") ? (val("cmd_challenge") || "—") + " / " + (val("cmd_password") || "—") : "");
+    var aar = ["aar_planned","aar_happened","aar_why","aar_next"].map(val);
+    if (aar.some(Boolean)) {
+      h += "<h3>WEEKLY REVIEW " + milDate(new Date()) + "</h3>" + para("Planned:", aar[0]) + para("Happened:", aar[1]) + para("Why:", aar[2]) + para("Keep / change:", aar[3]);
+    }
+    $("paper").innerHTML = h;
+
+    var done = SECTIONS.filter(function (s) { return s.every(function (f) { return val(f); }); }).length;
+    $("meterLabel").textContent = done + " of 5 paragraphs";
+    $("meterFill").style.width = (done * 20) + "%";
+
+    $("cardMission").textContent = m || "—";
+    $("cardIntent").textContent = val("exe_intent") || "—";
+    $("cardChallenge").textContent = val("cmd_challenge") || "Challenge";
+    $("cardPassword").textContent = val("cmd_password") || "—";
+    $("exampleNotice").hidden = !isExample;
+  }
+
+  function plainText() {
+    var t = [], add = function (s) { t.push(s); };
+    var bl = function (label, f) { var ls = lines(f); add(label + (ls.length ? "" : " —")); ls.forEach(function (l) { add("   - " + l); }); };
+    add("OPERATION " + (val("op_name") || "UNNAMED").toUpperCase()); add("Issued " + milDate(new Date())); add("");
+    add("1. SITUATION"); add("a. Ground truth. " + val("sit_ground")); bl("b. Working against me.", "sit_against"); bl("c. On my side.", "sit_for"); add("d. Time and terrain. " + val("sit_terrain")); add("");
+    add("2. MISSION"); add(missionSentence()); add("");
+    add("3. EXECUTION"); add("a. Intent. " + val("exe_intent")); add("b. Phases.");
+    ["exe_p1","exe_p2","exe_p3"].forEach(function (f, i) { if (val(f)) add("   Phase " + (i + 1) + ": " + val(f)); });
+    bl("c. Tasks.", "exe_daily"); bl("d. If–then.", "exe_ifthen"); add("");
+    add("4. SUSTAINMENT"); add("a. Fuel. " + val("sus_fuel")); add("b. Supply. " + val("sus_supply")); add("c. Support. " + val("sus_support")); add("");
+    add("5. COMMAND AND SIGNAL"); add("a. Command. Me."); add("b. Second in command. " + val("cmd_partner")); add("c. Check-ins. " + val("cmd_checkin"));
+    bl("d. Warning signs.", "cmd_signals"); add("e. Challenge / password. " + (val("cmd_challenge") || "—") + " / " + (val("cmd_password") || "—"));
+    add(""); add("Made with The Five-Paragraph Plan (free).");
+    return t.join("\n");
+  }
+
+  function flash(msg) { $("status").textContent = msg; clearTimeout(flash.t); flash.t = setTimeout(function () { $("status").textContent = ""; }, 4000); }
+
+  function useTemplate(key) {
+    if (key === "blank") { isExample = false; fill({ mis_who: "I" }); }
+    else if (EXAMPLES[key]) { isExample = true; fill(EXAMPLES[key]); }
+    else return;
+    save(); render(); window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  $("tpl").addEventListener("change", function (e) { useTemplate(e.target.value); e.target.value = ""; });
+  $("goBlank").addEventListener("click", function () { useTemplate("blank"); $("op_name").focus(); });
+  $("sheet").addEventListener("input", function () { if (isExample) { isExample = false; } save(); render(); });
+  $("sheet").addEventListener("submit", function (e) { e.preventDefault(); });
+
+  $("copyBtn").addEventListener("click", function () {
+    var text = plainText();
+    var fallback = function () {
+      var ta = document.createElement("textarea"); ta.value = text; ta.setAttribute("aria-label", "Your order as text");
+      ta.style.cssText = "width:100%;min-height:200px;margin-top:8px"; $("status").textContent = "Select all and copy:";
+      $("status").appendChild(ta); ta.select();
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { flash("Copied. Paste it in your notes, a text to your second in command, or an email to yourself."); }, fallback);
+    } else fallback();
+  });
+
+  $("clearBtn").addEventListener("click", function () { $("confirmClear").hidden = false; $("confirmYes").focus(); });
+  $("confirmNo").addEventListener("click", function () { $("confirmClear").hidden = true; });
+  $("confirmYes").addEventListener("click", function () {
+    $("confirmClear").hidden = true; isExample = false; fill({ mis_who: "I" });
+    try { localStorage.removeItem(KEY); } catch (e) {}
+    render(); flash("Erased. Fresh sheet.");
+  });
+
+  var saved = load();
+  if (saved) { isExample = !!saved.isExample; fill(saved); } else { isExample = true; fill(EXAMPLES.debt); }
+  render();
+})();
+</script>
