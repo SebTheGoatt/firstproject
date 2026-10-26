@@ -180,7 +180,7 @@ def test_sitemap_is_valid_xml_with_every_public_page(client):
     assert r.status_code == 200 and r.headers["content-type"].startswith("application/xml")
     ns = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
     locs = [e.text for e in ET.fromstring(r.content).findall("s:url/s:loc", ns)]
-    assert locs == [f"http://testserver{p}" for p in ("/", "/book", "/services", *SERVICE_PATHS, "/team", "/local", *AREA_PATHS, *HOOD_PATHS, "/about", "/privacy", "/terms", "/refunds")]
+    assert locs == [f"http://testserver{p}" for p in ("/", "/book", "/services", *SERVICE_PATHS, "/team", "/local", *AREA_PATHS, *HOOD_PATHS, "/about", "/community", "/privacy", "/terms", "/refunds")]
     for loc in locs:
         assert client.get(urlparse(loc).path, follow_redirects=False).status_code == 200, loc
 

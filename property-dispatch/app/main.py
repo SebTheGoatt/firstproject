@@ -50,6 +50,7 @@ from .about_page import register_about_page
 from .issues import register_issues
 from .marketing import register_marketing
 from .dispatch_board import register_dispatch_board
+from .community import register_community
 from .service_pages import register_service_pages
 from .legal_pages import SMS_CONSENT, legal_footer_html, register_legal_pages
 from .local_pages import brand_html, brand_lines, home_faq_structured_data, home_structured_data, not_found_page, register_local_pages, with_share_tags
@@ -342,6 +343,7 @@ def create_app(
     register_issues(app, settings, crew_auth, owner_auth)  # crew problem reports with photos → owner
     register_marketing(app, settings, owner_auth, page, version)   # owner marketing hub: /owner/marketing
     register_dispatch_board(app, settings, owner_auth, page, build_route_view, route_areas)   # /owner/dispatch
+    register_community(app, settings, owner_auth, page, version)   # /community + sponsored mows: /owner/community
     register_agent_api(app, settings, build={"static_version": version, "commit": os.environ.get("RENDER_GIT_COMMIT", "")[:7]})   # scoped, audited keys for StarNet agents (off unless AGENT_KEY_READ / AGENT_KEY_OPS are set)
     register_agent_routes(app, settings, crew_auth)   # owner-only Ollama dispatch assistant (off unless OLLAMA_BASE_URL is set)
     register_local_pages(app, settings, version)      # server-rendered /local area pages + /sitemap.xml for search engines
@@ -434,7 +436,7 @@ def create_app(
             # Add-ons to a mow. price None = free quote request. Seasonal ones list their service dates.
             "add_ons": [{"key": k, "label": a["label"], "price": float(a["price"]) if a["price"] is not None else None,
                          "quote": bool(a.get("quote")), "season": season_text(k), "season_range": a.get("season"),
-                         "scope": bool(a.get("scope"))}
+                         "scope": bool(a.get("scope")), "sponsor": bool(a.get("sponsor"))}
                         for k, a in ADD_ONS.items()],
             "charities": describe_charities(settings),
             "causes": charity_causes(settings),           # the customer picks one at booking

@@ -1607,6 +1607,22 @@ body.page-team { min-height: 100vh; min-height: 100dvh; display: flex; flex-dire
 .page-server-pages .sp-tag { padding: 6px 12px; border-radius: 999px; background: var(--brand-deep); color: var(--fresh);
   font: 700 0.75rem/1.3 var(--font-body); letter-spacing: 0.1em; white-space: nowrap; }
 .page-server-pages .sp-founder > p { margin: 0; color: var(--muted); line-height: 1.65; }
+/* Community (/community): real totals, the three ways to give, causes and the private nomination form. */
+.page-server-pages .cm-figs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 6px 0 4px; }
+.page-server-pages .cm-figs strong { display: block; font: 800 3rem/1 var(--font-display); color: var(--brand-strong); }
+.page-server-pages .cm-figs span { color: var(--muted); font-size: 0.94rem; }
+.page-server-pages .cm-totals .hint { margin: 0; }
+.page-server-pages .cm-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: start; }
+.page-server-pages .cm-causes { list-style: none; margin: 16px 0; padding: 0; display: grid; gap: 12px; }
+.page-server-pages .cm-causes li { display: grid; gap: 2px; padding: 16px 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; }
+.page-server-pages .cm-causes span { color: var(--muted); font-size: 0.94rem; }
+.page-server-pages .cm-form { display: grid; gap: 8px; padding: clamp(20px, 4vw, 32px); }
+.page-server-pages .cm-form h2 { margin: 0; }
+.page-server-pages .cm-form label { margin-top: 8px; font-weight: 600; }
+.page-server-pages .cm-form input, .page-server-pages .cm-form select, .page-server-pages .cm-form textarea { width: 100%; }
+.page-server-pages .cm-form .btn { margin-top: 12px; }
+.page-server-pages .cm-hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+@media (max-width: 860px) { .page-server-pages .cm-split { grid-template-columns: minmax(0, 1fr); } }
 .page-server-pages .sp-pillars { list-style: none; margin: 0; padding: 0; display: grid; gap: 20px;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
 .page-server-pages .sp-pillars li { display: grid; gap: 10px; align-content: start; padding: 28px; background: var(--surface);
