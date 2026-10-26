@@ -111,6 +111,12 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
   say they're true. No fake stats, reviews or addresses.
 - No model names in commits, PRs or code.
 
+## The standard (skill)
+- `.claude/skills/post-one-standard/` is how every request is handled, owner's standard since Oct 2026: intake
+  (reel fetch, frames, transcript), privacy gate, business lens, verdict, build, prove (demo server + page check),
+  ship, report, remember. Its `references/reel-log.md` lists everything the owner has sent and what was decided;
+  add a row for each new item. When the owner says "make it a skill" / "this is the standard", update or add a skill.
+
 ## How work ships
 - Develop on `claude/property-service-routing-jntyoz`; open the PR into `claude/veteran-gibill-platform-NAd4k`.
   When the owner says "Merge" (or gives a direct request), create the PR, merge it, then reset the branch:
