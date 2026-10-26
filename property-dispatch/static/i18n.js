@@ -182,6 +182,12 @@
     "My visit": "Mi visita",
     "Book a mow": "Reservar",
     "About": "Nosotros",
+    // ---------- Pre-orders (LAUNCH_DATE) ----------
+    "Opening day · pre-order now": "Día de apertura · reserve ya",
+    "Opening day": "Día de apertura",
+    "Pre-order now: you pay when you book and can cancel free until the crew is on the way.": "Reserve ya: paga al reservar y puede cancelar gratis hasta que el equipo vaya en camino.",
+    "Pre-orders are open.": "Las reservas anticipadas están abiertas.",
+    "You pay when you book and can cancel free until the crew is on the way.": "Paga al reservar y puede cancelar gratis hasta que el equipo vaya en camino.",
     // ---------- Community (/community) and sponsored mows ----------
     "Community": "Comunidad",
     "Sponsor a mow": "Patrocina una podada",
@@ -680,6 +686,10 @@
   const charityList = (s) => s.split(/, | and /).map((part) => part.replace(/^(\$[\d,.]+) to (.+)$/, (_, a, n) => `${a} para ${one(n)}`)).join(", ");
 
   const PATTERNS = [
+    [/^We start mowing (.+)\.$/, (m) => `Empezamos a cortar el ${m[1]}.`],
+    [/^(\d+) neighbors have pre-ordered\.$/, (m) => `${m[1]} vecinos ya reservaron.`],
+    [/^We start mowing on (.+)\. Pre-orders are open for that day and after\.$/,
+      (m) => `Empezamos a cortar el ${m[1]}. Puede reservar para ese día o después.`],
     [/^We mow (.+) on (\w+)s, so the crew stays in your area all day\.$/,
       (m) => `Cortamos en ${m[1]} los ${DAYS[m[2]] || m[2]}, así el equipo se queda en tu área todo el día.`],
     [/^We mow (.+) on (\w+)s only, so the crew stays in one area all day\. Please pick a (\w+)\.$/,

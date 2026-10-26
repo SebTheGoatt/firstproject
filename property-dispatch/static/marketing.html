@@ -253,6 +253,7 @@
             <p class="note">Every neighborhood block in our areas ranked by homes their owners live in, weighted toward higher incomes.
               Start door hangers and mail at the top of each area's list.</p>
             <p class="note"><a class="btn primary" href="/owner/targets">Open the ranked map</a></p>
+            <p class="note" id="preorders" hidden></p>
           </section>
 
           <section class="panel sec" aria-labelledby="h-posts">
@@ -414,6 +415,13 @@
           el("a", { class: "btn", href: m.square, download: "" }, "Square"),
           el("a", { class: "btn", href: m.wide, download: "" }, "Wide")))));
       if (data.poster) { $("poster-pdf").href = data.poster.pdf; $("poster-jpg").href = data.poster.jpg; $("poster-row").hidden = false; }
+      const pre = data.preorders;
+      if (pre && pre.open) {
+        const day = new Date(pre.launch_date + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+        $("preorders").textContent = `Pre-orders are open for opening day, ${day}: ${pre.count ?? "–"} booked so far. `
+          + "This week's posts below already point people at your first week.";
+        $("preorders").hidden = false;
+      }
     }
     function renderBuilder() {
       $("channel").replaceChildren(...Object.entries(data.channels).map(([k, v]) => el("option", { value: k }, v)));

@@ -832,6 +832,8 @@ label.check input { width: 18px; height: 18px; }
 .route-banner p { margin: 0; font-size: 0.93rem; line-height: 1.45; }
 .route-banner strong { color: #ffffff; }
 .route-banner a, .about-hero a:not(.btn) { color: var(--fresh); }
+.preorder-note { margin: var(--space-3) 0 0; padding: 10px 14px; border-left: 3px solid var(--fresh); border-radius: 0 10px 10px 0;
+  background: rgb(155 209 90 / 0.12); color: var(--on-dark); max-width: 68ch; }
 .spots-left { margin: 0 0 var(--space-3); padding: 8px 12px; border-radius: 10px; background: var(--warn-soft); color: var(--warn); font-weight: 650; font-size: 0.92rem; }
 .window-badge { display: inline-block; justify-self: start; margin: 0 0 6px; padding: 3px 10px; border-radius: 999px; background: var(--brand-soft); color: var(--brand-strong); font-weight: 700; font-size: 0.8rem; }
 .plan-note { font-size: 0.9rem; color: var(--muted); border-left: 3px solid var(--brand); padding-left: 10px; }

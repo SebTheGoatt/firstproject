@@ -90,9 +90,10 @@
           </form>
 
           <div class="next-open po-next" aria-live="polite" aria-label="Next available service day">
-            <p class="po-kicker">Next open day</p>
+            <p class="po-kicker" id="next-kicker">Next open day</p>
             <p class="next-day" id="next-day">Checking…</p>
             <p class="hint" id="cutoff">Next-day booking closes at 5 PM.</p>
+            <p class="hint" id="preorder-count" hidden></p>
             <p class="spots-left" id="spots-left" hidden></p>
           </div>
         </div>
@@ -402,7 +403,7 @@
   </footer>
 
   <div class="book-bar" id="book-bar" aria-hidden="true">
-    <div class="book-bar-text"><span>Next open day</span><strong id="bar-day">See available days</strong></div>
+    <div class="book-bar-text"><span id="bar-kicker">Next open day</span><strong id="bar-day">See available days</strong></div>
     <a class="btn btn-primary" href="/book" tabindex="-1">Book a mow</a>
   </div>
 
@@ -613,6 +614,16 @@
       document.getElementById("bar-day").textContent = new Date(info.earliest_date + "T12:00:00")
         .toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
       document.getElementById("cutoff").textContent = `Next-day booking closes at ${hour12(info.freeze_hour)} Central.`;
+      // Pre-orders (before LAUNCH_DATE): the first open day is opening day; booking now is a pre-order.
+      if (info.preorder && info.preorder.open) {
+        document.getElementById("next-kicker").textContent = "Opening day · pre-order now";
+        document.getElementById("bar-kicker").textContent = "Opening day";
+        document.getElementById("cutoff").textContent = "Pre-order now: you pay when you book and can cancel free until the crew is on the way.";
+        if (info.preorder.count) {
+          const c = document.getElementById("preorder-count");
+          c.textContent = `${info.preorder.count} neighbors have pre-ordered.`; c.hidden = false;
+        }
+      }
       // Real openings only: daily limit minus jobs already booked. Shown when the route is nearly full.
       const spots = document.getElementById("spots-left");
       if (info.spots_left != null && info.spots_left <= 3) {

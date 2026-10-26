@@ -1,10 +1,11 @@
 """Runtime configuration, loaded from environment variables / .env."""
 
 import re
+from datetime import date
 from functools import lru_cache
 from zoneinfo import ZoneInfo
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -38,6 +39,14 @@ class Settings(BaseSettings):
     freeze_hour: int = 17           # 5 PM local (close of business): next day locks and its route is built
     daily_job_quota: int = 25       # max active jobs per service day
     booking_horizon_days: int = 60
+    # Pre-orders: the first day we mow (LAUNCH_DATE=2027-03-01). Until then the booking window opens on that day, so
+    # every booking is a pre-order (paid at booking, free to cancel until the crew is on the way). Blank = open now.
+    launch_date: date | None = None
+
+    @field_validator("launch_date", mode="before")
+    @classmethod
+    def blank_launch(cls, v):
+        return None if isinstance(v, str) and not v.strip() else v
 
     # --- Routing ------------------------------------------------------
     osrm_url: str = "https://router.project-osrm.org"

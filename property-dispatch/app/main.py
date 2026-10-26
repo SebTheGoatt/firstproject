@@ -38,8 +38,9 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import deeplinks, push, reviews
-from .booking import (BookingRejected, cached_count, check_area_day, forget_counts, earliest_bookable_day, local_now, next_service_day,
-                      open_area_days, validate_booking)
+from .booking import (PREORDER_SHOW_MIN, BookingRejected, cached_count, check_area_day, forget_counts, earliest_bookable_day,
+                      latest_bookable_day, local_now, next_service_day, open_area_days, preorder_count, preorders_open,
+                      validate_booking)
 from .config import Settings, get_settings, site_url, verification_meta
 from .db import Repository, make_repository
 from .geocode import GeocodingError, GeocoderUnavailable, NominatimGeocoder
@@ -401,15 +402,23 @@ def create_app(
     @app.get("/api/booking-info")
     def booking_info(request: Request):
         now = local_now(settings)
-        earliest = earliest_bookable_day(now, settings.freeze_hour)
+        earliest = earliest_bookable_day(now, settings.freeze_hour, settings.launch_date)
         try:  # real openings on the next route (daily_job_quota minus active jobs); never blocks the page
             spots_left = max(0, settings.daily_job_quota - cached_count(request.app.state.repo, earliest))
         except Exception:
             spots_left = None
+        preorder = preorders_open(now, settings)
+        try:
+            preorders = preorder_count(request.app.state.repo, now, settings) if preorder else 0
+        except Exception:
+            preorders = 0
         return {
             "earliest_date": earliest,
             "spots_left": spots_left,
-            "latest_date": now.date() + timedelta(days=settings.booking_horizon_days),
+            "latest_date": latest_bookable_day(now, settings),
+            # Pre-orders (LAUNCH_DATE): the opening day, and the real count shown once it's worth showing.
+            "preorder": {"open": preorder, "launch_date": settings.launch_date if preorder else None,
+                         "count": preorders if preorders >= PREORDER_SHOW_MIN else None},
             "freeze_hour": settings.freeze_hour,
             "schedule": [{"weekday": WEEKDAY_NAMES[z.service_weekday], "area": short_name(z), "zone_key": z.key}
                          for z in sorted(SERVICE_ZONES, key=lambda z: z.service_weekday)],

@@ -96,6 +96,11 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
   cancel then); after it, no refund. Light rain: we mow; lightning/heavy rain/soft ground → make-up day (usually
   Saturday) or full refund. Locked out (gate, loose pet, blocked lawn): unreached parts not refunded. Hazards we
   find: return visit or partial refund. Price is locked: never charge a card more on site without the customer's OK.
+- **Pre-orders before launch:** `LAUNCH_DATE` (Render, e.g. 2027-03-01) opens the booking window on opening day and
+  runs the 60-day horizon from there, so every booking until then is a pre-order: same price, area day and pay-first
+  rules, free to cancel until the "on the way" text. Home and booking pages say "Opening day · pre-order now"; the
+  public count shows only from 5 real pre-orders (`PREORDER_SHOW_MIN`); the owner sees the exact count on the
+  marketing hub, and this week's posts point at opening week. Blank = ordinary booking.
 - **Neighbor discount (option A):** 5% off the mowing with 2–4 customers booked within half a mile, 10% with 5+.
 - **Nothing is free (owner, Oct 2026):** no free mows. Giving = the cause share of every paid mow, an optional
   round-up on the pay page (to the next $5, all to the customer's cause), and "Sponsor a neighbor's mow" (add-on at
@@ -139,6 +144,8 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
   Bing feeds Copilot and ChatGPT search). The go-live page (`/owner/readiness`) tracks both. Google Business Profile: primary category
   "Lawn care service", website link, ask first customers for reviews.
 - Stripe public business name and statement descriptor → Post One.
+- Pick opening day and set `LAUNCH_DATE` in Render (Stripe live first, so pre-orders are paid). Mowing in Houston
+  restarts mid-to-late March; a spring opening gives pre-orders all winter to build.
 - Delete the mock bookings from testing.
 - Run `supabase/migrations/20261028000000_issues_and_sources.sql` (problem reports + booking sources).
 - Run `supabase/migrations/20261029000000_community.sql` (sponsored mows + nominations).
