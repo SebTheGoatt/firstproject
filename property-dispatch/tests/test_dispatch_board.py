@@ -54,6 +54,8 @@ def test_board_is_owner_only_and_the_page_loads(client):
     page = client.get("/owner/dispatch")
     assert page.status_code == 200 and "noindex" in page.headers.get("x-robots-tag", "")
     assert "buildings.pmtiles" in page.text and "/api/owner/dispatch/" in page.text
+    assert 'id="play"' in page.text and '"ribbon"' in page.text and '"pillars"' in page.text   # Play the day, 3D route
+    assert "prefers-reduced-motion" in page.text and "follow: !reduced" in page.text           # no ride-along camera then
     assert 'href="/owner/dispatch"' in client.get("/owner/command").text
 
 

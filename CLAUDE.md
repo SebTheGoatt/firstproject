@@ -43,6 +43,9 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
   (PMTiles `overturemaps-extras-us-west-2/tiles/<release>/buildings.pmtiles`, keyless, CORS-open; bump the release
   now and then), NOAA radar toggle, finish time vs closing ("Done by 2:37 PM · 2h 23m to spare"), visits not on the
   route with the reason, and Build/Rebuild, Rain day, Manifest and Move. Inspired by TopoExport.
+  3D layer: the route as a raised ribbon (up close; the flat line hands over at zoom 14.5), stop pillars (taller = more
+  minutes on site) and "Play the day": a truck drives the real path on a sped-up clock (~45 s per day), camera riding
+  along at street level, stops lighting up as reached. Reduced motion keeps the camera still.
 - Rain radar on the route map ("Rain radar" toggle, remembered per phone; `/crew/dashboard?radar=1` from the owner's
   "Check the radar" link next to Rain day): NOAA nowCOAST WMS, keyless and CORS-open — MRMS base reflectivity
   (~4 min) + NLDN lightning density (~10 min), refreshed every 5 min, credited in the map attribution. Idea taken
