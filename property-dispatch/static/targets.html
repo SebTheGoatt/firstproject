@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Where to knock first | {{BUSINESS_NAME}}</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#FFFFFF">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="preload" href="/static/fonts/public-sans-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <style>
+    /* Owner: where to knock first. Daylight work-app look; one data hue (Field Green) in steps for the map. */
+    @font-face { font-family: "Public Sans"; font-weight: 400; font-display: swap; src: url(/static/fonts/public-sans-400.woff2) format("woff2"); }
+    @font-face { font-family: "Public Sans"; font-weight: 600; font-display: swap; src: url(/static/fonts/public-sans-600.woff2) format("woff2"); }
+    @font-face { font-family: "Public Sans"; font-weight: 700; font-display: swap; src: url(/static/fonts/public-sans-700.woff2) format("woff2"); }
+    :root {
+      --ground: #F6F7F3; --sheet: #FFFFFF; --line: #E3E6DF; --line-strong: #CFD4CB; --track: #EDEFEA;
+      --ink: #14201B; --ink-2: #3D4A44; --muted: #5F6B65;
+      --green: #2E7D4F; --green-soft: #E6F1EA; --green-ink: #1F5A3C; --brass: #8A6210;
+      --radius: 10px; --font: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--ground); }
+    body { margin: 0; background: var(--ground); color: var(--ink); font: 400 14px/1.5 var(--font); -webkit-font-smoothing: antialiased; }
+    a { color: var(--green-ink); text-underline-offset: 3px; }
+    :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; border-radius: 4px; }
+    .num { font-variant-numeric: tabular-nums; }
+    .bar { height: 56px; display: flex; align-items: center; gap: 16px; padding: 0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+      border-bottom: 1px solid var(--line); background: var(--sheet); position: sticky; top: 0; z-index: 5; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--ink); text-decoration: none; white-space: nowrap; }
+    .brand small { font-weight: 400; color: var(--muted); font-size: 14px; }
+    .bar nav { display: flex; gap: 4px; margin-left: auto; overflow-x: auto; scrollbar-width: none; }
+    .bar nav::-webkit-scrollbar { display: none; }
+    .bar nav a { color: var(--ink-2); text-decoration: none; padding: 8px 12px; border-radius: 8px; white-space: nowrap; font-weight: 500; }
+    .bar nav a:hover { background: var(--ground); }
+    .bar nav a[aria-current="page"] { background: var(--track); color: var(--ink); }
+    main { max-width: 1280px; margin: 0 auto; padding: 24px 16px 64px; display: grid; gap: 16px; }
+    h1 { margin: 0; font-size: 24px; letter-spacing: -0.01em; }
+    .lede { margin: 4px 0 0; color: var(--ink-2); max-width: 78ch; }
+    .msg { max-width: 640px; margin: 48px auto; padding: 0 16px; color: var(--ink-2); }
+    .areas { display: flex; flex-wrap: wrap; gap: 8px; }
+    .areas button { font: 600 14px/1 var(--font); min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line-strong);
+      background: var(--sheet); color: var(--ink); cursor: pointer; }
+    .areas button[aria-pressed="true"] { background: var(--green); border-color: var(--green); color: #fff; }
+    .board { display: grid; grid-template-columns: minmax(340px, 460px) minmax(0, 1fr); gap: 16px; align-items: start; }
+    .panel { background: var(--sheet); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; min-width: 0; }
+    .panel > header { padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    .panel h2 { margin: 0; font-size: 15px; font-weight: 600; }
+    .plan { padding: 14px 16px; display: grid; gap: 6px; border-bottom: 1px solid var(--line); background: var(--green-soft); }
+    .plan b { font-size: 15px; }
+    .plan p { margin: 0; color: var(--ink-2); }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 9px 10px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    th { font-size: 12px; font-weight: 600; color: var(--muted); }
+    th:first-child, td:first-child { text-align: left; }
+    tbody tr { cursor: pointer; }
+    tbody tr:hover, tbody tr.on { background: var(--green-soft); }
+    .rank { display: inline-flex; width: 26px; height: 26px; align-items: center; justify-content: center; border-radius: 50%; border: 0;
+      background: var(--green); color: #fff; font: 700 12px/1 var(--font); cursor: pointer; }
+    .stage { position: relative; height: min(72vh, 720px); min-height: 420px; }
+    #map { position: absolute; inset: 0; }
+    .legend { position: absolute; left: 12px; bottom: 28px; z-index: 2; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,0.95);
+      border: 1px solid var(--line); font-size: 12px; color: var(--ink-2); }
+    .legend .ramp { display: flex; height: 10px; width: 180px; border-radius: 3px; overflow: hidden; margin: 4px 0 2px; }
+    .legend .ramp span { flex: 1; }
+    .legend .ends { display: flex; justify-content: space-between; }
+    .maplibregl-ctrl-attrib a { text-decoration: underline; }
+    .src { color: var(--muted); font-size: 12px; margin: 0; max-width: 100ch; }
+    .scroll { overflow-x: auto; }
+    @media (max-width: 900px) { .board { grid-template-columns: minmax(0, 1fr); } .stage { height: 56vh; min-height: 340px; order: -1; }
+      .legend { top: 12px; bottom: auto; } }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="/owner/command"><img src="/static/brand/post-one-mark.svg" alt="" width="22" height="24">{{BRAND_SHORT}} <small>Owner</small></a>
+    <nav aria-label="Owner screens">
+      <a href="/owner/command">Today</a>
+      <a href="/owner/dispatch">Dispatch</a>
+      <a href="/owner/community">Community</a>
+      <a href="/owner/marketing" aria-current="page">Marketing</a>
+      <a href="/crew">Bookings &amp; crew</a>
+      <a href="/crew/dashboard">Crew route</a>
+      <a href="/owner/readiness">Go-live</a>
+    </nav>
+  </header>
+  <p class="msg" id="msg" role="status" hidden></p>
+  <main id="app" hidden>
+    <section>
+      <p style="margin:0"><a href="/owner/marketing">← Marketing</a></p>
+      <h1>Where to knock first</h1>
+      <p class="lede">Every neighborhood block in our areas, ranked by homes their owners live in (single-family), weighted toward
+        higher incomes, where hiring out the mowing is most common. Hand out door hangers and send mail from the top of each
+        area's list, on the week before that area's day.</p>
+    </section>
+    <div class="areas" id="areas" role="group" aria-label="Area"></div>
+    <div class="board">
+      <section class="panel" aria-labelledby="list-title">
+        <header><h2 id="list-title">Top blocks</h2></header>
+        <div class="plan" id="plan" aria-live="polite"></div>
+        <div class="scroll">
+          <table>
+            <thead><tr><th scope="col">Block</th><th scope="col">Homes</th><th scope="col">Income</th><th scope="col">65+</th><th scope="col">Kids</th><th scope="col">Own</th></tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+        <p class="src" style="padding:8px 10px">Homes = owner-lived single-family homes inside our area. 65+ = owners 65 or older. Kids = homes with children. Own = households that own their home.</p>
+      </section>
+      <section class="panel stage" aria-label="Map of the ranked blocks">
+        <div id="map" role="region" aria-label="Map: darker green blocks rank higher; numbers are the list's ranks"></div>
+        <div class="legend" aria-hidden="true">Priority<div class="ramp" id="ramp"></div><div class="ends"><span>lower</span><span>higher</span></div></div>
+      </section>
+    </div>
+    <p class="src" id="src"></p>
+  </main>
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script>
+    let token = null;
+    try { token = localStorage.getItem("crewToken"); } catch {}
+    const $ = (id) => document.getElementById(id);
+    const el = (tag, attrs = {}, ...kids) => { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) k === "class" ? (e.className = v) : e.setAttribute(k, v); e.append(...kids.filter((x) => x != null)); return e; };
+    const money = (n) => n == null ? "–" : "$" + Math.round(n / 1000) + "k";
+    const pct = (x) => Math.round((x || 0) * 100) + "%";
+    const fmt = (n) => Math.round(n).toLocaleString("en-US");
+    const STEPS = ["#E6F1EA", "#B8D9C3", "#7FB896", "#4A9A6A", "#2E7D4F", "#1F5A3C"];
+    const MAIL = 0.65;            // all-in cost per home for USPS Every Door Direct Mail (print + postage), 2026 estimate
+    const RESPONSE = [0.005, 0.015];   // 0.5–1.5%: conservative response range for lawn care mail
+    const TOP = 12;
+    let data = null, area = null, map = null, ready = false;
+    const bbox = (f) => { let w = 180, s = 90, e = -180, n = -90; for (const poly of f.geometry.coordinates) for (const [x, y] of poly[0]) { w = Math.min(w, x); e = Math.max(e, x); s = Math.min(s, y); n = Math.max(n, y); } return [w, s, e, n]; };
+    const blockName = (f) => { const id = f.properties.id.replace("15000US", ""); return `${f.properties.county} ${id.slice(5, 9)}.${id.slice(9, 11)}-${id.slice(11)}`; };
+    function inArea() { return data.features.filter((f) => !area || f.properties.zone === area); }
+    function render() {
+      $("areas").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.key === (area || ""))));
+      const list = inArea(), top = list.slice(0, TOP), a = data.areas.find((x) => x.key === area);
+      const homes = list.reduce((t, f) => t + f.properties.homes, 0), top3 = list.slice(0, 3).reduce((t, f) => t + f.properties.homes, 0);
+      const top10 = list.slice(0, 10).reduce((t, f) => t + f.properties.homes, 0);
+      $("list-title").textContent = a ? `Top blocks · ${a.name} (${a.day}s)` : "Top blocks · all areas";
+      $("plan").replaceChildren(
+        el("b", { class: "num" }, `${fmt(homes)} owner-lived single-family homes in ${list.length} blocks`),
+        el("p", {}, `Start with the top 3 blocks: about ${fmt(top3)} door hangers.`),
+        el("p", { class: "num" }, `Mail to the top 10 (${fmt(top10)} homes): about $${fmt(top10 * MAIL)} with Every Door Direct Mail, `
+          + `and about ${fmt(top10 * RESPONSE[0])}–${fmt(top10 * RESPONSE[1])} bookings at a typical 0.5–1.5% response.`));
+      $("rows").replaceChildren(...top.map((f, i) => {
+        const p = f.properties;
+        const tr = el("tr", { "data-id": p.id },
+          el("td", {}, el("button", { class: "rank", type: "button", "aria-label": `Show block ${i + 1}, ${blockName(f)}, on the map` }, String(i + 1)), " ", el("span", { class: "num" }, blockName(f))),
+          el("td", { class: "num" }, fmt(p.homes)), el("td", { class: "num" }, money(p.income)),
+          el("td", { class: "num" }, pct(p.owners_65)), el("td", { class: "num" }, pct(p.kids)), el("td", { class: "num" }, pct(p.owner_share)));
+        tr.addEventListener("click", () => show(f));
+        return tr;
+      }));
+      draw(top);
+    }
+    function show(f) {
+      document.querySelectorAll("#rows tr").forEach((r) => r.classList.toggle("on", r.dataset.id === f.properties.id));
+      if (!ready) return;
+      map.setFilter("bg-on", ["==", ["get", "id"], f.properties.id]);
+      const [w, s, e, n] = bbox(f);
+      map.fitBounds([[w, s], [e, n]], { padding: 60, maxZoom: 15, duration: matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 600 });
+    }
+    function draw(top) {
+      if (!ready) return;
+      const scores = inArea().map((f) => f.properties.score).sort((x, y) => x - y);
+      const q = (p) => scores.length ? scores[Math.min(scores.length - 1, Math.floor(p * scores.length))] : 0;
+      const steps = ["step", ["get", "score"], STEPS[0]];
+      let last = -Infinity;
+      [0.2, 0.4, 0.6, 0.8, 0.95].map(q).forEach((c, i) => { if (c > last) { steps.push(c, STEPS[i + 1]); last = c; } });   // stops must rise
+      map.setPaintProperty("bg", "fill-color", steps);
+      map.setFilter("bg", area ? ["==", ["get", "zone"], area] : null);
+      map.setFilter("bg-line", area ? ["==", ["get", "zone"], area] : null);
+      map.setFilter("bg-on", ["==", ["get", "id"], ""]);
+      map.getSource("ranks").setData({ type: "FeatureCollection", features: top.map((f, i) => {
+        const [w, s, e, n] = bbox(f); return { type: "Feature", properties: { n: String(i + 1) }, geometry: { type: "Point", coordinates: [(w + e) / 2, (s + n) / 2] } };
+      }) });
+      const list = inArea(); if (!list.length) return;
+      const b = list.map(bbox).reduce((m, x) => [Math.min(m[0], x[0]), Math.min(m[1], x[1]), Math.max(m[2], x[2]), Math.max(m[3], x[3])]);
+      map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 40, duration: 0 });
+    }
+    function initMap() {
+      if (!window.maplibregl) { $("map").textContent = "The map couldn't load. The list still works."; return; }
+      map = new maplibregl.Map({ container: "map", style: "https://tiles.openfreemap.org/styles/positron", center: [-95.3, 30.2], zoom: 9,
+        attributionControl: { compact: true, customAttribution: "Census data: ACS 5-year via Census Reporter" } });
+      map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+      map.on("load", () => {
+        const labels = map.getStyle().layers.find((l) => l.type === "symbol")?.id;
+        map.addSource("bg", { type: "geojson", data: data });
+        map.addSource("boxes", { type: "geojson", data: { type: "FeatureCollection", features: data.areas.flatMap((a) => a.boxes.map(([w, s, e, n]) => ({ type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [[[w, s], [e, s], [e, n], [w, n], [w, s]]] } }))) } });
+        map.addSource("ranks", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+        map.addLayer({ id: "bg", type: "fill", source: "bg", paint: { "fill-color": STEPS[2], "fill-opacity": 0.62 } }, labels);
+        map.addLayer({ id: "bg-line", type: "line", source: "bg", paint: { "line-color": "#ffffff", "line-width": 0.8 } }, labels);
+        map.addLayer({ id: "bg-on", type: "line", source: "bg", filter: ["==", ["get", "id"], ""], paint: { "line-color": "#14201B", "line-width": 3 } });
+        map.addLayer({ id: "boxes", type: "line", source: "boxes", paint: { "line-color": "#8A6210", "line-width": 1.5, "line-dasharray": [3, 2] } });
+        map.addLayer({ id: "rank-dot", type: "circle", source: "ranks", paint: { "circle-radius": 11, "circle-color": "#14201B", "circle-stroke-color": "#fff", "circle-stroke-width": 2 } });
+        map.addLayer({ id: "rank-n", type: "symbol", source: "ranks", layout: { "text-field": ["get", "n"], "text-size": 11, "text-font": ["Noto Sans Bold"], "text-allow-overlap": true }, paint: { "text-color": "#fff" } });
+        map.on("click", "bg", (e) => { const f = data.features.find((x) => x.properties.id === e.features[0].properties.id); if (f) { const i = inArea().indexOf(f); if (i >= TOP) map.setFilter("bg-on", ["==", ["get", "id"], f.properties.id]); else show(f); } });
+        map.on("mouseenter", "bg", () => { map.getCanvas().style.cursor = "pointer"; });
+        map.on("mouseleave", "bg", () => { map.getCanvas().style.cursor = ""; });
+        ready = true; render();
+      });
+    }
+    (async () => {
+      if (!token) { $("msg").hidden = false; $("msg").innerHTML = 'Sign in as the owner in the <a href="/crew">crew app</a> first.'; return; }
+      try {
+        const res = await fetch("/api/owner/targets", { headers: { "X-Crew-Token": token } });
+        const info = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(/owner/i.test(info.detail || "") ? "Only the owner can see this." : info.detail || "Couldn't load.");
+        const d = await fetch(info.data_url);
+        if (!d.ok) throw new Error("The neighborhood data hasn't been made for the current areas yet (tools/make_target_map.py).");
+        data = await d.json();
+      } catch (e) { $("msg").hidden = false; $("msg").textContent = e.message; return; }
+      $("ramp").replaceChildren(...STEPS.map((c) => el("span", { style: `background:${c}` })));
+      $("areas").replaceChildren(el("button", { type: "button", "data-key": "" }, "All areas"),
+        ...data.areas.map((a) => el("button", { type: "button", "data-key": a.key }, `${a.day.slice(0, 3)} · ${a.name}`)));
+      $("areas").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; area = b.dataset.key || null; render(); });
+      area = data.areas[0]?.key || null;
+      $("src").textContent = `Source: U.S. Census Bureau, American Community Survey ${data.years} 5-year estimates (${data.release}), block groups, via Census Reporter. `
+        + "Neighborhood totals only: no names or addresses. Homes built since 2020 (much of Colony Ridge) are undercounted. "
+        + "Mail cost and response are 2026 industry estimates; test one drop before spending more.";
+      $("app").hidden = false;
+      render(); initMap();
+    })();
+  </script>
+</body>
+</html>

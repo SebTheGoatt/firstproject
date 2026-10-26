@@ -146,6 +146,13 @@ def poster_path(ext: str = "jpg") -> str:
     return f"/static/img/service-map-{hashlib.sha256(plan).hexdigest()[:8]}.{ext}"
 
 
+def target_data_path() -> str:
+    """Where to knock first (tools/make_target_map.py): Census block groups in our areas, ranked. Fingerprinted on
+    the areas, boxes and days like the poster, so tests/test_target_map.py fails until it is made again."""
+    plan = repr(sorted((z.key, z.service_weekday, z.boxes) for z in SERVICE_ZONES)).encode()
+    return f"/static/data/targets-{hashlib.sha256(plan).hexdigest()[:8]}.json"
+
+
 def qr_svg(url: str, dark: str = "#0F2B22") -> bytes:
     buf = io.BytesIO()
     segno.make(url, error="m").save(buf, kind="svg", scale=10, dark=dark, light="#ffffff", border=2, xmldecl=False)
@@ -325,6 +332,16 @@ def register_marketing(app: FastAPI, settings: Settings, owner, page, version: s
             raise HTTPException(status_code=404, detail="Unknown print")
         return HTMLResponse(print_html(settings, version, site_url(settings, request), kind, path, ref),
                             headers={"Cache-Control": "no-cache", "X-Robots-Tag": "noindex"})
+
+    @app.get("/api/owner/targets", dependencies=[Depends(owner)])
+    def target_data():
+        return {"data_url": target_data_path()}
+
+    @app.get("/owner/targets", include_in_schema=False)
+    def targets_page():
+        resp = page("targets.html")
+        resp.headers["X-Robots-Tag"] = "noindex"
+        return resp
 
     @app.get("/owner/marketing", include_in_schema=False)
     def marketing_page():
