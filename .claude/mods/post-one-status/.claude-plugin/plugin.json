@@ -1,0 +1,6 @@
+{
+  "name": "post-one-status",
+  "version": "0.1.0",
+  "description": "Post One at a glance beside the chat: test results, branch and merge state, and the owner's open to-dos from CLAUDE.md",
+  "types": "./types/index.d.ts"
+}

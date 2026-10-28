@@ -5,7 +5,7 @@ sometimes resends the same reel with a different share tail. Add one row per ite
 
 | Sent | What it was | Verdict | Where it landed |
 |---|---|---|---|
-| Oct 28 2026, upload | Claude Code "mods": bridge two sessions, an agent dashboard panel, route simple tasks to a cheaper model; ask Claude to build the mod | Not now | Tooling for Claude itself, not for customers. Trigger: the owner runs several Claude sessions at once from the desktop or terminal app; then build a small status mod (tests, open PR, owner to-dos) |
+| Oct 28 2026, upload | Claude Code "mods": bridge two sessions, an agent dashboard panel, route simple tasks to a cheaper model; ask Claude to build the mod | Adopted on request | Built the status mod the owner asked for: `.claude/mods/post-one-status` (tests, branch and merge state, owner to-dos). Session bridge and model routing still not needed |
 | Oct 28 2026, upload | "Dashboard V18": soft lavender card dashboard with a left icon rail, React + framer-motion hover cards (no audio) | Skip | Owner screens already follow the chosen daylight look; the effect needs React, and no KPI moves. Kept: the left icon rail idea, if the owner menu outgrows the top bar |
 | Oct 2026, owner (transcript PDF, sent twice) | "Incorporate these graduate courses into optimizing this business" | Adopt | PR: `/owner/numbers` + `graduate-toolkit.md`; PR: storm mode. Personal details from the transcript left out |
 | Oct 2026, owner request | Use open data to target homeowners who pay for lawn care; pre-orders before launch | Adopt | PR: `/owner/targets` ranked Census map; PR: `LAUNCH_DATE` pre-orders |
