@@ -13,7 +13,7 @@ import os
 import sys
 from datetime import date, datetime, timedelta
 
-from outlook import CENTRAL, POST_ONE_LAUNCH, Outlook, fetch, mowing_block, to_date
+from outlook import CENTRAL, Outlook, fetch, to_date
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCHEDULE_FILE = os.path.join(HERE, "atascocita_schedule.json")
@@ -72,9 +72,6 @@ DEFAULT_SETTINGS = {
     # Times you never dash, e.g. family dinner: {"day": "Sunday", "start": "08:00", "end": "11:00"}
     "protected": [],
     "days_off": [],
-    # Post One Lawn Co.: from opening day, weekday 8-5 and Saturday 8-2 are mowing, plus the drive home.
-    "post_one_launch": POST_ONE_LAUNCH,
-    "post_one_buffer_min": 30,
 }
 
 
@@ -204,7 +201,7 @@ def strategy_for(day, hour):
 
 
 def is_protected(day, hour, settings, when=None, outlook=None):
-    """Days off, family time, Post One mowing (from opening day), and severe-weather warnings."""
+    """Days off, family time, and severe-weather warnings."""
     if day in settings["days_off"]:
         return True
     for p in settings["protected"]:
@@ -213,12 +210,8 @@ def is_protected(day, hour, settings, when=None, outlook=None):
         s, e = span(p["start"], p["end"])
         if overlap(s, e, hour, hour + 1) > 0:
             return True
-    if when is not None:
-        block = mowing_block(when, settings)
-        if block and overlap(block[0], block[1], hour, hour + 1) > 0:
-            return True
-        if outlook and outlook.stop(when, hour):
-            return True
+    if when is not None and outlook and outlook.stop(when, hour):
+        return True
     return False
 
 
@@ -233,7 +226,7 @@ def week_dates(start):
 def build_week(settings, earnings, start=None, outlook=None, now=None):
     """Pick the strongest hours of the week up to the goal, then merge into shifts.
 
-    With a start date, the plan is for those real days: Post One hours, local events
+    With a start date, the plan is for those real days: local events
     and the NWS forecast (outlook) count. Without one it's a typical week.
     Hours below min_score are never used to pad the goal: if the good hours run
     out, the plan comes in under goal and says so.
@@ -581,7 +574,7 @@ def main(argv):
     import argparse
     parser = argparse.ArgumentParser(description="Atascocita DoorDash schedule planner")
     parser.add_argument("--plan", action="store_true", help="print the auto plan and exit")
-    parser.add_argument("--week", help="plan the 7 days from this date (YYYY-MM-DD): events + Post One hours")
+    parser.add_argument("--week", help="plan the 7 days from this date (YYYY-MM-DD): local events count")
     parser.add_argument("--weather", action="store_true", help="plan the next 7 days with the NWS forecast")
     parser.add_argument("--today", action="store_true", help="just today's shifts and notes")
     parser.add_argument("--json", action="store_true", help="machine-readable output (for the pane and page)")

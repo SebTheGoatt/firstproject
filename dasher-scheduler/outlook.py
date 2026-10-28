@@ -1,4 +1,4 @@
-"""What changes a given week in Atascocita: Post One work hours, local events, and the weather.
+"""What changes a given week in Atascocita: local events and the weather.
 
 All keyless public sources:
 - National Weather Service hourly forecast and active alerts for the Atascocita point (api.weather.gov).
@@ -16,12 +16,6 @@ CENTRAL = ZoneInfo("America/Chicago")
 NWS_HOURLY = "https://api.weather.gov/gridpoints/HGX/70,105/forecast/hourly"   # Atascocita CDP grid point
 NWS_ALERTS = "https://api.weather.gov/alerts/active?point=29.993,-95.1766"
 USER_AGENT = "atascocita-dasher-planner (personal use)"
-
-# Post One Lawn Co. working hours (property-dispatch/app/config.py and CLAUDE.md). The test suite fails if they
-# drift apart. Opening day is the planned LAUNCH_DATE; change post_one_launch in settings once it's set in Render.
-POST_ONE_LAUNCH = "2027-03-01"
-POST_ONE_WEEKDAY = "08:00-17:00"
-POST_ONE_SATURDAY = "08:00-14:00"
 
 # Dated local events: (first day, last day, hours affected or None for all, demand factor, note).
 EVENTS = [
@@ -51,22 +45,6 @@ def to_date(value):
 def slot_moment(day, hour):
     """The (date, hour) a planning slot really falls on: hour 24 is midnight of the next day."""
     return (day + timedelta(days=1), 0) if hour >= 24 else (day, hour)
-
-
-def span_hours(text):
-    start, end = text.split("-")
-    h1, m1 = map(int, start.split(":"))
-    h2, m2 = map(int, end.split(":"))
-    return h1 + m1 / 60, h2 + m2 / 60
-
-
-def mowing_block(day, settings):
-    """Hours Post One mowing takes on this date (plus the drive home), or None before opening day / on Sundays."""
-    launch = settings.get("post_one_launch") or POST_ONE_LAUNCH
-    if day < to_date(launch) or day.weekday() == 6:
-        return None
-    start, end = span_hours(POST_ONE_SATURDAY if day.weekday() == 5 else POST_ONE_WEEKDAY)
-    return start, end + settings.get("post_one_buffer_min", 30) / 60
 
 
 def events_on(day):
@@ -104,10 +82,6 @@ class Outlook:
 
     def notes(self, day, settings):
         out = [e[4] for e in events_on(day)]
-        block = mowing_block(day, settings)
-        if block:
-            out.append(f"Post One mowing until {clock(block[1] - settings.get('post_one_buffer_min', 30) / 60)}"
-                       " (dash plan starts after you're home)")
         wet = [h for h in range(6, 25) if self.hourly.get(slot_moment(day, h), (0, ""))[0] >= 40]
         for first, last in runs(wet):
             out.append(f"Rain likely {clock(first)}-{clock(last + 1)}: orders usually rise. Slow down, lights on")

@@ -1,21 +1,18 @@
 # Atascocita DoorDash schedule planner
 
 A terminal app that builds a weekly dash schedule for the Atascocita / Humble zone, flags shifts that sit in
-dead hours, and learns from the earnings you log. This is a personal side project, separate from Post One.
+dead hours, and learns from the earnings you log. For personal use.
 
 ```
 python3 dasher_schedule.py          # menu: build week, add/remove shifts, log dashes, report, settings
 python3 dasher_schedule.py --plan   # a typical week
 python3 dasher_schedule.py --weather          # the next 7 days with the live NWS forecast and alerts
-python3 dasher_schedule.py --week 2027-03-01  # any week: local events and Post One hours count
+python3 dasher_schedule.py --week 2027-03-01  # any week: local events count
 python3 dasher_schedule.py --today [--json]   # just today (the Dash today pane uses this)
 python3 -m pytest -q                # tests (pip install pytest)
 ```
 
 ## What changes a real week (`outlook.py`)
-- **Post One Lawn Co.:** from opening day (`post_one_launch`, 2027-03-01 until LAUNCH_DATE is set), weekday
-  8 AM–5 PM and Saturday 8 AM–2 PM are mowing, plus 30 minutes to get home. A test fails if these drift from
-  `property-dispatch/app/config.py`.
 - **Weather (National Weather Service, keyless):** a rain chance of 40% or more raises demand 10%, and 70% or
   more raises it 20%. A thunderstorm in the forecast adds a safety note. Flash flood, tornado, tropical and
   severe-storm warnings take their hours off the plan.
@@ -25,8 +22,8 @@ python3 -m pytest -q                # tests (pip install pytest)
 ## Around it
 - **Dash today pane** (`.claude/mods/dash-today`): today's shifts, where to wait and the day's notes beside the
   chat; `/dash` reopens it.
-- **Plan page:** https://claude.ai/artifact/TcAeECPcbXJG8hQKdBhBKU (private), with the next 7 days, a typical week,
-  the week after opening day and a demand heatmap.
+- **Plan page:** https://claude.ai/artifact/TcAeECPcbXJG8hQKdBhBKU (private), with the next 7 days, a typical week
+  and a demand heatmap.
 
 ## How it plans
 1. Every hour of the week (6 AM to 1 AM) gets a demand score from 0 to 1.

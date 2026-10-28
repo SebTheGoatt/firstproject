@@ -88,11 +88,6 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 - Crew "Report a problem" (`app/issues.py`): damage / equipment / access / delay with a photo; first item on the owner
   screen; email via Resend when set. Needs `supabase/migrations/20261028000000_issues_and_sources.sql`.
 
-## Owner's side project (not Post One)
-- `dasher-scheduler/`: the owner's DoorDash shift planner for Atascocita (`dasher_schedule.py`, `outlook.py`: NWS
-  weather, local events, Post One hours from opening day). Mod `.claude/mods/dash-today` shows today's shifts.
-  Plan page: https://claude.ai/artifact/TcAeECPcbXJG8hQKdBhBKU. Earnings files are gitignored; never commit them.
-
 ## Standing decisions
 - **One area per day, enforced:** Mon Spring · Tue Klein · Wed New Caney & Splendora · Thu Colony Ridge ·
   Fri Cleveland & Plum Grove · Sat make-up only. Bookings on the wrong day are rejected; the route builder drops
