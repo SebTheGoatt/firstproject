@@ -4,3 +4,6 @@ node_modules/
 
 # Customer data - never commit (this repo is public)
 customer_audit.txt
+
+# Dasher planner personal data (earnings, schedule, settings)
+dasher-scheduler/atascocita_*.json
