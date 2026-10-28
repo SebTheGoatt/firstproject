@@ -1,0 +1,6 @@
+{
+  "name": "dash-today",
+  "version": "0.1.0",
+  "description": "Today's DoorDash shifts in Atascocita beside the chat: times, strategy, where to wait, and weather and event notes",
+  "types": "./types/index.d.ts"
+}

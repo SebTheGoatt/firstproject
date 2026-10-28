@@ -11,6 +11,9 @@ Run:  python3 dasher_schedule.py          (menu)
 import json
 import os
 import sys
+from datetime import date, datetime, timedelta
+
+from outlook import CENTRAL, POST_ONE_LAUNCH, Outlook, fetch, mowing_block, to_date
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCHEDULE_FILE = os.path.join(HERE, "atascocita_schedule.json")
@@ -69,6 +72,9 @@ DEFAULT_SETTINGS = {
     # Times you never dash, e.g. family dinner: {"day": "Sunday", "start": "08:00", "end": "11:00"}
     "protected": [],
     "days_off": [],
+    # Post One Lawn Co.: from opening day, weekday 8-5 and Saturday 8-2 are mowing, plus the drive home.
+    "post_one_launch": POST_ONE_LAUNCH,
+    "post_one_buffer_min": 30,
 }
 
 
@@ -197,7 +203,8 @@ def strategy_for(day, hour):
     return STANDARD
 
 
-def is_protected(day, hour, settings):
+def is_protected(day, hour, settings, when=None, outlook=None):
+    """Days off, family time, Post One mowing (from opening day), and severe-weather warnings."""
     if day in settings["days_off"]:
         return True
     for p in settings["protected"]:
@@ -206,24 +213,46 @@ def is_protected(day, hour, settings):
         s, e = span(p["start"], p["end"])
         if overlap(s, e, hour, hour + 1) > 0:
             return True
+    if when is not None:
+        block = mowing_block(when, settings)
+        if block and overlap(block[0], block[1], hour, hour + 1) > 0:
+            return True
+        if outlook and outlook.stop(when, hour):
+            return True
     return False
+
+
+def week_dates(start):
+    """Seven days from `start`, keyed by weekday name."""
+    start = to_date(start)
+    return {DAYS[(start + timedelta(days=i)).weekday()]: start + timedelta(days=i) for i in range(7)}
 
 
 # ---------- the planner ----------
 
-def build_week(settings, earnings):
+def build_week(settings, earnings, start=None, outlook=None, now=None):
     """Pick the strongest hours of the week up to the goal, then merge into shifts.
 
+    With a start date, the plan is for those real days: Post One hours, local events
+    and the NWS forecast (outlook) count. Without one it's a typical week.
     Hours below min_score are never used to pad the goal: if the good hours run
     out, the plan comes in under goal and says so.
     """
     rates = observed_rates(earnings)
+    dates = week_dates(start) if start else {}
+    outlook = outlook or Outlook()
+    now = now or datetime.now(CENTRAL)
     candidates = []
     for day in DAYS:
+        when = dates.get(day)
         for hour in HOURS:
-            if is_protected(day, hour, settings):
+            if when == now.date() and hour < now.hour:
+                continue  # already gone today
+            if is_protected(day, hour, settings, when, outlook):
                 continue
             score = demand_score(day, hour, rates, settings)
+            if when:
+                score = round(score * outlook.factor(when, hour), 3)
             if score >= settings["min_score"]:
                 candidates.append((score, day, hour))
     candidates.sort(key=lambda c: (-c[0], DAYS.index(c[1]), c[2]))
@@ -331,15 +360,34 @@ def clear_screen():
         os.system("cls" if os.name == "nt" else "clear")
 
 
-def render_plan(schedule, settings, earnings, auto=False):
+def plan_days(schedule, settings, start=None, outlook=None):
+    """The week in calendar order: day, date, shifts and that day's notes."""
+    dates = week_dates(start) if start else {}
+    order = sorted(DAYS, key=lambda d: dates[d]) if dates else DAYS
+    outlook = outlook or Outlook()
+    return [{
+        "day": day,
+        "date": dates[day].isoformat() if day in dates else None,
+        "shifts": schedule.get(day, []),
+        "hours": sum(duration(s["start"], s["end"]) for s in schedule.get(day, [])),
+        "notes": outlook.notes(dates[day], settings) if day in dates else [],
+    } for day in order]
+
+
+def render_plan(schedule, settings, earnings, auto=False, start=None, outlook=None):
     rates = observed_rates(earnings)
-    lines = ["=" * 72, " ATASCOCITA / HUMBLE DOORDASH WEEKLY PLAN", "=" * 72]
+    title = f"WEEK OF {to_date(start):%b %d, %Y}" if start else "TYPICAL WEEK"
+    lines = ["=" * 72, f" ATASCOCITA / HUMBLE DOORDASH PLAN: {title}", "=" * 72]
+    if outlook and outlook.error:
+        lines.append(f" ({outlook.error})")
     total = 0.0
-    for day in DAYS:
-        shifts = schedule.get(day, [])
-        day_hours = sum(duration(s["start"], s["end"]) for s in shifts)
+    for entry in plan_days(schedule, settings, start, outlook):
+        day, shifts, day_hours = entry["day"], entry["shifts"], entry["hours"]
         total += day_hours
-        lines.append(f"\n{day.upper()}  ({day_hours:.1f} hrs)")
+        label = f"{day.upper()} {to_date(entry['date']):%b %d}" if entry["date"] else day.upper()
+        lines.append(f"\n{label}  ({day_hours:.1f} hrs)")
+        for note in entry["notes"]:
+            lines.append(f"  * {note}")
         if not shifts:
             lines.append("  Off")
             continue
@@ -393,8 +441,10 @@ def ask_strategy():
 
 
 def menu_auto(schedule, settings, earnings):
-    new = build_week(settings, earnings)
-    print(render_plan(new, settings, earnings, auto=True))
+    print("Checking the National Weather Service forecast for Atascocita...")
+    start, outlook = today(), fetch()
+    new = build_week(settings, earnings, start, outlook)
+    print(render_plan(new, settings, earnings, auto=True, start=start, outlook=outlook))
     if input("\nReplace your current schedule with this plan? (y/n): ").strip().lower() == "y":
         schedule.clear()
         schedule.update(new)
@@ -512,13 +562,66 @@ MENU = [
 ]
 
 
+def today():
+    return datetime.now(CENTRAL).date()
+
+
+def today_plan(schedule, settings, earnings, outlook):
+    """Today's shifts (your saved schedule if it has any, else the auto plan) and notes."""
+    start = today()
+    day = DAYS[start.weekday()]
+    auto = not schedule.get(day)
+    plan = build_week(settings, earnings, start, outlook) if auto else schedule
+    entry = plan_days(plan, settings, start, outlook)[0]
+    return dict(entry, source="auto plan" if auto else "your schedule",
+                weather_error=outlook.error, hotspots={s["strategy"]: HOTSPOTS[s["strategy"]] for s in entry["shifts"]})
+
+
 def main(argv):
+    import argparse
+    parser = argparse.ArgumentParser(description="Atascocita DoorDash schedule planner")
+    parser.add_argument("--plan", action="store_true", help="print the auto plan and exit")
+    parser.add_argument("--week", help="plan the 7 days from this date (YYYY-MM-DD): events + Post One hours")
+    parser.add_argument("--weather", action="store_true", help="plan the next 7 days with the NWS forecast")
+    parser.add_argument("--today", action="store_true", help="just today's shifts and notes")
+    parser.add_argument("--json", action="store_true", help="machine-readable output (for the pane and page)")
+    args = parser.parse_args(argv)
+
     settings = load_settings()
     earnings = load_json(EARNINGS_FILE, [])
-    if "--plan" in argv:
-        print(render_plan(build_week(settings, earnings), settings, earnings, auto=True))
-        return 0
     schedule = load_schedule()
+
+    if args.today:
+        result = today_plan(schedule, settings, earnings, fetch())
+        if args.json:
+            print(json.dumps(result, indent=2))
+        else:
+            print(f"{result['day']} {result['date']} ({result['source']}):")
+            for s in result["shifts"]:
+                print(f"  {fmt12(span(s['start'], s['end'])[0])}-{fmt12(span(s['start'], s['end'])[1])}  {s['strategy']}")
+            for n in result["notes"]:
+                print(f"  * {n}")
+            if not result["shifts"]:
+                print("  Off today.")
+        return 0
+
+    if args.plan or args.week or args.weather:
+        start = to_date(args.week) if args.week else (today() if args.weather else None)
+        outlook = fetch() if args.weather else Outlook()
+        plan = build_week(settings, earnings, start, outlook)
+        if args.json:
+            print(json.dumps({
+                "start": start.isoformat() if start else None,
+                "goal_hours": settings["weekly_goal_hours"],
+                "weather_error": outlook.error,
+                "days": plan_days(plan, settings, start, outlook),
+                "hotspots": HOTSPOTS,
+                "demand": {day: {h: prior_score(day, h) for h in HOURS} for day in DAYS},
+            }, indent=2))
+        else:
+            print(render_plan(plan, settings, earnings, auto=True, start=start, outlook=outlook))
+        return 0
+
     while True:
         clear_screen()
         print(render_plan(schedule, settings, earnings))
