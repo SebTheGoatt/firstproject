@@ -5,6 +5,7 @@ sometimes resends the same reel with a different share tail. Add one row per ite
 
 | Sent | What it was | Verdict | Where it landed |
 |---|---|---|---|
+| reel `DfFpYHjTyaD` (Oct 29 2026) | Harvey again: open-source Claude Code agent that finds prospects, writes personalized cold emails, answers replies, books meetings; approval before each send | Not now (same as before) | Only fits business buyers (property managers, HOAs, realtors), never homeowners. Trigger: postonelawn.com bought, a business mailbox on it, a mailing address for the email footer (CAN-SPAM), approval left on. Until then: the marketing hub's property-manager email prompt, sent by hand |
 | Oct 28 2026, upload | Claude Code "mods": bridge two sessions, an agent dashboard panel, route simple tasks to a cheaper model; ask Claude to build the mod | Adopted on request | Built the status mod the owner asked for: `.claude/mods/post-one-status` (tests, branch and merge state, owner to-dos). Session bridge and model routing still not needed |
 | Oct 28 2026, upload | "Dashboard V18": soft lavender card dashboard with a left icon rail, React + framer-motion hover cards (no audio) | Skip | Owner screens already follow the chosen daylight look; the effect needs React, and no KPI moves. Kept: the left icon rail idea, if the owner menu outgrows the top bar |
 | Oct 2026, owner (transcript PDF, sent twice) | "Incorporate these graduate courses into optimizing this business" | Adopt | PR: `/owner/numbers` + `graduate-toolkit.md`; PR: storm mode. Personal details from the transcript left out |
@@ -20,7 +21,7 @@ sometimes resends the same reel with a different share tail. Add one row per ite
 | reel (prompts.chat) | Prompt library | Adapt | PR #82 AI prompt pack with live business facts |
 | reel (Startup Graveyard) | Why home-service startups died | Adopt (lesson) | PR #81 "Book your next mow"; market notes in `CLAUDE.md` |
 | reel (God's Eye View repo) | Spy-satellite style 3D map | Adapt | PR #80 NOAA rain radar only; cameras/flights left out |
-| reel (Harvey sales agent) | AI outbound sales agent | Not now | Needs the domain, a mailbox and a bigger list |
+| reel (Harvey sales agent) | AI outbound sales agent | Not now | Needs the domain, a mailbox and a bigger list (sent again as `DfFpYHjTyaD`, see above) |
 | reel (GODMODE) | Jailbreak-style prompting | Skip | Not appropriate |
 | reels ("10/10 websites for builders", "find any animation") | Site lists | Waiting | The owner hasn't named the sites yet |
 | reel (stock footage sites) | Free stock video | Adapt | PR #79: Pexels and Mixkit in Free tools, as filler only |
