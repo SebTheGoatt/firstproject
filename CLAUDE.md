@@ -136,6 +136,10 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
   (reel fetch, frames, transcript), privacy gate, business lens, verdict, build, prove (demo server + page check),
   ship, report, remember. Its `references/reel-log.md` lists everything the owner has sent and what was decided;
   add a row for each new item. When the owner says "make it a skill" / "this is the standard", update or add a skill.
+- ECC plugin (`ecc@ecc`, github.com/affaan-m/ECC, MIT; owner asked Oct 29 2026): enabled for this repo in
+  `.claude/settings.json` (project scope), hooks on, "standard" profile. Adds `/ecc:*` commands, 71 agents, 408 skills
+  and ~47.6k tokens of skill descriptions to every session. Post One rules above win where ECC's differ. Turn hooks
+  down with `/plugin configure ecc@ecc` (profile `minimal`, or hooks off); remove with `/plugin uninstall ecc@ecc`.
 - Status pane mod `.claude/mods/post-one-status/` (Claude Code mod, owner asked Oct 28 2026): tests, branch and merge
   state, and the owner's to-dos from this file, beside the chat; `/post-one` reopens it. When the owner asks for it in a
   new cloud session: load the plugin-authoring skill, copy the folder into the session's dev-mods folder (its WHERE TO
