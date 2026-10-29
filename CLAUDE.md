@@ -9,6 +9,11 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 - Lawn mowing is the main service (it matches the Google Business Profile's primary category, "Lawn care service").
   Bin cleaning and gutter cleaning are add-ons to a mowing visit. Holiday lighting is quote-only (Oct 15 – Jan 15).
 - Promote the business, not the owner's backstory. No military role-play or jargon in customer copy.
+- **Why it exists (owner, Oct 29 2026):** still an idea, with no launch date. The mission is jobs for veterans and for
+  formerly incarcerated people rebuilding their lives (second-chance hiring), and a share of every price goes to
+  charities for the community. Build toward that mission: steady, fair work; the giving stays in every price. Don't
+  claim the hiring on the site until people are actually hired, and how to present second-chance hiring to customers is
+  the owner's call.
 - Live site: https://property-dispatch.onrender.com (Render). The domain postonelawn.com is not bought yet.
 
 ## Code map (all code is in `property-dispatch/`)
@@ -158,8 +163,11 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
   Bing feeds Copilot and ChatGPT search). The go-live page (`/owner/readiness`) tracks both. Google Business Profile: primary category
   "Lawn care service", website link, ask first customers for reviews.
 - Stripe public business name and statement descriptor → Post One.
-- Pick opening day and set `LAUNCH_DATE` in Render (Stripe live first, so pre-orders are paid). Mowing in Houston
-  restarts mid-to-late March; a spring opening gives pre-orders all winter to build.
+- No launch date yet (Oct 29 2026): leave `LAUNCH_DATE` blank until there is one. When there is, set it in Render with
+  Stripe live first, so pre-orders are paid; Houston mowing restarts mid-to-late March.
+- Before hiring: look into the Work Opportunity Tax Credit (veterans and people with a felony record; certify each hire
+  with the Texas Workforce Commission within 28 days of the start date) and the free Federal Bonding Program for
+  second-chance hires. Crew pay and classification (W-2 vs contractor) is the owner's call; get advice first.
 - Delete the mock bookings from testing.
 - Run `supabase/migrations/20261028000000_issues_and_sources.sql` (problem reports + booking sources).
 - Run `supabase/migrations/20261029000000_community.sql` (sponsored mows + nominations).

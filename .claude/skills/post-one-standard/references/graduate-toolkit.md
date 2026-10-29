@@ -65,6 +65,11 @@ in the app that will show whether it worked. Every feature should name the KPI i
 - **Texas:** lawn services are taxable (tax shown before booking); d/b/a certificate for Post One; published
   refund terms. **Crew pay and classification** is the owner's call; Homejoy was sued over it, so get advice early.
 - **Accessibility:** every page passes an axe-core check at three widths.
+- **Second-chance hiring:** the Work Opportunity Tax Credit covers hires who are veterans or have a felony record
+  (pre-screen and certify with the Texas Workforce Commission within 28 days of the start date). The Federal Bonding
+  Program gives free fidelity bonds for justice-involved hires. If background checks are ever run, follow the Fair
+  Credit Reporting Act (written consent, adverse-action notices). Customer copy about the crew shows only what's true
+  and what the owner chose to say.
 
 ## 7. Organizational management: how the work is organized
 - Standard work beats heroics: the crew app (route, notes, photos, "Report a problem"), the nightly manifest, and
@@ -72,6 +77,8 @@ in the app that will show whether it worked. Every feature should name the KPI i
 - Keep the span small: one crew, one area, one day. Add a crew before adding an area.
 
 ## 8. Leadership: people stay where they're respected
+- **The mission is the workforce:** jobs for veterans and formerly incarcerated people rebuilding their lives. Design
+  for that: predictable days (one area a day), clear standards, fair pay, a path to crew lead.
 - Exec failed partly on crew turnover. Clear standards (the visit checklist and photos), recognition (crew profiles
   on the team page) and fair, predictable days keep people.
 - If there's a bonus, tie it to what customers feel: on-time arrivals, photos sent, reviews, no damage reports.
