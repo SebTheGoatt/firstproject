@@ -93,7 +93,7 @@
             <h3 class="order-title">Lawn Mowing estimate</h3>
             <dl class="price-lines" id="estimate-lines"></dl>
             <div class="impact-box" id="impact-box" hidden>
-              <span class="impact-kicker">✓ Your order includes</span>
+              <span class="impact-kicker">Your order includes</span>
               <strong class="impact-amount" id="impact-amount"></strong>
               <span class="impact-for" id="impact-for">for the cause you pick in step 6</span>
             </div>
@@ -175,7 +175,7 @@
           </div>
         </section>
 
-        <p class="impact-promise" id="impact-promise">✓ Your pick is saved with your booking. What your order generates goes to that cause, and so does anything extra you give the crew.</p>
+        <p class="impact-promise" id="impact-promise">Your pick is saved with your booking. What your order generates goes to that cause, and so does anything extra you give the crew.</p>
         <button class="btn btn-primary btn-block btn-lg" type="submit" id="submit">Book service</button>
       </form>
     </div>
@@ -254,7 +254,7 @@
     let sqftAuto = null;   // { sqft (yard), full_sqft, basis, sample, zone_name, address }
     let scope = "scope_yard";
     const SCOPE_LABEL = { scope_yard: "Yard only", scope_full: "Full property" };
-    const LOCKED = "✓ Price locked. You pay this total for the area you chose. No surprise changes on site.";
+    const LOCKED = "Price locked. You pay this total for the area you chose. No surprise changes on site.";
     const scopeSize = () => sqftAuto ? (scope === "scope_full" ? sqftAuto.full_sqft : sqftAuto.sqft) : null;
     const estimated = () => !!sqftAuto && sqft === scopeSize();
     const lockedScope = (q) => (q && q.add_ons || []).find((a) => a.scope) || null;   // the server's own record of the choice
@@ -426,7 +426,7 @@
         label.append(name, price);
         const note = document.createElement("small");
         note.textContent = a.quote ? (open ? `No charge. Seasonal: ${a.season}` : `Available for ${a.season} visits`)
-          : a.key === "bin_cleaning" ? "Sanitized, not just rinsed"
+          : a.key === "bin_cleaning" ? "Scrubbed and sanitized"
           : a.sponsor ? "Paid by you, mowed for a neighbor in need on their area day. We never share who." : "Added to your mowing visit";
         label.append(note);
         input.addEventListener("change", () => {
@@ -463,7 +463,7 @@
         row(totalLabel(q), money(q.total), "total"));
       priceNote.replaceChildren();
       if (lockedScope(q)) priceNote.append(Object.assign(document.createElement("span"),
-        { className: "verify-badge", textContent: "✓ Price locked" }), " ",
+        { className: "verify-badge", textContent: "Price locked" }), " ",
         "You pay this total for the area you chose. No surprise changes on site.");
       else priceNote.append("Your price is locked when you book. Want more mowed than you booked? The crew quotes it first; you're never charged more without your OK.");
       if ((q.add_ons || []).some((a) => !a.scope && !a.info && a.price == null))   // a quote add-on, not the yard / size notes
@@ -499,7 +499,7 @@
         if (body.in_area && body.service_days) fillDays(body);
         if (body.in_area && err.textContent.startsWith("Pick your address")) err.hidden = true;
         areaBox.className = "area-check " + (body.in_area ? "ok" : "bad");
-        areaBox.textContent = body.in_area ? `✓ Good news: you're in our ${body.zone_name} area.` : body.message;
+        areaBox.textContent = body.in_area ? `Good news: you're in our ${body.zone_name} area.` : body.message;
         // No lawn size yet (or still our estimate)? Fill in the estimate for this area and get the real price.
         if (!priced && body.in_area && body.lawn_estimate && (!sqftInput.value.trim() || reestimate)) {
           applyEstimate(body.lawn_estimate, address);
@@ -745,7 +745,7 @@
           ok.append(dl);
           if (body.charity_amount) {
             const g = document.createElement("div"); g.className = "hint";
-            g.textContent = `✓ Your order includes ${money(body.charity_amount)} for ${causeName(body.charity_choice)}. Thank you!`;
+            g.textContent = `Your order includes ${money(body.charity_amount)} for ${causeName(body.charity_choice)}. Thank you!`;
             ok.append(g);
           }
         }

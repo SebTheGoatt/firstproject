@@ -731,7 +731,7 @@
           return;
         }
         out.className = "area-check " + (body.in_area ? "ok" : "bad");
-        out.replaceChildren(document.createTextNode(body.in_area ? `✓ Yes! You're in our ${body.zone_name} area. ` : body.message));
+        out.replaceChildren(document.createTextNode(body.in_area ? `You're in our ${body.zone_name} area. ` : body.message));
         if (body.in_area) {
           const a = document.createElement("a"); a.href = "/book"; a.textContent = "Book a service";
           out.append(a);

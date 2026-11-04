@@ -897,7 +897,7 @@ def register_local_pages(app: FastAPI, settings: Settings, version: str = "") ->
         from .service_pages import SERVICES
         low, high = price_range()
         days = "\n".join(f"- {WEEKDAY_NAMES[zone_by_key(a.zone_key).service_weekday]}: {a.city} "
-                         f"({', '.join(a.places)}) — {site}/local/{a.slug}"
+                         f"({', '.join(a.places)}): {site}/local/{a.slug}"
                          for a in sorted(AREAS, key=lambda a: zone_by_key(a.zone_key).service_weekday))
         prices = "\n".join(f"- {size}: " + ", ".join(f"{y['label']} {dollars(p[k])}" for k, y in YARD_TYPES.items())
                            for size, _, p in price_rows())
