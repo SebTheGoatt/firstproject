@@ -1,0 +1,5 @@
+playwright>=1.47
+playwright-stealth>=1.0.6
+aiohttp>=3.9
+aiosqlite>=0.20
+beautifulsoup4>=4.12

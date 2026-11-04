@@ -1,0 +1,7 @@
+*.db
+*.db-wal
+*.db-shm
+proxies.txt
+.env
+__pycache__/
+.venv/
