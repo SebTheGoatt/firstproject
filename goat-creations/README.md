@@ -85,19 +85,48 @@ engine never touches egui widgets, so ImageGOAT and MotionGOAT can share it.
 
 ## SEBastina CLI (TypeScript)
 
-A terminal studio that sends a prompt to an AI backend and reports the result.
+A terminal studio that sends ImageGOAT / MotionGOAT prompts to an AI backend, with
+Lago billing in front of every generation.
 
 ```bash
 cd goat-creations/sebastina
-cp .env.example .env     # set AI_BACKEND_URL
+cp .env.example .env     # add MUAPI_API_KEY and LAGO_API_KEY
 npm install
+npm test                 # credit-gate checks against a local stand-in server
 npm start
 ```
 
-- **ImageGOAT** posts to `/sdapi/v1/txt2img`, the API of the AUTOMATIC1111 Stable
-  Diffusion WebUI (start it with `--api`).
-- **MotionGOAT** posts to `/v1/video/generate`. That route is not part of the
-  standard WebUI, so it needs a video backend that serves it.
+### Generation backend: MuAPI
+
+The request format follows [Open-Generative-AI](https://github.com/Anil-matcha/Open-Generative-AI)
+(MIT), which runs on the hosted MuAPI service (`api.muapi.ai`, pay per generation):
+
+- Submit: `POST /api/v1/<model>` with header `x-api-key`, returns a `request_id`.
+- Poll: `GET /api/v1/predictions/<request_id>/result` every 2 s until `completed`;
+  the result is a URL in `outputs[0]`.
+- ImageGOAT: `flux-dev-image` (FLUX.1 Dev) with `prompt, width, height, num_images`
+  (sizes rounded to multiples of 64, 128 to 2048).
+- MotionGOAT: `seedance-lite-t2v` (Seedance 1.0 Lite) with `prompt, aspect_ratio, duration, resolution`.
+- Any other MuAPI model: set `SEBASTINA_IMAGE_MODEL` / `SEBASTINA_VIDEO_MODEL`.
+
+To re-read their source: `git clone --depth 1 https://github.com/Anil-matcha/Open-Generative-AI vendor/open-gen`
+(`vendor/` is git-ignored).
+
+### Billing: Lago (`src/monetization/lago.ts`)
+
+Uses Lago's official SDK, `lago-javascript-client`. Before each generation the
+`lagoCreditGate` middleware in `src/sebastina.ts`:
+
+1. finds the customer by their Lago external ID (`SEBASTINA_CUSTOMER_ID`, or asked at start),
+2. requires an **active subscription** and an active **wallet** with enough credits
+   (`CREDITS_PER_IMAGE` / `CREDITS_PER_VIDEO`, default 1),
+3. takes the credits (a "voided credits" wallet transaction), then generates,
+4. gives the credits back (as granted credits) if the generation fails.
+
+If Lago can't be reached, generation is refused (no free generations during an outage).
+`SEBASTINA_BILLING=off` skips billing, for local testing only.
+
+In Lago: create a plan, subscribe the customer, and give them a wallet with credits.
 
 ---
 

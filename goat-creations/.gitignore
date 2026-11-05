@@ -6,3 +6,6 @@ target/
 sebastina/node_modules/
 sebastina/dist/
 sebastina/.env
+
+# Third-party code cloned for reference only (see README)
+vendor/

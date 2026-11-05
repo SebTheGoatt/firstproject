@@ -1,9 +1,36 @@
-// Load AI_BACKEND_URL (and any other settings) from a local .env file.
+// Load settings (API keys, backend URL, customer ID) from a local .env file.
 import 'dotenv/config';
-import { SEBastinaEngine } from './sebastina.js';
+import { SEBastinaEngine, lagoCreditGate } from './sebastina.js';
+import { LagoBilling } from './monetization/lago.js';
 import * as readline from 'readline';
 
-const sebastina = new SEBastinaEngine(process.env.AI_BACKEND_URL || 'http://127.0.0.1:7860');
+const env = process.env;
+
+const sebastina = new SEBastinaEngine({
+    apiBaseUrl: env.AI_BACKEND_URL || 'https://api.muapi.ai',
+    apiKey: env.MUAPI_API_KEY,
+    imageModel: env.SEBASTINA_IMAGE_MODEL,
+    videoModel: env.SEBASTINA_VIDEO_MODEL,
+});
+
+// Billing is on unless explicitly switched off (for local testing only).
+const billingOn = (env.SEBASTINA_BILLING || 'on').toLowerCase() !== 'off';
+if (billingOn) {
+    try {
+        sebastina.use(
+            lagoCreditGate(LagoBilling.fromEnv(env), {
+                image: Number(env.CREDITS_PER_IMAGE || 1),
+                video: Number(env.CREDITS_PER_VIDEO || 1),
+            }),
+        );
+    } catch (error: any) {
+        console.error(`[SEBastina] Billing setup failed: ${error.message}`);
+        console.error('Set LAGO_API_KEY in .env, or SEBASTINA_BILLING=off for local testing.');
+        process.exit(1);
+    }
+}
+
+let customerId = env.SEBASTINA_CUSTOMER_ID || '';
 
 const rl = readline.createInterface({
     input: process.stdin,
@@ -20,6 +47,16 @@ function displayBanner() {
     console.log(' 2. MotionGOAT - Open-Source Video Studio');
     console.log(' 3. Exit Studio');
     console.log('====================================================');
+    if (!billingOn) console.log(' (Billing is OFF: SEBASTINA_BILLING=off)');
+}
+
+/** Ask for the customer ID once, if billing needs it and .env doesn't set it. */
+function ensureCustomerId(then: () => void) {
+    if (!billingOn || customerId) return then();
+    rl.question('Enter your GOAT CREATIONS customer ID: ', (answer) => {
+        customerId = answer.trim();
+        then();
+    });
 }
 
 function runStudioMenu() {
@@ -38,12 +75,13 @@ function runStudioMenu() {
                 console.log('\nContacting SEBastina generation nodes...');
                 const result = await sebastina.generateAsset({
                     prompt: prompt,
-                    isMotion: isVideo
+                    isMotion: isVideo,
+                    customerId,
                 });
 
                 if (result.success) {
                     console.log('\n🎉 SUCCESS: SEBastina successfully rendered your asset!');
-                    console.log(`Asset Byte Stream Data Payload: ${result.data?.substring(0, 60)}... [Truncated]`);
+                    console.log(`Asset URL: ${result.data}`);
                 } else {
                     console.log(`\n❌ ENGINE FAILURE: ${result.error}`);
                 }
@@ -64,4 +102,4 @@ function runStudioMenu() {
 }
 
 // Ignition
-runStudioMenu();
+ensureCustomerId(runStudioMenu);

@@ -1,50 +1,228 @@
 import axios from 'axios';
+import type { LagoBilling } from './monetization/lago.js';
 
-interface GenerationConfig {
+/**
+ * SEBastina talks to MuAPI (api.muapi.ai), the generation API behind the
+ * open-source Open-Generative-AI studio (github.com/Anil-matcha/Open-Generative-AI).
+ * Its request format, copied from that project's `muapi.js`:
+ *
+ *   POST {base}/api/v1/{model-endpoint}         header x-api-key, JSON payload
+ *     -> { request_id }
+ *   GET  {base}/api/v1/predictions/{id}/result  (poll every 2 s)
+ *     -> { status: "completed" | "failed" | ..., outputs: ["https://..."] }
+ *
+ * Image (Flux): endpoint "flux-dev-image", payload { prompt, width, height, num_images }
+ *               width/height: multiples of 64 between 128 and 2048.
+ * Video:        endpoint "seedance-lite-t2v" (the Video Studio's default model),
+ *               payload { prompt, aspect_ratio, duration, resolution }.
+ */
+
+export interface GenerationConfig {
     prompt: string;
-    negativePrompt?: string;
-    steps?: number;
+    /** MotionGOAT (video) instead of ImageGOAT (image). */
+    isMotion?: boolean;
+    /** Who is paying: the customer's external ID in Lago. Required when billing is on. */
+    customerId?: string;
+    /** Image size in pixels (Flux). Rounded to a multiple of 64, 128–2048. */
     width?: number;
     height?: number;
-    isMotion?: boolean;
+    /** Video options. */
+    aspectRatio?: string;
+    duration?: number;
+    resolution?: string;
 }
 
-export class SEBastinaEngine {
-    private apiBaseUrl: string;
+export interface GenerationResult {
+    success: boolean;
+    /** URL of the generated image or video. */
+    data?: string;
+    error?: string;
+}
 
-    constructor(apiBaseUrl: string = 'http://127.0.0.1:7860') {
-        this.apiBaseUrl = apiBaseUrl;
+/** Runs before the generation pipeline; call `next()` to continue, or return early to stop. */
+export type GenerationMiddleware = (
+    config: GenerationConfig,
+    next: () => Promise<GenerationResult>,
+) => Promise<GenerationResult>;
+
+export interface EngineOptions {
+    apiBaseUrl?: string;
+    apiKey?: string;
+    imageModel?: string;
+    videoModel?: string;
+    /** Milliseconds between result polls (MuAPI's own client uses 2000). */
+    pollIntervalMs?: number;
+}
+
+const SUCCESS = new Set(['completed', 'succeeded', 'success']);
+const FAILURE = new Set(['failed', 'error', 'cancelled', 'canceled']);
+
+export class SEBastinaEngine {
+    private readonly apiBaseUrl: string;
+    private readonly apiKey: string;
+    private readonly imageModel: string;
+    private readonly videoModel: string;
+    private readonly pollIntervalMs: number;
+    private readonly middlewares: GenerationMiddleware[] = [];
+
+    constructor(options: EngineOptions = {}) {
+        this.apiBaseUrl = (options.apiBaseUrl || 'https://api.muapi.ai').replace(/\/+$/, '');
+        this.apiKey = options.apiKey || '';
+        this.imageModel = options.imageModel || 'flux-dev-image';
+        this.videoModel = options.videoModel || 'seedance-lite-t2v';
+        this.pollIntervalMs = options.pollIntervalMs ?? 2000;
+    }
+
+    /** Add a middleware; they run in the order added, before generation. */
+    use(middleware: GenerationMiddleware): this {
+        this.middlewares.push(middleware);
+        return this;
     }
 
     /**
-     * Core processing method for SEBastina pipeline assets
+     * Core processing method for SEBastina pipeline assets.
+     * Every request passes through the middlewares (e.g. the Lago credit gate) first.
      */
-    async generateAsset(config: GenerationConfig): Promise<{ success: boolean; data?: string; error?: string }> {
-        // Route dynamically if user flips the switch to MotionGOAT (AI Video)
-        const endpoint = config.isMotion
-            ? `${this.apiBaseUrl}/v1/video/generate`
-            : `${this.apiBaseUrl}/sdapi/v1/txt2img`;
-
-        const payload = {
-            prompt: config.prompt,
-            negative_prompt: config.negativePrompt || 'blurry, low quality, distorted, watermark',
-            steps: config.steps || 25,
-            width: config.width || 512,
-            height: config.height || 512,
-        };
-
+    async generateAsset(config: GenerationConfig): Promise<GenerationResult> {
+        const run = (index: number): Promise<GenerationResult> =>
+            index < this.middlewares.length
+                ? this.middlewares[index](config, () => run(index + 1))
+                : this.runPipeline(config);
         try {
-            console.log(`[SEBastina] Initiating asset creation pipeline... Mode: ${config.isMotion ? 'MotionGOAT' : 'ImageGOAT'}`);
-            const response = await axios.post(endpoint, payload, { timeout: 60000 });
-
-            if (response.data && response.data.images && response.data.images.length > 0) {
-                // Returns raw generated base64 image strings or frame URIs
-                return { success: true, data: response.data.images[0] };
-            }
-
-            return { success: false, error: 'Engine returned an empty generation response array.' };
+            return await run(0);
         } catch (error: any) {
-            return { success: false, error: error.message };
+            return { success: false, error: describeError(error) };
         }
     }
+
+    /** Submit the job to MuAPI and wait for the finished asset. */
+    private async runPipeline(config: GenerationConfig): Promise<GenerationResult> {
+        if (!this.apiKey) {
+            return { success: false, error: 'MUAPI_API_KEY is missing. Add it to your .env file.' };
+        }
+
+        // Route dynamically if user flips the switch to MotionGOAT (AI Video)
+        const endpoint = config.isMotion ? this.videoModel : this.imageModel;
+        const payload = config.isMotion
+            ? {
+                  prompt: config.prompt,
+                  aspect_ratio: config.aspectRatio || '16:9',
+                  duration: config.duration || 5,
+                  resolution: config.resolution || '480p',
+              }
+            : {
+                  prompt: config.prompt,
+                  width: fluxSize(config.width ?? 1024),
+                  height: fluxSize(config.height ?? 1024),
+                  num_images: 1,
+              };
+
+        console.log(`[SEBastina] Initiating asset creation pipeline... Mode: ${config.isMotion ? 'MotionGOAT' : 'ImageGOAT'} (${endpoint})`);
+        const headers = { 'Content-Type': 'application/json', 'x-api-key': this.apiKey };
+        const submit = await axios.post(`${this.apiBaseUrl}/api/v1/${endpoint}`, payload, { headers, timeout: 60000 });
+
+        const requestId: string | undefined = submit.data?.request_id || submit.data?.id;
+        if (!requestId) {
+            // Some models answer synchronously.
+            const url = firstOutput(submit.data);
+            return url ? { success: true, data: url } : { success: false, error: 'Engine returned no request ID or output.' };
+        }
+
+        // Images finish in seconds; videos can take many minutes (same limits as MuAPI's client).
+        const maxAttempts = config.isMotion ? 900 : 60;
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            await sleep(this.pollIntervalMs);
+            let result: any;
+            try {
+                const poll = await axios.get(`${this.apiBaseUrl}/api/v1/predictions/${requestId}/result`, { headers, timeout: 30000 });
+                result = poll.data;
+            } catch (error: any) {
+                // Network blips and server errors: keep polling. Auth/other client errors: stop.
+                const status = error?.response?.status;
+                if ((status === undefined || status >= 500) && attempt < maxAttempts) continue;
+                throw error;
+            }
+            const status = String(result?.status || '').toLowerCase();
+            if (SUCCESS.has(status)) {
+                const url = firstOutput(result);
+                return url ? { success: true, data: url } : { success: false, error: 'Generation finished without an output URL.' };
+            }
+            if (FAILURE.has(status)) {
+                return { success: false, error: `Generation failed: ${result?.error?.message || result?.error || 'unknown error'}` };
+            }
+        }
+        return { success: false, error: `Generation timed out. Request ID: ${requestId}` };
+    }
 }
+
+/**
+ * Lago credit gate. Before ImageGOAT or MotionGOAT runs, it checks that the
+ * customer has an active subscription and enough credits, takes the credits,
+ * then lets the request through. If generation fails, the credits are given back.
+ *
+ * Note: check-then-debit is two calls, so two requests at the exact same moment
+ * could both pass on the last credit. Fine for one user at a terminal; a web
+ * service with many users should move this into a server with a per-customer lock.
+ */
+export function lagoCreditGate(
+    billing: LagoBilling,
+    cost: { image: number; video: number } = { image: 1, video: 1 },
+): GenerationMiddleware {
+    return async (config, next) => {
+        const customerId = config.customerId?.trim();
+        if (!customerId) {
+            return { success: false, error: 'No customer ID. Set SEBASTINA_CUSTOMER_ID or enter it when asked.' };
+        }
+        const credits = config.isMotion ? cost.video : cost.image;
+        const mode = config.isMotion ? 'MotionGOAT' : 'ImageGOAT';
+
+        const status = await billing.getCreditStatus(customerId);
+        if (!status.hasActiveSubscription) {
+            return { success: false, error: 'No active subscription for this account.' };
+        }
+        if (!status.walletId || status.credits < credits) {
+            return { success: false, error: `Not enough credits: ${status.credits} left, ${mode} needs ${credits}.` };
+        }
+
+        await billing.debit(status.walletId, credits, `${mode} generation`);
+        console.log(`[SEBastina] ${credits} credit(s) used. ${status.credits - credits} left.`);
+
+        let result: GenerationResult;
+        try {
+            result = await next();
+        } catch (error) {
+            result = { success: false, error: describeError(error) };
+        }
+        if (!result.success) {
+            try {
+                await billing.refund(status.walletId, credits, `${mode} refund (generation failed)`);
+                result = { ...result, error: `${result.error} (${credits} credit(s) refunded)` };
+            } catch (refundError) {
+                result = {
+                    ...result,
+                    error: `${result.error} (refund of ${credits} credit(s) failed: ${describeError(refundError)}; please refund by hand in Lago)`,
+                };
+            }
+        }
+        return result;
+    };
+}
+
+/** Round to Flux's grid: a multiple of 64 between 128 and 2048. */
+function fluxSize(px: number): number {
+    return Math.min(2048, Math.max(128, Math.round(px / 64) * 64));
+}
+
+function firstOutput(data: any): string | undefined {
+    return data?.outputs?.[0] || data?.url || data?.output?.url || data?.images?.[0];
+}
+
+function describeError(error: any): string {
+    const status = error?.response?.status;
+    const body = error?.response?.data;
+    const detail = typeof body === 'string' ? body : body?.detail || body?.error || body?.message;
+    if (status) return `HTTP ${status}${detail ? `: ${String(detail).slice(0, 160)}` : ''}`;
+    return error?.message || String(error);
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
