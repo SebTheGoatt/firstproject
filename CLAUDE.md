@@ -16,6 +16,11 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
   the owner's call.
 - Live site: https://property-dispatch.onrender.com (Render). The domain postonelawn.com is not bought yet.
 
+## Other projects in this repo
+- `goat-creations/`: **GOAT CREATIONS**, a separate open-source creative suite (not Post One). Rust + egui desktop
+  app (VectorGOAT active; ImageGOAT / MotionGOAT planned) plus the `sebastina/` TypeScript CLI for AI image/video
+  backends. Its own README covers it; `cd goat-creations && cargo test`. Post One's rules don't apply there.
+
 ## Code map (all code is in `property-dispatch/`)
 - FastAPI app: `app/main.py`. Data: Supabase in production, `MemoryRepository` in tests.
 - Prices: `app/pricing.py` (yield engine, add-ons). Areas and days: `app/zones.py`. Never hard-code a price,

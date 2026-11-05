@@ -1,0 +1,8 @@
+target/
+*.goat.json
+*.goat.tmp
+
+# SEBastina CLI
+sebastina/node_modules/
+sebastina/dist/
+sebastina/.env
