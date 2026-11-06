@@ -5,7 +5,7 @@
  * pipeline the mobile app uses. The app only stores the server address and the
  * customer's access token; API keys stay on the SEBastina server.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   GOAT_MODULES,
   IMAGE_MODELS,
@@ -15,6 +15,7 @@ import {
   SKILLS,
   skillOutput,
   SEBastinaClient,
+  createGOATAIEngineHub,
   type Skill,
   type GenerateRequest,
   type GoatModuleId,
@@ -33,6 +34,8 @@ const DEFAULT_SERVER = "http://127.0.0.1:8787";
 interface Settings {
   serverUrl: string;
   token: string;
+  /** Hugging Face access token for "Draw with FLUX" (kept on this computer only). */
+  hfToken: string;
 }
 
 const IMAGE_SIZES = [
@@ -46,9 +49,9 @@ const VIDEO_DURATIONS = [5, 10];
 function loadSettings(): Settings {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
-    return { serverUrl: saved.serverUrl || DEFAULT_SERVER, token: saved.token || "" };
+    return { serverUrl: saved.serverUrl || DEFAULT_SERVER, token: saved.token || "", hfToken: saved.hfToken || "" };
   } catch {
-    return { serverUrl: DEFAULT_SERVER, token: "" };
+    return { serverUrl: DEFAULT_SERVER, token: "", hfToken: "" };
   }
 }
 
@@ -65,6 +68,38 @@ export default function App() {
   const [duration, setDuration] = useState(VIDEO_DURATIONS[0]);
   const [status, setStatus] = useState<Status>({ kind: "idle", text: "Ready." });
   const [result, setResult] = useState<{ url: string; isMotion: boolean } | null>(null);
+  // "Draw with FLUX": the Hugging Face image, painted onto the workspace canvas.
+  const [canvasImage, setCanvasImage] = useState<string | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const hub = useMemo(() => createGOATAIEngineHub({ token: settings.hfToken.trim() }), [settings.hfToken]);
+
+  useEffect(() => {
+    if (!canvasImage || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const picture = new Image();
+    picture.onload = () => {
+      canvas.width = picture.naturalWidth;
+      canvas.height = picture.naturalHeight;
+      canvas.getContext("2d")!.drawImage(picture, 0, 0);
+    };
+    picture.src = canvasImage;
+  }, [canvasImage]);
+
+  async function drawWithFlux() {
+    if (!settings.hfToken.trim()) {
+      setShowSettings(true);
+      return setStatus({ kind: "error", text: "Add your Hugging Face token in Settings first." });
+    }
+    setStatus({ kind: "busy", text: "FLUX.1 Schnell is drawing on Hugging Face…" });
+    try {
+      const dataUrl = await hub.textToImage(prompt, size.width, size.height);
+      setResult(null);
+      setCanvasImage(dataUrl);
+      setStatus({ kind: "ok", text: "Drawn on the canvas with FLUX.1 Schnell (Hugging Face)." });
+    } catch (error) {
+      setStatus({ kind: "error", text: (error as Error).message });
+    }
+  }
   const [imageModel, setImageModel] = useState(DEFAULT_IMAGE_MODEL);
   const [videoModel, setVideoModel] = useState(DEFAULT_VIDEO_MODEL);
   /** Models the server allows; empty until fetched (then the full catalog shows). */
@@ -130,6 +165,7 @@ export default function App() {
     setStatus({ kind: "busy", text: module.isMotion ? "Rendering video… this can take a few minutes." : "Generating image…" });
     const outcome = await client.generate(request);
     if (outcome.success && outcome.data) {
+      setCanvasImage(null);
       setResult({ url: outcome.data, isMotion: module.isMotion });
       setStatus({ kind: "ok", text: `${module.name} finished with ${model?.name ?? "the default model"}.` });
     } else {
@@ -198,6 +234,16 @@ export default function App() {
               <button className="secondary" onClick={testConnection} disabled={busy}>
                 Test connection
               </button>
+              <label>
+                Hugging Face token (for Draw with FLUX)
+                <input
+                  type="password"
+                  value={settings.hfToken}
+                  placeholder="hf_… from huggingface.co/settings/tokens"
+                  onChange={(e) => setSettings({ ...settings, hfToken: e.target.value })}
+                  spellCheck={false}
+                />
+              </label>
             </section>
           )}
 
@@ -267,12 +313,19 @@ export default function App() {
             <button className="primary" onClick={generate} disabled={busy || !prompt.trim()}>
               {busy ? "Working…" : `Generate with ${module.name}`}
             </button>
+            {!module.isMotion && (
+              <button className="secondary" onClick={drawWithFlux} disabled={busy || !prompt.trim()}>
+                Draw with FLUX (Hugging Face)
+              </button>
+            )}
           </section>
           )}
         </aside>
 
         <section className="canvas" aria-live="polite">
-          {result ? (
+          {canvasImage && !result ? (
+            <canvas ref={canvasRef} className="output" aria-label={`Drawn with FLUX: ${prompt}`} role="img" />
+          ) : result ? (
             result.isMotion ? (
               <video className="output" src={result.url} controls autoPlay loop />
             ) : (

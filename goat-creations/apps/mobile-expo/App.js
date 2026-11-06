@@ -11,6 +11,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
+  PanResponder,
   Image,
   KeyboardAvoidingView,
   Linking,
@@ -27,6 +29,8 @@ import { SafeAreaProvider, useSafeAreaInsets, initialWindowMetrics } from 'react
 import * as SecureStore from 'expo-secure-store';
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+import { useVideoPlayer, VideoView } from 'expo-video';
+import { File, Paths } from 'expo-file-system';
 import {
   GOAT_MODULES,
   SEBastinaClient,
@@ -41,6 +45,8 @@ import {
   LOCAL_VIDEO_MODELS,
   localSupports,
   findModel,
+  hubSupports,
+  createGOATAIEngineHub,
   contentIssue,
   skillOutput,
 } from 'sebastina-core';
@@ -66,10 +72,15 @@ const MUAPI_KEY = 'goat_muapi_key';
 const CHARACTER_KEY = 'goat_character';
 const COMFY_KEY = 'goat_comfy_url';
 const PROFILE_KEY = 'goat_local_profile';
+const HF_KEY = 'goat_hf_token';
+// Hugging Face mode: one hosted open model each (Inference Providers, billed to your HF account).
+const HF_IMAGE_MODELS = [{ id: 'hf-flux-schnell', name: 'FLUX.1 Schnell', note: 'On Hugging Face' }];
+const HF_VIDEO_MODELS = [{ id: 'hf-wan21', name: 'Wan 2.1', note: 'On Hugging Face · minutes per clip' }];
 const MODES = [
   { id: 'local', label: 'My computer' },
   { id: 'direct', label: 'MuAPI key' },
   { id: 'server', label: 'GOAT server' },
+  { id: 'hf', label: 'Hugging Face' },
 ];
 const PROFILES = [
   { id: 'light', label: 'Light', note: 'SD 1.5, upscale, cut-out · 8 GB GPU' },
@@ -103,6 +114,7 @@ function Studio() {
   // "My computer": your own ComfyUI with the GOAT pack (open models, no API, no cost).
   const [comfyUrl, setComfyUrl] = useState('http://192.168.1.20:8188');
   const [localProfile, setLocalProfile] = useState('light');
+  const [hfToken, setHfToken] = useState('');
   const [imageModel, setImageModel] = useState(DEFAULT_IMAGE_MODEL);
   const [videoModel, setVideoModel] = useState(DEFAULT_VIDEO_MODEL);
   // In server mode, only the models the server allows (null = not fetched yet).
@@ -133,15 +145,25 @@ function Studio() {
     () =>
       mode === 'local'
         ? new SEBastinaEngine({ backend: 'comfyui', comfyUrl: comfyUrl.trim(), localProfile })
-        : new SEBastinaEngine({ apiKey: muapiKey.trim() }),
-    [mode, comfyUrl, localProfile, muapiKey],
+        : mode === 'hf'
+          ? new SEBastinaEngine({ backend: 'huggingface', hfToken: hfToken.trim() })
+          : new SEBastinaEngine({ apiKey: muapiKey.trim() }),
+    [mode, comfyUrl, localProfile, muapiKey, hfToken],
   );
+  // GOATAIEngineHub with the token from Settings (never built into the app).
+  const hub = useMemo(() => createGOATAIEngineHub({ token: hfToken.trim() }), [hfToken]);
   // On your computer, only offer what its models can do.
   const runsHere = (skill) =>
-    mode !== 'local' || skill.steps.every((step) => localSupports(localProfile, findModel(step.model)?.task ?? 't2i'));
+    mode === 'local'
+      ? skill.steps.every((step) => localSupports(localProfile, findModel(step.model)?.task ?? 't2i'))
+      : mode === 'hf'
+        ? skill.steps.every((step) => hubSupports(findModel(step.model)?.task))
+        : true;
   const busy = status.kind === 'busy';
   const catalog =
-    mode === 'local'
+    mode === 'hf'
+      ? module?.isMotion ? HF_VIDEO_MODELS : HF_IMAGE_MODELS
+      : mode === 'local'
       ? module?.isMotion
         ? localProfile === 'full' ? LOCAL_VIDEO_MODELS : []
         : LOCAL_IMAGE_MODELS.filter((m) => localProfile === 'full' || m.id === 'local-sd15')
@@ -160,10 +182,12 @@ function Studio() {
   useEffect(() => {
     (async () => {
       try {
-        const [savedComfy, savedProfile] = await Promise.all([
+        const [savedComfy, savedProfile, savedHf] = await Promise.all([
           SecureStore.getItemAsync(COMFY_KEY),
           SecureStore.getItemAsync(PROFILE_KEY),
+          SecureStore.getItemAsync(HF_KEY),
         ]);
+        if (savedHf) setHfToken(savedHf);
         if (savedComfy) setComfyUrl(savedComfy);
         if (savedProfile === 'full' || savedProfile === 'light') setLocalProfile(savedProfile);
         const [savedUrl, savedToken, savedMode, savedKey, savedCharacter] = await Promise.all([
@@ -185,7 +209,7 @@ function Studio() {
         if (savedMode) setMode(savedMode);
         if (savedKey) setMuapiKey(savedKey);
         const m = savedMode || 'local';
-        const ready = m === 'direct' ? !!savedKey : m === 'local' ? !!savedComfy : !!savedToken;
+        const ready = m === 'direct' ? !!savedKey : m === 'local' ? !!savedComfy : m === 'hf' ? !!savedHf : !!savedToken;
         if (!ready) {
           setShowSettings(true);
           setStatus({ kind: 'idle', text: 'Step 1: choose how to connect above, then tap Save.' });
@@ -206,8 +230,24 @@ function Studio() {
       await SecureStore.setItemAsync(MUAPI_KEY, muapiKey.trim());
       await SecureStore.setItemAsync(COMFY_KEY, comfyUrl.trim());
       await SecureStore.setItemAsync(PROFILE_KEY, localProfile);
+      await SecureStore.setItemAsync(HF_KEY, hfToken.trim());
     } catch {
       /* not available on this platform: settings last until the app closes */
+    }
+    if (mode === 'hf') {
+      if (!hfToken.trim()) {
+        setStatus({ kind: 'error', text: 'Paste your Hugging Face token first (huggingface.co > Settings > Access Tokens).' });
+        return;
+      }
+      setStatus({ kind: 'busy', text: 'Checking your Hugging Face token…' });
+      const check = await engine.checkKey();
+      if (check.ok) {
+        setStatus({ kind: 'ok', text: `Connected: ${check.device}. FLUX images and Wan videos are billed to that account.` });
+        setShowSettings(false);
+      } else {
+        setStatus({ kind: 'error', text: check.error || 'Hugging Face did not accept that token.' });
+      }
+      return;
     }
     if (mode === 'local') {
       if (!/^https?:\/\/\S+$/.test(comfyUrl.trim())) {
@@ -252,7 +292,11 @@ function Studio() {
 
   /** True when a key (or server token) is set; otherwise opens Settings and says what to do. */
   function ready() {
-    const ok = mode === 'direct' ? !!muapiKey.trim() : mode === 'local' ? !!comfyUrl.trim() : !!token.trim();
+    const ok =
+      mode === 'direct' ? !!muapiKey.trim()
+      : mode === 'local' ? !!comfyUrl.trim()
+      : mode === 'hf' ? !!hfToken.trim()
+      : !!token.trim();
     if (!ok) {
       setShowSettings(true);
       setStatus({
@@ -260,6 +304,7 @@ function Studio() {
         text:
           mode === 'direct' ? 'First paste your MuAPI key in Settings (top of the screen) and tap Save.'
           : mode === 'local' ? "First enter your computer's ComfyUI address in Settings and tap Save."
+          : mode === 'hf' ? 'First paste your Hugging Face token in Settings and tap Save.'
           : 'First paste your access token in Settings and tap Save.',
       });
     }
@@ -278,6 +323,20 @@ function Studio() {
     setStatus(value ? { kind: 'ok', text: "SEBastina's look is saved. Every SEBastina Skill now uses it." } : { kind: 'idle', text: 'Design a new look for SEBastina.' });
   }
 
+  /** Swipe-to-render: one video per swipe; ignored while one is rendering. */
+  async function swipeRender() {
+    if (busy || !prompt.trim() || !ready()) return;
+    if (mode !== 'hf') return generate();
+    setStatus({ kind: 'busy', text: 'Wan 2.1 is rendering on Hugging Face… this takes a few minutes.' });
+    try {
+      const video = await hub.textToVideo(prompt);
+      setResult({ url: await saveVideo(video.videoUrl), isMotion: true, label: 'Wan 2.1' });
+      setStatus({ kind: 'ok', text: 'Video ready (Wan 2.1 on Hugging Face).' });
+    } catch (error) {
+      setStatus({ kind: 'error', text: error?.message || 'Video render failed.' });
+    }
+  }
+
   async function generate() {
     if (!ready()) return;
     setStatus({
@@ -294,7 +353,8 @@ function Studio() {
     }
     const outcome = mode !== 'server' ? await engine.generateAsset(request) : await client.generate(request);
     if (outcome.success && outcome.data) {
-      setResult({ url: outcome.data, isMotion: module.isMotion, label: module.name });
+      const url = module.isMotion ? await saveVideo(outcome.data) : outcome.data;
+      setResult({ url, isMotion: module.isMotion, label: module.name });
       setStatus({ kind: 'ok', text: `${module.name} finished with ${model?.name ?? 'the default model'}.` });
     } else {
       setStatus({ kind: 'error', text: outcome.error || 'Something went wrong.' });
@@ -361,7 +421,7 @@ function Studio() {
         {showSettings && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Connection</Text>
-            <View style={styles.tabs} accessibilityRole="radiogroup">
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={styles.tabs} accessibilityRole="radiogroup">
               {MODES.map((m) => {
                 const active = m.id === mode;
                 return (
@@ -376,7 +436,7 @@ function Studio() {
                   </Pressable>
                 );
               })}
-            </View>
+            </ScrollView>
             {mode === 'local' ? (
               <>
                 <Text style={styles.label}>Your computer's ComfyUI address</Text>
@@ -410,6 +470,23 @@ function Studio() {
                 </View>
                 <Text style={styles.dim}>
                   {PROFILES.find((p) => p.id === localProfile).note}. Runs on your own GPU with open models: no key, no per-image cost. Phone and computer on the same Wi-Fi; start ComfyUI with --listen.
+                </Text>
+              </>
+            ) : mode === 'hf' ? (
+              <>
+                <Text style={styles.label}>Hugging Face token</Text>
+                <TextInput
+                  style={styles.input}
+                  value={hfToken}
+                  onChangeText={setHfToken}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  secureTextEntry
+                  placeholder="hf_… (needs Inference Providers access)"
+                  placeholderTextColor={C.dim}
+                />
+                <Text style={styles.dim}>
+                  Runs FLUX.1 Schnell and Wan 2.1 on Hugging Face's partners. Billed to your Hugging Face account (free accounts get a small monthly credit). Kept in this phone's secure storage.
                 </Text>
               </>
             ) : mode === 'direct' ? (
@@ -547,11 +624,19 @@ function Studio() {
             maxLength={3000}
             placeholderTextColor={C.dim}
           />
-          <Button
-            label={busy ? 'Working…' : `Generate with ${module.name}`}
-            onPress={generate}
-            disabled={busy || !prompt.trim()}
-          />
+          {module.isMotion ? (
+            <SwipeToRender
+              label={busy ? 'Rendering…' : mode === 'hf' ? 'Swipe to render with Wan 2.1' : `Swipe to render with ${module.name}`}
+              disabled={busy || !prompt.trim()}
+              onComplete={swipeRender}
+            />
+          ) : (
+            <Button
+              label={busy ? 'Working…' : `Generate with ${module.name}`}
+              onPress={generate}
+              disabled={busy || !prompt.trim()}
+            />
+          )}
         </View>
         )}
 
@@ -560,7 +645,7 @@ function Studio() {
             <ActivityIndicator color={C.gold} size="large" accessibilityLabel="Working" />
           ) : result ? (
             result.isMotion ? (
-              <Button label={result.label ? `Open ${result.label} video` : 'Open video'} onPress={() => Linking.openURL(result.url)} variant="secondary" />
+              <ResultVideo key={result.url} url={result.url} label={result.label} />
             ) : (
               <Image
                 source={{ uri: result.url }}
@@ -601,6 +686,80 @@ function Studio() {
         </Text>
       </View>
     </KeyboardAvoidingView>
+  );
+}
+
+/** Data: URL videos (Hugging Face) are saved to a cache file so the player can stream them. */
+async function saveVideo(url) {
+  if (!url?.startsWith('data:') || Platform.OS === 'web') return url; // browsers play data: URLs directly
+  const base64 = url.slice(url.indexOf(',') + 1);
+  const ext = url.startsWith('data:video/webm') ? 'webm' : 'mp4';
+  const file = new File(Paths.cache, `goat-video-${Date.now()}.${ext}`);
+  await file.write(base64, { encoding: 'base64' });
+  return file.uri;
+}
+
+/** Inline, looping player for any result video (file, LAN ComfyUI, or CDN URL). */
+function ResultVideo({ url, label }) {
+  const player = useVideoPlayer(url, (p) => {
+    p.loop = true;
+    p.play();
+  });
+  return (
+    <View style={{ width: '100%', gap: 8 }}>
+      <VideoView player={player} style={styles.video} nativeControls contentFit="contain" accessibilityLabel={label ? `${label} video` : 'Video result'} />
+      {/^https?:/.test(url) && (
+        <Button label="Open in browser" onPress={() => Linking.openURL(url)} variant="secondary" />
+      )}
+    </View>
+  );
+}
+
+/**
+ * Swipe the gold knob to the end to start a render: one render per swipe.
+ * Screen readers get an "activate" action instead of the swipe.
+ */
+function SwipeToRender({ label, disabled, onComplete }) {
+  const [trackWidth, setTrackWidth] = useState(0);
+  const x = useRef(new Animated.Value(0)).current;
+  const KNOB = 52;
+  const max = Math.max(0, trackWidth - KNOB - 8);
+  const reset = () => Animated.spring(x, { toValue: 0, useNativeDriver: false }).start();
+  const responder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => !disabled,
+        onMoveShouldSetPanResponder: (_, g) => !disabled && Math.abs(g.dx) > 4,
+        onPanResponderMove: (_, g) => x.setValue(Math.min(max, Math.max(0, g.dx))),
+        onPanResponderRelease: (_, g) => {
+          if (g.dx >= max * 0.8 && max > 0) {
+            Animated.timing(x, { toValue: max, duration: 120, useNativeDriver: false }).start(() => {
+              onComplete();
+              reset();
+            });
+          } else reset();
+        },
+        onPanResponderTerminate: reset,
+      }),
+    [disabled, max, onComplete],
+  );
+  return (
+    <View
+      style={[styles.swipeTrack, disabled && { opacity: 0.5 }]}
+      onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
+      accessible
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint="Swipe right to start, or double-tap with a screen reader"
+      accessibilityState={{ disabled: !!disabled }}
+      accessibilityActions={[{ name: 'activate' }]}
+      onAccessibilityAction={() => !disabled && onComplete()}
+    >
+      <Text style={styles.swipeLabel}>{label}</Text>
+      <Animated.View style={[styles.swipeKnob, { transform: [{ translateX: x }] }]} {...responder.panHandlers}>
+        <Text style={styles.swipeArrow}>›</Text>
+      </Animated.View>
+    </View>
   );
 }
 
@@ -784,6 +943,14 @@ const styles = StyleSheet.create({
   buttonPrimaryText: { color: C.canvas, fontWeight: '700', fontSize: 15 },
   buttonSecondaryText: { color: C.text, fontWeight: '600', fontSize: 15 },
   result: { minHeight: 260, alignItems: 'center', justifyContent: 'center' },
+  video: { width: '100%', aspectRatio: 9 / 16, borderRadius: 10, backgroundColor: '#000' },
+  swipeTrack: {
+    marginTop: 8, height: 60, borderRadius: 30, backgroundColor: C.inset, borderWidth: 1, borderColor: C.gold,
+    justifyContent: 'center', paddingHorizontal: 4, overflow: 'hidden',
+  },
+  swipeLabel: { position: 'absolute', alignSelf: 'center', color: C.gold, fontWeight: '700', fontSize: 15 },
+  swipeKnob: { width: 52, height: 52, borderRadius: 26, backgroundColor: C.gold, alignItems: 'center', justifyContent: 'center' },
+  swipeArrow: { color: C.canvas, fontSize: 30, fontWeight: '800', marginTop: -3 },
   image: { width: '100%', borderRadius: 10 },
   empty: { alignItems: 'center', gap: 6 },
   emptyTitle: { color: C.text, fontSize: 26, fontWeight: '300', letterSpacing: 3 },

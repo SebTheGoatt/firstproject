@@ -5,7 +5,7 @@
  *                         the generation engine and the app client.
  * `sebastina-core/server` Node only: Lago billing, customer tokens, AI-crawler paywall.
  */
-export { SEBastinaEngine, describeError } from './engine.js';
+export { SEBastinaEngine, describeError, hubSupports } from './engine.js';
 export type { GenerationConfig, GenerationResult, GenerationMiddleware, EngineOptions, SkillRequest, UploadInput } from './engine.js';
 export { SEBastinaClient, GOAT_MODULES } from './client.js';
 export {
@@ -25,3 +25,13 @@ export type { LocalProfile } from './local.js';
 export { SKILLS, CHARACTER_SKILLS, findSkill, renderPrompt, skillOutput, skillCredits, contentIssue } from './skills.js';
 export type { Skill, SkillField, SkillStep } from './skills.js';
 export type { ClientOptions, GenerateRequest, GoatModuleId } from './client.js';
+export {
+    GOATAIEngineHub,
+    createGOATAIEngineHub,
+    generateFluxAsset,
+    generateWanVideo,
+    blobToDataUrl,
+    FLUX_SCHNELL_MODEL,
+    WAN_T2V_MODEL,
+} from './aiHub.js';
+export type { HubAsset, HubOptions } from './aiHub.js';

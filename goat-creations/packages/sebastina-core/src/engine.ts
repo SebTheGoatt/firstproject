@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { buildPayload, findModel, isVideoModel, DEFAULT_IMAGE_MODEL, DEFAULT_VIDEO_MODEL, type PayloadRequest } from './models.js';
 import { contentIssue, findSkill, renderPrompt, skillOutput } from './skills.js';
+import { generateFluxAsset, generateWanVideo } from './aiHub.js';
 import { loadImageRef, LOCAL_IMAGE_MODELS, LOCAL_VIDEO_MODELS, viewUrl, workflowFor, type LocalProfile } from './local.js';
 
 /**
@@ -71,8 +72,10 @@ export type GenerationMiddleware = (
 ) => Promise<GenerationResult>;
 
 export interface EngineOptions {
-    /** "muapi" (hosted API, default) or "comfyui" (your own computer running ComfyUI). */
-    backend?: 'muapi' | 'comfyui';
+    /** "muapi" (hosted API, default), "comfyui" (your own computer) or "huggingface" (HF Inference Providers). */
+    backend?: 'muapi' | 'comfyui' | 'huggingface';
+    /** Hugging Face access token for backend "huggingface" (default: HF_ACCESS_TOKEN where an environment exists). */
+    hfToken?: string;
     /** ComfyUI address for backend "comfyui", e.g. http://192.168.1.20:8188. */
     comfyUrl?: string;
     /** Which open models your ComfyUI has: "light" (SD 1.5) or "full" (FLUX, Qwen edit, Wan video). */
@@ -101,7 +104,8 @@ export class SEBastinaEngine {
     private readonly pollIntervalMs: number;
     private readonly allowedModels?: readonly string[];
     private readonly allowedSkills?: readonly string[];
-    private readonly backend: 'muapi' | 'comfyui';
+    private readonly backend: 'muapi' | 'comfyui' | 'huggingface';
+    private readonly hfToken?: string;
     private readonly comfyUrl: string;
     private readonly localProfile: LocalProfile;
     private readonly middlewares: GenerationMiddleware[] = [];
@@ -115,6 +119,7 @@ export class SEBastinaEngine {
         this.allowedModels = options.allowedModels;
         this.allowedSkills = options.allowedSkills;
         this.backend = options.backend ?? 'muapi';
+        this.hfToken = options.hfToken;
         this.comfyUrl = (options.comfyUrl ?? '').trim().replace(/\/+$/, '');
         this.localProfile = options.localProfile ?? 'light';
     }
@@ -172,6 +177,9 @@ export class SEBastinaEngine {
         return this.throughMiddleware(config, async () => {
             if (this.backend === 'muapi' && !this.apiKey) return { success: false, error: NO_KEY };
             if (this.backend === 'comfyui' && !this.comfyUrl) return { success: false, error: NO_COMFY };
+            if (this.backend === 'huggingface' && skill.steps.some((st) => !hubSupports(findModel(st.model)?.task))) {
+                return { success: false, error: `${skill.name} needs MuAPI or your own computer (Hugging Face mode does text → image and text → video).` };
+            }
             const outputs: string[] = [];
             for (const [i, step] of skill.steps.entries()) {
                 const spec = findModel(step.model);
@@ -203,6 +211,7 @@ export class SEBastinaEngine {
      */
     async uploadImage(file: UploadInput, fileName = 'photo.jpg'): Promise<string> {
         if (this.backend === 'comfyui') return this.uploadToComfy(file, fileName);
+        if (this.backend === 'huggingface') throw new Error('Photo tools need MuAPI or your own computer; Hugging Face mode makes images and videos from text.');
         if (!this.apiKey) throw new Error(NO_KEY);
         const form = new FormData();
         await appendFile(form, 'file', file, fileName);
@@ -221,6 +230,7 @@ export class SEBastinaEngine {
     /** Check the MuAPI key for free (account balance). Never throws. */
     async checkKey(): Promise<{ ok: boolean; balance?: number; error?: string; device?: string }> {
         if (this.backend === 'comfyui') return this.checkComfy();
+        if (this.backend === 'huggingface') return this.checkHf();
         if (!this.apiKey) return { ok: false, error: NO_KEY };
         try {
             const response = await fetch(`${this.apiBaseUrl}/api/v1/account/balance`, {
@@ -317,6 +327,40 @@ export class SEBastinaEngine {
         }
     }
 
+    // ------------------------------------------------------------ Hugging Face
+
+    /** Free token check: who does this token belong to? */
+    private async checkHf(): Promise<{ ok: boolean; error?: string; device?: string }> {
+        const env = (globalThis as any).process?.env;
+        const token = (this.hfToken ?? env?.HF_ACCESS_TOKEN ?? '').trim();
+        if (!token) return { ok: false, error: 'No Hugging Face token yet. Paste one from huggingface.co > Settings > Access Tokens.' };
+        try {
+            const response = await fetch('https://huggingface.co/api/whoami-v2', { headers: { Authorization: `Bearer ${token}` } });
+            if (response.status === 401) return { ok: false, error: 'Hugging Face rejected the token.' };
+            const data: any = await response.json().catch(() => ({}));
+            return response.ok ? { ok: true, device: `Hugging Face account ${data?.name ?? ''}`.trim() } : { ok: false, error: `Hugging Face answered ${response.status}.` };
+        } catch (error: any) {
+            return { ok: false, error: `Can't reach Hugging Face: ${error?.message ?? error}` };
+        }
+    }
+
+    /** One step on Hugging Face: FLUX.1 Schnell for images, Wan 2.1 for video. Never throws. */
+    private async runHub(modelId: string, isVideo: boolean, request: PayloadRequest): Promise<GenerationResult> {
+        const task = findModel(modelId)?.task ?? (isVideo ? 't2v' : 't2i');
+        if (!hubSupports(task)) return { success: false, error: 'Hugging Face mode makes images and videos from text; photo tools need MuAPI or your own computer.' };
+        try {
+            if (task === 't2v') {
+                const video = await generateWanVideo(request.prompt, { token: this.hfToken, numFrames: Math.round((request.duration ?? 5) * 16) + 1 });
+                return { success: true, data: video.dataUrl, kind: 'video' };
+            }
+            const [w, h] = hubSize(request);
+            const image = await generateFluxAsset(request.prompt, { token: this.hfToken, width: w, height: h });
+            return { success: true, data: image.dataUrl, kind: 'image' };
+        } catch (error: any) {
+            return { success: false, error: error?.message ?? String(error) };
+        }
+    }
+
     /** True if `url` is a file on this engine's ComfyUI (used by the server to accept photos). */
     isOwnFile(url: string): boolean {
         return this.backend === 'comfyui' && !!loadImageRef(url, this.comfyUrl);
@@ -336,6 +380,7 @@ export class SEBastinaEngine {
     private async runModel(endpoint: string, isVideo: boolean, request: PayloadRequest): Promise<GenerationResult> {
         if (!/^[A-Za-z0-9._-]+$/.test(endpoint)) return { success: false, error: 'Invalid model name.' };
         if (this.backend === 'comfyui') return this.runLocal(endpoint, isVideo, request);
+        if (this.backend === 'huggingface') return this.runHub(endpoint, isVideo, request);
         let payload: Record<string, unknown>;
         try {
             payload = buildPayload(endpoint, isVideo ? 'video' : 'image', request);
@@ -351,6 +396,7 @@ export class SEBastinaEngine {
 
     /** Submit the job to MuAPI and wait for the finished asset. */
     private async runPipeline(config: GenerationConfig): Promise<GenerationResult> {
+        if (this.backend === 'huggingface') return this.runModel(config.isMotion ? 'hf-wan21' : 'hf-flux-schnell', !!config.isMotion, config);
         if (this.backend === 'comfyui') {
             if (!this.comfyUrl) return { success: false, error: NO_COMFY };
             const fallback = config.isMotion ? LOCAL_VIDEO_MODELS[0].id : this.localProfile === 'full' ? 'local-flux-schnell' : 'local-sd15';
@@ -431,6 +477,22 @@ export async function appendFile(form: FormData, field: string, file: UploadInpu
         return;
     }
     form.append(field, { uri: rn.uri, name: rn.name ?? fileName, type: rn.type ?? 'image/jpeg' } as any);
+}
+
+/** What Hugging Face mode can run: text -> image and text -> video. */
+export function hubSupports(task: string | undefined): boolean {
+    return task === 't2i' || task === 't2v';
+}
+
+/** ~1 megapixel FLUX size for a shape (16-px grid). */
+function hubSize(req: PayloadRequest): [number, number] {
+    let ratio = 1;
+    if (req.aspectRatio) {
+        const [w, h] = req.aspectRatio.split(':').map(Number);
+        if (w > 0 && h > 0) ratio = w / h;
+    } else if (req.width && req.height) ratio = req.width / req.height;
+    const r16 = (v: number) => Math.round(v / 16) * 16;
+    return [r16(Math.sqrt(1024 * 1024 * ratio)), r16(Math.sqrt((1024 * 1024) / ratio))];
 }
 
 const NO_COMFY = 'No computer connected yet. Open Settings, choose "My computer", enter its ComfyUI address and tap Save.';

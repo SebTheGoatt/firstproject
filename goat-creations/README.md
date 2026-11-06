@@ -12,6 +12,7 @@ Minimalist, dark, fast, and built for developers who make things.
 | **Photo tools** | Animate Photo, Edit with Words, Upscale, Remove Background | desktop, mobile, ComfyUI |
 | **SEBastina** | An original, consistent character: design her once, then Post / Thumbnail / Video | mobile |
 | **Own computer** | Everything above on your own GPU with open models (ComfyUI), no API | mobile, desktop, server |
+| **Hugging Face** | FLUX.1 Schnell images and Wan 2.1 video with just an HF token | mobile, desktop, server |
 
 ## Layout (npm workspaces + Turborepo)
 
@@ -94,6 +95,29 @@ secure storage (Keychain / Keystore).
 ```bash
 cd apps/desktop-egui && cargo run
 ```
+
+## Hugging Face (FLUX.1 Schnell + Wan 2.1, token only)
+
+`GOATAIEngineHub` / `generateFluxAsset` (`packages/sebastina-core/src/aiHub.ts`) run open
+models hosted on Hugging Face Inference Providers (fal.ai or WaveSpeed today) with an
+access token. No GPU needed; each request is billed to the token's Hugging Face account
+(free accounts get a small monthly credit).
+
+```ts
+import { createGOATAIEngineHub, generateFluxAsset } from 'sebastina-core';
+const hub = createGOATAIEngineHub({ token });            // token from the app's Settings
+const dataUrl = await hub.textToImage('a goat', 1024, 576);  // FLUX.1 Schnell, 4 steps
+const { videoUrl } = await hub.textToVideo('a goat running'); // Wan 2.1, 81 frames
+const asset = await generateFluxAsset('a goat');         // { blob, dataUrl, mimeType, model }
+```
+
+- Apps: the token is typed into Settings and kept on the device (phone: secure storage),
+  never built into an app. Server / CLI: `HF_ACCESS_TOKEN` in `.env` (loaded by `sebastina-core/server`).
+- Desktop: **Draw with FLUX (Hugging Face)** paints the result onto the workspace canvas.
+- Phone: **Settings → Hugging Face**; on MotionGOAT, **swipe the gold knob** to render one Wan clip
+  (one render per swipe; screen readers get a double-tap action), played inline.
+- Text-only Skills work too; photo tools need MuAPI or your own computer.
+- The token needs the "Make calls to Inference Providers" permission.
 
 ## Run it on your own computer (no API, no per-image cost)
 
