@@ -1,9 +1,12 @@
 /**
  * GOAT CREATIONS mobile studio (Expo).
  *
- * Generation goes through `sebastina-core`'s SEBastinaClient: the same
- * pipeline as the desktop app. The access token is kept in the device's
- * secure storage (Keychain / Keystore); API keys stay on the SEBastina server.
+ * Two ways to connect, both through `sebastina-core` (the same pipeline as desktop):
+ * - "My MuAPI key": the phone calls MuAPI directly with the owner's own key.
+ *   For your personal phone only: never ship a build with a key inside it.
+ * - "GOAT server": the phone sends a customer access token to the SEBastina
+ *   server, which holds the keys and checks Lago credits.
+ * Keys and tokens live in the device's secure storage (Android Keystore / iOS Keychain).
  */
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -21,7 +24,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as SecureStore from 'expo-secure-store';
-import { GOAT_MODULES, SEBastinaClient } from 'sebastina-core';
+import { GOAT_MODULES, SEBastinaClient, SEBastinaEngine } from 'sebastina-core';
 
 const C = {
   canvas: '#0B0C0F',
@@ -39,12 +42,20 @@ const C = {
 
 const SERVER_KEY = 'goat_server_url';
 const TOKEN_KEY = 'goat_access_token';
+const MODE_KEY = 'goat_mode';
+const MUAPI_KEY = 'goat_muapi_key';
+const MODES = [
+  { id: 'direct', label: 'My MuAPI key' },
+  { id: 'server', label: 'GOAT server' },
+];
 // On a phone, 127.0.0.1 is the phone itself: use your computer's network address.
 const DEFAULT_SERVER = 'http://192.168.1.10:8787';
 
 export default function App() {
   const [serverUrl, setServerUrl] = useState(DEFAULT_SERVER);
   const [token, setToken] = useState('');
+  const [mode, setMode] = useState('direct');
+  const [muapiKey, setMuapiKey] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const [moduleId, setModuleId] = useState('image');
   const [prompt, setPrompt] = useState('A majestic goat climbing a high-tech neon mountain, cinematic');
@@ -53,19 +64,25 @@ export default function App() {
 
   const module = GOAT_MODULES.find((m) => m.id === moduleId);
   const client = useMemo(() => new SEBastinaClient({ serverUrl, token }), [serverUrl, token]);
+  const engine = useMemo(() => new SEBastinaEngine({ apiKey: muapiKey.trim() }), [muapiKey]);
   const busy = status.kind === 'busy';
 
   // Load saved connection settings once.
   useEffect(() => {
     (async () => {
       try {
-        const [savedUrl, savedToken] = await Promise.all([
+        const [savedUrl, savedToken, savedMode, savedKey] = await Promise.all([
           SecureStore.getItemAsync(SERVER_KEY),
           SecureStore.getItemAsync(TOKEN_KEY),
+          SecureStore.getItemAsync(MODE_KEY),
+          SecureStore.getItemAsync(MUAPI_KEY),
         ]);
         if (savedUrl) setServerUrl(savedUrl);
         if (savedToken) setToken(savedToken);
-        else setShowSettings(true);
+        if (savedMode) setMode(savedMode);
+        if (savedKey) setMuapiKey(savedKey);
+        const ready = (savedMode || 'direct') === 'direct' ? !!savedKey : !!savedToken;
+        if (!ready) setShowSettings(true);
       } catch {
         setShowSettings(true); // secure storage unavailable (e.g. web preview)
       }
@@ -74,10 +91,18 @@ export default function App() {
 
   async function saveSettings() {
     try {
+      await SecureStore.setItemAsync(MODE_KEY, mode);
       await SecureStore.setItemAsync(SERVER_KEY, serverUrl.trim());
       await SecureStore.setItemAsync(TOKEN_KEY, token.trim());
+      await SecureStore.setItemAsync(MUAPI_KEY, muapiKey.trim());
     } catch {
       /* not available on this platform: settings last until the app closes */
+    }
+    if (mode === 'direct') {
+      const hasKey = !!muapiKey.trim();
+      setStatus(hasKey ? { kind: 'ok', text: 'Saved. Using your MuAPI key.' } : { kind: 'error', text: 'Paste your MuAPI key first.' });
+      if (hasKey) setShowSettings(false);
+      return;
     }
     setStatus({ kind: 'busy', text: 'Checking the server…' });
     const ok = await client.health();
@@ -90,11 +115,11 @@ export default function App() {
       kind: 'busy',
       text: module.isMotion ? 'Rendering video… this can take a few minutes.' : 'Generating image…',
     });
-    const outcome = await client.generate(
+    const request =
       module.isMotion
         ? { prompt, isMotion: true, aspectRatio: '9:16', duration: 5 }
-        : { prompt, isMotion: false, width: 768, height: 1344 },
-    );
+        : { prompt, isMotion: false, width: 768, height: 1344 };
+    const outcome = mode === 'direct' ? await engine.generateAsset(request) : await client.generate(request);
     if (outcome.success && outcome.data) {
       setResult({ url: outcome.data, isMotion: module.isMotion });
       setStatus({ kind: 'ok', text: `${module.name} finished.` });
@@ -125,28 +150,63 @@ export default function App() {
         {showSettings && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Connection</Text>
-            <Text style={styles.label}>Server address</Text>
-            <TextInput
-              style={styles.input}
-              value={serverUrl}
-              onChangeText={setServerUrl}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-              placeholderTextColor={C.dim}
-            />
-            <Text style={styles.label}>Access token</Text>
-            <TextInput
-              style={styles.input}
-              value={token}
-              onChangeText={setToken}
-              autoCapitalize="none"
-              autoCorrect={false}
-              secureTextEntry
-              placeholder="From your GOAT CREATIONS account"
-              placeholderTextColor={C.dim}
-            />
-            <Button label="Save and test" onPress={saveSettings} disabled={busy} variant="secondary" />
+            <View style={styles.tabs} accessibilityRole="radiogroup">
+              {MODES.map((m) => {
+                const active = m.id === mode;
+                return (
+                  <Pressable
+                    key={m.id}
+                    onPress={() => setMode(m.id)}
+                    style={[styles.tab, active && styles.tabActive]}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: active }}
+                  >
+                    <Text style={[styles.tabText, active && styles.tabTextActive]}>{m.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {mode === 'direct' ? (
+              <>
+                <Text style={styles.label}>MuAPI key</Text>
+                <TextInput
+                  style={styles.input}
+                  value={muapiKey}
+                  onChangeText={setMuapiKey}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  secureTextEntry
+                  placeholder="From muapi.ai > API keys"
+                  placeholderTextColor={C.dim}
+                />
+                <Text style={styles.dim}>Kept in this phone's secure storage. Each generation is billed to your MuAPI account.</Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.label}>Server address</Text>
+                <TextInput
+                  style={styles.input}
+                  value={serverUrl}
+                  onChangeText={setServerUrl}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                  placeholderTextColor={C.dim}
+                />
+                <Text style={styles.label}>Access token</Text>
+                <TextInput
+                  style={styles.input}
+                  value={token}
+                  onChangeText={setToken}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  secureTextEntry
+                  placeholder="From your GOAT CREATIONS account"
+                  placeholderTextColor={C.dim}
+                />
+              </>
+            )}
+            <Button label={mode === 'direct' ? 'Save' : 'Save and test'} onPress={saveSettings} disabled={busy} variant="secondary" />
           </View>
         )}
 
