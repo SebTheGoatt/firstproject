@@ -3,8 +3,7 @@ import http from 'node:http';
 import assert from 'node:assert/strict';
 
 // Run with `npm test` (builds first). Uses a local stand-in server: no real keys or network.
-import { SEBastinaEngine, lagoCreditGate } from '../dist/sebastina.js';
-import { LagoBilling } from '../dist/monetization/lago.js';
+import { SEBastinaEngine, lagoCreditGate, LagoBilling } from '../dist/server.js';
 
 const customers = {
   'goat-pro':    { active: true,  wallet: { lago_id: 'w-pro', credits: 3 } },

@@ -1,7 +1,6 @@
 // Load settings (API keys, backend URL, customer ID) from a local .env file.
 import 'dotenv/config';
-import { SEBastinaEngine, lagoCreditGate } from './sebastina.js';
-import { LagoBilling } from './monetization/lago.js';
+import { SEBastinaEngine, lagoCreditGate, LagoBilling } from 'sebastina-core/server';
 import * as readline from 'readline';
 
 const env = process.env;

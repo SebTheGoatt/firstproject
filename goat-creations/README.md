@@ -3,132 +3,130 @@
 **The Greatest of All Time Open-Source Creative Suite.**
 Minimalist, dark, fast, and built for developers who make things.
 
-| Module | What it is | Status |
+| Module | What it is | Where |
 | --- | --- | --- |
-| **VectorGOAT** | Vector & illustration design | Active (this MVP) |
-| **ImageGOAT** | Raster & photo editing | Planned |
-| **MotionGOAT** | Video & animation | Planned |
+| **ImageGOAT** | AI image generation (FLUX via MuAPI) | desktop, mobile, CLI |
+| **MotionGOAT** | AI video generation (Seedance via MuAPI) | desktop, mobile, CLI |
+| **VectorGOAT** | Vector & illustration editor | `apps/desktop-egui` |
 
-This folder holds two pieces:
+## Layout (npm workspaces + Turborepo)
 
-- **The desktop suite** (Rust + egui): this folder.
-- **SEBastina** (`sebastina/`): a TypeScript CLI that sends ImageGOAT / MotionGOAT
-  prompts to an AI generation server, such as a local Stable Diffusion WebUI.
+```
+goat-creations/
+├── package.json               workspaces, scripts, one React version for all apps
+├── turbo.json                 build/test pipeline (core builds first)
+├── packages/
+│   └── sebastina-core/        the shared pipeline
+│       ├── src/engine.ts          ImageGOAT/MotionGOAT routing (MuAPI format)
+│       ├── src/client.ts          SEBastinaClient: what the apps call
+│       ├── src/billing/           Lago subscription + credit gate
+│       ├── src/paywall/x402.ts    AI-crawler paywall (HTTP 402, USDC)
+│       └── src/auth.ts            signed customer access tokens
+└── apps/
+    ├── server/                SEBastina server: holds the API keys, runs the pipeline
+    ├── desktop-tauri/         Tauri 2 + React + TypeScript (Windows / macOS / Linux)
+    ├── mobile-expo/           Expo SDK 58 (iOS / Android)
+    ├── cli/                   terminal studio for the owner
+    └── desktop-egui/          the Rust/egui VectorGOAT editor
+```
 
----
+### How the pieces fit
 
-## Desktop suite (Rust)
+```
+desktop-tauri ─┐                         ┌─ MuAPI (FLUX, Seedance)
+mobile-expo  ──┼─ SEBastinaClient ─► server ─┤
+               │  (sebastina-core)  (sebastina-core engine
+               │                     + Lago credit gate)   └─ Lago (subscription, credits)
+AI crawlers ───┴──────────────────► server: x402 paywall ──► x402 facilitator (USDC on Base)
+```
 
-### Run it
+Both apps use the exact same pipeline through `sebastina-core`. The API keys
+(MuAPI, Lago) live **only on the server**: anything shipped inside an app can be
+unpacked and read, so apps carry a customer access token instead.
+
+## Quick start
 
 ```bash
 cd goat-creations
-cargo run            # debug build (dependencies are still optimized)
-cargo run --release  # fully optimized
-cargo test           # 27 engine tests, no window needed
+npm install              # installs every workspace and links sebastina-core
+npm run build            # builds core first, then the apps (turbo)
+npm test                 # core checks: credit gate, paywall, tokens
 ```
 
-Needs Rust 1.85 or newer (`rustup update`).
-
-**Linux only:** install the usual windowing libraries once:
+### 1. Server
 
 ```bash
-# Debian / Ubuntu
-sudo apt install libxkbcommon-x11-0 libgl1 libwayland-client0
+cd apps/server
+cp .env.example .env     # MUAPI_API_KEY, LAGO_API_KEY, SEBASTINA_TOKEN_SECRET, PAYWALL_PAY_TO
+npm start                # http://127.0.0.1:8787
+npm run token -- <lago-customer-id>   # access token to give that customer
 ```
 
-Windows and macOS need nothing extra.
-
-### What works today
-
-- **Select (V):** click to pick, drag to move, Delete to remove, Esc to deselect
-- **Brush (B):** freehand strokes with size and color
-- **Vector (P):** rectangles and ellipses, outline or filled; hold Shift for a square or circle
-- **Text (T):** click to place text; edit the content and size in the inspector
-- **Canvas:** scroll to pan, Ctrl + scroll (or pinch) to zoom at the cursor, Space + drag or middle-drag to pan, Ctrl+0 to fit
-- **Inspector:** tool settings, quick color swatches, selection properties, artboard size and background, layer list with show/hide
-- **Undo / redo** (Ctrl+Z, Ctrl+Shift+Z or Ctrl+Y). Slider and color drags undo as one step.
-- **Project files:** File > Save / Open (`.goat.json`). Saves are atomic, and you're asked before unsaved work is thrown away, including when closing the window.
-
-### Architecture
-
-```
-src/
-├── main.rs          window lifecycle: native options, icon, run_native
-├── app.rs           GoatApp state, Action routing, per-frame layout, dialogs
-├── ui/              reusable UI: each panel draws itself and returns Actions
-│   ├── theme.rs     brand palette ("GOAT gold" on dark), egui style, app icon
-│   ├── menu_bar.rs  brand mark, File / Edit / GOAT Tools, module switcher
-│   ├── toolbar.rs   left tool rail with icons drawn in code
-│   ├── inspector.rs tool settings, selection, artboard, layers
-│   ├── canvas.rs    pan/zoom workspace: input to engine, document rendering
-│   ├── status_bar.rs
-│   └── widgets.rs   logo mark, swatches, property rows
-└── engine/          no UI code, fully unit-tested
-    ├── document.rs  Document, Element, hit testing, z-order
-    ├── editor.rs    the editing pipeline: gestures and commands to document edits
-    ├── history.rs   snapshot undo/redo with coalescing
-    ├── viewport.rs  world/screen transform, zoom around cursor, fit
-    ├── tools.rs     Tool enum and ToolSettings
-    └── io.rs        versioned .goat.json save/load
-```
-
-**How events flow:** keyboard shortcuts, menus, toolbar and inspector buttons all
-produce `Action` values, and `GoatApp::dispatch` handles them in one place. Direct
-manipulation on the canvas (painting, dragging) calls the `Editor` directly. The
-engine never touches egui widgets, so ImageGOAT and MotionGOAT can share it.
-
-**Renderer:** OpenGL via `glow`, for the widest hardware support. To try wgpu
-(Vulkan / Metal / DX12), swap `"glow"` for `"wgpu"` in `Cargo.toml`.
-
----
-
-## SEBastina CLI (TypeScript)
-
-A terminal studio that sends ImageGOAT / MotionGOAT prompts to an AI backend, with
-Lago billing in front of every generation.
+### 2. Desktop (Tauri)
 
 ```bash
-cd goat-creations/sebastina
-cp .env.example .env     # add MUAPI_API_KEY and LAGO_API_KEY
-npm install
-npm test                 # credit-gate checks against a local stand-in server
-npm start
+npm run desktop:dev      # from the root; or: cd apps/desktop-tauri && npm run tauri dev
 ```
 
-### Generation backend: MuAPI
+Linux needs WebKitGTK once: `sudo apt install libwebkit2gtk-4.1-dev build-essential libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev`.
+Windows and macOS: see https://tauri.app/start/prerequisites/.
+Open **Settings**, enter the server address and your access token, then generate.
+
+### 3. Mobile (Expo)
+
+```bash
+npm run mobile:start     # scan the QR code with Expo Go
+```
+
+On a phone, `127.0.0.1` means the phone itself: enter your computer's network
+address (e.g. `http://192.168.1.10:8787`). The token is kept in the device's
+secure storage (Keychain / Keystore).
+
+### 4. VectorGOAT editor (Rust)
+
+```bash
+cd apps/desktop-egui && cargo run
+```
+
+## Billing (Lago)
+
+Before every generation, `lagoCreditGate` checks the customer's **active
+subscription** and **wallet credits**, takes the credits (`CREDITS_PER_IMAGE` /
+`CREDITS_PER_VIDEO`, default 1), and refunds them if the generation fails. If
+Lago can't be reached, generation is refused. In Lago: create a plan, subscribe
+the customer, give them a wallet with credits.
+
+## AI-crawler paywall (x402)
+
+Everything the server serves outside `/api` and `/health` sits behind
+`crawlerPaywall`. People and ordinary bots get content free. Requests whose
+User-Agent names an AI crawler (GPTBot, ClaudeBot, PerplexityBot, CCBot,
+Bytespider, meta-externalagent, cohere-ai, …):
+
+1. get **HTTP 402 Payment Required** and no content,
+2. with a JSON body in the [x402](https://github.com/x402-foundation/x402) format:
+   0.001 USDC (`maxAmountRequired: "1000"`), `payTo` your wallet, USDC on Base,
+3. may retry with a signed payment in `X-PAYMENT` (or `Authorization: x402 <payload>`).
+   The payment is verified and settled through an x402 facilitator, then the
+   asset streams with an `X-PAYMENT-RESPONSE` receipt. Invalid or malformed
+   payments get a 402 and the connection is closed.
+
+Settings: `PAYWALL_PAY_TO` (required; without it AI crawlers are refused),
+`PAYWALL_NETWORK` (`base-sepolia` test money by default; `base` for real USDC,
+which needs a mainnet facilitator such as Coinbase's), `PAYWALL_PRICE_USDC`.
+
+Limits worth knowing: the User-Agent is self-reported, so a scraper that hides
+its name passes as a person, and one could pretend to be GPTBot. Major crawlers
+publish IP ranges if you later want to verify them.
+
+## Generation backend: MuAPI
 
 The request format follows [Open-Generative-AI](https://github.com/Anil-matcha/Open-Generative-AI)
-(MIT), which runs on the hosted MuAPI service (`api.muapi.ai`, pay per generation):
-
-- Submit: `POST /api/v1/<model>` with header `x-api-key`, returns a `request_id`.
-- Poll: `GET /api/v1/predictions/<request_id>/result` every 2 s until `completed`;
-  the result is a URL in `outputs[0]`.
-- ImageGOAT: `flux-dev-image` (FLUX.1 Dev) with `prompt, width, height, num_images`
-  (sizes rounded to multiples of 64, 128 to 2048).
-- MotionGOAT: `seedance-lite-t2v` (Seedance 1.0 Lite) with `prompt, aspect_ratio, duration, resolution`.
-- Any other MuAPI model: set `SEBASTINA_IMAGE_MODEL` / `SEBASTINA_VIDEO_MODEL`.
-
-To re-read their source: `git clone --depth 1 https://github.com/Anil-matcha/Open-Generative-AI vendor/open-gen`
-(`vendor/` is git-ignored).
-
-### Billing: Lago (`src/monetization/lago.ts`)
-
-Uses Lago's official SDK, `lago-javascript-client`. Before each generation the
-`lagoCreditGate` middleware in `src/sebastina.ts`:
-
-1. finds the customer by their Lago external ID (`SEBASTINA_CUSTOMER_ID`, or asked at start),
-2. requires an **active subscription** and an active **wallet** with enough credits
-   (`CREDITS_PER_IMAGE` / `CREDITS_PER_VIDEO`, default 1),
-3. takes the credits (a "voided credits" wallet transaction), then generates,
-4. gives the credits back (as granted credits) if the generation fails.
-
-If Lago can't be reached, generation is refused (no free generations during an outage).
-`SEBASTINA_BILLING=off` skips billing, for local testing only.
-
-In Lago: create a plan, subscribe the customer, and give them a wallet with credits.
-
----
+(MIT), which runs on the hosted MuAPI service (pay per generation): `POST /api/v1/<model>`
+with `x-api-key`, then poll `/api/v1/predictions/<id>/result`. Defaults: `flux-dev-image`
+and `seedance-lite-t2v`; any MuAPI model works via `SEBASTINA_IMAGE_MODEL` /
+`SEBASTINA_VIDEO_MODEL`. To re-read their source:
+`git clone --depth 1 https://github.com/Anil-matcha/Open-Generative-AI vendor/open-gen` (git-ignored).
 
 ## License
 

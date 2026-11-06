@@ -17,9 +17,11 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 - Live site: https://property-dispatch.onrender.com (Render). The domain postonelawn.com is not bought yet.
 
 ## Other projects in this repo
-- `goat-creations/`: **GOAT CREATIONS**, a separate open-source creative suite (not Post One). Rust + egui desktop
-  app (VectorGOAT active; ImageGOAT / MotionGOAT planned) plus the `sebastina/` TypeScript CLI for AI image/video
-  backends. Its own README covers it; `cd goat-creations && cargo test`. Post One's rules don't apply there.
+- `goat-creations/`: **GOAT CREATIONS**, a separate open-source creative suite (not Post One). npm-workspaces
+  monorepo: `packages/sebastina-core` (shared AI pipeline, Lago credits, x402 AI-crawler paywall) used by
+  `apps/server`, `apps/desktop-tauri`, `apps/mobile-expo`, `apps/cli`; the Rust/egui editor is `apps/desktop-egui`.
+  Its own README covers it; `cd goat-creations && npm install && npm test`. Post One's rules don't apply there.
+  Its crawler paywall must never go on the Post One site, which welcomes AI search crawlers on purpose (GEO).
 
 ## Code map (all code is in `property-dispatch/`)
 - FastAPI app: `app/main.py`. Data: Supabase in production, `MemoryRepository` in tests.

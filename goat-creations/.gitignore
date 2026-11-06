@@ -1,11 +1,21 @@
-target/
+# Dependencies and build output (all workspaces)
+node_modules/
+dist/
+.turbo/
+*.tsbuildinfo
+
+# Secrets: never commit real keys (each app has a .env.example)
+.env
+.env.*
+!.env.example
+
+# Rust build output (egui app and the Tauri shell)
+apps/desktop-egui/target/
+apps/desktop-tauri/src-tauri/target/
+
+# GOAT project files saved while testing
 *.goat.json
 *.goat.tmp
-
-# SEBastina CLI
-sebastina/node_modules/
-sebastina/dist/
-sebastina/.env
 
 # Third-party code cloned for reference only (see README)
 vendor/

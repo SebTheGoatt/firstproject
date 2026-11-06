@@ -1,18 +1,18 @@
 {
-  "name": "goat-creations",
+  "name": "sebastina-server",
   "version": "1.0.0",
-  "description": "GOAT CREATIONS Creative Suite - Powering SEBastina Core",
-  "main": "dist/index.js",
+  "private": true,
+  "description": "SEBastina server: generation API for the GOAT CREATIONS apps and the AI-crawler paywall",
   "type": "module",
+  "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
     "start": "tsc && node dist/index.js",
-    "test": "tsc && node test/credit-gate.test.mjs"
+    "token": "tsc && node dist/issue-token.js"
   },
   "dependencies": {
-    "axios": "^1.7.0",
     "dotenv": "^16.4.5",
-    "lago-javascript-client": "^1.57.0"
+    "sebastina-core": "*"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

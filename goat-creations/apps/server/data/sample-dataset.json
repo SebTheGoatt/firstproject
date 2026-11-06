@@ -1,0 +1,6 @@
+{
+  "title": "GOAT CREATIONS sample data asset",
+  "note": "Example file served from apps/server/data. People get it free; AI crawlers pay per request.",
+  "palette": { "goatGold": "#F2B82E", "canvas": "#0B0C0F", "panel": "#15171C" },
+  "modules": ["ImageGOAT", "VectorGOAT", "MotionGOAT"]
+}
