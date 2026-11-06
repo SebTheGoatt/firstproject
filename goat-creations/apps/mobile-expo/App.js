@@ -24,7 +24,15 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as SecureStore from 'expo-secure-store';
-import { GOAT_MODULES, SEBastinaClient, SEBastinaEngine } from 'sebastina-core';
+import {
+  GOAT_MODULES,
+  SEBastinaClient,
+  SEBastinaEngine,
+  IMAGE_MODELS,
+  VIDEO_MODELS,
+  DEFAULT_IMAGE_MODEL,
+  DEFAULT_VIDEO_MODEL,
+} from 'sebastina-core';
 
 const C = {
   canvas: '#0B0C0F',
@@ -56,6 +64,10 @@ export default function App() {
   const [token, setToken] = useState('');
   const [mode, setMode] = useState('direct');
   const [muapiKey, setMuapiKey] = useState('');
+  const [imageModel, setImageModel] = useState(DEFAULT_IMAGE_MODEL);
+  const [videoModel, setVideoModel] = useState(DEFAULT_VIDEO_MODEL);
+  // In server mode, only the models the server allows (null = not fetched yet).
+  const [serverModels, setServerModels] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [moduleId, setModuleId] = useState('image');
   const [prompt, setPrompt] = useState('A majestic goat climbing a high-tech neon mountain, cinematic');
@@ -66,6 +78,11 @@ export default function App() {
   const client = useMemo(() => new SEBastinaClient({ serverUrl, token }), [serverUrl, token]);
   const engine = useMemo(() => new SEBastinaEngine({ apiKey: muapiKey.trim() }), [muapiKey]);
   const busy = status.kind === 'busy';
+  const catalog = module.isMotion ? VIDEO_MODELS : IMAGE_MODELS;
+  const models = mode === 'server' && serverModels?.length ? catalog.filter((m) => serverModels.includes(m.id)) : catalog;
+  const chosenModel = module.isMotion ? videoModel : imageModel;
+  const setChosenModel = module.isMotion ? setVideoModel : setImageModel;
+  const model = models.find((m) => m.id === chosenModel) ?? models[0];
 
   // Load saved connection settings once.
   useEffect(() => {
@@ -106,6 +123,7 @@ export default function App() {
     }
     setStatus({ kind: 'busy', text: 'Checking the server…' });
     const ok = await client.health();
+    if (ok) setServerModels(await client.allowedModels());
     setStatus(ok ? { kind: 'ok', text: 'Saved. Server reachable.' } : { kind: 'error', text: `Saved, but can't reach ${serverUrl}.` });
     if (ok) setShowSettings(false);
   }
@@ -117,12 +135,12 @@ export default function App() {
     });
     const request =
       module.isMotion
-        ? { prompt, isMotion: true, aspectRatio: '9:16', duration: 5 }
-        : { prompt, isMotion: false, width: 768, height: 1344 };
+        ? { prompt, isMotion: true, model: model?.id, aspectRatio: '9:16', duration: 5 }
+        : { prompt, isMotion: false, model: model?.id, width: 768, height: 1344 };
     const outcome = mode === 'direct' ? await engine.generateAsset(request) : await client.generate(request);
     if (outcome.success && outcome.data) {
       setResult({ url: outcome.data, isMotion: module.isMotion });
-      setStatus({ kind: 'ok', text: `${module.name} finished.` });
+      setStatus({ kind: 'ok', text: `${module.name} finished with ${model?.name ?? 'the default model'}.` });
     } else {
       setStatus({ kind: 'error', text: outcome.error || 'Something went wrong.' });
     }
@@ -230,6 +248,25 @@ export default function App() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>{module.name}</Text>
           <Text style={styles.dim}>{module.tagline}</Text>
+          <Text style={styles.label}>Model</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+            {models.map((m) => {
+              const active = m.id === model?.id;
+              return (
+                <Pressable
+                  key={m.id}
+                  onPress={() => setChosenModel(m.id)}
+                  style={[styles.chip, active && styles.chipActive]}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: active }}
+                  accessibilityLabel={`${m.name}, ${m.note}`}
+                >
+                  <Text style={[styles.chipName, active && styles.tabTextActive]}>{m.name}</Text>
+                  <Text style={styles.chipNote}>{m.note}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
           <Text style={styles.label}>Prompt</Text>
           <TextInput
             style={[styles.input, styles.prompt]}
@@ -323,6 +360,11 @@ const styles = StyleSheet.create({
   prompt: { minHeight: 110, textAlignVertical: 'top' },
   tabs: { flexDirection: 'row', backgroundColor: C.panel, borderRadius: 10, padding: 4, gap: 4 },
   tab: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
+  chips: { gap: 8, paddingVertical: 2 },
+  chip: { borderWidth: 1, borderColor: C.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, minHeight: 44, justifyContent: 'center' },
+  chipActive: { borderColor: C.gold, backgroundColor: C.goldSoft },
+  chipName: { color: C.text, fontWeight: '600', fontSize: 14 },
+  chipNote: { color: C.dim, fontSize: 11, marginTop: 2 },
   tabActive: { backgroundColor: C.goldSoft },
   tabText: { color: C.dim, fontWeight: '600' },
   tabTextActive: { color: C.gold },

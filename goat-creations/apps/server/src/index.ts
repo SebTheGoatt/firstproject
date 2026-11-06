@@ -2,6 +2,7 @@
  * SEBastina server: the one place that holds the MuAPI and Lago keys.
  *
  *   GET  /health          reachability check for the apps
+ *   GET  /api/models      model endpoints customers may pick
  *   POST /api/generate    ImageGOAT / MotionGOAT generation for the desktop and
  *                         mobile apps (customer token + Lago credits required)
  *   GET  /data/<file>     data assets; AI crawlers pay per request (x402, USDC)
@@ -14,6 +15,8 @@ import { promises as fs } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
     SEBastinaEngine,
+    DEFAULT_IMAGE_MODEL,
+    DEFAULT_VIDEO_MODEL,
     LagoBilling,
     lagoCreditGate,
     verifyCustomerToken,
@@ -31,11 +34,20 @@ const DATA_DIR = resolve(fileURLToPath(new URL('../data', import.meta.url)));
 const MAX_BODY_BYTES = 16 * 1024;
 
 // ---------------------------------------------------------------- generation
+// Customers pay the same credit whatever the model, so only models the owner lists
+// are offered (pricier ones like Veo or Kling cost more per generation at MuAPI).
+const imageModel = env.SEBASTINA_IMAGE_MODEL || DEFAULT_IMAGE_MODEL;
+const videoModel = env.SEBASTINA_VIDEO_MODEL || DEFAULT_VIDEO_MODEL;
+const allowedModels = (env.SEBASTINA_SERVER_MODELS || `${imageModel},${videoModel}`)
+    .split(',')
+    .map((m) => m.trim())
+    .filter(Boolean);
 const engine = new SEBastinaEngine({
     apiBaseUrl: env.AI_BACKEND_URL || 'https://api.muapi.ai',
     apiKey: env.MUAPI_API_KEY,
-    imageModel: env.SEBASTINA_IMAGE_MODEL,
-    videoModel: env.SEBASTINA_VIDEO_MODEL,
+    imageModel,
+    videoModel,
+    allowedModels,
 });
 const billingOn = (env.SEBASTINA_BILLING || 'on').toLowerCase() !== 'off';
 if (billingOn) {
@@ -121,6 +133,7 @@ async function handleGenerate(req: http.IncomingMessage, res: http.ServerRespons
     const config: GenerationConfig = {
         prompt: body.prompt.trim(),
         isMotion: body.isMotion === true,
+        model: typeof body.model === 'string' && body.model ? body.model : undefined,
         width: Number.isFinite(body.width) ? body.width : undefined,
         height: Number.isFinite(body.height) ? body.height : undefined,
         aspectRatio: typeof body.aspectRatio === 'string' ? body.aspectRatio : undefined,
@@ -147,6 +160,7 @@ const server = http.createServer(async (req, res) => {
             return res.end();
         }
         if (path === '/health') return sendJson(res, 200, { ok: true, billing: billingOn }, CORS);
+        if (path === '/api/models') return sendJson(res, 200, { models: allowedModels }, CORS);
         if (path === '/api/generate') {
             if (req.method !== 'POST') return sendJson(res, 405, { error: 'Use POST.' }, CORS);
             return await handleGenerate(req, res);

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { buildPayload, DEFAULT_IMAGE_MODEL, DEFAULT_VIDEO_MODEL } from './models.js';
 
 /**
  * SEBastina talks to MuAPI (api.muapi.ai), the generation API behind the
@@ -20,12 +21,14 @@ export interface GenerationConfig {
     prompt: string;
     /** MotionGOAT (video) instead of ImageGOAT (image). */
     isMotion?: boolean;
+    /** MuAPI model endpoint (see models.ts). Default: the engine's image/video model. */
+    model?: string;
     /** Who is paying: the customer's external ID in Lago. Required when billing is on. */
     customerId?: string;
-    /** Image size in pixels (Flux). Rounded to a multiple of 64, 128–2048. */
+    /** Image size in pixels; models that take an aspect ratio get the closest one. */
     width?: number;
     height?: number;
-    /** Video options. */
+    /** Shape for video, or for images on aspect-ratio models. */
     aspectRatio?: string;
     duration?: number;
     resolution?: string;
@@ -49,6 +52,8 @@ export interface EngineOptions {
     apiKey?: string;
     imageModel?: string;
     videoModel?: string;
+    /** If set, only these model endpoints may be requested (the server uses this). */
+    allowedModels?: readonly string[];
     /** Milliseconds between result polls (MuAPI's own client uses 2000). */
     pollIntervalMs?: number;
 }
@@ -62,14 +67,16 @@ export class SEBastinaEngine {
     private readonly imageModel: string;
     private readonly videoModel: string;
     private readonly pollIntervalMs: number;
+    private readonly allowedModels?: readonly string[];
     private readonly middlewares: GenerationMiddleware[] = [];
 
     constructor(options: EngineOptions = {}) {
         this.apiBaseUrl = (options.apiBaseUrl || 'https://api.muapi.ai').replace(/\/+$/, '');
         this.apiKey = options.apiKey || '';
-        this.imageModel = options.imageModel || 'flux-dev-image';
-        this.videoModel = options.videoModel || 'seedance-lite-t2v';
+        this.imageModel = options.imageModel || DEFAULT_IMAGE_MODEL;
+        this.videoModel = options.videoModel || DEFAULT_VIDEO_MODEL;
         this.pollIntervalMs = options.pollIntervalMs ?? 2000;
+        this.allowedModels = options.allowedModels;
     }
 
     /** Add a middleware; they run in the order added, before generation. */
@@ -97,26 +104,28 @@ export class SEBastinaEngine {
     /** Submit the job to MuAPI and wait for the finished asset. */
     private async runPipeline(config: GenerationConfig): Promise<GenerationResult> {
         if (!this.apiKey) {
-            return { success: false, error: 'MUAPI_API_KEY is missing. Add it to your .env file.' };
+            return { success: false, error: 'No MuAPI key set. Add it in Settings (or MUAPI_API_KEY on the server).' };
         }
 
         // Route dynamically if user flips the switch to MotionGOAT (AI Video)
-        const endpoint = config.isMotion ? this.videoModel : this.imageModel;
-        const payload = config.isMotion
-            ? {
-                  prompt: config.prompt,
-                  aspect_ratio: config.aspectRatio || '16:9',
-                  duration: config.duration || 5,
-                  resolution: config.resolution || '480p',
-              }
-            : {
-                  prompt: config.prompt,
-                  width: fluxSize(config.width ?? 1024),
-                  height: fluxSize(config.height ?? 1024),
-                  num_images: 1,
-              };
+        const endpoint = config.model || (config.isMotion ? this.videoModel : this.imageModel);
+        if (this.allowedModels && !this.allowedModels.includes(endpoint)) {
+            return { success: false, error: `The model "${endpoint}" isn't offered here.` };
+        }
+        if (!/^[A-Za-z0-9._-]+$/.test(endpoint)) {
+            return { success: false, error: 'Invalid model name.' };
+        }
+        const payload = buildPayload(endpoint, config.isMotion ? 'video' : 'image', config);
+        try {
+            return await this.submitAndPoll(endpoint, payload, !!config.isMotion);
+        } catch (error) {
+            return { success: false, error: muapiErrorMessage(error) };
+        }
+    }
 
-        console.log(`[SEBastina] Initiating asset creation pipeline... Mode: ${config.isMotion ? 'MotionGOAT' : 'ImageGOAT'} (${endpoint})`);
+    private async submitAndPoll(endpoint: string, payload: Record<string, unknown>, isMotion: boolean): Promise<GenerationResult> {
+
+        console.log(`[SEBastina] Initiating asset creation pipeline... Mode: ${isMotion ? 'MotionGOAT' : 'ImageGOAT'} (${endpoint})`);
         const headers = { 'Content-Type': 'application/json', 'x-api-key': this.apiKey };
         const submit = await axios.post(`${this.apiBaseUrl}/api/v1/${endpoint}`, payload, { headers, timeout: 60000 });
 
@@ -128,7 +137,7 @@ export class SEBastinaEngine {
         }
 
         // Images finish in seconds; videos can take many minutes (same limits as MuAPI's client).
-        const maxAttempts = config.isMotion ? 900 : 60;
+        const maxAttempts = isMotion ? 900 : 60;
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
             await sleep(this.pollIntervalMs);
             let result: any;
@@ -136,8 +145,12 @@ export class SEBastinaEngine {
                 const poll = await axios.get(`${this.apiBaseUrl}/api/v1/predictions/${requestId}/result`, { headers, timeout: 30000 });
                 result = poll.data;
             } catch (error: any) {
-                // Network blips and server errors: keep polling. Auth/other client errors: stop.
                 const status = error?.response?.status;
+                // MuAPI reports a failed generation as HTTP 400 with the reason in the body.
+                if (status === 400 && error.response.data) {
+                    return { success: false, error: `Generation failed: ${failureReason(error.response.data)}` };
+                }
+                // Network blips and server errors: keep polling. Auth/other client errors: stop.
                 if ((status === undefined || status >= 500) && attempt < maxAttempts) continue;
                 throw error;
             }
@@ -147,20 +160,43 @@ export class SEBastinaEngine {
                 return url ? { success: true, data: url } : { success: false, error: 'Generation finished without an output URL.' };
             }
             if (FAILURE.has(status)) {
-                return { success: false, error: `Generation failed: ${result?.error?.message || result?.error || 'unknown error'}` };
+                return { success: false, error: `Generation failed: ${failureReason(result)}` };
             }
         }
         return { success: false, error: `Generation timed out. Request ID: ${requestId}` };
     }
 }
 
-/** Round to Flux's grid: a multiple of 64 between 128 and 2048. */
-function fluxSize(px: number): number {
-    return Math.min(2048, Math.max(128, Math.round(px / 64) * 64));
+/** The result URL, wherever MuAPI put it (shapes seen in MuAPI's own clients). */
+function firstOutput(data: any): string | undefined {
+    const out = data?.outputs ?? data?.output;
+    if (Array.isArray(out) && out.length) return String(out[0]);
+    if (typeof out === 'string' && out) return out;
+    if (typeof out?.url === 'string') return out.url;
+    for (const key of ['video_url', 'image_url', 'url']) {
+        if (typeof data?.[key] === 'string' && data[key]) return data[key];
+    }
+    return Array.isArray(data?.images) && data.images.length ? String(data.images[0]) : undefined;
 }
 
-function firstOutput(data: any): string | undefined {
-    return data?.outputs?.[0] || data?.url || data?.output?.url || data?.images?.[0];
+function failureReason(data: any): string {
+    const e = data?.error;
+    return String((typeof e === 'object' ? e?.message : e) || data?.detail || data?.message || 'unknown error').slice(0, 200);
+}
+
+/** Plain-language messages for the MuAPI errors people actually hit. */
+function muapiErrorMessage(error: any): string {
+    switch (error?.response?.status) {
+        case 401:
+        case 403:
+            return 'MuAPI rejected the API key. Check it in Settings.';
+        case 402:
+            return 'Your MuAPI account is out of credit. Top up at muapi.ai.';
+        case 429:
+            return 'MuAPI is busy right now (rate limited). Try again in a minute.';
+        default:
+            return describeError(error);
+    }
 }
 
 export function describeError(error: any): string {

@@ -8,4 +8,6 @@
 export { SEBastinaEngine, describeError } from './engine.js';
 export type { GenerationConfig, GenerationResult, GenerationMiddleware, EngineOptions } from './engine.js';
 export { SEBastinaClient, GOAT_MODULES } from './client.js';
+export { IMAGE_MODELS, VIDEO_MODELS, DEFAULT_IMAGE_MODEL, DEFAULT_VIDEO_MODEL, findModel, buildPayload } from './models.js';
+export type { ModelSpec, PayloadRequest } from './models.js';
 export type { ClientOptions, GenerateRequest, GoatModuleId } from './client.js';

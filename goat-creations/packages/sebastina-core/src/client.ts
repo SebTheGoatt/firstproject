@@ -19,6 +19,8 @@ export type GoatModuleId = (typeof GOAT_MODULES)[number]['id'];
 export interface GenerateRequest {
     prompt: string;
     isMotion?: boolean;
+    /** MuAPI model endpoint from IMAGE_MODELS / VIDEO_MODELS. */
+    model?: string;
     width?: number;
     height?: number;
     aspectRatio?: string;
@@ -60,6 +62,17 @@ export class SEBastinaClient {
             return { success: false, error: `Server answered ${response.status} without a result.` };
         } catch (error: any) {
             return { success: false, error: `Can't reach the server: ${error?.message ?? error}` };
+        }
+    }
+
+    /** Model endpoints this server allows (empty list if it can't be reached). */
+    async allowedModels(): Promise<string[]> {
+        try {
+            const response = await this.doFetch(`${this.serverUrl}/api/models`);
+            const data = (await response.json()) as { models?: unknown };
+            return Array.isArray(data.models) ? data.models.filter((m): m is string => typeof m === 'string') : [];
+        } catch {
+            return [];
         }
     }
 

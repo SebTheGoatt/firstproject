@@ -6,7 +6,16 @@
  * customer's access token; API keys stay on the SEBastina server.
  */
 import { useEffect, useMemo, useState } from "react";
-import { GOAT_MODULES, SEBastinaClient, type GenerateRequest, type GoatModuleId } from "sebastina-core";
+import {
+  GOAT_MODULES,
+  IMAGE_MODELS,
+  VIDEO_MODELS,
+  DEFAULT_IMAGE_MODEL,
+  DEFAULT_VIDEO_MODEL,
+  SEBastinaClient,
+  type GenerateRequest,
+  type GoatModuleId,
+} from "sebastina-core";
 import "./App.css";
 
 const STORAGE_KEY = "goat-creations.settings";
@@ -46,10 +55,27 @@ export default function App() {
   const [duration, setDuration] = useState(VIDEO_DURATIONS[0]);
   const [status, setStatus] = useState<Status>({ kind: "idle", text: "Ready." });
   const [result, setResult] = useState<{ url: string; isMotion: boolean } | null>(null);
+  const [imageModel, setImageModel] = useState(DEFAULT_IMAGE_MODEL);
+  const [videoModel, setVideoModel] = useState(DEFAULT_VIDEO_MODEL);
+  /** Models the server allows; empty until fetched (then the full catalog shows). */
+  const [serverModels, setServerModels] = useState<string[]>([]);
 
   const module = GOAT_MODULES.find((m) => m.id === moduleId)!;
   const client = useMemo(() => new SEBastinaClient(settings), [settings]);
   const busy = status.kind === "busy";
+  const catalog = module.isMotion ? VIDEO_MODELS : IMAGE_MODELS;
+  const models = serverModels.length ? catalog.filter((m) => serverModels.includes(m.id)) : catalog;
+  const chosen = module.isMotion ? videoModel : imageModel;
+  const setChosen = module.isMotion ? setVideoModel : setImageModel;
+  const model = models.find((m) => m.id === chosen) ?? models[0];
+
+  useEffect(() => {
+    let cancelled = false;
+    client.allowedModels().then((ids) => !cancelled && setServerModels(ids));
+    return () => {
+      cancelled = true;
+    };
+  }, [client]);
 
   useEffect(() => {
     try {
@@ -61,13 +87,13 @@ export default function App() {
 
   async function generate() {
     const request: GenerateRequest = module.isMotion
-      ? { prompt, isMotion: true, aspectRatio: ratio, duration }
-      : { prompt, isMotion: false, width: size.width, height: size.height };
+      ? { prompt, isMotion: true, model: model?.id, aspectRatio: ratio, duration }
+      : { prompt, isMotion: false, model: model?.id, width: size.width, height: size.height };
     setStatus({ kind: "busy", text: module.isMotion ? "Rendering video… this can take a few minutes." : "Generating image…" });
     const outcome = await client.generate(request);
     if (outcome.success && outcome.data) {
       setResult({ url: outcome.data, isMotion: module.isMotion });
-      setStatus({ kind: "ok", text: `${module.name} finished.` });
+      setStatus({ kind: "ok", text: `${module.name} finished with ${model?.name ?? "the default model"}.` });
     } else {
       setStatus({ kind: "error", text: outcome.error ?? "Something went wrong." });
     }
@@ -76,6 +102,7 @@ export default function App() {
   async function testConnection() {
     setStatus({ kind: "busy", text: "Checking the server…" });
     const ok = await client.health();
+    if (ok) setServerModels(await client.allowedModels());
     setStatus(ok ? { kind: "ok", text: "Server reachable." } : { kind: "error", text: `Can't reach ${settings.serverUrl}.` });
   }
 
@@ -136,6 +163,22 @@ export default function App() {
           <section className="card">
             <h2>{module.name}</h2>
             <p className="dim">{module.tagline}</p>
+            <fieldset>
+              <legend>Model</legend>
+              <div className="models">
+                {models.map((m) => (
+                  <button
+                    key={m.id}
+                    className={m.id === model?.id ? "model on" : "model"}
+                    aria-pressed={m.id === model?.id}
+                    onClick={() => setChosen(m.id)}
+                  >
+                    <span className="model-name">{m.name}</span>
+                    <span className="model-note">{m.note}</span>
+                  </button>
+                ))}
+              </div>
+            </fieldset>
             <label>
               Prompt
               <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={6} maxLength={3000} />
