@@ -69,7 +69,7 @@ export class SEBastinaClient {
     /** Model endpoints this server allows (empty list if it can't be reached). */
     async allowedModels(): Promise<string[]> {
         try {
-            const response = await this.doFetch(`${this.serverUrl}/api/models`);
+            const response = await this.doFetch(`${this.serverUrl}/api/models`, { headers: this.token ? { Authorization: `Bearer ${this.token}` } : {} });
             const data = (await response.json()) as { models?: unknown };
             return Array.isArray(data.models) ? data.models.filter((m): m is string => typeof m === 'string') : [];
         } catch {
@@ -80,7 +80,7 @@ export class SEBastinaClient {
     /** Skill ids this server allows (empty list if none or unreachable). */
     async allowedSkills(): Promise<string[]> {
         try {
-            const response = await this.doFetch(`${this.serverUrl}/api/skills`);
+            const response = await this.doFetch(`${this.serverUrl}/api/skills`, { headers: this.token ? { Authorization: `Bearer ${this.token}` } : {} });
             const data = (await response.json()) as { skills?: unknown };
             return Array.isArray(data.skills) ? data.skills.filter((m): m is string => typeof m === 'string') : [];
         } catch {

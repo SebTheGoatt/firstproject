@@ -22,6 +22,10 @@ import {
     DEFAULT_IMAGE_MODEL,
     DEFAULT_VIDEO_MODEL,
     findSkill,
+    SKILLS,
+    CHARACTER_SKILLS,
+    IMAGE_MODELS,
+    VIDEO_MODELS,
     LOCAL_PROFILE_MODELS,
     LagoBilling,
     lagoCreditGate,
@@ -86,6 +90,29 @@ if (billingOn) {
     );
 }
 const tokenSecret = env.SEBASTINA_TOKEN_SECRET || '';
+
+// Owners (comma-separated customer IDs): every model and Skill on this backend,
+// no allowlists, no Lago credits. The SEBastina rules (adult, clothed, no real
+// faces) are built into the engine and apply to owners too.
+const owners = new Set((env.SEBASTINA_OWNERS || '').split(',').map((o) => o.trim()).filter(Boolean));
+const ownerEngine = new SEBastinaEngine({
+    backend,
+    comfyUrl,
+    localProfile,
+    apiBaseUrl: env.AI_BACKEND_URL || 'https://api.muapi.ai',
+    apiKey: env.MUAPI_API_KEY,
+    imageModel,
+    videoModel,
+});
+const engineFor = (customerId: string) => (owners.has(customerId) ? ownerEngine : engine);
+/** Customer ID from a bearer token without replying (for optional auth). */
+function peekCustomer(req: http.IncomingMessage): string | null {
+    if (tokenSecret.length < 32) return null;
+    const bearer = /^Bearer\s+(.+)$/i.exec(req.headers.authorization ?? '')?.[1];
+    return bearer ? verifyCustomerToken(bearer, tokenSecret) : null;
+}
+const ALL_MODELS_FOR_BACKEND = backend === 'comfyui' ? [...LOCAL_PROFILE_MODELS[localProfile]] : [...IMAGE_MODELS, ...VIDEO_MODELS].map((m) => m.id);
+const ALL_SKILLS = [...SKILLS, ...CHARACTER_SKILLS].map((s) => s.id);
 
 // ---------------------------------------------------------------- crawler paywall
 let paywall: Middleware;
@@ -244,7 +271,7 @@ async function handleSkill(req: http.IncomingMessage, res: http.ServerResponse) 
     if (typeof body.characterUrl === 'string' && !characterUrl) {
         return sendJson(res, 400, { success: false, error: 'The character image must come from "Design SEBastina".' }, CORS);
     }
-    const result = await engine.runSkill({ skillId: String(body.skillId ?? ''), inputs, photoUrl, characterUrl, customerId });
+    const result = await engineFor(customerId).runSkill({ skillId: String(body.skillId ?? ''), inputs, photoUrl, characterUrl, customerId });
     sendJson(res, result.success ? 200 : 422, publicResult(req, result), CORS);
 }
 
@@ -288,7 +315,7 @@ async function handleGenerate(req: http.IncomingMessage, res: http.ServerRespons
         resolution: typeof body.resolution === 'string' ? body.resolution : undefined,
         customerId,
     };
-    const result = await engine.generateAsset(config);
+    const result = await engineFor(customerId).generateAsset(config);
     sendJson(res, result.success ? 200 : 422, publicResult(req, result), CORS);
 }
 
@@ -307,9 +334,15 @@ const server = http.createServer(async (req, res) => {
             return res.end();
         }
         if (path === '/health') return sendJson(res, 200, { ok: true, billing: billingOn }, CORS);
-        if (path === '/api/models') return sendJson(res, 200, { models: allowedModels, backend, localProfile }, CORS);
+        if (path === '/api/models') {
+            const owner = owners.has(peekCustomer(req) ?? '');
+            return sendJson(res, 200, { models: owner ? ALL_MODELS_FOR_BACKEND : allowedModels, backend, localProfile, owner }, CORS);
+        }
         if (path === '/api/file') return await handleFile(req, res);
-        if (path === '/api/skills') return sendJson(res, 200, { skills: allowedSkills }, CORS);
+        if (path === '/api/skills') {
+            const owner = owners.has(peekCustomer(req) ?? '');
+            return sendJson(res, 200, { skills: owner ? ALL_SKILLS : allowedSkills, owner }, CORS);
+        }
         if (path === '/api/upload' || path === '/api/skill') {
             if (req.method !== 'POST') return sendJson(res, 405, { error: 'Use POST.' }, CORS);
             return await (path === '/api/upload' ? handleUpload(req, res) : handleSkill(req, res));
