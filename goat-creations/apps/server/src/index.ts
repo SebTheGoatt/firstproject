@@ -40,6 +40,10 @@ import {
 
 const env = process.env;
 const PORT = Number(env.PORT || 8787);
+// HOST=127.0.0.1 keeps the server private behind an HTTPS front door (the cloud setup does this).
+const HOST = env.HOST || undefined;
+// TRUST_PROXY=1: an HTTPS front door (Cloudflare tunnel, Caddy) tells us the public address.
+const trustProxy = env.TRUST_PROXY === '1';
 const DATA_DIR = resolve(fileURLToPath(new URL('../data', import.meta.url)));
 const MAX_BODY_BYTES = 16 * 1024;
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
@@ -81,13 +85,18 @@ const engine = new SEBastinaEngine({
     allowedSkills,
 });
 const billingOn = (env.SEBASTINA_BILLING || 'on').toLowerCase() !== 'off';
-if (billingOn) {
+if (billingOn && env.LAGO_API_KEY) {
     engine.use(
         lagoCreditGate(LagoBilling.fromEnv(env), {
             image: Number(env.CREDITS_PER_IMAGE || 1),
             video: Number(env.CREDITS_PER_VIDEO || 1),
         }),
     );
+} else if (billingOn) {
+    // No Lago key yet (e.g. an owner-only cloud box): start anyway, owners work,
+    // customers are refused instead of generating for free.
+    console.warn('[server] LAGO_API_KEY not set: customer generation is closed until billing is set up (owners unaffected).');
+    engine.use(async () => ({ success: false, error: 'Billing is not set up on this server yet, so customer generation is closed.' }));
 }
 const tokenSecret = env.SEBASTINA_TOKEN_SECRET || '';
 
@@ -148,10 +157,19 @@ function sign(value: string): string {
     return createHmac('sha256', `${tokenSecret}:files`).update(value).digest('base64url');
 }
 
+/** The address the app used to reach us (https when an HTTPS front door says so). */
+function requestOrigin(req: http.IncomingMessage): string {
+    const first = (h: string | string[] | undefined) => (Array.isArray(h) ? h[0] : h)?.split(',')[0].trim();
+    const https = first(req.headers['x-forwarded-proto']) === 'https' || /"scheme":"https"/.test(first(req.headers['cf-visitor']) ?? '');
+    const proto = trustProxy && https ? 'https' : 'http';
+    const host = (trustProxy && first(req.headers['x-forwarded-host'])) || req.headers.host || `127.0.0.1:${PORT}`;
+    return `${proto}://${host}`;
+}
+
 /** ComfyUI /view URL -> public signed link on this server. */
 function publicFile(req: http.IncomingMessage, url: string | undefined): string | undefined {
     if (!url || backend !== 'comfyui' || !url.startsWith(`${comfyUrl}/view?`)) return url;
-    const origin = env.PUBLIC_ORIGIN || `http://${req.headers.host ?? `127.0.0.1:${PORT}`}`;
+    const origin = env.PUBLIC_ORIGIN || requestOrigin(req);
     const ref = Buffer.from(url.slice(comfyUrl.length), 'utf8').toString('base64url');
     return `${origin}/api/file?f=${ref}&s=${sign(ref)}`;
 }
@@ -376,7 +394,7 @@ const server = http.createServer(async (req, res) => {
     }
 });
 
-server.listen(PORT, () => {
-    console.log(`[server] SEBastina listening on http://127.0.0.1:${PORT} (billing ${billingOn ? 'on' : 'OFF'}, backend ${backend === 'comfyui' ? `own computer: ComfyUI ${comfyUrl}, ${localProfile} models` : 'MuAPI'})`);
+server.listen(PORT, HOST, () => {
+    console.log(`[server] SEBastina listening on http://${HOST ?? '0.0.0.0'}:${PORT} (billing ${billingOn ? 'on' : 'OFF'}, backend ${backend === 'comfyui' ? `own computer: ComfyUI ${comfyUrl}, ${localProfile} models` : 'MuAPI'})`);
     console.log(`[server] data assets from ${join(DATA_DIR)}`);
 });

@@ -30,6 +30,7 @@ import {
   type Skill,
   type GenerateRequest,
   type GoatModuleId,
+  checkAddress,
 } from "sebastina-core";
 import "./App.css";
 
@@ -258,13 +259,14 @@ export default function App() {
       const check = await engine.checkKey();
       return setStatus(check.ok ? { kind: "ok", text: `Connected to your render node (${check.device}). No limits, no charges.` } : { kind: "error", text: check.error ?? "Render node not reachable." });
     }
+    const address = checkAddress(settings.serverUrl);
+    if (address.issue) return setStatus({ kind: "error", text: address.issue });
     setStatus({ kind: "busy", text: "Checking the server…" });
-    const ok = await client.health();
-    if (ok) {
-      setServerModels(await client.allowedModels());
-      setServerSkills(await client.allowedSkills());
-    }
-    setStatus(ok ? { kind: "ok", text: "Server reachable." } : { kind: "error", text: `Can't reach ${settings.serverUrl}.` });
+    if (!(await client.health())) return setStatus({ kind: "error", text: `Can't reach ${settings.serverUrl}.` });
+    const access = await client.access();
+    setServerModels(access.models);
+    setServerSkills(access.skills);
+    setStatus({ kind: "ok", text: access.owner ? "Connected as owner: every model and Skill unlocked." : `Connected: ${access.models.length} models, ${access.skills.length} Skills.` });
   }
 
   return (

@@ -21,6 +21,8 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
   monorepo: `packages/sebastina-core` (shared AI pipeline, Lago credits, x402 AI-crawler paywall) used by
   `apps/server`, `apps/desktop-tauri`, `apps/mobile-expo`, `apps/cli`, and the Python ComfyUI pack `apps/comfyui-goat`
   (catalog generated from core: `npm run catalog`); the Rust/egui editor is `apps/desktop-egui`.
+  Phone-only use on mobile data = GOAT Cloud (`apps/cloud-node/setup.sh` on a rented GPU: ComfyUI + server on
+  127.0.0.1, HTTPS front door via Cloudflare quick tunnel or Caddy `--domain`); the apps refuse http:// internet addresses.
   Its own README covers it; `cd goat-creations && npm install && npm test`. Post One's rules don't apply there.
   Its crawler paywall must never go on the Post One site, which welcomes AI search crawlers on purpose (GEO).
 

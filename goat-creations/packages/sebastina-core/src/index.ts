@@ -7,7 +7,7 @@
  */
 export { SEBastinaEngine, describeError, hubSupports } from './engine.js';
 export type { GenerationConfig, GenerationResult, GenerationMiddleware, EngineOptions, SkillRequest, UploadInput } from './engine.js';
-export { SEBastinaClient, GOAT_MODULES } from './client.js';
+export { SEBastinaClient, GOAT_MODULES, checkAddress } from './client.js';
 export {
     IMAGE_MODELS,
     VIDEO_MODELS,
@@ -24,7 +24,7 @@ export { LOCAL_IMAGE_MODELS, LOCAL_VIDEO_MODELS, LOCAL_FILES, LOCAL_PROFILE_MODE
 export type { LocalProfile } from './local.js';
 export { SKILLS, CHARACTER_SKILLS, findSkill, renderPrompt, skillOutput, skillCredits, contentIssue } from './skills.js';
 export type { Skill, SkillField, SkillStep } from './skills.js';
-export type { ClientOptions, GenerateRequest, GoatModuleId } from './client.js';
+export type { ClientOptions, GenerateRequest, GoatModuleId, AddressCheck, AddressReach } from './client.js';
 export {
     GOATAIEngineHub,
     createGOATAIEngineHub,

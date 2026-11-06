@@ -34,6 +34,8 @@ goat-creations/
     ├── desktop-tauri/         Tauri 2 + React + TypeScript (Windows / macOS / Linux)
     ├── mobile-expo/           Expo SDK 58 (iOS / Android)
     ├── comfyui-goat/          ComfyUI node pack (Python): every Skill and tool as a node
+    ├── render-node/           one-command ComfyUI + GOAT pack + open models
+    ├── cloud-node/            GOAT Cloud: render node + server + HTTPS on a rented GPU (phone on mobile data)
     ├── cli/                   terminal studio for the owner
     └── desktop-egui/          the Rust/egui VectorGOAT editor
 ```
@@ -150,13 +152,46 @@ It is safe to re-run. The SEBastina server uses this render node by default
 5. Phone: **Settings → My computer**, enter `http://<computer's IP>:8188`, pick Light or Full, **Save and test**.
 
 ComfyUI has no login: keep it on your home network. To use it away from home,
-put both devices on a private network such as Tailscale; never open port 8188 to
-the internet. For customers, run the SEBastina server with `SEBASTINA_BACKEND=comfyui`:
+put both devices on a private network such as Tailscale (or use GOAT Cloud, below);
+never open port 8188 to the internet. For customers, run the SEBastina server with `SEBASTINA_BACKEND=comfyui`:
 it keeps ComfyUI private and hands out signed file links.
 
 The workflows use ComfyUI's built-in nodes, plus the GOAT pack's own
 "GOAT Remove Background (local)" node. `npm run check-workflows -- object_info.json`
 (in `packages/sebastina-core`) checks every one against a ComfyUI's node definitions.
+
+## Phone only, on mobile data (GOAT Cloud)
+
+A phone can't run these models itself, so something with a GPU has to do the work.
+GOAT Cloud puts our own render node and SEBastina server on a rented GPU server, so
+the phone works anywhere, Wi-Fi or mobile data, with no home computer turned on.
+
+1. Rent a Linux GPU server (any provider; 8 GB GPU for Light, 24 GB+ for Full or Pro),
+   clone this repo on it, then run:
+   ```bash
+   goat-creations/apps/cloud-node/setup.sh            # Light; add --full or --pro for more models
+   ```
+   It installs everything, starts it, and prints an `https://….trycloudflare.com` address.
+   For a permanent address, point a domain at the server, open ports 80 and 443, and add
+   `--domain goat.example.com` (free Let's Encrypt certificate through Caddy).
+2. On that server, show your owner token: `cat ~/goat-cloud/owner-token.txt`.
+3. Phone: **Settings → GOAT Cloud**, enter the address and the token, **Save and test**.
+   It says "Connected as owner" with every model and Skill unlocked.
+
+What stays private: ComfyUI and the server listen on 127.0.0.1 only; the HTTPS front door
+is the only thing facing the internet, and every result comes back as a signed https link.
+The apps refuse plain `http://` internet addresses, so the token never travels unencrypted.
+Restart after a reboot with `~/goat-cloud/start.sh` (the free Cloudflare address changes
+each time; a `--domain` address doesn't). A rented GPU bills by the hour: stop the server
+when you're not creating.
+
+Other ways that work on mobile data:
+- **Hugging Face** or **MuAPI** modes: hosted models billed to your own account, nothing to set up.
+- **My computer over Tailscale**: install Tailscale on the phone and your GPU computer, then
+  use the computer's `100.x` address in **My computer**. The app warns when it sees a home
+  Wi-Fi address while you're on mobile data.
+
+On mobile data the phone doesn't auto-play result videos (tap play), to save data.
 
 ## Skills and photo tools
 

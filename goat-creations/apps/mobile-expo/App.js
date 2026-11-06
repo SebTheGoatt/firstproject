@@ -1,11 +1,12 @@
 /**
  * GOAT CREATIONS mobile studio (Expo).
  *
- * Two ways to connect, both through `sebastina-core` (the same pipeline as desktop):
- * - "My MuAPI key": the phone calls MuAPI directly with the owner's own key.
+ * Ways to connect, all through `sebastina-core` (the same pipeline as desktop):
+ * - "GOAT Cloud": our SEBastina server + render node on a rented GPU, reached over
+ *   https, so the phone works on mobile data alone (apps/cloud-node/setup.sh).
+ * - "My computer": your own ComfyUI on the same Wi-Fi (or over Tailscale).
+ * - "Hugging Face" / "MuAPI": hosted models billed to your own account.
  *   For your personal phone only: never ship a build with a key inside it.
- * - "GOAT server": the phone sends a customer access token to the SEBastina
- *   server, which holds the keys and checks Lago credits.
  * Keys and tokens live in the device's secure storage (Android Keystore / iOS Keychain).
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -31,6 +32,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { File, Paths } from 'expo-file-system';
+import * as Network from 'expo-network';
 import {
   GOAT_MODULES,
   SEBastinaClient,
@@ -50,6 +52,7 @@ import {
   createGOATAIEngineHub,
   contentIssue,
   skillOutput,
+  checkAddress,
 } from 'sebastina-core';
 
 const C = {
@@ -78,11 +81,12 @@ const HF_KEY = 'goat_hf_token';
 const HF_IMAGE_MODELS = [{ id: 'hf-flux-schnell', name: 'FLUX.1 Schnell', note: 'On Hugging Face' }];
 const HF_VIDEO_MODELS = [{ id: 'hf-wan21', name: 'Wan 2.1', note: 'On Hugging Face · minutes per clip' }];
 // Our own first: your render node, or your GOAT server. Paid hosted services are optional.
+// `anywhere`: works on mobile data with no home computer on.
 const MODES = [
-  { id: 'local', label: 'My computer' },
-  { id: 'server', label: 'GOAT server' },
-  { id: 'direct', label: 'MuAPI (paid)' },
-  { id: 'hf', label: 'Hugging Face (paid)' },
+  { id: 'server', label: 'GOAT Cloud', anywhere: true },
+  { id: 'local', label: 'My computer', anywhere: false },
+  { id: 'hf', label: 'Hugging Face (paid)', anywhere: true },
+  { id: 'direct', label: 'MuAPI (paid)', anywhere: true },
 ];
 const PROFILES = [
   { id: 'light', label: 'Light', note: 'SD 1.5, upscale, cut-out · 8 GB GPU' },
@@ -97,8 +101,8 @@ const TABS = [
 ];
 // Photos are re-saved before upload: strips hidden metadata (GPS location) and caps size.
 const MAX_PHOTO_PX = 2048;
-// On a phone, 127.0.0.1 is the phone itself: use your computer's network address.
-const DEFAULT_SERVER = 'http://192.168.1.10:8787';
+// Filled in from what apps/cloud-node/setup.sh prints (an https:// address).
+const DEFAULT_SERVER = '';
 
 export default function App() {
   return (
@@ -112,7 +116,7 @@ function Studio() {
   const insets = useSafeAreaInsets();
   const [serverUrl, setServerUrl] = useState(DEFAULT_SERVER);
   const [token, setToken] = useState('');
-  const [mode, setMode] = useState('local');
+  const [mode, setMode] = useState('server');
   const [muapiKey, setMuapiKey] = useState('');
   // "My computer": your own ComfyUI with the GOAT pack (open models, no API, no cost).
   const [comfyUrl, setComfyUrl] = useState('http://192.168.1.20:8188');
@@ -126,6 +130,10 @@ function Studio() {
   // SEBastina's saved look: { url } of the reference portrait made by "Design SEBastina".
   const [character, setCharacter] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
+  // Mobile data: say which connections work away from home, and don't auto-play videos.
+  const network = Network.useNetworkState();
+  const onCellular = network.type === Network.NetworkStateType.CELLULAR;
   const [moduleId, setModuleId] = useState('image');
   const [prompt, setPrompt] = useState('A majestic goat climbing a high-tech neon mountain, cinematic');
   const [status, setStatus] = useState({ kind: 'idle', text: 'Ready.' });
@@ -209,7 +217,7 @@ function Studio() {
         if (savedToken) setToken(savedToken);
         if (savedMode) setMode(savedMode);
         if (savedKey) setMuapiKey(savedKey);
-        const m = savedMode || 'local';
+        const m = savedMode || 'server';
         const ready = m === 'direct' ? !!savedKey : m === 'local' ? !!savedComfy : m === 'hf' ? !!savedHf : !!savedToken;
         if (!ready) {
           setShowSettings(true);
@@ -251,8 +259,13 @@ function Studio() {
       return;
     }
     if (mode === 'local') {
-      if (!/^https?:\/\/\S+$/.test(comfyUrl.trim())) {
-        setStatus({ kind: 'error', text: 'Enter your computer\'s address, like http://192.168.1.20:8188' });
+      const address = checkAddress(comfyUrl);
+      if (address.issue) {
+        setStatus({ kind: 'error', text: address.issue });
+        return;
+      }
+      if (onCellular && address.reach === 'wifi') {
+        setStatus({ kind: 'error', text: "You're on mobile data, and that's a home Wi-Fi address. Use GOAT Cloud, or put Tailscale on the phone and computer and use the computer's 100.x address." });
         return;
       }
       setStatus({ kind: 'busy', text: 'Looking for ComfyUI on your computer…' });
@@ -261,7 +274,7 @@ function Studio() {
         setStatus({ kind: 'ok', text: `Connected to your computer (${check.device}). No API, no cost.` });
         setShowSettings(false);
       } else {
-        setStatus({ kind: 'error', text: `${check.error} Same Wi-Fi? ComfyUI started with --listen?` });
+        setStatus({ kind: 'error', text: address.reach === 'wifi' ? `${check.error} Same Wi-Fi? ComfyUI started with --listen?` : `${check.error} Is the computer on and Tailscale connected?` });
       }
       return;
     }
@@ -281,14 +294,28 @@ function Studio() {
       }
       return;
     }
-    setStatus({ kind: 'busy', text: 'Checking the server…' });
-    const ok = await client.health();
-    if (ok) {
-      setServerModels(await client.allowedModels());
-      setServerSkills(await client.allowedSkills());
+    const address = checkAddress(serverUrl);
+    if (address.issue) {
+      setStatus({ kind: 'error', text: address.issue });
+      return;
     }
-    setStatus(ok ? { kind: 'ok', text: 'Saved. Server reachable.' } : { kind: 'error', text: `Saved, but can't reach ${serverUrl}.` });
-    if (ok) setShowSettings(false);
+    if (!token.trim()) {
+      setStatus({ kind: 'error', text: 'Enter the access token too (on the cloud server: cat ~/goat-cloud/owner-token.txt).' });
+      return;
+    }
+    setStatus({ kind: 'busy', text: 'Checking GOAT Cloud…' });
+    const ok = await client.health();
+    if (!ok) {
+      setStatus({ kind: 'error', text: `Can't reach ${serverUrl.trim()}. Is the cloud server running? (The free Cloudflare address changes each time start.sh runs.)` });
+      return;
+    }
+    const access = await client.access();
+    setServerModels(access.models);
+    setServerSkills(access.skills);
+    setIsOwner(access.owner);
+    const where = address.reach === 'wifi' ? ' (home Wi-Fi only)' : ' Works on Wi-Fi and mobile data.';
+    setStatus({ kind: 'ok', text: access.owner ? `Connected as owner: every model and Skill unlocked.${where}` : `Connected: ${access.models.length} models, ${access.skills.length} Skills.${where}` });
+    setShowSettings(false);
   }
 
   /** True when a key (or server token) is set; otherwise opens Settings and says what to do. */
@@ -422,6 +449,11 @@ function Studio() {
         {showSettings && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Connection</Text>
+            {onCellular && (
+              <Text style={styles.notice} accessibilityLiveRegion="polite">
+                You're on mobile data. GOAT Cloud, Hugging Face and MuAPI work anywhere. My computer needs the same Wi-Fi, or Tailscale.
+              </Text>
+            )}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={styles.tabs} accessibilityRole="radiogroup">
               {MODES.map((m) => {
                 const active = m.id === mode;
@@ -438,6 +470,9 @@ function Studio() {
                 );
               })}
             </ScrollView>
+            <Text style={styles.chipNote}>
+              {MODES.find((m) => m.id === mode)?.anywhere ? 'Works anywhere: Wi-Fi or mobile data.' : 'Works on your home Wi-Fi (or anywhere over Tailscale).'}
+            </Text>
             {mode === 'local' ? (
               <>
                 <Text style={styles.label}>Your computer's ComfyUI address</Text>
@@ -470,7 +505,7 @@ function Studio() {
                   })}
                 </View>
                 <Text style={styles.dim}>
-                  {PROFILES.find((p) => p.id === localProfile).note}. Runs on your own GPU with open models: no key, no per-image cost. Set the computer up once with goat-creations/apps/render-node/setup.sh (Windows: setup.ps1); phone and computer on the same Wi-Fi.
+                  {PROFILES.find((p) => p.id === localProfile).note}. Runs on your own GPU with open models: no key, no per-image cost. Set the computer up once with goat-creations/apps/render-node/setup.sh (Windows: setup.ps1). Away from home: Tailscale on both, then the computer's 100.x address.
                 </Text>
               </>
             ) : mode === 'hf' ? (
@@ -507,7 +542,7 @@ function Studio() {
               </>
             ) : (
               <>
-                <Text style={styles.label}>Server address</Text>
+                <Text style={styles.label}>GOAT Cloud address</Text>
                 <TextInput
                   style={styles.input}
                   value={serverUrl}
@@ -515,6 +550,7 @@ function Studio() {
                   autoCapitalize="none"
                   autoCorrect={false}
                   keyboardType="url"
+                  placeholder="https://….trycloudflare.com"
                   placeholderTextColor={C.dim}
                 />
                 <Text style={styles.label}>Access token</Text>
@@ -525,9 +561,12 @@ function Studio() {
                   autoCapitalize="none"
                   autoCorrect={false}
                   secureTextEntry
-                  placeholder="From your GOAT CREATIONS account"
+                  placeholder="From the cloud setup (owner-token.txt)"
                   placeholderTextColor={C.dim}
                 />
+                <Text style={styles.dim}>
+                  Our own server and open models on a rented GPU, so this phone works on mobile data alone. Set it up once with goat-creations/apps/cloud-node/setup.sh; it prints this address and token. Kept in this phone's secure storage.{isOwner ? ' Owner access: everything unlocked.' : ''}
+                </Text>
               </>
             )}
             <Button label="Save and test" onPress={saveSettings} disabled={busy} variant="secondary" />
@@ -646,7 +685,7 @@ function Studio() {
             <ActivityIndicator color={C.gold} size="large" accessibilityLabel="Working" />
           ) : result ? (
             result.isMotion ? (
-              <ResultVideo key={result.url} url={result.url} label={result.label} />
+              <ResultVideo key={result.url} autoPlay={!onCellular} url={result.url} label={result.label} />
             ) : (
               <Image
                 source={{ uri: result.url }}
@@ -701,10 +740,11 @@ async function saveVideo(url) {
 }
 
 /** Inline, looping player for any result video (file, LAN ComfyUI, or CDN URL). */
-function ResultVideo({ url, label }) {
+function ResultVideo({ url, label, autoPlay = true }) {
+  // On mobile data the clip waits for a tap on play (saves data on long loops).
   const player = useVideoPlayer(url, (p) => {
     p.loop = true;
-    p.play();
+    if (autoPlay) p.play();
   });
   return (
     <View style={{ width: '100%', gap: 8 }}>
@@ -911,6 +951,7 @@ const styles = StyleSheet.create({
   cardTitle: { color: C.gold, fontWeight: '700', fontSize: 16 },
   label: { color: C.dim, fontSize: 12, marginTop: 4 },
   dim: { color: C.dim, fontSize: 12 },
+  notice: { color: C.gold, backgroundColor: C.goldSoft, borderRadius: 8, padding: 10, fontSize: 12 },
   input: {
     color: C.text, backgroundColor: C.inset, borderColor: C.border, borderWidth: 1,
     borderRadius: 8, paddingHorizontal: 10, paddingVertical: 10, fontSize: 15,

@@ -16,6 +16,51 @@ export const GOAT_MODULES = [
 
 export type GoatModuleId = (typeof GOAT_MODULES)[number]['id'];
 
+/**
+ * Where an address can be reached from:
+ * - `wifi`     a home/office network address: only works on that same Wi-Fi
+ * - `tailnet`  a private Tailscale-style network: works anywhere, mobile data included
+ * - `internet` a public address: works anywhere, mobile data included
+ */
+export type AddressReach = 'wifi' | 'tailnet' | 'internet';
+
+export interface AddressCheck {
+    reach?: AddressReach;
+    /** Set when the address must not be used; a plain sentence for the settings screen. */
+    issue?: string;
+}
+
+function ipv4(host: string): number[] | null {
+    const parts = host.split('.');
+    if (parts.length !== 4 || !parts.every((p) => /^\d{1,3}$/.test(p))) return null;
+    const n = parts.map(Number);
+    return n.every((x) => x <= 255) ? n : null;
+}
+
+/** Check a server or render-node address before saving it (no network needed). */
+export function checkAddress(address: string): AddressCheck {
+    let url: URL;
+    try {
+        url = new URL(address.trim());
+    } catch {
+        return { issue: 'That address is not valid. It should look like https://your-server.example.com' };
+    }
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return { issue: 'The address must start with https:// (or http:// on your own Wi-Fi).' };
+    const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+    const ip = ipv4(host);
+    let reach: AddressReach = 'internet';
+    if (host.endsWith('.ts.net') || (ip && ip[0] === 100 && ip[1] >= 64 && ip[1] <= 127)) reach = 'tailnet';
+    else if (
+        host === 'localhost' || host.endsWith('.local') || host.endsWith('.lan') || host === '::1' || /^f[cd]/.test(host) || /^fe80:/.test(host) ||
+        (ip && (ip[0] === 10 || ip[0] === 127 || (ip[0] === 192 && ip[1] === 168) || (ip[0] === 172 && ip[1] >= 16 && ip[1] <= 31) || (ip[0] === 169 && ip[1] === 254)))
+    ) reach = 'wifi';
+    // Over the open internet a plain http:// link would carry the access token unencrypted.
+    if (reach === 'internet' && url.protocol === 'http:') {
+        return { reach, issue: 'Internet addresses must use https:// so your access token stays private. Use the https:// address the cloud setup printed.' };
+    }
+    return { reach };
+}
+
 export interface GenerateRequest {
     prompt: string;
     isMotion?: boolean;
@@ -120,6 +165,20 @@ export class SEBastinaClient {
             return { success: false, error: `Server answered ${response.status} without a result.` };
         } catch (error: any) {
             return { success: false, error: `Can't reach the server: ${error?.message ?? error}` };
+        }
+    }
+
+    /** What this token unlocks: models, Skills, and whether it is an owner token. */
+    async access(): Promise<{ models: string[]; skills: string[]; owner: boolean }> {
+        const headers: Record<string, string> = this.token ? { Authorization: `Bearer ${this.token}` } : {};
+        try {
+            const [m, s] = await Promise.all(
+                ['models', 'skills'].map((p) => this.doFetch(`${this.serverUrl}/api/${p}`, { headers }).then((r) => r.json() as Promise<any>)),
+            );
+            const strings = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
+            return { models: strings(m?.models), skills: strings(s?.skills), owner: m?.owner === true };
+        } catch {
+            return { models: [], skills: [], owner: false };
         }
     }
 

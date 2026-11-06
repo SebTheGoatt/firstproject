@@ -7,11 +7,12 @@
 #   ./setup.sh --full          + FLUX.1 Schnell, Qwen-Image-Edit, Wan 2.2 (~66 GB, 24 GB GPU)
 #   ./setup.sh --pro           flagship open models: Z-Image, Qwen-Image, Qwen-Edit 2511, Wan 2.2 14B (~143 GB, 24 GB+ GPU)
 #   ./setup.sh --dir ~/goat --port 8188 --no-start
+#   ./setup.sh --private       only this machine can reach it (used by the cloud setup)
 set -euo pipefail
 
 COMFY_REPO="https://github.com/comfyanonymous/ComfyUI"
 COMFY_COMMIT="2f89433"   # the version the GOAT workflows were checked against
-DIR="$HOME/goat-render-node"; PORT=8188; FULL=""; START=1
+DIR="$HOME/goat-render-node"; PORT=8188; FULL=""; START=1; LISTEN=0.0.0.0
 while [ $# -gt 0 ]; do
   case "$1" in
     --dir) DIR="$2"; shift 2 ;;
@@ -19,7 +20,8 @@ while [ $# -gt 0 ]; do
     --full) FULL="--full"; shift ;;
     --pro) FULL="--pro"; shift ;;
     --no-start) START=0; shift ;;
-    -h|--help) sed -n '2,10p' "$0"; exit 0 ;;
+    --private) LISTEN=127.0.0.1; shift ;;
+    -h|--help) sed -n '2,11p' "$0"; exit 0 ;;
     *) echo "Unknown option: $1"; exit 1 ;;
   esac
 done
@@ -64,8 +66,12 @@ say "Open models ${FULL:+(full)}"
 IP="$(hostname -I 2>/dev/null | awk '{print $1}')"; [ -n "$IP" ] || IP="<this computer's IP>"
 say "Ready"
 SETUP=Light; [ "$FULL" = "--full" ] && SETUP=Full; [ "$FULL" = "--pro" ] && SETUP=Pro
-echo "In the GOAT CREATIONS app: Settings > My computer > http://$IP:$PORT > $SETUP > Save and test"
-echo "Keep this on your home network (no login). Away from home, use a private network such as Tailscale."
-[ "$START" = 1 ] || { echo "Start later with: cd $DIR/ComfyUI && $VPY main.py --listen 0.0.0.0 --port $PORT"; exit 0; }
+if [ "$LISTEN" = 127.0.0.1 ]; then
+  echo "Private render node on http://127.0.0.1:$PORT ($SETUP models). Only the SEBastina server on this machine can reach it."
+else
+  echo "In the GOAT CREATIONS app: Settings > My computer > http://$IP:$PORT > $SETUP > Save and test"
+  echo "Keep this on your home network (no login). On mobile data, use GOAT Cloud or Tailscale (see the README)."
+fi
+[ "$START" = 1 ] || { echo "Start later with: cd $DIR/ComfyUI && $VPY main.py --listen $LISTEN --port $PORT"; exit 0; }
 EXTRA=(); [ "$GPU" = 1 ] || EXTRA=(--cpu)
-cd ComfyUI && exec "$VPY" main.py --listen 0.0.0.0 --port "$PORT" --enable-cors-header "*" "${EXTRA[@]}"
+cd ComfyUI && exec "$VPY" main.py --listen "$LISTEN" --port "$PORT" --enable-cors-header "*" "${EXTRA[@]}"
