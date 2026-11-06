@@ -6,7 +6,7 @@
  * and read them). Uses only `fetch`, so it runs in browsers, Tauri webviews,
  * React Native and Node alike.
  */
-import type { GenerationResult, SkillRequest, UploadInput } from './engine.js';
+import { appendFile, type GenerationResult, type SkillRequest, type UploadInput } from './engine.js';
 
 /** The suite's generation modules, shared so every app labels them the same way. */
 export const GOAT_MODULES = [
@@ -91,11 +91,7 @@ export class SEBastinaClient {
     /** Upload a photo through the server; resolves to its public URL. Throws with a readable message. */
     async uploadImage(file: UploadInput, fileName = 'photo.jpg'): Promise<string> {
         const form = new FormData();
-        if (typeof Blob !== 'undefined' && file instanceof Blob) form.append('file', file, fileName);
-        else {
-            const rn = file as { uri: string; name?: string; type?: string };
-            form.append('file', { uri: rn.uri, name: rn.name ?? fileName, type: rn.type ?? 'image/jpeg' } as any);
-        }
+        await appendFile(form, 'file', file, fileName);
         let response: Response;
         try {
             response = await this.doFetch(`${this.serverUrl}/api/upload`, {

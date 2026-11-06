@@ -22,6 +22,18 @@ GOAT CREATIONS' Skills, photo tools and model catalog as ComfyUI nodes, running 
 | **GOAT Photo · Upscale** | photo → bigger, sharper photo |
 | **GOAT Photo · Remove Background** | photo → cut-out subject |
 | **GOAT Save Video** | downloads a `video_url` into ComfyUI's output folder |
+| **GOAT Remove Background (local)** | cut-out on *this* computer with BiRefNet (MIT): no key, no cost |
+
+## Run GOAT CREATIONS on this computer (no API)
+
+The GOAT apps can use this ComfyUI as their engine ("My computer" in the phone app):
+
+```bash
+pip install -r custom_nodes/comfyui-goat/requirements.txt     # onnxruntime-gpu on NVIDIA
+python custom_nodes/comfyui-goat/download_models.py            # Light: ~2.3 GB
+python custom_nodes/comfyui-goat/download_models.py --full     # Full: ~66 GB, 24 GB GPU
+python main.py --listen 0.0.0.0
+```
 
 Image nodes output an `IMAGE` (wire it to Save Image / Preview Image) and the URL;
 video nodes output `video_url` (wire it to GOAT Save Video).

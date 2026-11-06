@@ -20,6 +20,8 @@ export {
     buildPayload,
 } from './models.js';
 export type { ModelSpec, ModelTask, PayloadRequest } from './models.js';
+export { LOCAL_IMAGE_MODELS, LOCAL_VIDEO_MODELS, LOCAL_FILES, localSupports } from './local.js';
+export type { LocalProfile } from './local.js';
 export { SKILLS, CHARACTER_SKILLS, findSkill, renderPrompt, skillOutput, skillCredits, contentIssue } from './skills.js';
 export type { Skill, SkillField, SkillStep } from './skills.js';
 export type { ClientOptions, GenerateRequest, GoatModuleId } from './client.js';

@@ -16,6 +16,7 @@ import http from 'node:http';
 import { join, normalize, resolve, sep } from 'node:path';
 import { promises as fs } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import {
     SEBastinaEngine,
     DEFAULT_IMAGE_MODEL,
@@ -43,7 +44,12 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 // are offered (pricier ones like Veo or Kling cost more per generation at MuAPI).
 const imageModel = env.SEBASTINA_IMAGE_MODEL || DEFAULT_IMAGE_MODEL;
 const videoModel = env.SEBASTINA_VIDEO_MODEL || DEFAULT_VIDEO_MODEL;
-const allowedModels = (env.SEBASTINA_SERVER_MODELS || `${imageModel},${videoModel}`)
+// "muapi" (hosted, default) or "comfyui" (your own GPU computer, open models, no API).
+const backend = (env.SEBASTINA_BACKEND || 'muapi').toLowerCase() === 'comfyui' ? 'comfyui' : 'muapi';
+const localProfile = (env.SEBASTINA_LOCAL_PROFILE || 'light').toLowerCase() === 'full' ? 'full' : 'light';
+const comfyUrl = (env.COMFYUI_URL || 'http://127.0.0.1:8188').replace(/\/+$/, '');
+const localDefaults = localProfile === 'full' ? 'local-flux-schnell,local-sd15,local-wan22' : 'local-sd15';
+const allowedModels = (env.SEBASTINA_SERVER_MODELS || (backend === 'comfyui' ? localDefaults : `${imageModel},${videoModel}`))
     .split(',')
     .map((m) => m.trim())
     .filter(Boolean);
@@ -57,6 +63,9 @@ const allowedSkills = (env.SEBASTINA_SERVER_SKILLS || '')
         return !!id && !!findSkill(id);
     });
 const engine = new SEBastinaEngine({
+    backend,
+    comfyUrl,
+    localProfile,
     apiBaseUrl: env.AI_BACKEND_URL || 'https://api.muapi.ai',
     apiKey: env.MUAPI_API_KEY,
     imageModel,
@@ -99,6 +108,57 @@ function sendJson(res: http.ServerResponse, status: number, body: unknown, heade
     const text = JSON.stringify(body);
     res.writeHead(status, { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(text), ...headers });
     res.end(text);
+}
+
+// ---------------------------------------------------------------- own-computer files
+// ComfyUI stays private (not exposed to the internet). Its files reach the apps
+// through /api/file links signed with the token secret, so names can't be guessed.
+
+function sign(value: string): string {
+    return createHmac('sha256', `${tokenSecret}:files`).update(value).digest('base64url');
+}
+
+/** ComfyUI /view URL -> public signed link on this server. */
+function publicFile(req: http.IncomingMessage, url: string | undefined): string | undefined {
+    if (!url || backend !== 'comfyui' || !url.startsWith(`${comfyUrl}/view?`)) return url;
+    const origin = env.PUBLIC_ORIGIN || `http://${req.headers.host ?? `127.0.0.1:${PORT}`}`;
+    const ref = Buffer.from(url.slice(comfyUrl.length), 'utf8').toString('base64url');
+    return `${origin}/api/file?f=${ref}&s=${sign(ref)}`;
+}
+
+/** Signed link from a client -> ComfyUI /view URL, or null if it isn't one of ours. */
+function privateFile(link: unknown): string | null {
+    if (typeof link !== 'string') return null;
+    try {
+        const u = new URL(link);
+        if (u.pathname !== '/api/file') return null;
+        const ref = u.searchParams.get('f') ?? '';
+        const given = Buffer.from(u.searchParams.get('s') ?? '');
+        const expected = Buffer.from(sign(ref));
+        if (!ref || given.length !== expected.length || !timingSafeEqual(given, expected)) return null;
+        const url = `${comfyUrl}${Buffer.from(ref, 'base64url').toString('utf8')}`;
+        return engine.isOwnFile(url) ? url : null;
+    } catch {
+        return null;
+    }
+}
+
+function publicResult(req: http.IncomingMessage, result: any) {
+    return { ...result, data: publicFile(req, result.data), outputs: result.outputs?.map((o: string) => publicFile(req, o)) };
+}
+
+async function handleFile(req: http.IncomingMessage, res: http.ServerResponse) {
+    const url = privateFile(`http://x${req.url ?? ''}`);
+    if (!url) return sendJson(res, 404, { error: 'Not found.' });
+    const upstream = await fetch(url);
+    if (!upstream.ok || !upstream.body) return sendJson(res, 502, { error: 'File unavailable.' });
+    res.writeHead(200, {
+        'Content-Type': upstream.headers.get('content-type') ?? 'application/octet-stream',
+        'Cache-Control': 'private, max-age=86400',
+        ...CORS,
+    });
+    for await (const chunk of upstream.body as any) res.write(chunk);
+    res.end();
 }
 
 async function readBody(req: http.IncomingMessage, limit: number): Promise<Buffer> {
@@ -149,7 +209,7 @@ async function handleUpload(req: http.IncomingMessage, res: http.ServerResponse)
     if (!file || !IMAGE_TYPES.has(file.type)) return sendJson(res, 400, { error: 'Only JPEG, PNG, WebP or HEIC photos.' }, CORS);
     try {
         const url = await engine.uploadImage(file, file.name || 'photo.jpg');
-        sendJson(res, 200, { url }, CORS);
+        sendJson(res, 200, { url: publicFile(req, url) }, CORS);
     } catch (error: any) {
         sendJson(res, 502, { error: error.message || 'Upload failed.' }, CORS);
     }
@@ -168,18 +228,21 @@ async function handleSkill(req: http.IncomingMessage, res: http.ServerResponse) 
     if (body.inputs && typeof body.inputs === 'object') {
         for (const [k, v] of Object.entries(body.inputs)) if (typeof v === 'string') inputs[k] = v.slice(0, 600);
     }
-    // Photos must come from MuAPI's own file host (i.e. from /api/upload), not arbitrary URLs.
-    const photoUrl = typeof body.photoUrl === 'string' && /^https:\/\/[a-z0-9.-]*muapi\.ai\//i.test(body.photoUrl) ? body.photoUrl : undefined;
+    // Photos must be our own files (from /api/upload or an earlier result), never arbitrary URLs.
+    const ownFile = (link: unknown) =>
+        backend === 'comfyui'
+            ? privateFile(link) ?? undefined
+            : typeof link === 'string' && /^https:\/\/[a-z0-9.-]*muapi\.ai\//i.test(link) ? link : undefined;
+    const photoUrl = ownFile(body.photoUrl);
     if (typeof body.photoUrl === 'string' && !photoUrl) {
         return sendJson(res, 400, { success: false, error: 'Upload the photo through this server first.' }, CORS);
     }
-    const characterUrl =
-        typeof body.characterUrl === 'string' && /^https:\/\/[a-z0-9.-]*muapi\.ai\//i.test(body.characterUrl) ? body.characterUrl : undefined;
+    const characterUrl = ownFile(body.characterUrl);
     if (typeof body.characterUrl === 'string' && !characterUrl) {
         return sendJson(res, 400, { success: false, error: 'The character image must come from "Design SEBastina".' }, CORS);
     }
     const result = await engine.runSkill({ skillId: String(body.skillId ?? ''), inputs, photoUrl, characterUrl, customerId });
-    sendJson(res, result.success ? 200 : 422, result, CORS);
+    sendJson(res, result.success ? 200 : 422, publicResult(req, result), CORS);
 }
 
 /** Resolve /data/<name> inside DATA_DIR only (no ../ escapes). */
@@ -223,7 +286,7 @@ async function handleGenerate(req: http.IncomingMessage, res: http.ServerRespons
         customerId,
     };
     const result = await engine.generateAsset(config);
-    sendJson(res, result.success ? 200 : 422, result, CORS);
+    sendJson(res, result.success ? 200 : 422, publicResult(req, result), CORS);
 }
 
 const LANDING = `<!doctype html><meta charset="utf-8"><title>GOAT CREATIONS</title>
@@ -241,7 +304,8 @@ const server = http.createServer(async (req, res) => {
             return res.end();
         }
         if (path === '/health') return sendJson(res, 200, { ok: true, billing: billingOn }, CORS);
-        if (path === '/api/models') return sendJson(res, 200, { models: allowedModels }, CORS);
+        if (path === '/api/models') return sendJson(res, 200, { models: allowedModels, backend, localProfile }, CORS);
+        if (path === '/api/file') return await handleFile(req, res);
         if (path === '/api/skills') return sendJson(res, 200, { skills: allowedSkills }, CORS);
         if (path === '/api/upload' || path === '/api/skill') {
             if (req.method !== 'POST') return sendJson(res, 405, { error: 'Use POST.' }, CORS);
@@ -277,6 +341,6 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-    console.log(`[server] SEBastina listening on http://127.0.0.1:${PORT} (billing ${billingOn ? 'on' : 'OFF'})`);
+    console.log(`[server] SEBastina listening on http://127.0.0.1:${PORT} (billing ${billingOn ? 'on' : 'OFF'}, backend ${backend === 'comfyui' ? `own computer: ComfyUI ${comfyUrl}, ${localProfile} models` : 'MuAPI'})`);
     console.log(`[server] data assets from ${join(DATA_DIR)}`);
 });

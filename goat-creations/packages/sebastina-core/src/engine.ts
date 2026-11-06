@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { buildPayload, findModel, isVideoModel, DEFAULT_IMAGE_MODEL, DEFAULT_VIDEO_MODEL, type PayloadRequest } from './models.js';
 import { contentIssue, findSkill, renderPrompt, skillOutput } from './skills.js';
+import { loadImageRef, LOCAL_IMAGE_MODELS, LOCAL_VIDEO_MODELS, viewUrl, workflowFor, type LocalProfile } from './local.js';
 
 /**
  * SEBastina talks to MuAPI (api.muapi.ai), the generation API behind the
@@ -70,6 +71,12 @@ export type GenerationMiddleware = (
 ) => Promise<GenerationResult>;
 
 export interface EngineOptions {
+    /** "muapi" (hosted API, default) or "comfyui" (your own computer running ComfyUI). */
+    backend?: 'muapi' | 'comfyui';
+    /** ComfyUI address for backend "comfyui", e.g. http://192.168.1.20:8188. */
+    comfyUrl?: string;
+    /** Which open models your ComfyUI has: "light" (SD 1.5) or "full" (FLUX, Qwen edit, Wan video). */
+    localProfile?: LocalProfile;
     apiBaseUrl?: string;
     apiKey?: string;
     imageModel?: string;
@@ -94,6 +101,9 @@ export class SEBastinaEngine {
     private readonly pollIntervalMs: number;
     private readonly allowedModels?: readonly string[];
     private readonly allowedSkills?: readonly string[];
+    private readonly backend: 'muapi' | 'comfyui';
+    private readonly comfyUrl: string;
+    private readonly localProfile: LocalProfile;
     private readonly middlewares: GenerationMiddleware[] = [];
 
     constructor(options: EngineOptions = {}) {
@@ -104,6 +114,9 @@ export class SEBastinaEngine {
         this.pollIntervalMs = options.pollIntervalMs ?? 2000;
         this.allowedModels = options.allowedModels;
         this.allowedSkills = options.allowedSkills;
+        this.backend = options.backend ?? 'muapi';
+        this.comfyUrl = (options.comfyUrl ?? '').trim().replace(/\/+$/, '');
+        this.localProfile = options.localProfile ?? 'light';
     }
 
     /** Add a middleware; they run in the order added, before generation. */
@@ -157,7 +170,8 @@ export class SEBastinaEngine {
         };
 
         return this.throughMiddleware(config, async () => {
-            if (!this.apiKey) return { success: false, error: NO_KEY };
+            if (this.backend === 'muapi' && !this.apiKey) return { success: false, error: NO_KEY };
+            if (this.backend === 'comfyui' && !this.comfyUrl) return { success: false, error: NO_COMFY };
             const outputs: string[] = [];
             for (const [i, step] of skill.steps.entries()) {
                 const spec = findModel(step.model);
@@ -188,15 +202,10 @@ export class SEBastinaEngine {
      * Uses fetch + FormData so it works in browsers, React Native and Node.
      */
     async uploadImage(file: UploadInput, fileName = 'photo.jpg'): Promise<string> {
+        if (this.backend === 'comfyui') return this.uploadToComfy(file, fileName);
         if (!this.apiKey) throw new Error(NO_KEY);
         const form = new FormData();
-        if (typeof Blob !== 'undefined' && file instanceof Blob) {
-            form.append('file', file, fileName);
-        } else {
-            const rn = file as { uri: string; name?: string; type?: string };
-            // React Native's FormData accepts { uri, name, type } for local files.
-            form.append('file', { uri: rn.uri, name: rn.name ?? fileName, type: rn.type ?? 'image/jpeg' } as any);
-        }
+        await appendFile(form, 'file', file, fileName);
         const response = await fetch(`${this.apiBaseUrl}/api/v1/upload_file`, {
             method: 'POST',
             headers: { 'x-api-key': this.apiKey },
@@ -210,7 +219,8 @@ export class SEBastinaEngine {
     }
 
     /** Check the MuAPI key for free (account balance). Never throws. */
-    async checkKey(): Promise<{ ok: boolean; balance?: number; error?: string }> {
+    async checkKey(): Promise<{ ok: boolean; balance?: number; error?: string; device?: string }> {
+        if (this.backend === 'comfyui') return this.checkComfy();
         if (!this.apiKey) return { ok: false, error: NO_KEY };
         try {
             const response = await fetch(`${this.apiBaseUrl}/api/v1/account/balance`, {
@@ -223,6 +233,93 @@ export class SEBastinaEngine {
         } catch (error: any) {
             return { ok: false, error: `Can't reach MuAPI: ${error?.message ?? error}` };
         }
+    }
+
+    // ------------------------------------------------------------ own computer (ComfyUI)
+
+    /** Is ComfyUI reachable, and on what device? */
+    private async checkComfy(): Promise<{ ok: boolean; error?: string; device?: string }> {
+        if (!this.comfyUrl) return { ok: false, error: NO_COMFY };
+        try {
+            const response = await fetch(`${this.comfyUrl}/system_stats`);
+            if (!response.ok) return { ok: false, error: `ComfyUI answered ${response.status}.` };
+            const data: any = await response.json();
+            const device = data?.devices?.[0];
+            const gpu = device ? `${device.name ?? device.type}${device.vram_total ? `, ${Math.round(device.vram_total / 1e9)} GB` : ''}` : 'unknown device';
+            return { ok: true, device: gpu };
+        } catch (error: any) {
+            return { ok: false, error: `Can't reach ComfyUI at ${this.comfyUrl}: ${error?.message ?? error}` };
+        }
+    }
+
+    private async uploadToComfy(file: UploadInput, fileName: string): Promise<string> {
+        if (!this.comfyUrl) throw new Error(NO_COMFY);
+        const form = new FormData();
+        await appendFile(form, 'image', file, fileName);
+        form.append('subfolder', 'goat');
+        const response = await fetch(`${this.comfyUrl}/upload/image`, { method: 'POST', body: form });
+        const data: any = await response.json().catch(() => ({}));
+        if (!response.ok || !data?.name) throw new Error(`ComfyUI upload failed (${response.status}).`);
+        return viewUrl(this.comfyUrl, { filename: data.name, subfolder: data.subfolder ?? 'goat', type: data.type ?? 'input' });
+    }
+
+    /** One step on your own ComfyUI: build the workflow, queue it, wait, return the file URL. */
+    private async runLocal(modelId: string, isVideo: boolean, request: PayloadRequest): Promise<GenerationResult> {
+        const spec = findModel(modelId) ?? [...LOCAL_IMAGE_MODELS, ...LOCAL_VIDEO_MODELS].find((m) => m.id === modelId);
+        const task = spec?.task ?? (isVideo ? 't2v' : 't2i');
+        let image: string | undefined;
+        if (request.imageUrl) {
+            const ref = loadImageRef(request.imageUrl, this.comfyUrl);
+            if (!ref) return { success: false, error: 'That picture is not on your ComfyUI. Upload it again.' };
+            image = ref;
+        }
+        let workflow;
+        try {
+            workflow = workflowFor(task, modelId, request, this.localProfile, image);
+        } catch (error: any) {
+            return { success: false, error: error?.message ?? String(error) };
+        }
+        try {
+            const queued = await fetch(`${this.comfyUrl}/prompt`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: workflow, client_id: 'goat-creations' }),
+            });
+            const q: any = await queued.json().catch(() => ({}));
+            if (!queued.ok || !q?.prompt_id) {
+                const nodeError = Object.values(q?.node_errors ?? {})[0] as any;
+                const detail = nodeError?.errors?.[0]?.details || nodeError?.errors?.[0]?.message || q?.error?.message;
+                return { success: false, error: `Your ComfyUI refused the job${detail ? `: ${detail}` : ''}. Check the GOAT models are installed.` };
+            }
+            console.log(`[SEBastina] Local ${task} on ComfyUI (${q.prompt_id})`);
+            const limit = Date.now() + (task === 't2v' || task === 'i2v' ? 60 : 15) * 60_000;
+            while (Date.now() < limit) {
+                await sleep(Math.max(250, this.pollIntervalMs / 2));
+                const historyResponse = await fetch(`${this.comfyUrl}/history/${q.prompt_id}`);
+                const history: any = await historyResponse.json().catch(() => ({}));
+                const job = history?.[q.prompt_id];
+                if (!job) continue;
+                const status = job.status?.status_str;
+                if (status === 'error') {
+                    const message = job.status?.messages?.find((m: any) => m[0] === 'execution_error')?.[1]?.exception_message;
+                    return { success: false, error: `Generation failed on your computer: ${String(message ?? 'unknown error').slice(0, 200)}` };
+                }
+                if (!job.status?.completed) continue;
+                for (const out of Object.values(job.outputs ?? {}) as any[]) {
+                    const file = out?.images?.[0] ?? out?.gifs?.[0] ?? out?.videos?.[0];
+                    if (file?.filename) return { success: true, data: viewUrl(this.comfyUrl, file) };
+                }
+                return { success: false, error: 'Your ComfyUI finished without a file.' };
+            }
+            return { success: false, error: 'Your computer is taking too long. It may still be working: check ComfyUI.' };
+        } catch (error: any) {
+            return { success: false, error: `Can't reach ComfyUI at ${this.comfyUrl}: ${error?.message ?? error}` };
+        }
+    }
+
+    /** True if `url` is a file on this engine's ComfyUI (used by the server to accept photos). */
+    isOwnFile(url: string): boolean {
+        return this.backend === 'comfyui' && !!loadImageRef(url, this.comfyUrl);
     }
 
     private async throughMiddleware(config: GenerationConfig, handler: () => Promise<GenerationResult>): Promise<GenerationResult> {
@@ -238,6 +335,7 @@ export class SEBastinaEngine {
     /** One model call: build its payload, submit, wait. Never throws. */
     private async runModel(endpoint: string, isVideo: boolean, request: PayloadRequest): Promise<GenerationResult> {
         if (!/^[A-Za-z0-9._-]+$/.test(endpoint)) return { success: false, error: 'Invalid model name.' };
+        if (this.backend === 'comfyui') return this.runLocal(endpoint, isVideo, request);
         let payload: Record<string, unknown>;
         try {
             payload = buildPayload(endpoint, isVideo ? 'video' : 'image', request);
@@ -253,6 +351,12 @@ export class SEBastinaEngine {
 
     /** Submit the job to MuAPI and wait for the finished asset. */
     private async runPipeline(config: GenerationConfig): Promise<GenerationResult> {
+        if (this.backend === 'comfyui') {
+            if (!this.comfyUrl) return { success: false, error: NO_COMFY };
+            const fallback = config.isMotion ? LOCAL_VIDEO_MODELS[0].id : this.localProfile === 'full' ? 'local-flux-schnell' : 'local-sd15';
+            const endpoint = config.model && config.model.startsWith('local-') ? config.model : fallback;
+            return this.runModel(endpoint, !!config.isMotion, config);
+        }
         if (!this.apiKey) {
             return { success: false, error: NO_KEY };
         }
@@ -309,6 +413,27 @@ export class SEBastinaEngine {
         return { success: false, error: `Generation timed out. Request ID: ${requestId}` };
     }
 }
+
+/**
+ * Put a picture into FormData. Blobs go in as-is; React Native's { uri } objects
+ * go in as-is on phones; browser blob:/data: links (web preview, desktop) are read
+ * into a Blob first, because a browser can't send a { uri } object.
+ */
+export async function appendFile(form: FormData, field: string, file: UploadInput, fileName: string): Promise<void> {
+    if (typeof Blob !== 'undefined' && file instanceof Blob) {
+        form.append(field, file, fileName);
+        return;
+    }
+    const rn = file as { uri: string; name?: string; type?: string };
+    if (/^(blob|data):/.test(rn.uri) && typeof Blob !== 'undefined' && typeof document !== 'undefined') {
+        const blob = await (await fetch(rn.uri)).blob();
+        form.append(field, blob, rn.name ?? fileName);
+        return;
+    }
+    form.append(field, { uri: rn.uri, name: rn.name ?? fileName, type: rn.type ?? 'image/jpeg' } as any);
+}
+
+const NO_COMFY = 'No computer connected yet. Open Settings, choose "My computer", enter its ComfyUI address and tap Save.';
 
 /** The result URL, wherever MuAPI put it (shapes seen in MuAPI's own clients). */
 function firstOutput(data: any): string | undefined {

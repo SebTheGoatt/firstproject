@@ -20,8 +20,9 @@
   ],
   "scripts": {
     "build": "tsc",
-    "test": "tsc && node test/models.test.mjs && node test/skills.test.mjs && node test/engine.test.mjs && node test/credit-gate.test.mjs && node test/paywall.test.mjs && node test/auth.test.mjs && node scripts/export-catalog.mjs --check",
-    "catalog": "tsc && node scripts/export-catalog.mjs"
+    "test": "tsc && node test/models.test.mjs && node test/skills.test.mjs && node test/local.test.mjs && node test/engine.test.mjs && node test/credit-gate.test.mjs && node test/paywall.test.mjs && node test/auth.test.mjs && node scripts/export-catalog.mjs --check",
+    "catalog": "tsc && node scripts/export-catalog.mjs",
+    "check-workflows": "tsc && node scripts/check-workflows.mjs"
   },
   "dependencies": {
     "axios": "^1.7.0",

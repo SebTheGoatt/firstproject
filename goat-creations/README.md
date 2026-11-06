@@ -11,6 +11,7 @@ Minimalist, dark, fast, and built for developers who make things.
 | **Skills** | One-tap recipes: YouTube Thumbnail, Instagram Post, Ad Creative, Logo, Blog Header, Drone Shot Video, Action Figure, Product Ad Video | desktop, mobile, ComfyUI |
 | **Photo tools** | Animate Photo, Edit with Words, Upscale, Remove Background | desktop, mobile, ComfyUI |
 | **SEBastina** | An original, consistent character: design her once, then Post / Thumbnail / Video | mobile |
+| **Own computer** | Everything above on your own GPU with open models (ComfyUI), no API | mobile, desktop, server |
 
 ## Layout (npm workspaces + Turborepo)
 
@@ -93,6 +94,34 @@ secure storage (Keychain / Keystore).
 ```bash
 cd apps/desktop-egui && cargo run
 ```
+
+## Run it on your own computer (no API, no per-image cost)
+
+GOAT can run entirely on your own GPU with open-weight models, through
+[ComfyUI](https://github.com/comfyanonymous/ComfyUI) and the GOAT pack. The phone,
+desktop app and server talk to ComfyUI's API instead of MuAPI.
+
+| Setup | Models (license) | Download | GPU | What works |
+| --- | --- | --- | --- | --- |
+| **Light** | Stable Diffusion 1.5 (OpenRAIL-M), Real-ESRGAN (BSD-3), BiRefNet (MIT) | ~2.3 GB | 8 GB (or CPU, slowly) | text→image, image Skills, Design SEBastina, upscale, remove background |
+| **Full** | + FLUX.1 Schnell, Qwen-Image-Edit 2509, Wan 2.2 TI2V 5B (all Apache-2.0) | ~66 GB | 24 GB | everything: photo edits, SEBastina scenes, Product Ad Video, video |
+
+1. Install ComfyUI on the computer with the graphics card.
+2. Copy `apps/comfyui-goat` into `ComfyUI/custom_nodes/`, then
+   `pip install -r custom_nodes/comfyui-goat/requirements.txt` (use `onnxruntime-gpu` on NVIDIA).
+3. From the ComfyUI folder: `python custom_nodes/comfyui-goat/download_models.py` (add `--full` for the Full setup).
+4. Start ComfyUI so the phone can reach it: `python main.py --listen 0.0.0.0`
+   (add `--enable-cors-header` for the desktop app).
+5. Phone: **Settings → My computer**, enter `http://<computer's IP>:8188`, pick Light or Full, **Save and test**.
+
+ComfyUI has no login: keep it on your home network. To use it away from home,
+put both devices on a private network such as Tailscale; never open port 8188 to
+the internet. For customers, run the SEBastina server with `SEBASTINA_BACKEND=comfyui`:
+it keeps ComfyUI private and hands out signed file links.
+
+The workflows use ComfyUI's built-in nodes, plus the GOAT pack's own
+"GOAT Remove Background (local)" node. `npm run check-workflows -- object_info.json`
+(in `packages/sebastina-core`) checks every one against a ComfyUI's node definitions.
 
 ## Skills and photo tools
 

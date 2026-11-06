@@ -37,6 +37,10 @@ import {
   DEFAULT_VIDEO_MODEL,
   SKILLS,
   CHARACTER_SKILLS,
+  LOCAL_IMAGE_MODELS,
+  LOCAL_VIDEO_MODELS,
+  localSupports,
+  findModel,
   contentIssue,
   skillOutput,
 } from 'sebastina-core';
@@ -60,9 +64,16 @@ const TOKEN_KEY = 'goat_access_token';
 const MODE_KEY = 'goat_mode';
 const MUAPI_KEY = 'goat_muapi_key';
 const CHARACTER_KEY = 'goat_character';
+const COMFY_KEY = 'goat_comfy_url';
+const PROFILE_KEY = 'goat_local_profile';
 const MODES = [
-  { id: 'direct', label: 'My MuAPI key' },
+  { id: 'local', label: 'My computer' },
+  { id: 'direct', label: 'MuAPI key' },
   { id: 'server', label: 'GOAT server' },
+];
+const PROFILES = [
+  { id: 'light', label: 'Light', note: 'SD 1.5, upscale, cut-out · 8 GB GPU' },
+  { id: 'full', label: 'Full', note: '+ FLUX, photo edits, SEBastina scenes, video · 24 GB GPU' },
 ];
 const TABS = [
   ...GOAT_MODULES.map((m) => ({ id: m.id, label: m.name })),
@@ -87,8 +98,11 @@ function Studio() {
   const insets = useSafeAreaInsets();
   const [serverUrl, setServerUrl] = useState(DEFAULT_SERVER);
   const [token, setToken] = useState('');
-  const [mode, setMode] = useState('direct');
+  const [mode, setMode] = useState('local');
   const [muapiKey, setMuapiKey] = useState('');
+  // "My computer": your own ComfyUI with the GOAT pack (open models, no API, no cost).
+  const [comfyUrl, setComfyUrl] = useState('http://192.168.1.20:8188');
+  const [localProfile, setLocalProfile] = useState('light');
   const [imageModel, setImageModel] = useState(DEFAULT_IMAGE_MODEL);
   const [videoModel, setVideoModel] = useState(DEFAULT_VIDEO_MODEL);
   // In server mode, only the models the server allows (null = not fetched yet).
@@ -115,16 +129,30 @@ function Studio() {
   const module = GOAT_MODULES.find((m) => m.id === moduleId);
   const tabLabel = TABS.find((t) => t.id === moduleId)?.label ?? '';
   const client = useMemo(() => new SEBastinaClient({ serverUrl, token }), [serverUrl, token]);
-  const engine = useMemo(() => new SEBastinaEngine({ apiKey: muapiKey.trim() }), [muapiKey]);
+  const engine = useMemo(
+    () =>
+      mode === 'local'
+        ? new SEBastinaEngine({ backend: 'comfyui', comfyUrl: comfyUrl.trim(), localProfile })
+        : new SEBastinaEngine({ apiKey: muapiKey.trim() }),
+    [mode, comfyUrl, localProfile, muapiKey],
+  );
+  // On your computer, only offer what its models can do.
+  const runsHere = (skill) =>
+    mode !== 'local' || skill.steps.every((step) => localSupports(localProfile, findModel(step.model)?.task ?? 't2i'));
   const busy = status.kind === 'busy';
-  const catalog = module?.isMotion ? VIDEO_MODELS : IMAGE_MODELS;
+  const catalog =
+    mode === 'local'
+      ? module?.isMotion
+        ? localProfile === 'full' ? LOCAL_VIDEO_MODELS : []
+        : LOCAL_IMAGE_MODELS.filter((m) => localProfile === 'full' || m.id === 'local-sd15')
+      : module?.isMotion ? VIDEO_MODELS : IMAGE_MODELS;
   const models = mode === 'server' && serverModels?.length ? catalog.filter((m) => serverModels.includes(m.id)) : catalog;
   const chosenModel = module?.isMotion ? videoModel : imageModel;
   const setChosenModel = module?.isMotion ? setVideoModel : setImageModel;
   const category = moduleId === 'photo' ? 'photo' : moduleId === 'sebastina' ? 'character' : 'create';
   const catalogSkills = category === 'character' ? CHARACTER_SKILLS.filter((s) => (character ? s.needsCharacter : !s.needsCharacter)) : SKILLS;
   const skills = catalogSkills.filter(
-    (s) => s.category === category && (mode !== 'server' || (serverSkills ?? []).includes(s.id)),
+    (s) => s.category === category && runsHere(s) && (mode !== 'server' || (serverSkills ?? []).includes(s.id)),
   );
   const model = models.find((m) => m.id === chosenModel) ?? models[0];
 
@@ -132,6 +160,12 @@ function Studio() {
   useEffect(() => {
     (async () => {
       try {
+        const [savedComfy, savedProfile] = await Promise.all([
+          SecureStore.getItemAsync(COMFY_KEY),
+          SecureStore.getItemAsync(PROFILE_KEY),
+        ]);
+        if (savedComfy) setComfyUrl(savedComfy);
+        if (savedProfile === 'full' || savedProfile === 'light') setLocalProfile(savedProfile);
         const [savedUrl, savedToken, savedMode, savedKey, savedCharacter] = await Promise.all([
           SecureStore.getItemAsync(SERVER_KEY),
           SecureStore.getItemAsync(TOKEN_KEY),
@@ -150,15 +184,16 @@ function Studio() {
         if (savedToken) setToken(savedToken);
         if (savedMode) setMode(savedMode);
         if (savedKey) setMuapiKey(savedKey);
-        const ready = (savedMode || 'direct') === 'direct' ? !!savedKey : !!savedToken;
+        const m = savedMode || 'local';
+        const ready = m === 'direct' ? !!savedKey : m === 'local' ? !!savedComfy : !!savedToken;
         if (!ready) {
           setShowSettings(true);
-          setStatus({ kind: 'idle', text: 'Step 1: paste your MuAPI key above and tap Save.' });
+          setStatus({ kind: 'idle', text: 'Step 1: choose how to connect above, then tap Save.' });
         }
       } catch {
         // Secure storage unavailable (e.g. web preview): start at Settings.
         setShowSettings(true);
-        setStatus({ kind: 'idle', text: 'Step 1: paste your MuAPI key above and tap Save.' });
+        setStatus({ kind: 'idle', text: 'Step 1: choose how to connect above, then tap Save.' });
       }
     })();
   }, []);
@@ -169,8 +204,25 @@ function Studio() {
       await SecureStore.setItemAsync(SERVER_KEY, serverUrl.trim());
       await SecureStore.setItemAsync(TOKEN_KEY, token.trim());
       await SecureStore.setItemAsync(MUAPI_KEY, muapiKey.trim());
+      await SecureStore.setItemAsync(COMFY_KEY, comfyUrl.trim());
+      await SecureStore.setItemAsync(PROFILE_KEY, localProfile);
     } catch {
       /* not available on this platform: settings last until the app closes */
+    }
+    if (mode === 'local') {
+      if (!/^https?:\/\/\S+$/.test(comfyUrl.trim())) {
+        setStatus({ kind: 'error', text: 'Enter your computer\'s address, like http://192.168.1.20:8188' });
+        return;
+      }
+      setStatus({ kind: 'busy', text: 'Looking for ComfyUI on your computer…' });
+      const check = await engine.checkKey();
+      if (check.ok) {
+        setStatus({ kind: 'ok', text: `Connected to your computer (${check.device}). No API, no cost.` });
+        setShowSettings(false);
+      } else {
+        setStatus({ kind: 'error', text: `${check.error} Same Wi-Fi? ComfyUI started with --listen?` });
+      }
+      return;
     }
     if (mode === 'direct') {
       if (!muapiKey.trim()) {
@@ -200,12 +252,15 @@ function Studio() {
 
   /** True when a key (or server token) is set; otherwise opens Settings and says what to do. */
   function ready() {
-    const ok = mode === 'direct' ? !!muapiKey.trim() : !!token.trim();
+    const ok = mode === 'direct' ? !!muapiKey.trim() : mode === 'local' ? !!comfyUrl.trim() : !!token.trim();
     if (!ok) {
       setShowSettings(true);
       setStatus({
         kind: 'error',
-        text: mode === 'direct' ? 'First paste your MuAPI key in Settings (top of the screen) and tap Save.' : 'First paste your access token in Settings and tap Save.',
+        text:
+          mode === 'direct' ? 'First paste your MuAPI key in Settings (top of the screen) and tap Save.'
+          : mode === 'local' ? "First enter your computer's ComfyUI address in Settings and tap Save."
+          : 'First paste your access token in Settings and tap Save.',
       });
     }
     return ok;
@@ -233,7 +288,11 @@ function Studio() {
       module.isMotion
         ? { prompt, isMotion: true, model: model?.id, aspectRatio: '9:16', duration: 5 }
         : { prompt, isMotion: false, model: model?.id, width: 768, height: 1344 };
-    const outcome = mode === 'direct' ? await engine.generateAsset(request) : await client.generate(request);
+    if (!model) {
+      setStatus({ kind: 'error', text: 'Video on your computer needs the Full setup (Wan 2.2). Switch it in Settings.' });
+      return;
+    }
+    const outcome = mode !== 'server' ? await engine.generateAsset(request) : await client.generate(request);
     if (outcome.success && outcome.data) {
       setResult({ url: outcome.data, isMotion: module.isMotion, label: module.name });
       setStatus({ kind: 'ok', text: `${module.name} finished with ${model?.name ?? 'the default model'}.` });
@@ -261,7 +320,7 @@ function Studio() {
         }
         setStatus({ kind: 'busy', text: 'Uploading photo…' });
         const file = { uri: photo.uri, name: 'photo.jpg', type: 'image/jpeg' };
-        photoUrl = mode === 'direct' ? await engine.uploadImage(file) : await client.uploadImage(file);
+        photoUrl = mode !== 'server' ? await engine.uploadImage(file) : await client.uploadImage(file);
       }
     } catch (error) {
       setStatus({ kind: 'error', text: error?.message || 'Upload failed.' });
@@ -271,7 +330,7 @@ function Studio() {
     const steps = skill.steps.length > 1 ? ` (${skill.steps.length} steps)` : '';
     setStatus({ kind: 'busy', text: `Running ${skill.name}${steps}…${isVideo ? ' Videos can take a few minutes.' : ''}` });
     const request = { skillId: skill.id, inputs, photoUrl, characterUrl: character?.url };
-    const outcome = mode === 'direct' ? await engine.runSkill(request) : await client.runSkill(request);
+    const outcome = mode !== 'server' ? await engine.runSkill(request) : await client.runSkill(request);
     if (outcome.success && outcome.data) {
       setResult({ url: outcome.data, isMotion: outcome.kind === 'video', label: skill.name, skillId: skill.id });
       setStatus({ kind: 'ok', text: `${skill.name} finished.` });
@@ -318,7 +377,42 @@ function Studio() {
                 );
               })}
             </View>
-            {mode === 'direct' ? (
+            {mode === 'local' ? (
+              <>
+                <Text style={styles.label}>Your computer's ComfyUI address</Text>
+                <TextInput
+                  style={styles.input}
+                  value={comfyUrl}
+                  onChangeText={setComfyUrl}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                  placeholder="http://192.168.1.20:8188"
+                  placeholderTextColor={C.dim}
+                />
+                <Text style={styles.label}>Models installed</Text>
+                <View style={styles.tabs} accessibilityRole="radiogroup">
+                  {PROFILES.map((p) => {
+                    const active = p.id === localProfile;
+                    return (
+                      <Pressable
+                        key={p.id}
+                        onPress={() => setLocalProfile(p.id)}
+                        style={[styles.tab, { flex: 1 }, active && styles.tabActive]}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: active }}
+                        accessibilityLabel={`${p.label}: ${p.note}`}
+                      >
+                        <Text style={[styles.tabText, active && styles.tabTextActive]}>{p.label}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <Text style={styles.dim}>
+                  {PROFILES.find((p) => p.id === localProfile).note}. Runs on your own GPU with open models: no key, no per-image cost. Phone and computer on the same Wi-Fi; start ComfyUI with --listen.
+                </Text>
+              </>
+            ) : mode === 'direct' ? (
               <>
                 <Text style={styles.label}>MuAPI key</Text>
                 <TextInput
@@ -358,7 +452,7 @@ function Studio() {
                 />
               </>
             )}
-            <Button label={mode === 'direct' ? 'Save' : 'Save and test'} onPress={saveSettings} disabled={busy} variant="secondary" />
+            <Button label="Save and test" onPress={saveSettings} disabled={busy} variant="secondary" />
           </View>
         )}
 

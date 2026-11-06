@@ -177,10 +177,75 @@ class GOATSaveVideo:
         return {"ui": {"text": [os.path.basename(path)]}, "result": (path,)}
 
 
+# ---------------------------------------------------------------- local (no API)
+
+class GOATRemoveBackgroundLocal:
+    """Cut out the subject on your own machine with BiRefNet lite (MIT), via onnxruntime."""
+
+    MODEL_FILE = "birefnet_lite_fp16.onnx"
+    _session = None
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"image": ("IMAGE",)}}
+
+    RETURN_TYPES = ("IMAGE", "MASK")
+    RETURN_NAMES = ("cutout", "mask")
+    FUNCTION = "run"
+    CATEGORY = CATEGORY + "/Local (no API)"
+    DESCRIPTION = "Background removal on this computer: no key, no cost. Needs models/goat/birefnet_lite_fp16.onnx (download_models.py)."
+
+    @classmethod
+    def _load(cls):
+        if cls._session is None:
+            import folder_paths
+            import onnxruntime as ort
+
+            path = os.path.join(folder_paths.models_dir, "goat", cls.MODEL_FILE)
+            if not os.path.isfile(path):
+                raise RuntimeError(f"Missing {path}. Run: python custom_nodes/comfyui-goat/download_models.py")
+            providers = [p for p in ("CUDAExecutionProvider", "CPUExecutionProvider") if p in ort.get_available_providers()]
+            cls._session = ort.InferenceSession(path, providers=providers)
+        return cls._session
+
+    def run(self, image):
+        import numpy as np
+        import torch
+        from PIL import Image
+
+        session = self._load()
+        inp = session.get_inputs()[0]
+        dtype = np.float16 if "float16" in inp.type else np.float32
+        cutouts, masks = [], []
+        for frame in image:  # each [H, W, C] in 0..1
+            rgb = (frame[..., :3].cpu().numpy() * 255).astype(np.uint8)
+            h, w = rgb.shape[:2]
+            small = np.asarray(Image.fromarray(rgb).resize((1024, 1024), Image.BILINEAR), dtype=np.float32) / 255.0
+            small = (small - [0.485, 0.456, 0.406]) / [0.229, 0.224, 0.225]
+            x = small.transpose(2, 0, 1)[None].astype(dtype)
+            logits = session.run(None, {inp.name: x})[-1].astype(np.float32)
+            prob = 1.0 / (1.0 + np.exp(-logits[0, 0]))
+            mask = np.asarray(Image.fromarray((prob * 255).astype(np.uint8)).resize((w, h), Image.BILINEAR), dtype=np.float32) / 255.0
+            rgba = np.concatenate([frame[..., :3].cpu().numpy(), mask[..., None]], axis=-1)
+            cutouts.append(torch.from_numpy(rgba.astype(np.float32)))
+            masks.append(torch.from_numpy(mask))
+        return (torch.stack(cutouts), torch.stack(masks))
+
+
 # ---------------------------------------------------------------- registration
 
-NODE_CLASS_MAPPINGS = {"GOATImage": GOATImage, "GOATVideo": GOATVideo, "GOATSaveVideo": GOATSaveVideo}
-NODE_DISPLAY_NAME_MAPPINGS = {"GOATImage": "GOAT Image", "GOATVideo": "GOAT Video", "GOATSaveVideo": "GOAT Save Video"}
+NODE_CLASS_MAPPINGS = {
+    "GOATImage": GOATImage,
+    "GOATVideo": GOATVideo,
+    "GOATSaveVideo": GOATSaveVideo,
+    "GOATRemoveBackgroundLocal": GOATRemoveBackgroundLocal,
+}
+NODE_DISPLAY_NAME_MAPPINGS = {
+    "GOATImage": "GOAT Image",
+    "GOATVideo": "GOAT Video",
+    "GOATSaveVideo": "GOAT Save Video",
+    "GOATRemoveBackgroundLocal": "GOAT Remove Background (local)",
+}
 for _skill in core.CATALOG["skills"]:
     _cls, _title = _skill_node(_skill)
     NODE_CLASS_MAPPINGS[_cls.__name__] = _cls
