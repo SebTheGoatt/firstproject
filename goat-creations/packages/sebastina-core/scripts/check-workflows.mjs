@@ -4,7 +4,7 @@
 // (samplers, schedulers, codecs, encoder types) must use an allowed value.
 // Model file names are not checked (they depend on what's downloaded).
 import { readFileSync } from 'node:fs';
-import { t2iWorkflow, editWorkflow, videoWorkflow, upscaleWorkflow, removeBackgroundWorkflow } from '../dist/local.js';
+import { t2iWorkflow, editWorkflow, videoWorkflow, upscaleWorkflow, removeBackgroundWorkflow, zImageWorkflow, qwenImageWorkflow, qwenEdit2511Workflow, wan14bWorkflow } from '../dist/local.js';
 
 const info = JSON.parse(readFileSync(process.argv[2], 'utf8'));
 const req = { prompt: 'a goat', aspectRatio: '9:16', duration: 5 };
@@ -13,6 +13,9 @@ const workflows = {
   't2i SD 1.5': t2iWorkflow(req, false), 't2i FLUX.1 Schnell': t2iWorkflow(req, true), 'edit Qwen': editWorkflow(req, img),
   'text-to-video Wan 2.2': videoWorkflow(req), 'photo-to-video Wan 2.2': videoWorkflow(req, img),
   'upscale Real-ESRGAN': upscaleWorkflow(img), 'remove background BiRefNet': removeBackgroundWorkflow(img),
+  'PRO t2i Z-Image Turbo': zImageWorkflow(req), 'PRO t2i Qwen-Image 2512': qwenImageWorkflow(req),
+  'PRO edit Qwen-Image-Edit 2511': qwenEdit2511Workflow(req, img),
+  'PRO text-to-video Wan 2.2 14B': wan14bWorkflow(req), 'PRO photo-to-video Wan 2.2 14B': wan14bWorkflow(req, img),
 };
 const choices = (spec) => (Array.isArray(spec?.[0]) ? spec[0] : spec?.[0] === 'COMBO' ? spec?.[1]?.options : null);
 let problems = 0;

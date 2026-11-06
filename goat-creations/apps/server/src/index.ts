@@ -22,6 +22,7 @@ import {
     DEFAULT_IMAGE_MODEL,
     DEFAULT_VIDEO_MODEL,
     findSkill,
+    LOCAL_PROFILE_MODELS,
     LagoBilling,
     lagoCreditGate,
     verifyCustomerToken,
@@ -47,9 +48,10 @@ const videoModel = env.SEBASTINA_VIDEO_MODEL || DEFAULT_VIDEO_MODEL;
 // Default: our own render node (ComfyUI + GOAT pack, open models, no API).
 // Paid hosted services are opt-in only: SEBASTINA_BACKEND=muapi.
 const backend = (env.SEBASTINA_BACKEND || 'comfyui').toLowerCase() === 'muapi' ? 'muapi' : 'comfyui';
-const localProfile = (env.SEBASTINA_LOCAL_PROFILE || 'light').toLowerCase() === 'full' ? 'full' : 'light';
+const requestedProfile = (env.SEBASTINA_LOCAL_PROFILE || 'light').toLowerCase();
+const localProfile = requestedProfile === 'pro' ? 'pro' : requestedProfile === 'full' ? 'full' : 'light';
 const comfyUrl = (env.COMFYUI_URL || 'http://127.0.0.1:8188').replace(/\/+$/, '');
-const localDefaults = localProfile === 'full' ? 'local-flux-schnell,local-sd15,local-wan22' : 'local-sd15';
+const localDefaults = LOCAL_PROFILE_MODELS[localProfile].join(',');
 const allowedModels = (env.SEBASTINA_SERVER_MODELS || (backend === 'comfyui' ? localDefaults : `${imageModel},${videoModel}`))
     .split(',')
     .map((m) => m.trim())

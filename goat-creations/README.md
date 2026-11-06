@@ -129,9 +129,15 @@ desktop app and server talk to ComfyUI's API instead of MuAPI.
 | --- | --- | --- | --- | --- |
 | **Light** | Stable Diffusion 1.5 (OpenRAIL-M), Real-ESRGAN (BSD-3), BiRefNet (MIT) | ~2.3 GB | 8 GB (or CPU, slowly) | text→image, image Skills, Design SEBastina, upscale, remove background |
 | **Full** | + FLUX.1 Schnell, Qwen-Image-Edit 2509, Wan 2.2 TI2V 5B (all Apache-2.0) | ~66 GB | 24 GB | everything: photo edits, SEBastina scenes, Product Ad Video, video |
+| **Pro** | Z-Image Turbo (photoreal), Qwen-Image 2512 (lettering), Qwen-Image-Edit 2511, Wan 2.2 14B video, each with its 4-step Lightning LoRA (all Apache-2.0) | ~143 GB | 24 GB+ (32 GB comfortable) | everything, at flagship open-model quality |
+
+Pro follows ComfyUI's official workflow templates for these models; each workflow is checked
+against ComfyUI's node definitions and was accepted by a real ComfyUI's validation. Models with
+licenses that limit commercial use (FLUX.1/2 Dev, Krea 2, Hunyuan, LTX-2, Qwen-Image 2.1) are left out.
+Closed flagships (Veo, Kling, GPT Image, Nano Banana) stay available as optional paid backends via MuAPI.
 
 **One command:** `apps/render-node/setup.sh` (Linux/macOS) or `apps/render-node/setup.ps1`
-(Windows) does steps 1–4 below and starts the node; add `--full` / `-Full` for the Full setup.
+(Windows) does steps 1–4 below and starts the node; add `--full` / `-Full` or `--pro` / `-Pro`.
 It is safe to re-run. The SEBastina server uses this render node by default
 (`SEBASTINA_BACKEND=comfyui`); MuAPI and Hugging Face are optional, paid, and off unless you choose them.
 

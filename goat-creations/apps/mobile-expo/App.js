@@ -43,6 +43,7 @@ import {
   CHARACTER_SKILLS,
   LOCAL_IMAGE_MODELS,
   LOCAL_VIDEO_MODELS,
+  LOCAL_PROFILE_MODELS,
   localSupports,
   findModel,
   hubSupports,
@@ -86,6 +87,7 @@ const MODES = [
 const PROFILES = [
   { id: 'light', label: 'Light', note: 'SD 1.5, upscale, cut-out · 8 GB GPU' },
   { id: 'full', label: 'Full', note: '+ FLUX, photo edits, SEBastina scenes, video · 24 GB GPU' },
+  { id: 'pro', label: 'Pro', note: 'Flagship open models: Z-Image, Qwen-Image, Qwen-Edit 2511, Wan 2.2 14B · 24 GB+ GPU' },
 ];
 const TABS = [
   ...GOAT_MODULES.map((m) => ({ id: m.id, label: m.name })),
@@ -165,9 +167,7 @@ function Studio() {
     mode === 'hf'
       ? module?.isMotion ? HF_VIDEO_MODELS : HF_IMAGE_MODELS
       : mode === 'local'
-      ? module?.isMotion
-        ? localProfile === 'full' ? LOCAL_VIDEO_MODELS : []
-        : LOCAL_IMAGE_MODELS.filter((m) => localProfile === 'full' || m.id === 'local-sd15')
+      ? (module?.isMotion ? LOCAL_VIDEO_MODELS : LOCAL_IMAGE_MODELS).filter((m) => LOCAL_PROFILE_MODELS[localProfile].includes(m.id))
       : module?.isMotion ? VIDEO_MODELS : IMAGE_MODELS;
   const models = mode === 'server' && serverModels?.length ? catalog.filter((m) => serverModels.includes(m.id)) : catalog;
   const chosenModel = module?.isMotion ? videoModel : imageModel;
@@ -190,7 +190,7 @@ function Studio() {
         ]);
         if (savedHf) setHfToken(savedHf);
         if (savedComfy) setComfyUrl(savedComfy);
-        if (savedProfile === 'full' || savedProfile === 'light') setLocalProfile(savedProfile);
+        if (['light', 'full', 'pro'].includes(savedProfile)) setLocalProfile(savedProfile);
         const [savedUrl, savedToken, savedMode, savedKey, savedCharacter] = await Promise.all([
           SecureStore.getItemAsync(SERVER_KEY),
           SecureStore.getItemAsync(TOKEN_KEY),
@@ -349,7 +349,7 @@ function Studio() {
         ? { prompt, isMotion: true, model: model?.id, aspectRatio: '9:16', duration: 5 }
         : { prompt, isMotion: false, model: model?.id, width: 768, height: 1344 };
     if (!model) {
-      setStatus({ kind: 'error', text: 'Video on your computer needs the Full setup (Wan 2.2). Switch it in Settings.' });
+      setStatus({ kind: 'error', text: 'Video on your computer needs the Full or Pro setup (Wan 2.2). Switch it in Settings.' });
       return;
     }
     const outcome = mode !== 'server' ? await engine.generateAsset(request) : await client.generate(request);

@@ -5,6 +5,7 @@
 #
 #   ./setup.sh                 Light models (~2.3 GB), start on port 8188
 #   ./setup.sh --full          + FLUX.1 Schnell, Qwen-Image-Edit, Wan 2.2 (~66 GB, 24 GB GPU)
+#   ./setup.sh --pro           flagship open models: Z-Image, Qwen-Image, Qwen-Edit 2511, Wan 2.2 14B (~143 GB, 24 GB+ GPU)
 #   ./setup.sh --dir ~/goat --port 8188 --no-start
 set -euo pipefail
 
@@ -16,6 +17,7 @@ while [ $# -gt 0 ]; do
     --dir) DIR="$2"; shift 2 ;;
     --port) PORT="$2"; shift 2 ;;
     --full) FULL="--full"; shift ;;
+    --pro) FULL="--pro"; shift ;;
     --no-start) START=0; shift ;;
     -h|--help) sed -n '2,10p' "$0"; exit 0 ;;
     *) echo "Unknown option: $1"; exit 1 ;;
@@ -61,7 +63,8 @@ say "Open models ${FULL:+(full)}"
 
 IP="$(hostname -I 2>/dev/null | awk '{print $1}')"; [ -n "$IP" ] || IP="<this computer's IP>"
 say "Ready"
-echo "In the GOAT CREATIONS app: Settings > My computer > http://$IP:$PORT > ${FULL:+Full}${FULL:-Light} > Save and test"
+SETUP=Light; [ "$FULL" = "--full" ] && SETUP=Full; [ "$FULL" = "--pro" ] && SETUP=Pro
+echo "In the GOAT CREATIONS app: Settings > My computer > http://$IP:$PORT > $SETUP > Save and test"
 echo "Keep this on your home network (no login). Away from home, use a private network such as Tailscale."
 [ "$START" = 1 ] || { echo "Start later with: cd $DIR/ComfyUI && $VPY main.py --listen 0.0.0.0 --port $PORT"; exit 0; }
 EXTRA=(); [ "$GPU" = 1 ] || EXTRA=(--cpu)

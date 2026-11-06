@@ -2,7 +2,7 @@ import axios from 'axios';
 import { buildPayload, findModel, isVideoModel, DEFAULT_IMAGE_MODEL, DEFAULT_VIDEO_MODEL, type PayloadRequest } from './models.js';
 import { contentIssue, findSkill, renderPrompt, skillOutput } from './skills.js';
 import { generateFluxAsset, generateWanVideo } from './aiHub.js';
-import { loadImageRef, LOCAL_IMAGE_MODELS, LOCAL_VIDEO_MODELS, viewUrl, workflowFor, type LocalProfile } from './local.js';
+import { loadImageRef, LOCAL_IMAGE_MODELS, LOCAL_PROFILE_MODELS, LOCAL_VIDEO_MODELS, viewUrl, workflowFor, type LocalProfile } from './local.js';
 
 /**
  * SEBastina talks to MuAPI (api.muapi.ai), the generation API behind the
@@ -399,7 +399,10 @@ export class SEBastinaEngine {
         if (this.backend === 'huggingface') return this.runModel(config.isMotion ? 'hf-wan21' : 'hf-flux-schnell', !!config.isMotion, config);
         if (this.backend === 'comfyui') {
             if (!this.comfyUrl) return { success: false, error: NO_COMFY };
-            const fallback = config.isMotion ? LOCAL_VIDEO_MODELS[0].id : this.localProfile === 'full' ? 'local-flux-schnell' : 'local-sd15';
+            const profileModels = LOCAL_PROFILE_MODELS[this.localProfile];
+            const fallback = config.isMotion
+                ? profileModels.find((m) => m.startsWith('local-wan')) ?? LOCAL_VIDEO_MODELS[0].id
+                : profileModels[0];
             const endpoint = config.model && config.model.startsWith('local-') ? config.model : fallback;
             return this.runModel(endpoint, !!config.isMotion, config);
         }

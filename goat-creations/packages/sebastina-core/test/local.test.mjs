@@ -74,14 +74,41 @@ assert.ok(nodes(queued.at(-1).workflow).includes('ImageUpscaleWithModel'));
 console.log('PASS 4  photo tools on light: BiRefNet cut-out (GOAT node) and Real-ESRGAN upscale');
 
 const before = queued.length;
-assert.match((await light.runSkill({ skillId: 'drone-video', inputs: { place: 'x' } })).error, /full local setup/);
-assert.match((await light.runSkill({ skillId: 'restyle-photo', inputs: { change: 'x' }, photoUrl: photo })).error, /full local setup/);
+assert.match((await light.runSkill({ skillId: 'drone-video', inputs: { place: 'x' } })).error, /Full or Pro local setup/);
+assert.match((await light.runSkill({ skillId: 'restyle-photo', inputs: { change: 'x' }, photoUrl: photo })).error, /Full or Pro local setup/);
 assert.match((await light.runSkill({ skillId: 'upscale-photo', photoUrl: 'https://evil.example/a.jpg' })).error, /not on your ComfyUI/);
 assert.match((await light.runSkill({ skillId: 'upscale-photo', photoUrl: `${base}/view?filename=../../etc/passwd&type=input` })).error, /not on your ComfyUI/);
 assert.match((await full.runSkill({ skillId: 'character-post', inputs: { scene: 'topless' }, characterUrl: photo })).error, /fully clothed/);
 assert.equal(queued.length, before);
 assert.equal(light.isOwnFile(photo), true); assert.equal(light.isOwnFile('https://cdn.muapi.ai/x.png'), false);
 console.log('PASS 5  light setup says what it needs; outside or path-trick photos refused; SEBastina rules hold locally');
+
+// Pro: flagship open models, wired like ComfyUI's official templates.
+const pro = new SEBastinaEngine({ backend: 'comfyui', comfyUrl: base, localProfile: 'pro', pollIntervalMs: 10 });
+r = await pro.generateAsset({ prompt: 'a goat', aspectRatio: '1:1' });
+wf = queued.at(-1).workflow;
+assert.equal(byType(wf, 'UNETLoader').inputs.unet_name, 'z_image_turbo_bf16.safetensors');
+assert.deepEqual([byType(wf, 'KSampler').inputs.steps, byType(wf, 'KSampler').inputs.sampler_name], [8, 'res_multistep']);
+r = await pro.runSkill({ skillId: 'youtube-thumbnail', inputs: { subject: 'a goat', headline: 'GOAT MODE' } });
+wf = queued.at(-1).workflow;
+assert.equal(byType(wf, 'UNETLoader').inputs.unet_name, 'qwen_image_2512_fp8_e4m3fn.safetensors');
+assert.equal(byType(wf, 'LoraLoaderModelOnly').inputs.lora_name, 'Qwen-Image-2512-Lightning-4steps-V1.0-fp32.safetensors');
+assert.equal(byType(wf, 'KSampler').inputs.steps, 4);
+console.log('PASS 6  Pro images: Z-Image Turbo by default; lettering Skills (thumbnail) go to Qwen-Image 2512 + 4-step Lightning');
+
+r = await pro.runSkill({ skillId: 'product-ad-video', photoUrl: photo });
+assert.equal(r.success, true, r.error);
+const [pEdit, pVideo] = queued.slice(-2).map((q) => q.workflow);
+assert.equal(byType(pEdit, 'UNETLoader').inputs.unet_name, 'qwen_image_edit_2511_fp8mixed.safetensors');
+assert.ok(nodes(pEdit).includes('TextEncodeQwenImageEditPlus') && nodes(pEdit).includes('CFGNorm'));
+const stages = Object.values(pVideo).filter((x) => x.class_type === 'KSamplerAdvanced');
+assert.deepEqual(stages.map((x) => [x.inputs.start_at_step, x.inputs.end_at_step, x.inputs.add_noise]), [[0, 2, 'enable'], [2, 4, 'disable']]);
+assert.deepEqual(Object.values(pVideo).filter((x) => x.class_type === 'UNETLoader').map((x) => x.inputs.unet_name), ['wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors', 'wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors']);
+assert.equal(byType(pVideo, 'LoadImage').inputs.image, `goat_edit_${queued.at(-2).id}.png [output]`);
+assert.equal(byType(pVideo, 'WanImageToVideo').inputs.length, 81);
+r = await pro.generateAsset({ prompt: 'a goat running', isMotion: true });
+assert.ok(nodes(queued.at(-1).workflow).includes('EmptyHunyuanLatentVideo'));
+console.log('PASS 7  Pro edit (Qwen-Image-Edit 2511) and video (Wan 2.2 14B: high-noise 0-2, low-noise 2-4, 81 frames @16 fps)');
 
 server.close();
 console.log('\nAll own-computer checks passed.');

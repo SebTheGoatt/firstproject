@@ -3,10 +3,12 @@
 # Safe to re-run. In PowerShell:
 #   powershell -ExecutionPolicy Bypass -File setup.ps1            # Light (~2.3 GB)
 #   powershell -ExecutionPolicy Bypass -File setup.ps1 -Full      # + FLUX, Qwen edit, Wan video (~66 GB, 24 GB GPU)
+#   powershell -ExecutionPolicy Bypass -File setup.ps1 -Pro       # flagship open models (~143 GB, 24 GB+ GPU)
 param(
     [string]$Dir = "$HOME\goat-render-node",
     [int]$Port = 8188,
     [switch]$Full,
+    [switch]$Pro,
     [switch]$NoStart
 )
 $ErrorActionPreference = "Stop"
@@ -51,11 +53,13 @@ if ($Gpu) { & $VPy -m pip install -q onnxruntime-gpu } else { & $VPy -m pip inst
 
 Say "Open models"
 Push-Location ComfyUI
-if ($Full) { & $VPy custom_nodes\comfyui-goat\download_models.py --full } else { & $VPy custom_nodes\comfyui-goat\download_models.py }
+if ($Pro) { & $VPy custom_nodes\comfyui-goat\download_models.py --pro }
+elseif ($Full) { & $VPy custom_nodes\comfyui-goat\download_models.py --full }
+else { & $VPy custom_nodes\comfyui-goat\download_models.py }
 Pop-Location
 
 $Ip = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike "127.*" -and $_.PrefixOrigin -ne "WellKnown" } | Select-Object -First 1).IPAddress
-$Profile = if ($Full) { "Full" } else { "Light" }
+$Profile = if ($Pro) { "Pro" } elseif ($Full) { "Full" } else { "Light" }
 Say "Ready"
 Write-Host "In the GOAT CREATIONS app: Settings > My computer > http://${Ip}:$Port > $Profile > Save and test"
 Write-Host "Windows may ask to allow Python through the firewall: allow it on Private networks only."
