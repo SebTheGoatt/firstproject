@@ -130,6 +130,11 @@ desktop app and server talk to ComfyUI's API instead of MuAPI.
 | **Light** | Stable Diffusion 1.5 (OpenRAIL-M), Real-ESRGAN (BSD-3), BiRefNet (MIT) | ~2.3 GB | 8 GB (or CPU, slowly) | text→image, image Skills, Design SEBastina, upscale, remove background |
 | **Full** | + FLUX.1 Schnell, Qwen-Image-Edit 2509, Wan 2.2 TI2V 5B (all Apache-2.0) | ~66 GB | 24 GB | everything: photo edits, SEBastina scenes, Product Ad Video, video |
 
+**One command:** `apps/render-node/setup.sh` (Linux/macOS) or `apps/render-node/setup.ps1`
+(Windows) does steps 1–4 below and starts the node; add `--full` / `-Full` for the Full setup.
+It is safe to re-run. The SEBastina server uses this render node by default
+(`SEBASTINA_BACKEND=comfyui`); MuAPI and Hugging Face are optional, paid, and off unless you choose them.
+
 1. Install ComfyUI on the computer with the graphics card.
 2. Copy `apps/comfyui-goat` into `ComfyUI/custom_nodes/`, then
    `pip install -r custom_nodes/comfyui-goat/requirements.txt` (use `onnxruntime-gpu` on NVIDIA).

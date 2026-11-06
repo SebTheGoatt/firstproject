@@ -44,8 +44,9 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 // are offered (pricier ones like Veo or Kling cost more per generation at MuAPI).
 const imageModel = env.SEBASTINA_IMAGE_MODEL || DEFAULT_IMAGE_MODEL;
 const videoModel = env.SEBASTINA_VIDEO_MODEL || DEFAULT_VIDEO_MODEL;
-// "muapi" (hosted, default) or "comfyui" (your own GPU computer, open models, no API).
-const backend = (env.SEBASTINA_BACKEND || 'muapi').toLowerCase() === 'comfyui' ? 'comfyui' : 'muapi';
+// Default: our own render node (ComfyUI + GOAT pack, open models, no API).
+// Paid hosted services are opt-in only: SEBASTINA_BACKEND=muapi.
+const backend = (env.SEBASTINA_BACKEND || 'comfyui').toLowerCase() === 'muapi' ? 'muapi' : 'comfyui';
 const localProfile = (env.SEBASTINA_LOCAL_PROFILE || 'light').toLowerCase() === 'full' ? 'full' : 'light';
 const comfyUrl = (env.COMFYUI_URL || 'http://127.0.0.1:8188').replace(/\/+$/, '');
 const localDefaults = localProfile === 'full' ? 'local-flux-schnell,local-sd15,local-wan22' : 'local-sd15';

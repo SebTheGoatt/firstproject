@@ -76,11 +76,12 @@ const HF_KEY = 'goat_hf_token';
 // Hugging Face mode: one hosted open model each (Inference Providers, billed to your HF account).
 const HF_IMAGE_MODELS = [{ id: 'hf-flux-schnell', name: 'FLUX.1 Schnell', note: 'On Hugging Face' }];
 const HF_VIDEO_MODELS = [{ id: 'hf-wan21', name: 'Wan 2.1', note: 'On Hugging Face · minutes per clip' }];
+// Our own first: your render node, or your GOAT server. Paid hosted services are optional.
 const MODES = [
   { id: 'local', label: 'My computer' },
-  { id: 'direct', label: 'MuAPI key' },
   { id: 'server', label: 'GOAT server' },
-  { id: 'hf', label: 'Hugging Face' },
+  { id: 'direct', label: 'MuAPI (paid)' },
+  { id: 'hf', label: 'Hugging Face (paid)' },
 ];
 const PROFILES = [
   { id: 'light', label: 'Light', note: 'SD 1.5, upscale, cut-out · 8 GB GPU' },
@@ -469,7 +470,7 @@ function Studio() {
                   })}
                 </View>
                 <Text style={styles.dim}>
-                  {PROFILES.find((p) => p.id === localProfile).note}. Runs on your own GPU with open models: no key, no per-image cost. Phone and computer on the same Wi-Fi; start ComfyUI with --listen.
+                  {PROFILES.find((p) => p.id === localProfile).note}. Runs on your own GPU with open models: no key, no per-image cost. Set the computer up once with goat-creations/apps/render-node/setup.sh (Windows: setup.ps1); phone and computer on the same Wi-Fi.
                 </Text>
               </>
             ) : mode === 'hf' ? (
