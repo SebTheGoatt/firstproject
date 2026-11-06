@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { buildPayload, findModel, isVideoModel, DEFAULT_IMAGE_MODEL, DEFAULT_VIDEO_MODEL, type PayloadRequest } from './models.js';
-import { findSkill, renderPrompt, skillOutput } from './skills.js';
+import { contentIssue, findSkill, renderPrompt, skillOutput } from './skills.js';
 
 /**
  * SEBastina talks to MuAPI (api.muapi.ai), the generation API behind the
@@ -55,6 +55,8 @@ export interface SkillRequest {
     skillId: string;
     inputs?: Record<string, string>;
     photoUrl?: string;
+    /** The saved character's reference image (SEBastina Skills). */
+    characterUrl?: string;
     customerId?: string;
 }
 
@@ -80,7 +82,7 @@ export interface EngineOptions {
     pollIntervalMs?: number;
 }
 
-const NO_KEY = 'No MuAPI key set. Add it in Settings (or MUAPI_API_KEY on the server).';
+const NO_KEY = 'No MuAPI key yet. Open Settings, paste your key from muapi.ai, and tap Save.';
 const SUCCESS = new Set(['completed', 'succeeded', 'success']);
 const FAILURE = new Set(['failed', 'error', 'cancelled', 'canceled']);
 
@@ -129,6 +131,15 @@ export class SEBastinaEngine {
             return { success: false, error: `The Skill "${skill.name}" isn't offered here.` };
         }
         if (skill.needsPhoto && !request.photoUrl) return { success: false, error: `${skill.name} needs a photo.` };
+        if (skill.needsCharacter && !request.characterUrl) {
+            return { success: false, error: 'Design SEBastina first, then save the look you like.' };
+        }
+        if (skill.category === 'character') {
+            for (const value of Object.values(request.inputs ?? {})) {
+                const issue = contentIssue(String(value));
+                if (issue) return { success: false, error: issue };
+            }
+        }
 
         const prompts: string[] = [];
         for (const step of skill.steps) {
@@ -150,7 +161,11 @@ export class SEBastinaEngine {
             const outputs: string[] = [];
             for (const [i, step] of skill.steps.entries()) {
                 const spec = findModel(step.model);
-                const imageUrl = step.from === 'photo' ? request.photoUrl : step.from === 'previous' ? outputs[i - 1] : undefined;
+                const imageUrl =
+                    step.from === 'photo' ? request.photoUrl
+                    : step.from === 'character' ? request.characterUrl
+                    : step.from === 'previous' ? outputs[i - 1]
+                    : undefined;
                 const result = await this.runModel(step.model, spec ? isVideoModel(spec) : false, {
                     prompt: prompts[i],
                     aspectRatio: step.aspectRatio,
@@ -192,6 +207,22 @@ export class SEBastinaEngine {
         const url = data?.url || data?.file_url || data?.output;
         if (typeof url !== 'string' || !url) throw new Error('Upload finished without a file URL.');
         return url;
+    }
+
+    /** Check the MuAPI key for free (account balance). Never throws. */
+    async checkKey(): Promise<{ ok: boolean; balance?: number; error?: string }> {
+        if (!this.apiKey) return { ok: false, error: NO_KEY };
+        try {
+            const response = await fetch(`${this.apiBaseUrl}/api/v1/account/balance`, {
+                headers: { 'Content-Type': 'application/json', 'x-api-key': this.apiKey },
+            });
+            const data: any = await response.json().catch(() => ({}));
+            if (!response.ok) return { ok: false, error: muapiErrorMessage({ response: { status: response.status, data } }) };
+            const balance = Number(data?.balance);
+            return { ok: true, balance: Number.isFinite(balance) ? balance : undefined };
+        } catch (error: any) {
+            return { ok: false, error: `Can't reach MuAPI: ${error?.message ?? error}` };
+        }
     }
 
     private async throughMiddleware(config: GenerationConfig, handler: () => Promise<GenerationResult>): Promise<GenerationResult> {

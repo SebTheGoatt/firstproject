@@ -20,6 +20,6 @@ export {
     buildPayload,
 } from './models.js';
 export type { ModelSpec, ModelTask, PayloadRequest } from './models.js';
-export { SKILLS, findSkill, renderPrompt, skillOutput, skillCredits } from './skills.js';
+export { SKILLS, CHARACTER_SKILLS, findSkill, renderPrompt, skillOutput, skillCredits, contentIssue } from './skills.js';
 export type { Skill, SkillField, SkillStep } from './skills.js';
 export type { ClientOptions, GenerateRequest, GoatModuleId } from './client.js';

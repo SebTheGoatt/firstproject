@@ -51,6 +51,7 @@ export class SEBastinaClient {
     async generate(request: GenerateRequest): Promise<GenerationResult> {
         if (!request.prompt.trim()) return { success: false, error: 'Prompt cannot be empty.' };
         if (!this.serverUrl) return { success: false, error: 'Set the server address first.' };
+        if (!this.token) return { success: false, error: 'No access token yet. Open Settings and paste the token you were given.' };
         try {
             const response = await this.doFetch(`${this.serverUrl}/api/generate`, {
                 method: 'POST',

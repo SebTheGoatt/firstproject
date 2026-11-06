@@ -10,6 +10,7 @@ Minimalist, dark, fast, and built for developers who make things.
 | **VectorGOAT** | Vector & illustration editor | `apps/desktop-egui` |
 | **Skills** | One-tap recipes: YouTube Thumbnail, Instagram Post, Ad Creative, Logo, Blog Header, Drone Shot Video, Action Figure, Product Ad Video | desktop, mobile, ComfyUI |
 | **Photo tools** | Animate Photo, Edit with Words, Upscale, Remove Background | desktop, mobile, ComfyUI |
+| **SEBastina** | An original, consistent character: design her once, then Post / Thumbnail / Video | mobile |
 
 ## Layout (npm workspaces + Turborepo)
 
@@ -104,6 +105,19 @@ On the server, Skills are off until you list them in `SEBASTINA_SERVER_SKILLS`
 (each step costs a credit; video steps cost `CREDITS_PER_VIDEO`). Photos go through
 `POST /api/upload` (JPEG/PNG/WebP/HEIC, 10 MB) and Skills only accept photos that
 were uploaded that way.
+
+## SEBastina (consistent character)
+
+**Design SEBastina** turns a written description into a reference portrait; you
+save the one you like, and SEBastina Post, Thumbnail and Video start from that
+reference so she looks the same everywhere. Rules enforced in code, not just in
+the prompts:
+
+- she is always an adult, always fully clothed and safe-for-work: `contentIssue()`
+  refuses explicit, underwear or minor wording before anything is sent or billed;
+- her reference only ever comes from Design SEBastina (no uploaded photos), so no
+  real person's face can be mapped onto her. These Skills are not in the ComfyUI
+  pack for the same reason (any image could be wired in there).
 
 ## ComfyUI node pack
 

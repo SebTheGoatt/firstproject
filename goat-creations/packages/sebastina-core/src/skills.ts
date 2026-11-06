@@ -27,17 +27,22 @@ export interface SkillStep {
     aspectRatio?: string;
     duration?: number;
     resolution?: string;
-    /** Where this step's input picture comes from (photo models only). */
-    from?: 'photo' | 'previous';
+    /**
+     * Where this step's input picture comes from (photo models only): the user's
+     * photo, the previous step's result, or the saved character's reference image.
+     */
+    from?: 'photo' | 'previous' | 'character';
 }
 
 export interface Skill {
     id: string;
     name: string;
     description: string;
-    /** "create" = Skills tab; "photo" = photo tools. */
-    category: 'create' | 'photo';
+    /** "create" = Skills tab; "photo" = photo tools; "character" = the SEBastina tab. */
+    category: 'create' | 'photo' | 'character';
     needsPhoto: boolean;
+    /** Starts from the saved character's reference image (made by "design-character"). */
+    needsCharacter?: boolean;
     fields: readonly SkillField[];
     steps: readonly SkillStep[];
 }
@@ -162,8 +167,86 @@ export const SKILLS: readonly Skill[] = [
     },
 ];
 
+// ------------------------------------------------------------------ SEBastina
+// An original, fictional character with a consistent look. Rules, enforced in code:
+// always an adult, always fully clothed and safe-for-work (see contentIssue), and the
+// reference image is only ever made by "design-character", never from an uploaded
+// photo, so no real person's face can be mapped onto her.
+
+/** Added to every character prompt. */
+const CHARACTER_RULES = 'She is an original fictional adult character. Fully clothed, tasteful, safe-for-work.';
+const SAME_CHARACTER = 'The same character as in the reference image: same face, hair, skin tone and features.';
+
+export const CHARACTER_SKILLS: readonly Skill[] = [
+    {
+        id: 'design-character', name: 'Design SEBastina', category: 'character', needsPhoto: false,
+        description: 'Create her reference portrait. Save the one you like: every other SEBastina Skill keeps that look.',
+        fields: [
+            { id: 'look', label: 'Her look', placeholder: 'late 20s, warm brown eyes, long dark curly hair, confident smile', fallback: '' },
+            { id: 'style', label: 'Style', placeholder: 'photorealistic, soft studio light', fallback: 'photorealistic, soft natural light' },
+        ],
+        steps: [{
+            model: 'nano-banana-pro', aspectRatio: '3:4',
+            prompt: `Character reference portrait of SEBastina. {look}. ${CHARACTER_RULES} Head and shoulders, facing the camera, neutral plain background, even lighting, sharp detail. Style: {style}.`,
+        }],
+    },
+    {
+        id: 'character-post', name: 'SEBastina Post', category: 'character', needsPhoto: false, needsCharacter: true,
+        description: 'SEBastina in any scene and outfit, ready for social media (4:5).',
+        fields: [
+            { id: 'scene', label: 'Scene', placeholder: 'at a rooftop café at sunset', fallback: '' },
+            { id: 'outfit', label: 'Outfit', placeholder: 'a cream knit sweater and jeans', fallback: 'a stylish everyday outfit' },
+        ],
+        steps: [{
+            model: 'nano-banana-edit', from: 'character', aspectRatio: '4:5',
+            prompt: `${SAME_CHARACTER} She is {scene}, wearing {outfit}. ${CHARACTER_RULES} Natural pose, high-quality social media photo.`,
+        }],
+    },
+    {
+        id: 'character-thumbnail', name: 'SEBastina Thumbnail', category: 'character', needsPhoto: false, needsCharacter: true,
+        description: 'Bold 16:9 YouTube thumbnail starring SEBastina with your headline.',
+        fields: [
+            { id: 'headline', label: 'Headline text', placeholder: 'I TRIED IT FOR 30 DAYS', fallback: '' },
+            { id: 'expression', label: 'Expression', placeholder: 'shocked, hands on her cheeks', fallback: 'excited, pointing at the headline' },
+        ],
+        steps: [{
+            model: 'nano-banana-edit', from: 'character', aspectRatio: '16:9',
+            prompt: `YouTube thumbnail, 16:9. ${SAME_CHARACTER} She is on the left, {expression}. Large readable headline on the right reading "{headline}" in thick bold sans-serif with a dark outline. ${CHARACTER_RULES} High contrast, vivid colors.`,
+        }],
+    },
+    {
+        id: 'character-video', name: 'SEBastina Video', category: 'character', needsPhoto: false, needsCharacter: true,
+        description: 'A 5-second clip of SEBastina: scene first, then motion (2 steps).',
+        fields: [
+            { id: 'scene', label: 'Scene', placeholder: 'walking through a sunny park in autumn', fallback: '' },
+            { id: 'motion', label: 'What happens', placeholder: 'she smiles and waves at the camera', fallback: 'she smiles at the camera, gentle natural movement' },
+        ],
+        steps: [
+            {
+                model: 'nano-banana-edit', from: 'character', aspectRatio: '9:16',
+                prompt: `${SAME_CHARACTER} She is {scene}. ${CHARACTER_RULES} Cinematic vertical frame.`,
+            },
+            { model: 'seedance-lite-i2v', from: 'previous', duration: 5, resolution: '480p', prompt: '{motion}. Smooth, natural motion.' },
+        ],
+    },
+];
+
+/**
+ * Words that break the SEBastina rules (adult, clothed, safe-for-work). Returns a
+ * reason to show the user, or null when the text is fine. Applied to every
+ * character Skill's inputs before anything is sent or billed.
+ */
+const EXPLICIT = /\b(nude|nudes|nudity|naked|topless|bottomless|nsfw|explicit|porn\w*|sex|sexual|sexy|erotic\w*|fetish\w*|lingerie|underwear|bra|bras|panties|thong|g-string|see[- ]through|nipples?|undress\w*|strip(?:ping|ped|tease|per)|onlyfans|fansly|boudoir|seductive|provocative|lewd)\b/i;
+const MINOR = /\b(child|children|kid|kids|teen|teens|teenage[rd]?|minor|minors|underage|schoolgirl|school girl|little girl|young girl|loli\w*|(?:1[0-7]|[1-9])\s*(?:yo|y\/o|years?\s*old))\b/i;
+
+export function contentIssue(text: string): string | null {
+    if (EXPLICIT.test(text)) return 'SEBastina stays fully clothed and safe-for-work. Please rephrase.';
+    if (MINOR.test(text)) return 'SEBastina is always an adult. Please rephrase.';
+    return null;
+}
+
 export function findSkill(id: string | undefined): Skill | undefined {
-    return SKILLS.find((s) => s.id === id);
+    return SKILLS.find((s) => s.id === id) ?? CHARACTER_SKILLS.find((s) => s.id === id);
 }
 
 /** Fill a template's {fields}; empty fields use their fallback. Returns null + the missing field if required text is absent. */

@@ -173,7 +173,12 @@ async function handleSkill(req: http.IncomingMessage, res: http.ServerResponse) 
     if (typeof body.photoUrl === 'string' && !photoUrl) {
         return sendJson(res, 400, { success: false, error: 'Upload the photo through this server first.' }, CORS);
     }
-    const result = await engine.runSkill({ skillId: String(body.skillId ?? ''), inputs, photoUrl, customerId });
+    const characterUrl =
+        typeof body.characterUrl === 'string' && /^https:\/\/[a-z0-9.-]*muapi\.ai\//i.test(body.characterUrl) ? body.characterUrl : undefined;
+    if (typeof body.characterUrl === 'string' && !characterUrl) {
+        return sendJson(res, 400, { success: false, error: 'The character image must come from "Design SEBastina".' }, CORS);
+    }
+    const result = await engine.runSkill({ skillId: String(body.skillId ?? ''), inputs, photoUrl, characterUrl, customerId });
     sendJson(res, result.success ? 200 : 422, result, CORS);
 }
 

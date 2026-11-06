@@ -54,6 +54,9 @@ const server = http.createServer((req, res) => {
       calls.push({ upload: file.name, size: file.size, type: file.type });
       return json({ url: 'https://cdn.muapi.ai/uploads/photo.jpg' });
     }
+    if (url.pathname === '/api/v1/account/balance') {
+      return req.headers['x-api-key'] === 'k' ? json({ balance: 12.5 }) : json({ detail: 'Invalid API key' }, 401);
+    }
     const m = url.pathname.match(/^\/api\/v1\/predictions\/(.+)\/result$/);
     if (m) {
       const id = m[1];
@@ -122,6 +125,47 @@ assert.equal(result.success, false);
 assert.match(result.error, /model overloaded \(step 2 of 2\).*4 credit\(s\) refunded/);
 assert.equal(credits, 6);
 console.log('PASS 7  Lago: 2-step video Skill charges 4 (1 image + 3 video) once; step 2 failure refunds all 4');
+
+// ---- SEBastina: designed once, reused; adult, clothed, safe-for-work enforced in code
+failModel = null;
+calls.length = 0;
+result = await engine.runSkill({ skillId: 'design-character', inputs: { look: 'late 20s, long dark curly hair, warm smile' } });
+assert.equal(result.success, true, result.error);
+call = calls.pop();
+assert.equal(call.model, 'nano-banana-pro');
+assert.deepEqual([call.body.aspect_ratio, call.body.resolution], ['3:4', '1k']);
+assert.match(call.body.prompt, /long dark curly hair.*original fictional adult character\. Fully clothed, tasteful, safe-for-work/);
+const characterUrl = result.data;
+
+result = await engine.runSkill({ skillId: 'character-post', inputs: { scene: 'at a rooftop café' }, characterUrl });
+call = calls.pop();
+assert.equal(call.model, 'nano-banana-edit');
+assert.deepEqual(call.body.images_list, [characterUrl]);
+assert.equal(call.body.aspect_ratio, '4:5');
+assert.match(call.body.prompt, /same face, hair.*rooftop café, wearing a stylish everyday outfit.*Fully clothed/);
+
+result = await engine.runSkill({ skillId: 'character-video', inputs: { scene: 'in a sunny park' }, characterUrl });
+assert.equal(result.kind, 'video');
+const [v1, v2] = calls.splice(0);
+assert.deepEqual(v1.body.images_list, [characterUrl]);
+assert.equal(v2.model, 'seedance-lite-i2v'); assert.equal(v2.body.image_url, result.outputs[0]);
+console.log('PASS 8  SEBastina: designed from words, reference reused for posts and video (2 steps)');
+
+for (const bad of [{ scene: 'topless on a yacht' }, { scene: 'park', outfit: 'lingerie' }, { scene: 'a 16 year old at school' }]) {
+  const refused = await engine.runSkill({ skillId: 'character-post', inputs: bad, characterUrl });
+  assert.equal(refused.success, false); assert.match(refused.error, /fully clothed|always an adult/);
+}
+assert.match((await engine.runSkill({ skillId: 'design-character', inputs: { look: 'naked' } })).error, /fully clothed/);
+assert.match((await engine.runSkill({ skillId: 'character-post', inputs: { scene: 'park' } })).error, /Design SEBastina first/);
+assert.equal(calls.length, 0);
+assert.ok(!SKILLS.some((s) => s.category === 'character'), 'character Skills stay out of the general list / ComfyUI');
+console.log('PASS 9  SEBastina rules: explicit, underwear or minor wording refused before anything is sent; needs a designed look');
+
+assert.deepEqual(await engine.checkKey(), { ok: true, balance: 12.5 });
+const wrong = await new SEBastinaEngine({ apiBaseUrl: base, apiKey: 'bad' }).checkKey();
+assert.equal(wrong.ok, false); assert.match(wrong.error, /rejected the API key/);
+assert.match((await new SEBastinaEngine({}).checkKey()).error, /paste your key/);
+console.log('PASS 10 key check: balance shown for a good key, clear message for a wrong or missing one');
 
 server.close();
 console.log('\nAll Skill checks passed.');
