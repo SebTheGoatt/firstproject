@@ -1,0 +1,21 @@
+{
+  "name": "sebastina-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SEBastina server: generation API for the GOAT CREATIONS apps and the AI-crawler paywall",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "tsc && node dist/index.js",
+    "token": "tsc && node dist/issue-token.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "sebastina-core": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  }
+}

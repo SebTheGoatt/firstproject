@@ -1,0 +1,57 @@
+{
+  "expo": {
+    "name": "GOAT CREATIONS",
+    "slug": "goat-creations",
+    "version": "1.8.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.goatcreations.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#F2B82E",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "package": "com.goatcreations.mobile",
+      "versionCode": 9
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 160,
+          "resizeMode": "contain",
+          "backgroundColor": "#0B0C0F"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "GOAT CREATIONS opens the photos you choose for Skills and photo tools.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
+      "expo-video"
+    ],
+    "backgroundColor": "#0B0C0F"
+  }
+}

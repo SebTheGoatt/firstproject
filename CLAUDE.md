@@ -16,6 +16,16 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
   the owner's call.
 - Live site: https://property-dispatch.onrender.com (Render). The domain postonelawn.com is not bought yet.
 
+## Other projects in this repo
+- `goat-creations/`: **GOAT CREATIONS**, a separate open-source creative suite (not Post One). npm-workspaces
+  monorepo: `packages/sebastina-core` (shared AI pipeline, Lago credits, x402 AI-crawler paywall) used by
+  `apps/server`, `apps/desktop-tauri`, `apps/mobile-expo`, `apps/cli`, and the Python ComfyUI pack `apps/comfyui-goat`
+  (catalog generated from core: `npm run catalog`); the Rust/egui editor is `apps/desktop-egui`.
+  Phone-only use on mobile data = GOAT Cloud (`apps/cloud-node/setup.sh` on a rented GPU: ComfyUI + server on
+  127.0.0.1, HTTPS front door via Cloudflare quick tunnel or Caddy `--domain`); the apps refuse http:// internet addresses.
+  Its own README covers it; `cd goat-creations && npm install && npm test`. Post One's rules don't apply there.
+  Its crawler paywall must never go on the Post One site, which welcomes AI search crawlers on purpose (GEO).
+
 ## Code map (all code is in `property-dispatch/`)
 - FastAPI app: `app/main.py`. Data: Supabase in production, `MemoryRepository` in tests.
 - Prices: `app/pricing.py` (yield engine, add-ons). Areas and days: `app/zones.py`. Never hard-code a price,

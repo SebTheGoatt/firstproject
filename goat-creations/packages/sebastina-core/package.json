@@ -1,0 +1,37 @@
+{
+  "name": "sebastina-core",
+  "version": "1.0.0",
+  "description": "Shared GOAT CREATIONS pipeline: ImageGOAT/MotionGOAT routing, billing and the AI-crawler paywall",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "default": "./dist/server.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "tsc && node test/models.test.mjs && node test/skills.test.mjs && node test/local.test.mjs && node test/aihub.test.mjs && node test/engine.test.mjs && node test/credit-gate.test.mjs && node test/paywall.test.mjs && node test/auth.test.mjs && node test/address.test.mjs && node scripts/export-catalog.mjs --check",
+    "catalog": "tsc && node scripts/export-catalog.mjs",
+    "check-workflows": "tsc && node scripts/check-workflows.mjs"
+  },
+  "dependencies": {
+    "@huggingface/inference": "^4.13.32",
+    "axios": "^1.7.0",
+    "dotenv": "^18.0.9",
+    "lago-javascript-client": "^1.57.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  }
+}

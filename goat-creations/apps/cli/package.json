@@ -1,0 +1,20 @@
+{
+  "name": "sebastina-cli",
+  "version": "1.0.0",
+  "description": "GOAT CREATIONS terminal studio (owner tool: uses your own MuAPI and Lago keys)",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "tsc && node dist/index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "sebastina-core": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  },
+  "private": true
+}
