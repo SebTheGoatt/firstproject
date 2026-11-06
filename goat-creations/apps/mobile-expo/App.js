@@ -24,6 +24,8 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as SecureStore from 'expo-secure-store';
+import * as ImagePicker from 'expo-image-picker';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import {
   GOAT_MODULES,
   SEBastinaClient,
@@ -32,6 +34,8 @@ import {
   VIDEO_MODELS,
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
+  SKILLS,
+  skillOutput,
 } from 'sebastina-core';
 
 const C = {
@@ -56,6 +60,13 @@ const MODES = [
   { id: 'direct', label: 'My MuAPI key' },
   { id: 'server', label: 'GOAT server' },
 ];
+const TABS = [
+  ...GOAT_MODULES.map((m) => ({ id: m.id, label: m.name })),
+  { id: 'skills', label: 'Skills' },
+  { id: 'photo', label: 'Photo' },
+];
+// Photos are re-saved before upload: strips hidden metadata (GPS location) and caps size.
+const MAX_PHOTO_PX = 2048;
 // On a phone, 127.0.0.1 is the phone itself: use your computer's network address.
 const DEFAULT_SERVER = 'http://192.168.1.10:8787';
 
@@ -68,20 +79,27 @@ export default function App() {
   const [videoModel, setVideoModel] = useState(DEFAULT_VIDEO_MODEL);
   // In server mode, only the models the server allows (null = not fetched yet).
   const [serverModels, setServerModels] = useState(null);
+  const [serverSkills, setServerSkills] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [moduleId, setModuleId] = useState('image');
   const [prompt, setPrompt] = useState('A majestic goat climbing a high-tech neon mountain, cinematic');
   const [status, setStatus] = useState({ kind: 'idle', text: 'Ready.' });
   const [result, setResult] = useState(null);
 
+  // `module` is ImageGOAT/MotionGOAT; undefined on the Skills and Photo tabs.
   const module = GOAT_MODULES.find((m) => m.id === moduleId);
+  const tabLabel = TABS.find((t) => t.id === moduleId)?.label ?? '';
   const client = useMemo(() => new SEBastinaClient({ serverUrl, token }), [serverUrl, token]);
   const engine = useMemo(() => new SEBastinaEngine({ apiKey: muapiKey.trim() }), [muapiKey]);
   const busy = status.kind === 'busy';
-  const catalog = module.isMotion ? VIDEO_MODELS : IMAGE_MODELS;
+  const catalog = module?.isMotion ? VIDEO_MODELS : IMAGE_MODELS;
   const models = mode === 'server' && serverModels?.length ? catalog.filter((m) => serverModels.includes(m.id)) : catalog;
-  const chosenModel = module.isMotion ? videoModel : imageModel;
-  const setChosenModel = module.isMotion ? setVideoModel : setImageModel;
+  const chosenModel = module?.isMotion ? videoModel : imageModel;
+  const setChosenModel = module?.isMotion ? setVideoModel : setImageModel;
+  const category = moduleId === 'photo' ? 'photo' : 'create';
+  const skills = SKILLS.filter(
+    (s) => s.category === category && (mode !== 'server' || (serverSkills ?? []).includes(s.id)),
+  );
   const model = models.find((m) => m.id === chosenModel) ?? models[0];
 
   // Load saved connection settings once.
@@ -123,7 +141,10 @@ export default function App() {
     }
     setStatus({ kind: 'busy', text: 'Checking the server…' });
     const ok = await client.health();
-    if (ok) setServerModels(await client.allowedModels());
+    if (ok) {
+      setServerModels(await client.allowedModels());
+      setServerSkills(await client.allowedSkills());
+    }
     setStatus(ok ? { kind: 'ok', text: 'Saved. Server reachable.' } : { kind: 'error', text: `Saved, but can't reach ${serverUrl}.` });
     if (ok) setShowSettings(false);
   }
@@ -139,8 +160,38 @@ export default function App() {
         : { prompt, isMotion: false, model: model?.id, width: 768, height: 1344 };
     const outcome = mode === 'direct' ? await engine.generateAsset(request) : await client.generate(request);
     if (outcome.success && outcome.data) {
-      setResult({ url: outcome.data, isMotion: module.isMotion });
+      setResult({ url: outcome.data, isMotion: module.isMotion, label: module.name });
       setStatus({ kind: 'ok', text: `${module.name} finished with ${model?.name ?? 'the default model'}.` });
+    } else {
+      setStatus({ kind: 'error', text: outcome.error || 'Something went wrong.' });
+    }
+  }
+
+  /** Upload the photo if the Skill needs one, then run it (directly or through the server). */
+  async function runSkill(skill, inputs, photo) {
+    let photoUrl;
+    try {
+      if (skill.needsPhoto) {
+        if (!photo) {
+          setStatus({ kind: 'error', text: `${skill.name} needs a photo.` });
+          return;
+        }
+        setStatus({ kind: 'busy', text: 'Uploading photo…' });
+        const file = { uri: photo.uri, name: 'photo.jpg', type: 'image/jpeg' };
+        photoUrl = mode === 'direct' ? await engine.uploadImage(file) : await client.uploadImage(file);
+      }
+    } catch (error) {
+      setStatus({ kind: 'error', text: error?.message || 'Upload failed.' });
+      return;
+    }
+    const isVideo = skillOutput(skill) === 'video';
+    const steps = skill.steps.length > 1 ? ` (${skill.steps.length} steps)` : '';
+    setStatus({ kind: 'busy', text: `Running ${skill.name}${steps}…${isVideo ? ' Videos can take a few minutes.' : ''}` });
+    const request = { skillId: skill.id, inputs, photoUrl };
+    const outcome = mode === 'direct' ? await engine.runSkill(request) : await client.runSkill(request);
+    if (outcome.success && outcome.data) {
+      setResult({ url: outcome.data, isMotion: outcome.kind === 'video', label: skill.name });
+      setStatus({ kind: 'ok', text: `${skill.name} finished.` });
     } else {
       setStatus({ kind: 'error', text: outcome.error || 'Something went wrong.' });
     }
@@ -229,22 +280,39 @@ export default function App() {
         )}
 
         <View style={styles.tabs} accessibilityRole="tablist">
-          {GOAT_MODULES.map((m) => {
-            const active = m.id === moduleId;
+          {TABS.map((t) => {
+            const active = t.id === moduleId;
             return (
               <Pressable
-                key={m.id}
-                onPress={() => setModuleId(m.id)}
+                key={t.id}
+                onPress={() => setModuleId(t.id)}
                 style={[styles.tab, active && styles.tabActive]}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: active }}
               >
-                <Text style={[styles.tabText, active && styles.tabTextActive]}>{m.name}</Text>
+                <Text style={[styles.tabText, styles.tabTextSmall, active && styles.tabTextActive]} numberOfLines={1}>
+                  {t.label}
+                </Text>
               </Pressable>
             );
           })}
         </View>
 
+        {!module ? (
+          <SkillPanel
+            key={category}
+            skills={skills}
+            category={category}
+            busy={busy}
+            onRun={runSkill}
+            onError={(text) => setStatus({ kind: 'error', text })}
+            emptyText={
+              mode === 'server'
+                ? 'This server offers no Skills yet. The owner turns them on with SEBASTINA_SERVER_SKILLS.'
+                : 'No Skills here.'
+            }
+          />
+        ) : (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>{module.name}</Text>
           <Text style={styles.dim}>{module.tagline}</Text>
@@ -282,13 +350,14 @@ export default function App() {
             disabled={busy || !prompt.trim()}
           />
         </View>
+        )}
 
         <View style={styles.result}>
           {busy ? (
             <ActivityIndicator color={C.gold} size="large" />
           ) : result ? (
             result.isMotion ? (
-              <Button label="Open video" onPress={() => Linking.openURL(result.url)} variant="secondary" />
+              <Button label={result.label ? `Open ${result.label} video` : 'Open video'} onPress={() => Linking.openURL(result.url)} variant="secondary" />
             ) : (
               <Image source={{ uri: result.url }} style={styles.image} resizeMode="contain" accessibilityLabel={`Generated: ${prompt}`} />
             )
@@ -304,7 +373,7 @@ export default function App() {
       </ScrollView>
 
       <View style={styles.status} accessibilityLiveRegion="polite">
-        <Text style={styles.statusModule}>{module.name}</Text>
+        <Text style={styles.statusModule}>{tabLabel}</Text>
         <Text
           style={[styles.statusText, status.kind === 'ok' && { color: C.ok }, status.kind === 'error' && { color: C.danger }]}
           numberOfLines={2}
@@ -313,6 +382,116 @@ export default function App() {
         </Text>
       </View>
     </KeyboardAvoidingView>
+  );
+}
+
+/** Skills and photo tools: pick one, fill its fields, add a photo if needed, run. */
+function SkillPanel({ skills, category, busy, onRun, onError, emptyText }) {
+  const [selectedId, setSelectedId] = useState(skills[0]?.id);
+  const [inputs, setInputs] = useState({});
+  const [photo, setPhoto] = useState(null);
+  const skill = skills.find((s) => s.id === selectedId) ?? skills[0];
+
+  if (!skill) {
+    return (
+      <View style={styles.card}>
+        <Text style={styles.dim}>{emptyText}</Text>
+      </View>
+    );
+  }
+
+  async function pickPhoto() {
+    try {
+      const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1, exif: false });
+      if (picked.canceled || !picked.assets?.length) return;
+      const asset = picked.assets[0];
+      const context = ImageManipulator.manipulate(asset.uri);
+      if (asset.width > MAX_PHOTO_PX || asset.height > MAX_PHOTO_PX) {
+        context.resize(asset.width >= asset.height ? { width: MAX_PHOTO_PX } : { height: MAX_PHOTO_PX });
+      }
+      const rendered = await context.renderAsync();
+      const saved = await rendered.saveAsync({ compress: 0.85, format: SaveFormat.JPEG });
+      setPhoto(saved);
+    } catch (error) {
+      onError(`Couldn't open that photo: ${error?.message ?? error}`);
+    }
+  }
+
+  const missing = skill.fields.find((f) => !f.fallback && !(inputs[f.id] ?? '').trim());
+  const output = skillOutput(skill);
+
+  return (
+    <View style={styles.card}>
+      <Text style={styles.cardTitle}>{category === 'photo' ? 'Photo tools' : 'Skills'}</Text>
+      <Text style={styles.dim}>
+        {category === 'photo' ? 'Start from one of your photos.' : 'One-tap recipes: fill in a few words, get a finished piece.'}
+      </Text>
+      <View style={styles.skillList} accessibilityRole="radiogroup">
+        {skills.map((s) => {
+          const active = s.id === skill.id;
+          return (
+            <Pressable
+              key={s.id}
+              onPress={() => setSelectedId(s.id)}
+              style={[styles.skillRow, active && styles.chipActive]}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: active }}
+              accessibilityLabel={`${s.name}. ${s.description}`}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.chipName, active && styles.tabTextActive]}>{s.name}</Text>
+                <Text style={styles.chipNote}>{s.description}</Text>
+              </View>
+              <Text style={styles.badge}>{skillOutput(s) === 'video' ? 'VIDEO' : 'IMAGE'}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {skill.fields.map((f) => (
+        <View key={f.id}>
+          <Text style={styles.label}>
+            {f.label}
+            {f.fallback ? ' (optional)' : ''}
+          </Text>
+          <TextInput
+            style={styles.input}
+            value={inputs[f.id] ?? ''}
+            onChangeText={(text) => setInputs((prev) => ({ ...prev, [f.id]: text }))}
+            placeholder={f.placeholder}
+            placeholderTextColor={C.dim}
+            maxLength={600}
+            accessibilityLabel={f.label}
+          />
+        </View>
+      ))}
+
+      {skill.needsPhoto && (
+        <View style={styles.photoRow}>
+          {photo ? (
+            <Image source={{ uri: photo.uri }} style={styles.thumb} accessibilityLabel="Chosen photo" />
+          ) : (
+            <View style={[styles.thumb, styles.thumbEmpty]}>
+              <Text style={styles.chipNote}>No photo</Text>
+            </View>
+          )}
+          <View style={{ flex: 1 }}>
+            <Button label={photo ? 'Change photo' : 'Choose photo'} onPress={pickPhoto} disabled={busy} variant="secondary" />
+          </View>
+        </View>
+      )}
+
+      <Button
+        label={busy ? 'Working…' : `Run ${skill.name}`}
+        onPress={() => onRun(skill, inputs, photo)}
+        disabled={busy || !!missing || (skill.needsPhoto && !photo)}
+      />
+      <Text style={styles.chipNote}>
+        {skill.steps.length > 1 ? `${skill.steps.length} steps · ` : ''}
+        {output === 'video' ? 'Makes a video' : 'Makes an image'}
+        {missing ? ` · Fill in "${missing.label}"` : ''}
+      </Text>
+    </View>
   );
 }
 
@@ -368,6 +547,16 @@ const styles = StyleSheet.create({
   tabActive: { backgroundColor: C.goldSoft },
   tabText: { color: C.dim, fontWeight: '600' },
   tabTextActive: { color: C.gold },
+  tabTextSmall: { fontSize: 13 },
+  skillList: { gap: 8, marginTop: 4 },
+  skillRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: C.border,
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, minHeight: 56,
+  },
+  badge: { color: C.dim, fontSize: 10, fontWeight: '700', letterSpacing: 1 },
+  photoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 },
+  thumb: { width: 64, height: 64, borderRadius: 8 },
+  thumbEmpty: { borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' },
   button: { borderRadius: 8, paddingVertical: 12, alignItems: 'center', marginTop: 8, minHeight: 44, justifyContent: 'center' },
   buttonPrimary: { backgroundColor: C.gold },
   buttonSecondary: { borderWidth: 1, borderColor: C.border },

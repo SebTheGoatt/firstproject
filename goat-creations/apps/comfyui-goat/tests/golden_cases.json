@@ -1,0 +1,1401 @@
+{
+  "payloadCases": [
+    {
+      "model": "flux-dev-image",
+      "kind": "image",
+      "request": {
+        "prompt": "p"
+      },
+      "payload": {
+        "prompt": "p",
+        "width": 1024,
+        "height": 1024,
+        "num_images": 1
+      }
+    },
+    {
+      "model": "flux-dev-image",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "9:16"
+      },
+      "payload": {
+        "prompt": "p",
+        "width": 768,
+        "height": 1344,
+        "num_images": 1
+      }
+    },
+    {
+      "model": "flux-dev-image",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "width": 1000,
+        "height": 700,
+        "duration": 30,
+        "resolution": "720p"
+      },
+      "payload": {
+        "prompt": "p",
+        "width": 1024,
+        "height": 704,
+        "num_images": 1
+      }
+    },
+    {
+      "model": "flux-dev-image",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "5:4",
+        "duration": 2
+      },
+      "payload": {
+        "prompt": "p",
+        "width": 1024,
+        "height": 1024,
+        "num_images": 1
+      }
+    },
+    {
+      "model": "flux-schnell-image",
+      "kind": "image",
+      "request": {
+        "prompt": "p"
+      },
+      "payload": {
+        "prompt": "p",
+        "width": 1024,
+        "height": 1024,
+        "num_images": 1
+      }
+    },
+    {
+      "model": "flux-schnell-image",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "9:16"
+      },
+      "payload": {
+        "prompt": "p",
+        "width": 768,
+        "height": 1344,
+        "num_images": 1
+      }
+    },
+    {
+      "model": "flux-schnell-image",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "width": 1000,
+        "height": 700,
+        "duration": 30,
+        "resolution": "720p"
+      },
+      "payload": {
+        "prompt": "p",
+        "width": 1024,
+        "height": 704,
+        "num_images": 1
+      }
+    },
+    {
+      "model": "flux-schnell-image",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "5:4",
+        "duration": 2
+      },
+      "payload": {
+        "prompt": "p",
+        "width": 1024,
+        "height": 1024,
+        "num_images": 1
+      }
+    },
+    {
+      "model": "hidream_i1_fast_image",
+      "kind": "image",
+      "request": {
+        "prompt": "p"
+      },
+      "payload": {
+        "prompt": "p",
+        "width": 1024,
+        "height": 1024,
+        "num_images": 1
+      }
+    },
+    {
+      "model": "hidream_i1_fast_image",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "9:16"
+      },
+      "payload": {
+        "prompt": "p",
+        "width": 768,
+        "height": 1344,
+        "num_images": 1
+      }
+    },
+    {
+      "model": "hidream_i1_fast_image",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "width": 1000,
+        "height": 700,
+        "duration": 30,
+        "resolution": "720p"
+      },
+      "payload": {
+        "prompt": "p",
+        "width": 1024,
+        "height": 704,
+        "num_images": 1
+      }
+    },
+    {
+      "model": "hidream_i1_fast_image",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "5:4",
+        "duration": 2
+      },
+      "payload": {
+        "prompt": "p",
+        "width": 1024,
+        "height": 1024,
+        "num_images": 1
+      }
+    },
+    {
+      "model": "nano-banana",
+      "kind": "image",
+      "request": {
+        "prompt": "p"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "1:1"
+      }
+    },
+    {
+      "model": "nano-banana",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "9:16"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "9:16"
+      }
+    },
+    {
+      "model": "nano-banana",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "width": 1000,
+        "height": 700,
+        "duration": 30,
+        "resolution": "720p"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "3:2"
+      }
+    },
+    {
+      "model": "nano-banana",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "5:4",
+        "duration": 2
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "5:4"
+      }
+    },
+    {
+      "model": "nano-banana-pro",
+      "kind": "image",
+      "request": {
+        "prompt": "p"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "1:1",
+        "resolution": "1k"
+      }
+    },
+    {
+      "model": "nano-banana-pro",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "9:16"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "9:16",
+        "resolution": "1k"
+      }
+    },
+    {
+      "model": "nano-banana-pro",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "width": 1000,
+        "height": 700,
+        "duration": 30,
+        "resolution": "720p"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "3:2",
+        "resolution": "1k"
+      }
+    },
+    {
+      "model": "nano-banana-pro",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "5:4",
+        "duration": 2
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "5:4",
+        "resolution": "1k"
+      }
+    },
+    {
+      "model": "flux-2-pro",
+      "kind": "image",
+      "request": {
+        "prompt": "p"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "1:1",
+        "resolution": "1k"
+      }
+    },
+    {
+      "model": "flux-2-pro",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "9:16"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "9:16",
+        "resolution": "1k"
+      }
+    },
+    {
+      "model": "flux-2-pro",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "width": 1000,
+        "height": 700,
+        "duration": 30,
+        "resolution": "720p"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "3:2",
+        "resolution": "1k"
+      }
+    },
+    {
+      "model": "flux-2-pro",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "5:4",
+        "duration": 2
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "4:3",
+        "resolution": "1k"
+      }
+    },
+    {
+      "model": "gpt-image-1.5",
+      "kind": "image",
+      "request": {
+        "prompt": "p"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "1:1",
+        "quality": "medium"
+      }
+    },
+    {
+      "model": "gpt-image-1.5",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "9:16"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "2:3",
+        "quality": "medium"
+      }
+    },
+    {
+      "model": "gpt-image-1.5",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "width": 1000,
+        "height": 700,
+        "duration": 30,
+        "resolution": "720p"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "3:2",
+        "quality": "medium"
+      }
+    },
+    {
+      "model": "gpt-image-1.5",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "5:4",
+        "duration": 2
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "3:2",
+        "quality": "medium"
+      }
+    },
+    {
+      "model": "gpt-image-2-text-to-image",
+      "kind": "image",
+      "request": {
+        "prompt": "p"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "1:1",
+        "resolution": "2K"
+      }
+    },
+    {
+      "model": "gpt-image-2-text-to-image",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "9:16"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "9:16",
+        "resolution": "2K"
+      }
+    },
+    {
+      "model": "gpt-image-2-text-to-image",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "width": 1000,
+        "height": 700,
+        "duration": 30,
+        "resolution": "720p"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "4:3",
+        "resolution": "2K"
+      }
+    },
+    {
+      "model": "gpt-image-2-text-to-image",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "5:4",
+        "duration": 2
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "4:3",
+        "resolution": "2K"
+      }
+    },
+    {
+      "model": "seedance-lite-t2v",
+      "kind": "video",
+      "request": {
+        "prompt": "p"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "16:9",
+        "duration": 5,
+        "resolution": "480p"
+      }
+    },
+    {
+      "model": "seedance-lite-t2v",
+      "kind": "video",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "9:16"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "9:16",
+        "duration": 5,
+        "resolution": "480p"
+      }
+    },
+    {
+      "model": "seedance-lite-t2v",
+      "kind": "video",
+      "request": {
+        "prompt": "p",
+        "width": 1000,
+        "height": 700,
+        "duration": 30,
+        "resolution": "720p"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "4:3",
+        "duration": 12,
+        "resolution": "720p"
+      }
+    },
+    {
+      "model": "seedance-lite-t2v",
+      "kind": "video",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "5:4",
+        "duration": 2
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "4:3",
+        "duration": 3,
+        "resolution": "480p"
+      }
+    },
+    {
+      "model": "seedance-v1.5-pro-t2v-fast",
+      "kind": "video",
+      "request": {
+        "prompt": "p"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "16:9",
+        "duration": 5,
+        "resolution": "720p"
+      }
+    },
+    {
+      "model": "seedance-v1.5-pro-t2v-fast",
+      "kind": "video",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "9:16"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "9:16",
+        "duration": 5,
+        "resolution": "720p"
+      }
+    },
+    {
+      "model": "seedance-v1.5-pro-t2v-fast",
+      "kind": "video",
+      "request": {
+        "prompt": "p",
+        "width": 1000,
+        "height": 700,
+        "duration": 30,
+        "resolution": "720p"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "4:3",
+        "duration": 12,
+        "resolution": "720p"
+      }
+    },
+    {
+      "model": "seedance-v1.5-pro-t2v-fast",
+      "kind": "video",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "5:4",
+        "duration": 2
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "4:3",
+        "duration": 4,
+        "resolution": "720p"
+      }
+    },
+    {
+      "model": "kling-v2.1-master-t2v",
+      "kind": "video",
+      "request": {
+        "prompt": "p"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "16:9",
+        "duration": 5
+      }
+    },
+    {
+      "model": "kling-v2.1-master-t2v",
+      "kind": "video",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "9:16"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "9:16",
+        "duration": 5
+      }
+    },
+    {
+      "model": "kling-v2.1-master-t2v",
+      "kind": "video",
+      "request": {
+        "prompt": "p",
+        "width": 1000,
+        "height": 700,
+        "duration": 30,
+        "resolution": "720p"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "16:9",
+        "duration": 10
+      }
+    },
+    {
+      "model": "kling-v2.1-master-t2v",
+      "kind": "video",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "5:4",
+        "duration": 2
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "1:1",
+        "duration": 5
+      }
+    },
+    {
+      "model": "veo3-fast-text-to-video",
+      "kind": "video",
+      "request": {
+        "prompt": "p"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "16:9"
+      }
+    },
+    {
+      "model": "veo3-fast-text-to-video",
+      "kind": "video",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "9:16"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "9:16"
+      }
+    },
+    {
+      "model": "veo3-fast-text-to-video",
+      "kind": "video",
+      "request": {
+        "prompt": "p",
+        "width": 1000,
+        "height": 700,
+        "duration": 30,
+        "resolution": "720p"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "16:9"
+      }
+    },
+    {
+      "model": "veo3-fast-text-to-video",
+      "kind": "video",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "5:4",
+        "duration": 2
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "16:9"
+      }
+    },
+    {
+      "model": "wan2.2-text-to-video",
+      "kind": "video",
+      "request": {
+        "prompt": "p"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "16:9",
+        "duration": 5,
+        "resolution": "480p",
+        "quality": "medium"
+      }
+    },
+    {
+      "model": "wan2.2-text-to-video",
+      "kind": "video",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "9:16"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "9:16",
+        "duration": 5,
+        "resolution": "480p",
+        "quality": "medium"
+      }
+    },
+    {
+      "model": "wan2.2-text-to-video",
+      "kind": "video",
+      "request": {
+        "prompt": "p",
+        "width": 1000,
+        "height": 700,
+        "duration": 30,
+        "resolution": "720p"
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "16:9",
+        "duration": 8,
+        "resolution": "720p",
+        "quality": "medium"
+      }
+    },
+    {
+      "model": "wan2.2-text-to-video",
+      "kind": "video",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "5:4",
+        "duration": 2
+      },
+      "payload": {
+        "prompt": "p",
+        "aspect_ratio": "16:9",
+        "duration": 5,
+        "resolution": "480p",
+        "quality": "medium"
+      }
+    },
+    {
+      "model": "nano-banana-edit",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "imageUrl": "https://cdn.muapi.ai/uploads/photo.jpg"
+      },
+      "payload": {
+        "prompt": "p",
+        "images_list": [
+          "https://cdn.muapi.ai/uploads/photo.jpg"
+        ]
+      }
+    },
+    {
+      "model": "nano-banana-edit",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "9:16",
+        "imageUrl": "https://cdn.muapi.ai/uploads/photo.jpg"
+      },
+      "payload": {
+        "prompt": "p",
+        "images_list": [
+          "https://cdn.muapi.ai/uploads/photo.jpg"
+        ],
+        "aspect_ratio": "9:16"
+      }
+    },
+    {
+      "model": "nano-banana-edit",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "width": 1000,
+        "height": 700,
+        "duration": 30,
+        "resolution": "720p",
+        "imageUrl": "https://cdn.muapi.ai/uploads/photo.jpg"
+      },
+      "payload": {
+        "prompt": "p",
+        "images_list": [
+          "https://cdn.muapi.ai/uploads/photo.jpg"
+        ],
+        "aspect_ratio": "3:2"
+      }
+    },
+    {
+      "model": "nano-banana-edit",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "5:4",
+        "duration": 2,
+        "imageUrl": "https://cdn.muapi.ai/uploads/photo.jpg"
+      },
+      "payload": {
+        "prompt": "p",
+        "images_list": [
+          "https://cdn.muapi.ai/uploads/photo.jpg"
+        ],
+        "aspect_ratio": "5:4"
+      }
+    },
+    {
+      "model": "flux-2-pro-edit",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "imageUrl": "https://cdn.muapi.ai/uploads/photo.jpg"
+      },
+      "payload": {
+        "prompt": "p",
+        "images_list": [
+          "https://cdn.muapi.ai/uploads/photo.jpg"
+        ],
+        "aspect_ratio": "auto",
+        "resolution": "1k"
+      }
+    },
+    {
+      "model": "flux-2-pro-edit",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "9:16",
+        "imageUrl": "https://cdn.muapi.ai/uploads/photo.jpg"
+      },
+      "payload": {
+        "prompt": "p",
+        "images_list": [
+          "https://cdn.muapi.ai/uploads/photo.jpg"
+        ],
+        "aspect_ratio": "9:16",
+        "resolution": "1k"
+      }
+    },
+    {
+      "model": "flux-2-pro-edit",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "width": 1000,
+        "height": 700,
+        "duration": 30,
+        "resolution": "720p",
+        "imageUrl": "https://cdn.muapi.ai/uploads/photo.jpg"
+      },
+      "payload": {
+        "prompt": "p",
+        "images_list": [
+          "https://cdn.muapi.ai/uploads/photo.jpg"
+        ],
+        "aspect_ratio": "3:2",
+        "resolution": "1k"
+      }
+    },
+    {
+      "model": "flux-2-pro-edit",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "5:4",
+        "duration": 2,
+        "imageUrl": "https://cdn.muapi.ai/uploads/photo.jpg"
+      },
+      "payload": {
+        "prompt": "p",
+        "images_list": [
+          "https://cdn.muapi.ai/uploads/photo.jpg"
+        ],
+        "aspect_ratio": "4:3",
+        "resolution": "1k"
+      }
+    },
+    {
+      "model": "seedance-lite-i2v",
+      "kind": "video",
+      "request": {
+        "prompt": "p",
+        "imageUrl": "https://cdn.muapi.ai/uploads/photo.jpg"
+      },
+      "payload": {
+        "prompt": "p",
+        "image_url": "https://cdn.muapi.ai/uploads/photo.jpg",
+        "duration": 5,
+        "resolution": "480p"
+      }
+    },
+    {
+      "model": "seedance-lite-i2v",
+      "kind": "video",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "9:16",
+        "imageUrl": "https://cdn.muapi.ai/uploads/photo.jpg"
+      },
+      "payload": {
+        "prompt": "p",
+        "image_url": "https://cdn.muapi.ai/uploads/photo.jpg",
+        "duration": 5,
+        "resolution": "480p"
+      }
+    },
+    {
+      "model": "seedance-lite-i2v",
+      "kind": "video",
+      "request": {
+        "prompt": "p",
+        "width": 1000,
+        "height": 700,
+        "duration": 30,
+        "resolution": "720p",
+        "imageUrl": "https://cdn.muapi.ai/uploads/photo.jpg"
+      },
+      "payload": {
+        "prompt": "p",
+        "image_url": "https://cdn.muapi.ai/uploads/photo.jpg",
+        "duration": 12,
+        "resolution": "720p"
+      }
+    },
+    {
+      "model": "seedance-lite-i2v",
+      "kind": "video",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "5:4",
+        "duration": 2,
+        "imageUrl": "https://cdn.muapi.ai/uploads/photo.jpg"
+      },
+      "payload": {
+        "prompt": "p",
+        "image_url": "https://cdn.muapi.ai/uploads/photo.jpg",
+        "duration": 3,
+        "resolution": "480p"
+      }
+    },
+    {
+      "model": "wan2.5-image-to-video",
+      "kind": "video",
+      "request": {
+        "prompt": "p",
+        "imageUrl": "https://cdn.muapi.ai/uploads/photo.jpg"
+      },
+      "payload": {
+        "prompt": "p",
+        "image_url": "https://cdn.muapi.ai/uploads/photo.jpg",
+        "duration": 5,
+        "resolution": "480p"
+      }
+    },
+    {
+      "model": "wan2.5-image-to-video",
+      "kind": "video",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "9:16",
+        "imageUrl": "https://cdn.muapi.ai/uploads/photo.jpg"
+      },
+      "payload": {
+        "prompt": "p",
+        "image_url": "https://cdn.muapi.ai/uploads/photo.jpg",
+        "duration": 5,
+        "resolution": "480p"
+      }
+    },
+    {
+      "model": "wan2.5-image-to-video",
+      "kind": "video",
+      "request": {
+        "prompt": "p",
+        "width": 1000,
+        "height": 700,
+        "duration": 30,
+        "resolution": "720p",
+        "imageUrl": "https://cdn.muapi.ai/uploads/photo.jpg"
+      },
+      "payload": {
+        "prompt": "p",
+        "image_url": "https://cdn.muapi.ai/uploads/photo.jpg",
+        "duration": 10,
+        "resolution": "720p"
+      }
+    },
+    {
+      "model": "wan2.5-image-to-video",
+      "kind": "video",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "5:4",
+        "duration": 2,
+        "imageUrl": "https://cdn.muapi.ai/uploads/photo.jpg"
+      },
+      "payload": {
+        "prompt": "p",
+        "image_url": "https://cdn.muapi.ai/uploads/photo.jpg",
+        "duration": 5,
+        "resolution": "480p"
+      }
+    },
+    {
+      "model": "ai-image-upscale",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "imageUrl": "https://cdn.muapi.ai/uploads/photo.jpg"
+      },
+      "payload": {
+        "image_url": "https://cdn.muapi.ai/uploads/photo.jpg"
+      }
+    },
+    {
+      "model": "ai-image-upscale",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "9:16",
+        "imageUrl": "https://cdn.muapi.ai/uploads/photo.jpg"
+      },
+      "payload": {
+        "image_url": "https://cdn.muapi.ai/uploads/photo.jpg"
+      }
+    },
+    {
+      "model": "ai-image-upscale",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "width": 1000,
+        "height": 700,
+        "duration": 30,
+        "resolution": "720p",
+        "imageUrl": "https://cdn.muapi.ai/uploads/photo.jpg"
+      },
+      "payload": {
+        "image_url": "https://cdn.muapi.ai/uploads/photo.jpg"
+      }
+    },
+    {
+      "model": "ai-image-upscale",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "5:4",
+        "duration": 2,
+        "imageUrl": "https://cdn.muapi.ai/uploads/photo.jpg"
+      },
+      "payload": {
+        "image_url": "https://cdn.muapi.ai/uploads/photo.jpg"
+      }
+    },
+    {
+      "model": "ai-background-remover",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "imageUrl": "https://cdn.muapi.ai/uploads/photo.jpg"
+      },
+      "payload": {
+        "image_url": "https://cdn.muapi.ai/uploads/photo.jpg"
+      }
+    },
+    {
+      "model": "ai-background-remover",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "9:16",
+        "imageUrl": "https://cdn.muapi.ai/uploads/photo.jpg"
+      },
+      "payload": {
+        "image_url": "https://cdn.muapi.ai/uploads/photo.jpg"
+      }
+    },
+    {
+      "model": "ai-background-remover",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "width": 1000,
+        "height": 700,
+        "duration": 30,
+        "resolution": "720p",
+        "imageUrl": "https://cdn.muapi.ai/uploads/photo.jpg"
+      },
+      "payload": {
+        "image_url": "https://cdn.muapi.ai/uploads/photo.jpg"
+      }
+    },
+    {
+      "model": "ai-background-remover",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "5:4",
+        "duration": 2,
+        "imageUrl": "https://cdn.muapi.ai/uploads/photo.jpg"
+      },
+      "payload": {
+        "image_url": "https://cdn.muapi.ai/uploads/photo.jpg"
+      }
+    },
+    {
+      "model": "unknown-model",
+      "kind": "image",
+      "request": {
+        "prompt": "p",
+        "aspectRatio": "16:9"
+      },
+      "payload": {
+        "prompt": "p",
+        "width": 1344,
+        "height": 768,
+        "num_images": 1
+      }
+    }
+  ],
+  "promptCases": [
+    {
+      "skill": "youtube-thumbnail",
+      "inputs": {
+        "subject": "my subject",
+        "headline": "my headline"
+      },
+      "prompts": [
+        {
+          "prompt": "YouTube thumbnail, 16:9. my subject, expressive and eye-catching, placed on the left. Large readable headline on the right reading \"my headline\" in thick bold sans-serif with a dark outline. High contrast, vivid colors, dark vignette, clean composition."
+        }
+      ]
+    },
+    {
+      "skill": "youtube-thumbnail",
+      "inputs": {},
+      "prompts": [
+        {
+          "missing": {
+            "id": "subject",
+            "label": "What it shows",
+            "placeholder": "a goat on a mountain peak at sunrise",
+            "fallback": ""
+          }
+        }
+      ]
+    },
+    {
+      "skill": "instagram-post",
+      "inputs": {
+        "subject": "my subject",
+        "mood": "my mood"
+      },
+      "prompts": [
+        {
+          "prompt": "Aesthetic Instagram post, square 1:1. my subject. my mood. Styled, uncluttered composition with breathing room for a caption, rich detail, magazine quality."
+        }
+      ]
+    },
+    {
+      "skill": "instagram-post",
+      "inputs": {},
+      "prompts": [
+        {
+          "missing": {
+            "id": "subject",
+            "label": "Scene",
+            "placeholder": "fresh coffee and a notebook on a linen table",
+            "fallback": ""
+          }
+        }
+      ]
+    },
+    {
+      "skill": "ad-creative",
+      "inputs": {
+        "product": "my product",
+        "headline": "my headline"
+      },
+      "prompts": [
+        {
+          "prompt": "High-converting ad creative, 4:5 portrait. Product hero shot of my product on a premium surface, crisp studio lighting, subtle reflections, shallow depth of field. Clean headline area at the top reading \"my headline\"."
+        }
+      ]
+    },
+    {
+      "skill": "ad-creative",
+      "inputs": {},
+      "prompts": [
+        {
+          "missing": {
+            "id": "product",
+            "label": "Product",
+            "placeholder": "a matte black water bottle",
+            "fallback": ""
+          }
+        }
+      ]
+    },
+    {
+      "skill": "logo",
+      "inputs": {
+        "name": "my name",
+        "idea": "my idea"
+      },
+      "prompts": [
+        {
+          "prompt": "Minimalist logo for a brand named 'my name'. my idea. Flat vector style, one or two solid colors, clean geometry, perfectly centered on a plain white background, crisp edges, no mockup."
+        }
+      ]
+    },
+    {
+      "skill": "logo",
+      "inputs": {},
+      "prompts": [
+        {
+          "missing": {
+            "id": "name",
+            "label": "Brand name",
+            "placeholder": "GOAT CREATIONS",
+            "fallback": ""
+          }
+        }
+      ]
+    },
+    {
+      "skill": "blog-header",
+      "inputs": {
+        "topic": "my topic"
+      },
+      "prompts": [
+        {
+          "prompt": "Editorial blog header illustration, wide 16:9, about: my topic. Modern, clean, conceptual, balanced negative space, cohesive color palette, no text."
+        }
+      ]
+    },
+    {
+      "skill": "blog-header",
+      "inputs": {},
+      "prompts": [
+        {
+          "missing": {
+            "id": "topic",
+            "label": "Article topic",
+            "placeholder": "how to start a small business",
+            "fallback": ""
+          }
+        }
+      ]
+    },
+    {
+      "skill": "drone-video",
+      "inputs": {
+        "place": "my place"
+      },
+      "prompts": [
+        {
+          "prompt": "Cinematic aerial drone shot slowly gliding forward over my place, smooth stabilized motion, golden light, sweeping reveal, high detail."
+        }
+      ]
+    },
+    {
+      "skill": "drone-video",
+      "inputs": {},
+      "prompts": [
+        {
+          "missing": {
+            "id": "place",
+            "label": "Place",
+            "placeholder": "a misty mountain valley at dawn",
+            "fallback": ""
+          }
+        }
+      ]
+    },
+    {
+      "skill": "action-figure",
+      "inputs": {
+        "title": "my title"
+      },
+      "prompts": [
+        {
+          "prompt": "Turn the person in this photo into a 6-inch collectible action figure inside a blister-pack box with the title \"my title\" printed on the card, small accessories beside the figure. Keep the face exactly recognizable. Studio product-shot lighting."
+        }
+      ]
+    },
+    {
+      "skill": "action-figure",
+      "inputs": {},
+      "prompts": [
+        {
+          "prompt": "Turn the person in this photo into a 6-inch collectible action figure inside a blister-pack box with the title \"LIMITED EDITION\" printed on the card, small accessories beside the figure. Keep the face exactly recognizable. Studio product-shot lighting."
+        }
+      ]
+    },
+    {
+      "skill": "product-ad-video",
+      "inputs": {
+        "setting": "my setting"
+      },
+      "prompts": [
+        {
+          "prompt": "Re-stage this exact product on my setting. Premium studio commercial look, keep the product shape, labels and colors unchanged."
+        },
+        {
+          "prompt": "High-end product commercial: slow smooth camera arc around the product, soft particles drifting, premium lighting, no text."
+        }
+      ]
+    },
+    {
+      "skill": "product-ad-video",
+      "inputs": {},
+      "prompts": [
+        {
+          "prompt": "Re-stage this exact product on polished dark surface with dramatic rim light. Premium studio commercial look, keep the product shape, labels and colors unchanged."
+        },
+        {
+          "prompt": "High-end product commercial: slow smooth camera arc around the product, soft particles drifting, premium lighting, no text."
+        }
+      ]
+    },
+    {
+      "skill": "animate-photo",
+      "inputs": {
+        "motion": "my motion"
+      },
+      "prompts": [
+        {
+          "prompt": "my motion"
+        }
+      ]
+    },
+    {
+      "skill": "animate-photo",
+      "inputs": {},
+      "prompts": [
+        {
+          "prompt": "gentle natural motion, slow cinematic push-in"
+        }
+      ]
+    },
+    {
+      "skill": "restyle-photo",
+      "inputs": {
+        "change": "my change"
+      },
+      "prompts": [
+        {
+          "prompt": "my change. Keep everything else in the photo the same."
+        }
+      ]
+    },
+    {
+      "skill": "restyle-photo",
+      "inputs": {},
+      "prompts": [
+        {
+          "missing": {
+            "id": "change",
+            "label": "Change",
+            "placeholder": "make it a snowy winter evening",
+            "fallback": ""
+          }
+        }
+      ]
+    },
+    {
+      "skill": "upscale-photo",
+      "inputs": {},
+      "prompts": [
+        {
+          "prompt": ""
+        }
+      ]
+    },
+    {
+      "skill": "upscale-photo",
+      "inputs": {},
+      "prompts": [
+        {
+          "prompt": ""
+        }
+      ]
+    },
+    {
+      "skill": "remove-background",
+      "inputs": {},
+      "prompts": [
+        {
+          "prompt": ""
+        }
+      ]
+    },
+    {
+      "skill": "remove-background",
+      "inputs": {},
+      "prompts": [
+        {
+          "prompt": ""
+        }
+      ]
+    }
+  ]
+}

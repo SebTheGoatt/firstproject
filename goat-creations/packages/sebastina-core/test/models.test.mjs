@@ -32,6 +32,20 @@ assert.deepEqual(buildPayload('wan2.2-text-to-video', 'video', { prompt: 'p', as
 assert.deepEqual(buildPayload('some-new-video', 'video', { prompt: 'p' }),
   { prompt: 'p', aspect_ratio: '16:9', duration: 5, resolution: '480p' });
 
-assert.equal(IMAGE_MODELS.length, 5); assert.equal(VIDEO_MODELS.length, 5);
-assert.equal(findModel('veo3-fast-text-to-video').kind, 'video');
-console.log('PASS    model catalog: 10 models, each request shaped to its MuAPI schema');
+// Photo models: picture in the right field; edits keep the photo's shape; enhancers take no prompt.
+const PHOTO = 'https://cdn.muapi.ai/u/p.jpg';
+assert.deepEqual(buildPayload('nano-banana-edit', 'image', { prompt: 'p', imageUrl: PHOTO }),
+  { prompt: 'p', images_list: [PHOTO] });
+assert.deepEqual(buildPayload('flux-2-pro-edit', 'image', { prompt: 'p', imageUrl: PHOTO }),
+  { prompt: 'p', images_list: [PHOTO], aspect_ratio: 'auto', resolution: '1k' });
+assert.deepEqual(buildPayload('seedance-lite-i2v', 'video', { prompt: 'p', imageUrl: PHOTO, aspectRatio: '9:16' }),
+  { prompt: 'p', image_url: PHOTO, duration: 5, resolution: '480p' });
+assert.deepEqual(buildPayload('ai-background-remover', 'image', { prompt: 'ignored', imageUrl: PHOTO }),
+  { image_url: PHOTO });
+assert.throws(() => buildPayload('ai-image-upscale', 'image', { prompt: '' }), /needs a photo/);
+assert.deepEqual(buildPayload('gpt-image-2-text-to-image', 'image', { prompt: 'p', aspectRatio: '16:9' }),
+  { prompt: 'p', aspect_ratio: '16:9', resolution: '2K' });
+
+assert.equal(IMAGE_MODELS.length, 8); assert.equal(VIDEO_MODELS.length, 5);
+assert.equal(findModel('veo3-fast-text-to-video').task, 't2v');
+console.log('PASS    model catalog: 19 models, each request shaped to its MuAPI schema (incl. photo models)');

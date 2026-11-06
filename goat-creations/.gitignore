@@ -19,3 +19,7 @@ apps/desktop-tauri/src-tauri/target/
 
 # Third-party code cloned for reference only (see README)
 vendor/
+
+# Python
+__pycache__/
+*.pyc

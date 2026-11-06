@@ -8,6 +8,8 @@ Minimalist, dark, fast, and built for developers who make things.
 | **ImageGOAT** | AI image generation (FLUX via MuAPI) | desktop, mobile, CLI |
 | **MotionGOAT** | AI video generation (Seedance via MuAPI) | desktop, mobile, CLI |
 | **VectorGOAT** | Vector & illustration editor | `apps/desktop-egui` |
+| **Skills** | One-tap recipes: YouTube Thumbnail, Instagram Post, Ad Creative, Logo, Blog Header, Drone Shot Video, Action Figure, Product Ad Video | desktop, mobile, ComfyUI |
+| **Photo tools** | Animate Photo, Edit with Words, Upscale, Remove Background | desktop, mobile, ComfyUI |
 
 ## Layout (npm workspaces + Turborepo)
 
@@ -17,7 +19,9 @@ goat-creations/
 ├── turbo.json                 build/test pipeline (core builds first)
 ├── packages/
 │   └── sebastina-core/        the shared pipeline
-│       ├── src/engine.ts          ImageGOAT/MotionGOAT routing (MuAPI format)
+│       ├── src/engine.ts          ImageGOAT/MotionGOAT routing, Skills, photo upload (MuAPI format)
+│       ├── src/models.ts          19 models and the exact fields each one accepts
+│       ├── src/skills.ts          8 Skills + 4 photo tools (plain data, shared with ComfyUI)
 │       ├── src/client.ts          SEBastinaClient: what the apps call
 │       ├── src/billing/           Lago subscription + credit gate
 │       ├── src/paywall/x402.ts    AI-crawler paywall (HTTP 402, USDC)
@@ -26,6 +30,7 @@ goat-creations/
     ├── server/                SEBastina server: holds the API keys, runs the pipeline
     ├── desktop-tauri/         Tauri 2 + React + TypeScript (Windows / macOS / Linux)
     ├── mobile-expo/           Expo SDK 58 (iOS / Android)
+    ├── comfyui-goat/          ComfyUI node pack (Python): every Skill and tool as a node
     ├── cli/                   terminal studio for the owner
     └── desktop-egui/          the Rust/egui VectorGOAT editor
 ```
@@ -87,6 +92,25 @@ secure storage (Keychain / Keystore).
 ```bash
 cd apps/desktop-egui && cargo run
 ```
+
+## Skills and photo tools
+
+Skills are fill-in templates (your subject, your headline), inspired by the Skill
+workflows in MuAPI's ComfyUI pack. Some chain models: **Product Ad Video** re-stages
+your product photo with FLUX.2 Edit, then animates it with Wan 2.5. Photos are
+re-encoded before upload, which strips hidden metadata such as GPS location.
+
+On the server, Skills are off until you list them in `SEBASTINA_SERVER_SKILLS`
+(each step costs a credit; video steps cost `CREDITS_PER_VIDEO`). Photos go through
+`POST /api/upload` (JPEG/PNG/WebP/HEIC, 10 MB) and Skills only accept photos that
+were uploaded that way.
+
+## ComfyUI node pack
+
+`apps/comfyui-goat` turns the same catalog into ComfyUI nodes: GOAT Image, GOAT
+Video, one node per Skill and photo tool, and GOAT Save Video. The catalog is
+generated from `sebastina-core` (`npm run catalog`), and a parity test proves the
+Python port builds the same MuAPI requests as the apps. See its README to install.
 
 ## Billing (Lago)
 

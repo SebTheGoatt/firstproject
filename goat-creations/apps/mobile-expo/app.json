@@ -2,7 +2,7 @@
   "expo": {
     "name": "GOAT CREATIONS",
     "slug": "goat-creations",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -18,7 +18,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "package": "com.goatcreations.mobile",
-      "versionCode": 2
+      "versionCode": 3
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -32,6 +32,14 @@
           "imageWidth": 160,
           "resizeMode": "contain",
           "backgroundColor": "#0B0C0F"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "GOAT CREATIONS opens the photos you choose for Skills and photo tools.",
+          "cameraPermission": false,
+          "microphonePermission": false
         }
       ]
     ],

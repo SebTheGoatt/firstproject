@@ -73,6 +73,9 @@ textarea { resize: vertical; min-height: 96px; }
 .model-name { font-weight: 600; }
 .model.on .model-name { color: var(--gold); }
 .model-note { color: var(--dim); font-size: 12px; }
+.badge { margin-left: 6px; font-size: 10px; letter-spacing: 0.08em; color: var(--dim); font-weight: 700; }
+.thumb { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
+input[type="file"] { padding: 6px; }
 .chip.on { border-color: var(--gold); color: var(--gold); background: var(--gold-soft); }
 
 .canvas {

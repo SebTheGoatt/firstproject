@@ -1,5 +1,6 @@
 import axios from 'axios';
-import { buildPayload, DEFAULT_IMAGE_MODEL, DEFAULT_VIDEO_MODEL } from './models.js';
+import { buildPayload, findModel, isVideoModel, DEFAULT_IMAGE_MODEL, DEFAULT_VIDEO_MODEL, type PayloadRequest } from './models.js';
+import { findSkill, renderPrompt, skillOutput } from './skills.js';
 
 /**
  * SEBastina talks to MuAPI (api.muapi.ai), the generation API behind the
@@ -30,6 +31,10 @@ export interface GenerationConfig {
     height?: number;
     /** Shape for video, or for images on aspect-ratio models. */
     aspectRatio?: string;
+    /** Input photo URL (from `uploadImage`) for photo models. */
+    imageUrl?: string;
+    /** Set when this request runs a Skill (the credit gate charges per step). */
+    skillId?: string;
     duration?: number;
     resolution?: string;
 }
@@ -39,7 +44,22 @@ export interface GenerationResult {
     /** URL of the generated image or video. */
     data?: string;
     error?: string;
+    /** Skills: every step's result URL, in order (the last one is `data`). */
+    outputs?: string[];
+    /** Skills: whether `data` is an image or a video. */
+    kind?: 'image' | 'video';
 }
+
+/** Run a Skill: its id, the user's text for its fields, and the uploaded photo if it needs one. */
+export interface SkillRequest {
+    skillId: string;
+    inputs?: Record<string, string>;
+    photoUrl?: string;
+    customerId?: string;
+}
+
+/** A picture to upload: a Blob/File (browser, Node), or `{ uri, name, type }` (React Native). */
+export type UploadInput = Blob | { uri: string; name?: string; type?: string };
 
 /** Runs before the generation pipeline; call `next()` to continue, or return early to stop. */
 export type GenerationMiddleware = (
@@ -54,10 +74,13 @@ export interface EngineOptions {
     videoModel?: string;
     /** If set, only these model endpoints may be requested (the server uses this). */
     allowedModels?: readonly string[];
+    /** If set, only these Skills may be run (the server uses this). */
+    allowedSkills?: readonly string[];
     /** Milliseconds between result polls (MuAPI's own client uses 2000). */
     pollIntervalMs?: number;
 }
 
+const NO_KEY = 'No MuAPI key set. Add it in Settings (or MUAPI_API_KEY on the server).';
 const SUCCESS = new Set(['completed', 'succeeded', 'success']);
 const FAILURE = new Set(['failed', 'error', 'cancelled', 'canceled']);
 
@@ -68,6 +91,7 @@ export class SEBastinaEngine {
     private readonly videoModel: string;
     private readonly pollIntervalMs: number;
     private readonly allowedModels?: readonly string[];
+    private readonly allowedSkills?: readonly string[];
     private readonly middlewares: GenerationMiddleware[] = [];
 
     constructor(options: EngineOptions = {}) {
@@ -77,6 +101,7 @@ export class SEBastinaEngine {
         this.videoModel = options.videoModel || DEFAULT_VIDEO_MODEL;
         this.pollIntervalMs = options.pollIntervalMs ?? 2000;
         this.allowedModels = options.allowedModels;
+        this.allowedSkills = options.allowedSkills;
     }
 
     /** Add a middleware; they run in the order added, before generation. */
@@ -90,10 +115,88 @@ export class SEBastinaEngine {
      * Every request passes through the middlewares (e.g. the Lago credit gate) first.
      */
     async generateAsset(config: GenerationConfig): Promise<GenerationResult> {
+        return this.throughMiddleware(config, () => this.runPipeline(config));
+    }
+
+    /**
+     * Run a Skill: fill its prompts, pass the middlewares once (billing for all
+     * steps), then run each step, feeding a step's result into the next.
+     */
+    async runSkill(request: SkillRequest): Promise<GenerationResult> {
+        const skill = findSkill(request.skillId);
+        if (!skill) return { success: false, error: 'Unknown Skill.' };
+        if (this.allowedSkills && !this.allowedSkills.includes(skill.id)) {
+            return { success: false, error: `The Skill "${skill.name}" isn't offered here.` };
+        }
+        if (skill.needsPhoto && !request.photoUrl) return { success: false, error: `${skill.name} needs a photo.` };
+
+        const prompts: string[] = [];
+        for (const step of skill.steps) {
+            const rendered = renderPrompt(step.prompt, skill, request.inputs ?? {});
+            if (rendered.missing) return { success: false, error: `Fill in "${rendered.missing.label}".` };
+            prompts.push(rendered.prompt);
+        }
+        const kind = skillOutput(skill);
+        const config: GenerationConfig = {
+            prompt: prompts[0] || skill.name,
+            isMotion: kind === 'video',
+            customerId: request.customerId,
+            skillId: skill.id,
+            imageUrl: request.photoUrl,
+        };
+
+        return this.throughMiddleware(config, async () => {
+            if (!this.apiKey) return { success: false, error: NO_KEY };
+            const outputs: string[] = [];
+            for (const [i, step] of skill.steps.entries()) {
+                const spec = findModel(step.model);
+                const imageUrl = step.from === 'photo' ? request.photoUrl : step.from === 'previous' ? outputs[i - 1] : undefined;
+                const result = await this.runModel(step.model, spec ? isVideoModel(spec) : false, {
+                    prompt: prompts[i],
+                    aspectRatio: step.aspectRatio,
+                    duration: step.duration,
+                    resolution: step.resolution,
+                    imageUrl,
+                });
+                if (!result.success || !result.data) {
+                    const where = skill.steps.length > 1 ? ` (step ${i + 1} of ${skill.steps.length})` : '';
+                    return { ...result, success: false, error: `${result.error ?? 'Step failed'}${where}`, outputs };
+                }
+                outputs.push(result.data);
+            }
+            return { success: true, data: outputs[outputs.length - 1], outputs, kind };
+        });
+    }
+
+    /**
+     * Upload a picture to MuAPI and get back a public URL for photo models.
+     * Uses fetch + FormData so it works in browsers, React Native and Node.
+     */
+    async uploadImage(file: UploadInput, fileName = 'photo.jpg'): Promise<string> {
+        if (!this.apiKey) throw new Error(NO_KEY);
+        const form = new FormData();
+        if (typeof Blob !== 'undefined' && file instanceof Blob) {
+            form.append('file', file, fileName);
+        } else {
+            const rn = file as { uri: string; name?: string; type?: string };
+            // React Native's FormData accepts { uri, name, type } for local files.
+            form.append('file', { uri: rn.uri, name: rn.name ?? fileName, type: rn.type ?? 'image/jpeg' } as any);
+        }
+        const response = await fetch(`${this.apiBaseUrl}/api/v1/upload_file`, {
+            method: 'POST',
+            headers: { 'x-api-key': this.apiKey },
+            body: form,
+        });
+        const data: any = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(muapiErrorMessage({ response: { status: response.status, data } }));
+        const url = data?.url || data?.file_url || data?.output;
+        if (typeof url !== 'string' || !url) throw new Error('Upload finished without a file URL.');
+        return url;
+    }
+
+    private async throughMiddleware(config: GenerationConfig, handler: () => Promise<GenerationResult>): Promise<GenerationResult> {
         const run = (index: number): Promise<GenerationResult> =>
-            index < this.middlewares.length
-                ? this.middlewares[index](config, () => run(index + 1))
-                : this.runPipeline(config);
+            index < this.middlewares.length ? this.middlewares[index](config, () => run(index + 1)) : handler();
         try {
             return await run(0);
         } catch (error: any) {
@@ -101,10 +204,26 @@ export class SEBastinaEngine {
         }
     }
 
+    /** One model call: build its payload, submit, wait. Never throws. */
+    private async runModel(endpoint: string, isVideo: boolean, request: PayloadRequest): Promise<GenerationResult> {
+        if (!/^[A-Za-z0-9._-]+$/.test(endpoint)) return { success: false, error: 'Invalid model name.' };
+        let payload: Record<string, unknown>;
+        try {
+            payload = buildPayload(endpoint, isVideo ? 'video' : 'image', request);
+        } catch (error: any) {
+            return { success: false, error: error?.message ?? String(error) };
+        }
+        try {
+            return await this.submitAndPoll(endpoint, payload, isVideo);
+        } catch (error) {
+            return { success: false, error: muapiErrorMessage(error) };
+        }
+    }
+
     /** Submit the job to MuAPI and wait for the finished asset. */
     private async runPipeline(config: GenerationConfig): Promise<GenerationResult> {
         if (!this.apiKey) {
-            return { success: false, error: 'No MuAPI key set. Add it in Settings (or MUAPI_API_KEY on the server).' };
+            return { success: false, error: NO_KEY };
         }
 
         // Route dynamically if user flips the switch to MotionGOAT (AI Video)
@@ -112,15 +231,8 @@ export class SEBastinaEngine {
         if (this.allowedModels && !this.allowedModels.includes(endpoint)) {
             return { success: false, error: `The model "${endpoint}" isn't offered here.` };
         }
-        if (!/^[A-Za-z0-9._-]+$/.test(endpoint)) {
-            return { success: false, error: 'Invalid model name.' };
-        }
-        const payload = buildPayload(endpoint, config.isMotion ? 'video' : 'image', config);
-        try {
-            return await this.submitAndPoll(endpoint, payload, !!config.isMotion);
-        } catch (error) {
-            return { success: false, error: muapiErrorMessage(error) };
-        }
+        const spec = findModel(endpoint);
+        return this.runModel(endpoint, spec ? isVideoModel(spec) : !!config.isMotion, config);
     }
 
     private async submitAndPoll(endpoint: string, payload: Record<string, unknown>, isMotion: boolean): Promise<GenerationResult> {

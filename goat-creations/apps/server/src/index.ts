@@ -3,6 +3,9 @@
  *
  *   GET  /health          reachability check for the apps
  *   GET  /api/models      model endpoints customers may pick
+ *   GET  /api/skills      Skills customers may run
+ *   POST /api/upload      photo upload for Skills (multipart "file", 10 MB)
+ *   POST /api/skill       run a Skill (customer token + Lago credits per step)
  *   POST /api/generate    ImageGOAT / MotionGOAT generation for the desktop and
  *                         mobile apps (customer token + Lago credits required)
  *   GET  /data/<file>     data assets; AI crawlers pay per request (x402, USDC)
@@ -17,6 +20,7 @@ import {
     SEBastinaEngine,
     DEFAULT_IMAGE_MODEL,
     DEFAULT_VIDEO_MODEL,
+    findSkill,
     LagoBilling,
     lagoCreditGate,
     verifyCustomerToken,
@@ -32,6 +36,7 @@ const env = process.env;
 const PORT = Number(env.PORT || 8787);
 const DATA_DIR = resolve(fileURLToPath(new URL('../data', import.meta.url)));
 const MAX_BODY_BYTES = 16 * 1024;
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 // ---------------------------------------------------------------- generation
 // Customers pay the same credit whatever the model, so only models the owner lists
@@ -42,12 +47,22 @@ const allowedModels = (env.SEBASTINA_SERVER_MODELS || `${imageModel},${videoMode
     .split(',')
     .map((m) => m.trim())
     .filter(Boolean);
+// Skills customers may run (comma-separated ids). Default: none, so a new server
+// never offers pricier multi-step or video Skills until the owner chooses them.
+const allowedSkills = (env.SEBASTINA_SERVER_SKILLS || '')
+    .split(',')
+    .map((m) => m.trim())
+    .filter((id) => {
+        if (id && !findSkill(id)) console.warn(`[server] SEBASTINA_SERVER_SKILLS: unknown Skill "${id}" ignored`);
+        return !!id && !!findSkill(id);
+    });
 const engine = new SEBastinaEngine({
     apiBaseUrl: env.AI_BACKEND_URL || 'https://api.muapi.ai',
     apiKey: env.MUAPI_API_KEY,
     imageModel,
     videoModel,
     allowedModels,
+    allowedSkills,
 });
 const billingOn = (env.SEBASTINA_BILLING || 'on').toLowerCase() !== 'off';
 if (billingOn) {
@@ -86,15 +101,80 @@ function sendJson(res: http.ServerResponse, status: number, body: unknown, heade
     res.end(text);
 }
 
-async function readJson(req: http.IncomingMessage): Promise<any> {
+async function readBody(req: http.IncomingMessage, limit: number): Promise<Buffer> {
     let size = 0;
     const chunks: Buffer[] = [];
     for await (const chunk of req) {
         size += (chunk as Buffer).length;
-        if (size > MAX_BODY_BYTES) throw new Error('Request body too large.');
+        if (size > limit) throw new Error('Request body too large.');
         chunks.push(chunk as Buffer);
     }
-    return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
+    return Buffer.concat(chunks);
+}
+
+async function readJson(req: http.IncomingMessage): Promise<any> {
+    return JSON.parse((await readBody(req, MAX_BODY_BYTES)).toString('utf8') || '{}');
+}
+
+/** The customer behind a request's bearer token, or null (after replying 401/503). */
+function authenticate(req: http.IncomingMessage, res: http.ServerResponse): string | null {
+    if (tokenSecret.length < 32) {
+        sendJson(res, 503, { success: false, error: 'Server is missing SEBASTINA_TOKEN_SECRET.' }, CORS);
+        return null;
+    }
+    const bearer = /^Bearer\s+(.+)$/i.exec(req.headers.authorization ?? '')?.[1];
+    const customerId = verifyCustomerToken(bearer, tokenSecret);
+    if (!customerId) sendJson(res, 401, { success: false, error: 'Missing or invalid access token.' }, CORS);
+    return customerId;
+}
+
+const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']);
+
+/** Photo upload for Skills: multipart field "file", images only, 10 MB max; forwarded to MuAPI. */
+async function handleUpload(req: http.IncomingMessage, res: http.ServerResponse) {
+    if (!authenticate(req, res)) return;
+    const contentType = req.headers['content-type'] ?? '';
+    if (!contentType.startsWith('multipart/form-data')) {
+        return sendJson(res, 400, { error: 'Send the photo as multipart form data (field "file").' }, CORS);
+    }
+    let file: File | null = null;
+    try {
+        const body = await readBody(req, MAX_UPLOAD_BYTES);
+        const form = await new Response(new Uint8Array(body), { headers: { 'content-type': contentType } }).formData();
+        const entry = form.get('file');
+        file = typeof entry === 'object' && entry !== null ? (entry as File) : null;
+    } catch (error: any) {
+        return sendJson(res, 400, { error: error.message === 'Request body too large.' ? 'Photo is over 10 MB.' : 'Could not read the upload.' }, CORS);
+    }
+    if (!file || !IMAGE_TYPES.has(file.type)) return sendJson(res, 400, { error: 'Only JPEG, PNG, WebP or HEIC photos.' }, CORS);
+    try {
+        const url = await engine.uploadImage(file, file.name || 'photo.jpg');
+        sendJson(res, 200, { url }, CORS);
+    } catch (error: any) {
+        sendJson(res, 502, { error: error.message || 'Upload failed.' }, CORS);
+    }
+}
+
+async function handleSkill(req: http.IncomingMessage, res: http.ServerResponse) {
+    const customerId = authenticate(req, res);
+    if (!customerId) return;
+    let body: any;
+    try {
+        body = await readJson(req);
+    } catch (error: any) {
+        return sendJson(res, 400, { success: false, error: error.message || 'Invalid JSON.' }, CORS);
+    }
+    const inputs: Record<string, string> = {};
+    if (body.inputs && typeof body.inputs === 'object') {
+        for (const [k, v] of Object.entries(body.inputs)) if (typeof v === 'string') inputs[k] = v.slice(0, 600);
+    }
+    // Photos must come from MuAPI's own file host (i.e. from /api/upload), not arbitrary URLs.
+    const photoUrl = typeof body.photoUrl === 'string' && /^https:\/\/[a-z0-9.-]*muapi\.ai\//i.test(body.photoUrl) ? body.photoUrl : undefined;
+    if (typeof body.photoUrl === 'string' && !photoUrl) {
+        return sendJson(res, 400, { success: false, error: 'Upload the photo through this server first.' }, CORS);
+    }
+    const result = await engine.runSkill({ skillId: String(body.skillId ?? ''), inputs, photoUrl, customerId });
+    sendJson(res, result.success ? 200 : 422, result, CORS);
 }
 
 /** Resolve /data/<name> inside DATA_DIR only (no ../ escapes). */
@@ -113,12 +193,8 @@ const CORS = {
 };
 
 async function handleGenerate(req: http.IncomingMessage, res: http.ServerResponse) {
-    if (tokenSecret.length < 32) {
-        return sendJson(res, 503, { success: false, error: 'Server is missing SEBASTINA_TOKEN_SECRET.' }, CORS);
-    }
-    const bearer = /^Bearer\s+(.+)$/i.exec(req.headers.authorization ?? '')?.[1];
-    const customerId = verifyCustomerToken(bearer, tokenSecret);
-    if (!customerId) return sendJson(res, 401, { success: false, error: 'Missing or invalid access token.' }, CORS);
+    const customerId = authenticate(req, res);
+    if (!customerId) return;
 
     let body: any;
     try {
@@ -161,6 +237,11 @@ const server = http.createServer(async (req, res) => {
         }
         if (path === '/health') return sendJson(res, 200, { ok: true, billing: billingOn }, CORS);
         if (path === '/api/models') return sendJson(res, 200, { models: allowedModels }, CORS);
+        if (path === '/api/skills') return sendJson(res, 200, { skills: allowedSkills }, CORS);
+        if (path === '/api/upload' || path === '/api/skill') {
+            if (req.method !== 'POST') return sendJson(res, 405, { error: 'Use POST.' }, CORS);
+            return await (path === '/api/upload' ? handleUpload(req, res) : handleSkill(req, res));
+        }
         if (path === '/api/generate') {
             if (req.method !== 'POST') return sendJson(res, 405, { error: 'Use POST.' }, CORS);
             return await handleGenerate(req, res);

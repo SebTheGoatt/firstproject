@@ -6,7 +6,7 @@
  * and read them). Uses only `fetch`, so it runs in browsers, Tauri webviews,
  * React Native and Node alike.
  */
-import type { GenerationResult } from './engine.js';
+import type { GenerationResult, SkillRequest, UploadInput } from './engine.js';
 
 /** The suite's generation modules, shared so every app labels them the same way. */
 export const GOAT_MODULES = [
@@ -73,6 +73,56 @@ export class SEBastinaClient {
             return Array.isArray(data.models) ? data.models.filter((m): m is string => typeof m === 'string') : [];
         } catch {
             return [];
+        }
+    }
+
+    /** Skill ids this server allows (empty list if none or unreachable). */
+    async allowedSkills(): Promise<string[]> {
+        try {
+            const response = await this.doFetch(`${this.serverUrl}/api/skills`);
+            const data = (await response.json()) as { skills?: unknown };
+            return Array.isArray(data.skills) ? data.skills.filter((m): m is string => typeof m === 'string') : [];
+        } catch {
+            return [];
+        }
+    }
+
+    /** Upload a photo through the server; resolves to its public URL. Throws with a readable message. */
+    async uploadImage(file: UploadInput, fileName = 'photo.jpg'): Promise<string> {
+        const form = new FormData();
+        if (typeof Blob !== 'undefined' && file instanceof Blob) form.append('file', file, fileName);
+        else {
+            const rn = file as { uri: string; name?: string; type?: string };
+            form.append('file', { uri: rn.uri, name: rn.name ?? fileName, type: rn.type ?? 'image/jpeg' } as any);
+        }
+        let response: Response;
+        try {
+            response = await this.doFetch(`${this.serverUrl}/api/upload`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${this.token}` },
+                body: form,
+            });
+        } catch (error: any) {
+            throw new Error(`Can't reach the server: ${error?.message ?? error}`);
+        }
+        const data = (await response.json().catch(() => ({}))) as { url?: string; error?: string };
+        if (!response.ok || !data.url) throw new Error(data.error || `Upload failed (${response.status}).`);
+        return data.url;
+    }
+
+    /** Run a Skill on the server (the customer comes from the token, not the request). */
+    async runSkill(request: Omit<SkillRequest, 'customerId'>): Promise<GenerationResult> {
+        try {
+            const response = await this.doFetch(`${this.serverUrl}/api/skill`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
+                body: JSON.stringify(request),
+            });
+            const data = (await response.json().catch(() => null)) as GenerationResult | null;
+            if (data && typeof data.success === 'boolean') return data;
+            return { success: false, error: `Server answered ${response.status} without a result.` };
+        } catch (error: any) {
+            return { success: false, error: `Can't reach the server: ${error?.message ?? error}` };
         }
     }
 

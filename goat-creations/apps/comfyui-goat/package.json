@@ -1,0 +1,9 @@
+{
+  "name": "comfyui-goat",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GOAT CREATIONS ComfyUI node pack (Python). npm scripts only wire its tests into turbo.",
+  "scripts": {
+    "test": "python3 -m unittest discover -s tests -p \"test_*.py\""
+  }
+}

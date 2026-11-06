@@ -1,6 +1,7 @@
 import type { GenerationMiddleware, GenerationResult } from '../engine.js';
 import { describeError } from '../engine.js';
 import type { LagoBilling } from './lago.js';
+import { findSkill, skillCredits } from '../skills.js';
 
 /**
  * Lago credit gate. Before ImageGOAT or MotionGOAT runs, it checks that the
@@ -20,8 +21,10 @@ export function lagoCreditGate(
         if (!customerId) {
             return { success: false, error: 'No customer ID. Set SEBASTINA_CUSTOMER_ID or enter it when asked.' };
         }
-        const credits = config.isMotion ? cost.video : cost.image;
-        const mode = config.isMotion ? 'MotionGOAT' : 'ImageGOAT';
+        // A Skill costs one charge per step (image or video); a single generation costs one.
+        const skill = findSkill(config.skillId);
+        const credits = skill ? skillCredits(skill, cost) : config.isMotion ? cost.video : cost.image;
+        const mode = skill ? `Skill: ${skill.name}` : config.isMotion ? 'MotionGOAT' : 'ImageGOAT';
 
         const status = await billing.getCreditStatus(customerId);
         if (!status.hasActiveSubscription) {
