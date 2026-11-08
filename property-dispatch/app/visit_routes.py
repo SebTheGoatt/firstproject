@@ -30,6 +30,7 @@ from .booking import local_now
 from .zones import MAKEUP_WEEKDAY, short_name, zone_for_weekday
 from .charity import all_causes, describe as describe_charities, ledger
 from .changes import register_change_routes
+from .issues import register_customer_reports
 from .manifest import build_manifest
 from .pricing import PACKAGES, SCOPES, is_info, scope_of, yield_choice
 from .reviews import review_link
@@ -351,4 +352,5 @@ def register_visit_routes(app: FastAPI, settings: Settings, crew_auth):
         return run_nightly(r, settings, day)
 
     register_change_routes(app, settings, owner, visit_throttle, normalize_code)   # cancel / move / rain day
+    register_customer_reports(app, settings, visit_throttle, Throttle(limit=5, window_s=3600), normalize_code)   # "Something not right?"
     return owner

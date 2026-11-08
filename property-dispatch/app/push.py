@@ -31,6 +31,10 @@ MESSAGES = {
         "en": "Payment received. Thank you! Tap for your receipt and where your order's giving goes.",
         "es": "Pago recibido. ¡Gracias! Toca para ver tu recibo y a dónde va la donación de tu pedido.",
     },
+    "reminder": {
+        "en": "Reminder: we're there tomorrow. Please unlock the gate and bring pets inside.",
+        "es": "Recordatorio: vamos mañana. Por favor abre el portón y mete a tus mascotas.",
+    },
     "review": {
         "en": "Thanks for choosing us! If we did a good job, would you leave a quick Google review?",
         "es": "¡Gracias por elegirnos! Si hicimos un buen trabajo, ¿nos dejas una reseña rápida en Google?",

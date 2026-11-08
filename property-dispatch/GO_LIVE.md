@@ -7,7 +7,9 @@ The app checks itself: sign in as the owner, open **Crew app → Dashboard → G
 1. **Supabase**: SQL Editor → run `supabase/migrations/20261026000000_crew_notes.sql` and
    `supabase/migrations/20261027000000_review_requests.sql`, then
    `supabase/migrations/20261028000000_issues_and_sources.sql` (crew problem reports and booking sources).
-   Then `supabase/migrations/20261029000000_community.sql` (sponsored mows and nominations).
+   Then `supabase/migrations/20261029000000_community.sql` (sponsored mows and nominations), and
+   `supabase/migrations/20261108000000_reminders_and_customer_reports.sql` (day-before reminder texts and the
+   customer's "Something not right?" button).
    All safe to re-run.
    Then remove test bookings: `delete from customers where name like 'MOCK %';`
 2. **Render → Environment**: fill in every value from `.env.production.example` (web service, and the

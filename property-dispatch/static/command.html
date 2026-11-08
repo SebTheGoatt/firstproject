@@ -211,7 +211,7 @@
       </section>
 
       <section class="panel issues" id="issues-panel" aria-labelledby="h-iss" hidden>
-        <header><h2 id="h-iss">Problems the crew reported</h2><small id="iss-count"></small></header>
+        <header><h2 id="h-iss">Problems to handle</h2><small id="iss-count"></small></header>
         <ul class="iss" id="issues"></ul>
       </section>
 
@@ -308,8 +308,12 @@
         f.replaceChildren(el("b", {}, `Storm mode through ${day(d.closed.until, { weekday: "long", month: "short", day: "numeric" })}: ${plural(d.closed.affected, "booked visit needs", "booked visits need")} a new day.`),
           " Open each closed day on Dispatch and press Rain day: it moves them and texts each customer.");
       } else if (issues.length) {
-        f.replaceChildren(el("b", {}, `The crew reported ${plural(issues.length, "problem", "problems")}.`),
-          " See the photos below and mark each one handled once it's taken care of.");
+        const fromCustomers = issues.filter((i) => i.kind === "customer").length;
+        f.replaceChildren(el("b", {}, fromCustomers === issues.length
+            ? `${plural(issues.length, "customer says", "customers say")} something's not right.`
+            : `${plural(issues.length, "problem", "problems")} to handle${fromCustomers ? ` (${fromCustomers} from customers)` : ""}.`),
+          fromCustomers ? " Call them today, while it's fresh, and mark each one handled once it's sorted."
+                        : " See the photos below and mark each one handled once it's taken care of.");
       } else if (wrong.length) {
         f.replaceChildren(el("b", {}, `${plural(wrong.length, "booking is", "bookings are")} on the wrong area day.`),
           " Move each one to its area's day, or cancel it.");
@@ -397,7 +401,7 @@
     }
 
     const ISSUE_KIND = { damage: "Damage to the property", equipment: "Equipment broke down", access: "Couldn't get in",
-                         delay: "Running late", other: "Something else" };
+                         delay: "Running late", other: "Something else", customer: "A customer says something's not right" };
     function renderIssues(list) {
       $("issues-panel").hidden = !list.length;
       $("iss-count").textContent = list.length ? `${list.length} open` : "";

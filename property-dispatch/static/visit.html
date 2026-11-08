@@ -79,6 +79,20 @@
           <a class="btn btn-primary" id="v-review-link" target="_blank" rel="noopener">Leave a Google review</a>
         </section>
 
+        <section class="card" id="v-report" hidden aria-labelledby="v-report-title">
+          <h2 class="card-title" id="v-report-title">Something not right?</h2>
+          <p class="muted">Tell us here and the owner will make it right. This goes only to us, privately.</p>
+          <form id="report-form">
+            <div class="field">
+              <label for="report-note">What went wrong?</label>
+              <textarea id="report-note" maxlength="1000" required></textarea>
+            </div>
+            <button class="btn btn-outline" type="submit" id="report-btn">Send to the owner</button>
+          </form>
+          <p class="alert alert-ok" id="report-done" role="status" hidden>Thanks for telling us. The owner will reach out soon.</p>
+          <p class="alert alert-error" id="report-error" role="alert" hidden></p>
+        </section>
+
         <section class="card vp-receipt" id="v-pay"></section>
 
         <div class="vp-actions" id="v-actions" hidden>
@@ -189,6 +203,8 @@
       $("v-where").textContent = v.address;
       $("v-hello").textContent = `Hi ${v.first_name}`;
       $("v-again").hidden = v.status !== "completed";
+      // Private line to the owner, shown to every finished visit next to (never instead of) the review button.
+      $("v-report").hidden = v.status !== "completed";
       $("v-code").textContent = `Access code ${v.access_code}`;
       for (const id of ["v-what", "v-where", "v-meta"]) $(id).hidden = false;
 
@@ -319,6 +335,23 @@
       const c = clean($("code").value).slice(0, 8);
       $("code").value = c.length > 4 ? `${c.slice(0, 4)}-${c.slice(4)}` : c;
     });
+    $("report-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const code = clean(location.pathname.split("/")[2]), btn = $("report-btn"), err = $("report-error");
+      const t = (x) => window.I18N ? I18N.t(x) : x;
+      btn.disabled = true; err.hidden = true;
+      try {
+        const res = await fetch(`/api/visit/${code}/report`, { method: "POST", headers: { "Content-Type": "application/json" },
+                                                               body: JSON.stringify({ note: $("report-note").value }) });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.detail || "We couldn't send that. Please try again.");
+        $("report-form").hidden = true; $("report-done").hidden = false;
+      } catch (ex) {
+        err.textContent = t(typeof ex.message === "string" ? ex.message : "We couldn't send that. Please try again.");
+        err.hidden = false;
+      } finally { btn.disabled = false; }
+    });
+
     $("cancel-btn").addEventListener("click", async () => {
       const code = clean(location.pathname.split("/")[2]);
       const t = (x) => window.I18N ? I18N.t(x) : x;

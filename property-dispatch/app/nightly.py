@@ -19,6 +19,8 @@ from datetime import date, datetime, time, timedelta
 from collections import Counter
 
 from .manifest import send_manifest_for
+from .notify import TwilioClient
+from .reminders import send_day_before
 from .booking import local_now, next_service_day
 from .config import Settings, get_settings
 from .db import Repository, make_repository
@@ -27,6 +29,7 @@ from .routing.matrix import TravelMatrix
 from .zones import find_zone, zone_for_weekday
 
 log = logging.getLogger("nightly")
+AUTO = object()      # run_nightly(sms=...): use Twilio when the settings have it
 
 
 def compute_etas(start_at: datetime, legs: list[tuple[int, int]]) -> list[datetime]:
@@ -65,7 +68,11 @@ def run_nightly(
     day: date,
     *,
     matrix: TravelMatrix | None = None,
+    sms=AUTO,
+    now: datetime | None = None,
 ) -> dict:
+    """Build `day`'s route, email the manifest, and text each customer the day-before reminder.
+    `sms`: AUTO = Twilio when it's set up; None = log the texts instead (tests pass a fake)."""
     jobs, unpaid = unpaid_card(repo.list_routable_jobs(day), settings)
     if unpaid:
         log.warning("%s: %d card booking(s) not paid yet left off the route: %s", day, len(unpaid),
@@ -130,6 +137,12 @@ def run_nightly(
     except Exception:
         log.exception("Manifest email step failed")
         summary["manifest_emailed"] = False
+    try:     # "we mow tomorrow: unlock the gate, pets inside" (once per booking; never blocks the route)
+        if sms is AUTO:
+            sms = TwilioClient(settings) if settings.twilio_enabled else None
+        summary["reminders"] = send_day_before(repo, settings, sms, day, stops, now=now)
+    except Exception:
+        log.exception("Reminder step failed")
     return summary
 
 

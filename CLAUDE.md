@@ -100,6 +100,11 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
   needs a key). `tools/make_target_map.py` writes `static/data/targets-<fingerprint>.json` (neighborhood totals only);
   re-run after an area/box/day change (`tests/test_target_map.py` fails until you do) or when a new ACS release is out
   (each December). Plan copy uses EDDM ~$0.65/home all-in and 0.5–1.5% response (2026 industry estimates).
+- Day-before reminder (`app/reminders.py`, from the route build in `run_nightly`): one text per booking ("we're coming
+  tomorrow, likely between 9 and 11 AM; unlock the gate, pets inside; cancel free until the on-the-way text"), EN/ES,
+  8 AM–9 PM only, never a pitch. Customer "Something not right?" on the visit page (`POST /api/visit/{code}/report`) lands
+  with the crew's reports on the owner screen, shown to every finished visit next to the review button, never instead of
+  it (no review gating, no discount for reviews: Google's rules). Both need `20261108000000_reminders_and_customer_reports.sql`.
 - Crew "Report a problem" (`app/issues.py`): damage / equipment / access / delay with a photo; first item on the owner
   screen; email via Resend when set. Needs `supabase/migrations/20261028000000_issues_and_sources.sql`.
 
@@ -181,6 +186,7 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 - Delete the mock bookings from testing.
 - Run `supabase/migrations/20261028000000_issues_and_sources.sql` (problem reports + booking sources).
 - Run `supabase/migrations/20261029000000_community.sql` (sponsored mows + nominations).
+- Run `supabase/migrations/20261108000000_reminders_and_customer_reports.sql` (day-before texts + customer reports).
 - Claim the same name, hours, site and service area on Bing Places, Apple Business Connect, Yelp and Nextdoor (AI
   assistants pull from these); set the *_URL profile settings in Render as each one goes live.
 
