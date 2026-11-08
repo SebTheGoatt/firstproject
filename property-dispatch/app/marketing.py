@@ -28,6 +28,7 @@ from .pricing import density_pct
 from .reviews import review_link
 from .service_pages import SERVICES
 from .zones import SERVICE_ZONES, WEEKDAY_NAMES, short_name, zone_by_key
+from .seo_research import hub_research, prompt_facts, top_questions
 
 esc = html.escape
 
@@ -94,6 +95,7 @@ def business_facts(settings: Settings, site: str) -> str:
         "- Crew background checks: every crew member has passed one." if settings.crew_background_checked
         else "- Background checks: never mention them.",
         f"- How customers reach us: {contact}.",
+        *prompt_facts(),                      # NOAA season facts per area (tools/seo_research.py)
     ]
     rules = ("Rules: plain, short, friendly sentences. Write as \"we\" to \"you\". No military jargon or role-play. "
              "No emoji unless I ask. Never invent reviews, ratings, numbers, prices, discounts or promises: use only "
@@ -136,7 +138,20 @@ def prompt_pack(settings: Settings, site: str) -> list[dict]:
     """Copy-ready prompts for ChatGPT, Claude or any assistant: the owner's recurring writing jobs, each with the live
     facts and rules attached. Fill in the [BRACKETS] and send."""
     facts = business_facts(settings, site)
-    return [{"key": k, "title": t, "when": w, "prompt": f"{task}\n\n{facts}"} for k, t, w, task in PROMPTS]
+    pack = [{"key": k, "title": t, "when": w, "prompt": f"{task}\n\n{facts}"} for k, t, w, task in PROMPTS]
+    gaps = top_questions(limit=12, gaps_only=True)
+    if gaps:      # real searches in our areas that our site doesn't answer yet (tools/seo_research.py)
+        task = ("People around our areas type these into Google, and our website doesn't answer them yet:\n"
+                + "\n".join(f"- {q}" for q in gaps)
+                + "\n\nPick the one that fits our business best and write: 1) a website FAQ answer, 2 to 4 sentences, "
+                  "that starts with the direct answer; 2) the same idea as a short social post; 3) both again in Spanish. "
+                  "Use only the facts below. For lawn-care advice the facts don't cover (like a mowing height), give "
+                  "the range Texas A&M AgriLife Extension recommends for the Houston area and mark it [CHECK] so I "
+                  "confirm it before posting. Never promise anything the facts don't.")
+        pack.insert(0, {"key": "search", "title": "Answer what people search",
+                        "when": "Weekly: turn a real local search into an FAQ answer and a post.",
+                        "prompt": f"{task}\n\n{facts}"})
+    return pack
 
 
 def poster_path(ext: str = "jpg") -> str:
@@ -334,6 +349,7 @@ def register_marketing(app: FastAPI, settings: Settings, owner, page, version: s
             "poster": {"jpg": poster_path("jpg"), "pdf": poster_path("pdf")},
             "preorders": preorder_info(settings, app.state.repo),
             "prompts": prompt_pack(settings, site),
+            "research": hub_research(),
         }
 
     @app.get("/marketing/qr.svg", include_in_schema=False)

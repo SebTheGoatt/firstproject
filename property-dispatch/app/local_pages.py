@@ -38,6 +38,7 @@ from .config import Settings, site_url, verification_meta
 from .pricing import (ADD_ONS, MAX_SQFT, YARD_TYPES, YIELD_GIVING_RATE, YIELD_INCLUDED_SQFT, bracket_profile,
                       density_pct, season_text, yield_mow_fee)
 from .zones import WEEKDAY_NAMES, zone_by_key
+from .seo_research import llms_climate, season_faq
 
 esc = html.escape
 
@@ -308,6 +309,7 @@ def area_faq(settings: Settings, area: Area) -> list[tuple[str, str]]:
          f"The booking form sizes your lawn from your address and shows your exact price before you book."),
         (f"Which parts of {area.city} do you serve?",
          f"{joined(area.places)}. The booking form checks your address before you book."),
+        *([season] if (season := season_faq(area)) else []),     # NOAA climate normals (tools/seo_research.py)
     ]
 
 
@@ -467,11 +469,34 @@ def layout(settings: Settings, version: str, *, title: str, description: str, bo
 """
 
 
+# Listing and about pages: what kind of page each is, for search engines and AI assistants (schema.org).
+PAGE_KINDS = {"/services": ("CollectionPage", "Services"), "/local": ("CollectionPage", "Areas we serve"),
+              "/about": ("AboutPage", "About"), "/team": ("AboutPage", "Meet the crew"),
+              "/community": ("WebPage", "Community: Mow It Forward")}
+
+
+def page_ld(site: str, path: str) -> str:
+    """WebPage + breadcrumbs for a listing or about page, tied to the business described on the home page."""
+    if path not in PAGE_KINDS:
+        return ""
+    kind, name = PAGE_KINDS[path]
+    url = f"{site}{path}"
+    data = {"@context": "https://schema.org", "@graph": [
+        {"@type": kind, "@id": f"{url}#page", "url": url, "name": name, "inLanguage": "en-US",
+         "about": {"@id": f"{site}/#business"}, "breadcrumb": {"@id": f"{url}#breadcrumb"}},
+        {"@type": "BreadcrumbList", "@id": f"{url}#breadcrumb", "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Home", "item": f"{site}/"},
+            {"@type": "ListItem", "position": 2, "name": name, "item": url}]}]}
+    return f'<script type="application/ld+json">{script_json(data)}</script>'
+
+
 def with_share_tags(text: str, site: str, path: str) -> str:
-    """Adds what a page's <head> is missing of: canonical link, og:url and the share image (absolute URLs).
-    Pages that already set one keep theirs."""
+    """Adds what a page's <head> is missing of: canonical link, og:url, the share image (absolute URLs) and, for
+    the listing and about pages, their structured data. Pages that already set one keep theirs."""
     url = f"{site}{path}"
     tags = []
+    if "application/ld+json" not in text and (ld := page_ld(site, path)):
+        tags.append(ld)
     if 'rel="canonical"' not in text:
         tags.append(f'<link rel="canonical" href="{esc(url)}">')
     if 'property="og:url"' not in text:
@@ -747,6 +772,8 @@ def hood_html(settings: Settings, version: str, hood: Hood, site: str, day: date
 {cta_band(f"Put your {hood.name} lawn on the route.")}"""
 
     title = f"Lawn Mowing in {hood.name}, {area.city} TX | {settings.business_name}"
+    if len(title) > 60:      # Google cuts titles at about 60 characters; the H1 and description still name the city
+        title = f"Lawn Mowing in {hood.name} | {settings.business_name}"
     description = (f"Lawn mowing in {hood.name}, {area.city}, TX, every {weekday}. "
                    f"Flat prices from {dollars(low)} a visit before tax. Veteran-owned. Book online.")
     ld = f'\n  <script type="application/ld+json">{script_json(hood_structured_data(settings, area, hood, site))}</script>'
@@ -789,7 +816,8 @@ def index_html(settings: Settings, version: str, site: str) -> str:
     cities = joined(f"{a.city}" for a in AREAS)
     return layout(settings, version, title=f"Areas We Serve | {settings.business_name}",
                   description=f"Lawn mowing in {cities}, TX: the neighborhoods we cover and flat per-visit prices for each area.",
-                  body=body, canonical=f"{site}/local", og_image=f"{site}/static/icons/post-one-share.jpg", page="index")
+                  body=body, canonical=f"{site}/local", og_image=f"{site}/static/icons/post-one-share.jpg", page="index",
+                  head_extra="\n  " + page_ld(site, "/local"))
 
 
 def not_found_html(settings: Settings, version: str) -> str:
@@ -931,6 +959,7 @@ def register_local_pages(app: FastAPI, settings: Settings, version: str = "") ->
 ## Add-ons
 {extras}
 
+{llms_climate(AREAS)}
 ## Services
 {services}
 

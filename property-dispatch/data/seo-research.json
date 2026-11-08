@@ -1,0 +1,1859 @@
+{
+ "collected": "2026-11-08",
+ "fingerprint": "059747b2",
+ "sources": {
+  "questions": "Google search-box suggestions (suggestqueries.google.com), English and Spanish",
+  "howto": "Stack Exchange API, gardening.stackexchange.com (titles and links only)",
+  "season": "NOAA NCEI U.S. Climate Normals 1991-2020 (public domain)"
+ },
+ "season": {
+  "spring": {
+   "station_id": "USW00012960",
+   "station": "Houston Intercontinental Airport",
+   "miles": 11.1,
+   "months": [
+    {
+     "m": 1,
+     "high_f": 63.8,
+     "low_f": 43.7,
+     "rain_in": 3.76,
+     "rain_days": 5.7
+    },
+    {
+     "m": 2,
+     "high_f": 67.8,
+     "low_f": 47.6,
+     "rain_in": 2.97,
+     "rain_days": 4.9
+    },
+    {
+     "m": 3,
+     "high_f": 74.0,
+     "low_f": 53.6,
+     "rain_in": 3.47,
+     "rain_days": 4.8
+    },
+    {
+     "m": 4,
+     "high_f": 80.1,
+     "low_f": 59.8,
+     "rain_in": 3.95,
+     "rain_days": 4.4
+    },
+    {
+     "m": 5,
+     "high_f": 86.9,
+     "low_f": 67.8,
+     "rain_in": 5.01,
+     "rain_days": 5.4
+    },
+    {
+     "m": 6,
+     "high_f": 92.3,
+     "low_f": 73.7,
+     "rain_in": 6.0,
+     "rain_days": 6.6
+    },
+    {
+     "m": 7,
+     "high_f": 94.5,
+     "low_f": 75.7,
+     "rain_in": 3.77,
+     "rain_days": 5.7
+    },
+    {
+     "m": 8,
+     "high_f": 94.9,
+     "low_f": 75.4,
+     "rain_in": 4.84,
+     "rain_days": 5.8
+    },
+    {
+     "m": 9,
+     "high_f": 90.4,
+     "low_f": 70.6,
+     "rain_in": 4.71,
+     "rain_days": 5.8
+    },
+    {
+     "m": 10,
+     "high_f": 82.8,
+     "low_f": 60.9,
+     "rain_in": 5.46,
+     "rain_days": 4.9
+    },
+    {
+     "m": 11,
+     "high_f": 72.6,
+     "low_f": 51.5,
+     "rain_in": 3.87,
+     "rain_days": 4.7
+    },
+    {
+     "m": 12,
+     "high_f": 65.3,
+     "low_f": 45.6,
+     "rain_in": 4.03,
+     "rain_days": 5.7
+    }
+   ],
+   "last_freeze": "02/13",
+   "first_freeze": "12/09"
+  },
+  "klein": {
+   "station_id": "USW00012960",
+   "station": "Houston Intercontinental Airport",
+   "miles": 9.7,
+   "months": [
+    {
+     "m": 1,
+     "high_f": 63.8,
+     "low_f": 43.7,
+     "rain_in": 3.76,
+     "rain_days": 5.7
+    },
+    {
+     "m": 2,
+     "high_f": 67.8,
+     "low_f": 47.6,
+     "rain_in": 2.97,
+     "rain_days": 4.9
+    },
+    {
+     "m": 3,
+     "high_f": 74.0,
+     "low_f": 53.6,
+     "rain_in": 3.47,
+     "rain_days": 4.8
+    },
+    {
+     "m": 4,
+     "high_f": 80.1,
+     "low_f": 59.8,
+     "rain_in": 3.95,
+     "rain_days": 4.4
+    },
+    {
+     "m": 5,
+     "high_f": 86.9,
+     "low_f": 67.8,
+     "rain_in": 5.01,
+     "rain_days": 5.4
+    },
+    {
+     "m": 6,
+     "high_f": 92.3,
+     "low_f": 73.7,
+     "rain_in": 6.0,
+     "rain_days": 6.6
+    },
+    {
+     "m": 7,
+     "high_f": 94.5,
+     "low_f": 75.7,
+     "rain_in": 3.77,
+     "rain_days": 5.7
+    },
+    {
+     "m": 8,
+     "high_f": 94.9,
+     "low_f": 75.4,
+     "rain_in": 4.84,
+     "rain_days": 5.8
+    },
+    {
+     "m": 9,
+     "high_f": 90.4,
+     "low_f": 70.6,
+     "rain_in": 4.71,
+     "rain_days": 5.8
+    },
+    {
+     "m": 10,
+     "high_f": 82.8,
+     "low_f": 60.9,
+     "rain_in": 5.46,
+     "rain_days": 4.9
+    },
+    {
+     "m": 11,
+     "high_f": 72.6,
+     "low_f": 51.5,
+     "rain_in": 3.87,
+     "rain_days": 4.7
+    },
+    {
+     "m": 12,
+     "high_f": 65.3,
+     "low_f": 45.6,
+     "rain_in": 4.03,
+     "rain_days": 5.7
+    }
+   ],
+   "last_freeze": "02/13",
+   "first_freeze": "12/09"
+  },
+  "new-caney": {
+   "station_id": "USC00411810",
+   "station": "Cleveland, TX",
+   "miles": 10.5,
+   "months": [
+    {
+     "m": 1,
+     "high_f": 60.8,
+     "low_f": 38.9,
+     "rain_in": 4.45,
+     "rain_days": 6.2
+    },
+    {
+     "m": 2,
+     "high_f": 65.0,
+     "low_f": 42.5,
+     "rain_in": 4.29,
+     "rain_days": 5.7
+    },
+    {
+     "m": 3,
+     "high_f": 71.6,
+     "low_f": 49.0,
+     "rain_in": 3.76,
+     "rain_days": 5.3
+    },
+    {
+     "m": 4,
+     "high_f": 77.1,
+     "low_f": 54.9,
+     "rain_in": 3.73,
+     "rain_days": 4.4
+    },
+    {
+     "m": 5,
+     "high_f": 83.4,
+     "low_f": 63.4,
+     "rain_in": 5.25,
+     "rain_days": 5.3
+    },
+    {
+     "m": 6,
+     "high_f": 88.9,
+     "low_f": 69.8,
+     "rain_in": 5.19,
+     "rain_days": 7.3
+    },
+    {
+     "m": 7,
+     "high_f": 91.4,
+     "low_f": 71.7,
+     "rain_in": 3.46,
+     "rain_days": 5.7
+    },
+    {
+     "m": 8,
+     "high_f": 92.4,
+     "low_f": 71.3,
+     "rain_in": 4.56,
+     "rain_days": 5.8
+    },
+    {
+     "m": 9,
+     "high_f": 87.5,
+     "low_f": 66.4,
+     "rain_in": 5.1,
+     "rain_days": 5.1
+    },
+    {
+     "m": 10,
+     "high_f": 79.2,
+     "low_f": 56.3,
+     "rain_in": 5.75,
+     "rain_days": 4.6
+    },
+    {
+     "m": 11,
+     "high_f": 68.7,
+     "low_f": 46.6,
+     "rain_in": 5.39,
+     "rain_days": 5.9
+    },
+    {
+     "m": 12,
+     "high_f": 61.7,
+     "low_f": 40.2,
+     "rain_in": 4.6,
+     "rain_days": 6.6
+    }
+   ],
+   "last_freeze": "03/07",
+   "first_freeze": "11/20"
+  },
+  "cleveland": {
+   "station_id": "USC00411810",
+   "station": "Cleveland, TX",
+   "miles": 6.6,
+   "months": [
+    {
+     "m": 1,
+     "high_f": 60.8,
+     "low_f": 38.9,
+     "rain_in": 4.45,
+     "rain_days": 6.2
+    },
+    {
+     "m": 2,
+     "high_f": 65.0,
+     "low_f": 42.5,
+     "rain_in": 4.29,
+     "rain_days": 5.7
+    },
+    {
+     "m": 3,
+     "high_f": 71.6,
+     "low_f": 49.0,
+     "rain_in": 3.76,
+     "rain_days": 5.3
+    },
+    {
+     "m": 4,
+     "high_f": 77.1,
+     "low_f": 54.9,
+     "rain_in": 3.73,
+     "rain_days": 4.4
+    },
+    {
+     "m": 5,
+     "high_f": 83.4,
+     "low_f": 63.4,
+     "rain_in": 5.25,
+     "rain_days": 5.3
+    },
+    {
+     "m": 6,
+     "high_f": 88.9,
+     "low_f": 69.8,
+     "rain_in": 5.19,
+     "rain_days": 7.3
+    },
+    {
+     "m": 7,
+     "high_f": 91.4,
+     "low_f": 71.7,
+     "rain_in": 3.46,
+     "rain_days": 5.7
+    },
+    {
+     "m": 8,
+     "high_f": 92.4,
+     "low_f": 71.3,
+     "rain_in": 4.56,
+     "rain_days": 5.8
+    },
+    {
+     "m": 9,
+     "high_f": 87.5,
+     "low_f": 66.4,
+     "rain_in": 5.1,
+     "rain_days": 5.1
+    },
+    {
+     "m": 10,
+     "high_f": 79.2,
+     "low_f": 56.3,
+     "rain_in": 5.75,
+     "rain_days": 4.6
+    },
+    {
+     "m": 11,
+     "high_f": 68.7,
+     "low_f": 46.6,
+     "rain_in": 5.39,
+     "rain_days": 5.9
+    },
+    {
+     "m": 12,
+     "high_f": 61.7,
+     "low_f": 40.2,
+     "rain_in": 4.6,
+     "rain_days": 6.6
+    }
+   ],
+   "last_freeze": "03/07",
+   "first_freeze": "11/20"
+  },
+  "colony-ridge": {
+   "station_id": "USC00411810",
+   "station": "Cleveland, TX",
+   "miles": 10.9,
+   "months": [
+    {
+     "m": 1,
+     "high_f": 60.8,
+     "low_f": 38.9,
+     "rain_in": 4.45,
+     "rain_days": 6.2
+    },
+    {
+     "m": 2,
+     "high_f": 65.0,
+     "low_f": 42.5,
+     "rain_in": 4.29,
+     "rain_days": 5.7
+    },
+    {
+     "m": 3,
+     "high_f": 71.6,
+     "low_f": 49.0,
+     "rain_in": 3.76,
+     "rain_days": 5.3
+    },
+    {
+     "m": 4,
+     "high_f": 77.1,
+     "low_f": 54.9,
+     "rain_in": 3.73,
+     "rain_days": 4.4
+    },
+    {
+     "m": 5,
+     "high_f": 83.4,
+     "low_f": 63.4,
+     "rain_in": 5.25,
+     "rain_days": 5.3
+    },
+    {
+     "m": 6,
+     "high_f": 88.9,
+     "low_f": 69.8,
+     "rain_in": 5.19,
+     "rain_days": 7.3
+    },
+    {
+     "m": 7,
+     "high_f": 91.4,
+     "low_f": 71.7,
+     "rain_in": 3.46,
+     "rain_days": 5.7
+    },
+    {
+     "m": 8,
+     "high_f": 92.4,
+     "low_f": 71.3,
+     "rain_in": 4.56,
+     "rain_days": 5.8
+    },
+    {
+     "m": 9,
+     "high_f": 87.5,
+     "low_f": 66.4,
+     "rain_in": 5.1,
+     "rain_days": 5.1
+    },
+    {
+     "m": 10,
+     "high_f": 79.2,
+     "low_f": 56.3,
+     "rain_in": 5.75,
+     "rain_days": 4.6
+    },
+    {
+     "m": 11,
+     "high_f": 68.7,
+     "low_f": 46.6,
+     "rain_in": 5.39,
+     "rain_days": 5.9
+    },
+    {
+     "m": 12,
+     "high_f": 61.7,
+     "low_f": 40.2,
+     "rain_in": 4.6,
+     "rain_days": 6.6
+    }
+   ],
+   "last_freeze": "03/07",
+   "first_freeze": "11/20"
+  }
+ },
+ "questions": [
+  {
+   "q": "lawn mowing spring tx",
+   "lang": "en",
+   "town": "spring",
+   "intent": "local",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "lawn service spring tx",
+   "lang": "en",
+   "town": "spring",
+   "intent": "local",
+   "service": null,
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "lawn care spring tx",
+   "lang": "en",
+   "town": "spring",
+   "intent": "local",
+   "service": null,
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "lawn maintenance spring tx",
+   "lang": "en",
+   "town": "spring",
+   "intent": "local",
+   "service": null,
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "lawn service spring tx prices",
+   "lang": "en",
+   "town": "spring",
+   "intent": "price",
+   "service": null,
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "lawn mowing service spring tx",
+   "lang": "en",
+   "town": "spring",
+   "intent": "local",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "lawn care services spring tx",
+   "lang": "en",
+   "town": "spring",
+   "intent": "local",
+   "service": null,
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "grass cutting service near me spring tx",
+   "lang": "en",
+   "town": "spring",
+   "intent": "near_me",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "yard service spring tx",
+   "lang": "en",
+   "town": "spring",
+   "intent": "local",
+   "service": null,
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "lawn service new caney tx",
+   "lang": "en",
+   "town": "new caney",
+   "intent": "local",
+   "service": null,
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "lawn care new caney tx",
+   "lang": "en",
+   "town": "new caney",
+   "intent": "local",
+   "service": null,
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "lawn mowing service new caney tx",
+   "lang": "en",
+   "town": "new caney",
+   "intent": "local",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "lawn service splendora tx",
+   "lang": "en",
+   "town": "splendora",
+   "intent": "local",
+   "service": null,
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "lawn care splendora tx",
+   "lang": "en",
+   "town": "splendora",
+   "intent": "local",
+   "service": null,
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "lawn service cleveland tx",
+   "lang": "en",
+   "town": "cleveland",
+   "intent": "local",
+   "service": null,
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "lawn care cleveland tx",
+   "lang": "en",
+   "town": "cleveland",
+   "intent": "local",
+   "service": null,
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "how often should i mow my lawn in texas",
+   "lang": "en",
+   "town": null,
+   "intent": "schedule",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "how often should you mow your lawn in texas",
+   "lang": "en",
+   "town": null,
+   "intent": "schedule",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "when should i stop mowing my lawn in texas",
+   "lang": "en",
+   "town": null,
+   "intent": "schedule",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "when should you stop watering your lawn in texas",
+   "lang": "en",
+   "town": null,
+   "intent": "schedule",
+   "service": null,
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "when to start mowing st augustine grass",
+   "lang": "en",
+   "town": null,
+   "intent": "schedule",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "when to mow st augustine grass",
+   "lang": "en",
+   "town": null,
+   "intent": "schedule",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "when to stop mowing st augustine grass",
+   "lang": "en",
+   "town": null,
+   "intent": "schedule",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "when to mow st augustine sod",
+   "lang": "en",
+   "town": null,
+   "intent": "schedule",
+   "service": "sod",
+   "we_offer": false,
+   "on_site": false
+  },
+  {
+   "q": "when to mow new st augustine grass",
+   "lang": "en",
+   "town": null,
+   "intent": "schedule",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "how often should you mow st augustine grass",
+   "lang": "en",
+   "town": null,
+   "intent": "schedule",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "how short to cut st augustine grass",
+   "lang": "en",
+   "town": null,
+   "intent": "howto",
+   "service": null,
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "how short to cut st augustine grass in summer",
+   "lang": "en",
+   "town": null,
+   "intent": "howto",
+   "service": null,
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "how short to cut st augustine grass for winter",
+   "lang": "en",
+   "town": null,
+   "intent": "schedule",
+   "service": null,
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "how short to cut st augustine grass in texas",
+   "lang": "en",
+   "town": null,
+   "intent": "howto",
+   "service": null,
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "how long to cut st augustine grass",
+   "lang": "en",
+   "town": null,
+   "intent": "local",
+   "service": null,
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "how short can you cut st augustine grass",
+   "lang": "en",
+   "town": null,
+   "intent": "howto",
+   "service": null,
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "how short can you cut st augustine grass in texas",
+   "lang": "en",
+   "town": null,
+   "intent": "howto",
+   "service": null,
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "how long should you cut st augustine grass",
+   "lang": "en",
+   "town": null,
+   "intent": "howto",
+   "service": null,
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "lawn mowing near me",
+   "lang": "en",
+   "town": null,
+   "intent": "near_me",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "lawn mowing near me prices",
+   "lang": "en",
+   "town": null,
+   "intent": "price",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "lawn mowing near me cheap",
+   "lang": "en",
+   "town": null,
+   "intent": "price",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "lawn mowing near me within 5 mi",
+   "lang": "en",
+   "town": null,
+   "intent": "near_me",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "lawn mowing near me today",
+   "lang": "en",
+   "town": null,
+   "intent": "near_me",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "lawn mowing near me open now",
+   "lang": "en",
+   "town": null,
+   "intent": "near_me",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "lawn mowing near me same day",
+   "lang": "en",
+   "town": null,
+   "intent": "near_me",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "lawn mowing near me one time",
+   "lang": "en",
+   "town": null,
+   "intent": "near_me",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "lawn service houston prices",
+   "lang": "en",
+   "town": null,
+   "intent": "price",
+   "service": null,
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "same day lawn service houston prices",
+   "lang": "en",
+   "town": null,
+   "intent": "price",
+   "service": null,
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "how much does lawn service cost near me",
+   "lang": "en",
+   "town": null,
+   "intent": "price",
+   "service": null,
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "how much do lawn services cost",
+   "lang": "en",
+   "town": null,
+   "intent": "price",
+   "service": null,
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "how much does a typical lawn service cost",
+   "lang": "en",
+   "town": null,
+   "intent": "price",
+   "service": null,
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "lawn care service prices near me",
+   "lang": "en",
+   "town": null,
+   "intent": "price",
+   "service": null,
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "bermuda grass mowing height",
+   "lang": "en",
+   "town": null,
+   "intent": "howto",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "bermuda grass mowing height summer",
+   "lang": "en",
+   "town": null,
+   "intent": "howto",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "bermuda grass mowing height texas",
+   "lang": "en",
+   "town": null,
+   "intent": "howto",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "bermuda grass mowing height winter",
+   "lang": "en",
+   "town": null,
+   "intent": "schedule",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "bermuda grass lawn height",
+   "lang": "en",
+   "town": null,
+   "intent": "howto",
+   "service": null,
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "bermuda grass recommended mowing height",
+   "lang": "en",
+   "town": null,
+   "intent": "howto",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "tiftuf bermuda grass mowing height",
+   "lang": "en",
+   "town": null,
+   "intent": "howto",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "common bermuda grass mowing height",
+   "lang": "en",
+   "town": null,
+   "intent": "howto",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "hybrid bermuda grass mowing height",
+   "lang": "en",
+   "town": null,
+   "intent": "howto",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "celebration bermuda grass mowing height",
+   "lang": "en",
+   "town": null,
+   "intent": "howto",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "when to stop mowing lawn texas",
+   "lang": "en",
+   "town": null,
+   "intent": "schedule",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "when to stop mowing lawn in houston texas",
+   "lang": "en",
+   "town": null,
+   "intent": "schedule",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "what month should you stop mowing the lawn",
+   "lang": "en",
+   "town": null,
+   "intent": "schedule",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "what time should you stop mowing your lawn",
+   "lang": "en",
+   "town": null,
+   "intent": "howto",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "lawn mowing in the rain",
+   "lang": "en",
+   "town": null,
+   "intent": "schedule",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "lawn care in the rain",
+   "lang": "en",
+   "town": null,
+   "intent": "schedule",
+   "service": null,
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "mowing grass in the rain",
+   "lang": "en",
+   "town": null,
+   "intent": "schedule",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "cutting lawn in the rain",
+   "lang": "en",
+   "town": null,
+   "intent": "schedule",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "lawn mowing in light rain",
+   "lang": "en",
+   "town": null,
+   "intent": "schedule",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "lawn mowing rainy day",
+   "lang": "en",
+   "town": null,
+   "intent": "schedule",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "cuanto cobran por cortar el pasto",
+   "lang": "es",
+   "town": null,
+   "intent": "price",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "cuanto cobran para cortar el pasto",
+   "lang": "es",
+   "town": null,
+   "intent": "price",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "cada cuanto cortar el pasto",
+   "lang": "es",
+   "town": null,
+   "intent": "schedule",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "cada cuanto cortar el pasto en primavera",
+   "lang": "es",
+   "town": null,
+   "intent": "schedule",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "cada cuanto cortar el pasto en verano",
+   "lang": "es",
+   "town": null,
+   "intent": "schedule",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "cada cuanto cortar el pasto en invierno",
+   "lang": "es",
+   "town": null,
+   "intent": "schedule",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "cada cuanto cortar el pasto en otoño",
+   "lang": "es",
+   "town": null,
+   "intent": "schedule",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "cada cuanto tiempo es recomendable cortar el pasto",
+   "lang": "es",
+   "town": null,
+   "intent": "schedule",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": false
+  },
+  {
+   "q": "servicio de jardinería cerca de mi",
+   "lang": "es",
+   "town": null,
+   "intent": "near_me",
+   "service": null,
+   "we_offer": true,
+   "on_site": true
+  },
+  {
+   "q": "corte de cesped cerca de mi",
+   "lang": "es",
+   "town": null,
+   "intent": "near_me",
+   "service": "mowing",
+   "we_offer": true,
+   "on_site": true
+  }
+ ],
+ "howto": [
+  {
+   "q": "Tips on lawn maintenance and weed control",
+   "votes": 61,
+   "link": "https://gardening.stackexchange.com/questions/1499/tips-on-lawn-maintenance-and-weed-control",
+   "tag": "lawn"
+  },
+  {
+   "q": "How often should you mow a growing lawn?",
+   "votes": 51,
+   "link": "https://gardening.stackexchange.com/questions/1027/how-often-should-you-mow-a-growing-lawn",
+   "tag": "lawn"
+  },
+  {
+   "q": "What's an organic way to discourage crabgrass from a large \"lawn\"?",
+   "votes": 49,
+   "link": "https://gardening.stackexchange.com/questions/1390/whats-an-organic-way-to-discourage-crabgrass-from-a-large-lawn",
+   "tag": "lawn"
+  },
+  {
+   "q": "How do I encourage lawn seeds to germinate successfully?",
+   "votes": 43,
+   "link": "https://gardening.stackexchange.com/questions/13/how-do-i-encourage-lawn-seeds-to-germinate-successfully",
+   "tag": "lawn"
+  },
+  {
+   "q": "How do I know when and how much to aerate my lawn?",
+   "votes": 40,
+   "link": "https://gardening.stackexchange.com/questions/107/how-do-i-know-when-and-how-much-to-aerate-my-lawn",
+   "tag": "lawn"
+  },
+  {
+   "q": "What is a good grass replacement plant?",
+   "votes": 36,
+   "link": "https://gardening.stackexchange.com/questions/201/what-is-a-good-grass-replacement-plant",
+   "tag": "lawn"
+  },
+  {
+   "q": "Making a yard that's settled more level?",
+   "votes": 36,
+   "link": "https://gardening.stackexchange.com/questions/143/making-a-yard-thats-settled-more-level",
+   "tag": "lawn"
+  },
+  {
+   "q": "Can my lawn be saved or is it time to dig it up and re-sod?",
+   "votes": 33,
+   "link": "https://gardening.stackexchange.com/questions/2012/can-my-lawn-be-saved-or-is-it-time-to-dig-it-up-and-re-sod",
+   "tag": "lawn"
+  },
+  {
+   "q": "How can I control thistle in a lawn?",
+   "votes": 31,
+   "link": "https://gardening.stackexchange.com/questions/146/how-can-i-control-thistle-in-a-lawn",
+   "tag": "lawn"
+  },
+  {
+   "q": "How do I remove dandelions without damaging my lawn?",
+   "votes": 30,
+   "link": "https://gardening.stackexchange.com/questions/1941/how-do-i-remove-dandelions-without-damaging-my-lawn",
+   "tag": "lawn"
+  },
+  {
+   "q": "Why do many landscapers put gravel around the base of buildings?",
+   "votes": 27,
+   "link": "https://gardening.stackexchange.com/questions/39575/why-do-many-landscapers-put-gravel-around-the-base-of-buildings",
+   "tag": "lawn"
+  },
+  {
+   "q": "How often should I fertilize my lawn?",
+   "votes": 24,
+   "link": "https://gardening.stackexchange.com/questions/10/how-often-should-i-fertilize-my-lawn",
+   "tag": "lawn"
+  },
+  {
+   "q": "How can I tell if my lawn needs to be dethatched?",
+   "votes": 23,
+   "link": "https://gardening.stackexchange.com/questions/902/how-can-i-tell-if-my-lawn-needs-to-be-dethatched",
+   "tag": "lawn"
+  },
+  {
+   "q": "How do I go about planning the layout of a sprinkler network for my lawn?",
+   "votes": 23,
+   "link": "https://gardening.stackexchange.com/questions/1904/how-do-i-go-about-planning-the-layout-of-a-sprinkler-network-for-my-lawn",
+   "tag": "lawn"
+  },
+  {
+   "q": "How is a lumpy lawn flattened out?",
+   "votes": 22,
+   "link": "https://gardening.stackexchange.com/questions/3476/how-is-a-lumpy-lawn-flattened-out",
+   "tag": "lawn"
+  },
+  {
+   "q": "How can I mow a moist lawn?",
+   "votes": 11,
+   "link": "https://gardening.stackexchange.com/questions/1991/how-can-i-mow-a-moist-lawn",
+   "tag": "mowing"
+  },
+  {
+   "q": "I do not want to mow the lawn, how can I have a lawn without having to mow?",
+   "votes": 10,
+   "link": "https://gardening.stackexchange.com/questions/9438/i-do-not-want-to-mow-the-lawn-how-can-i-have-a-lawn-without-having-to-mow",
+   "tag": "mowing"
+  },
+  {
+   "q": "Can I shave exposed roots from a Silver Maple tree to avoid damage when mowing?",
+   "votes": 9,
+   "link": "https://gardening.stackexchange.com/questions/23878/can-i-shave-exposed-roots-from-a-silver-maple-tree-to-avoid-damage-when-mowing",
+   "tag": "mowing"
+  },
+  {
+   "q": "Is there an optimum time to mow the lawn?",
+   "votes": 9,
+   "link": "https://gardening.stackexchange.com/questions/36329/is-there-an-optimum-time-to-mow-the-lawn",
+   "tag": "mowing"
+  },
+  {
+   "q": "How often do mower blades need to be sharpened?",
+   "votes": 9,
+   "link": "https://gardening.stackexchange.com/questions/20041/how-often-do-mower-blades-need-to-be-sharpened",
+   "tag": "mowing"
+  },
+  {
+   "q": "Which way to put lawnmower on side?",
+   "votes": 8,
+   "link": "https://gardening.stackexchange.com/questions/24960/which-way-to-put-lawnmower-on-side",
+   "tag": "mowing"
+  },
+  {
+   "q": "Can mowing weeds cause them to spread?",
+   "votes": 8,
+   "link": "https://gardening.stackexchange.com/questions/64644/can-mowing-weeds-cause-them-to-spread",
+   "tag": "mowing"
+  },
+  {
+   "q": "How high should I cut fescue grass?",
+   "votes": 8,
+   "link": "https://gardening.stackexchange.com/questions/2544/how-high-should-i-cut-fescue-grass",
+   "tag": "mowing"
+  },
+  {
+   "q": "Should I mow my lawn during a drought?",
+   "votes": 7,
+   "link": "https://gardening.stackexchange.com/questions/27594/should-i-mow-my-lawn-during-a-drought",
+   "tag": "mowing"
+  },
+  {
+   "q": "How long should I wait to mow my lawn a second time when I try to avoid cutting more than 30% of the blade in one cutting?",
+   "votes": 6,
+   "link": "https://gardening.stackexchange.com/questions/25302/how-long-should-i-wait-to-mow-my-lawn-a-second-time-when-i-try-to-avoid-cutting",
+   "tag": "mowing"
+  }
+ ],
+ "site_check": {
+  "site": "local copy of the current code",
+  "pages": [
+   {
+    "path": "/",
+    "title": "Lawn Mowing in Spring, TX | Bins & Gutters | Post One Lawn Co.",
+    "description": "Book lawn mowing, bin cleaning and gutter service online in Spring, Klein, New Caney, Splendora and Cleveland, TX. We text you when the crew is on the way.",
+    "h1": 1,
+    "words": 1204,
+    "schema": [
+     "AdministrativeArea",
+     "Answer",
+     "FAQPage",
+     "HomeAndConstructionBusiness",
+     "OpeningHoursSpecification",
+     "PostalAddress",
+     "Question"
+    ],
+    "faq": 8,
+    "issues": []
+   },
+   {
+    "path": "/book",
+    "title": "Book a Service | Post One Lawn Co.",
+    "description": "Book mowing, bin cleaning or gutter service online. We confirm your address and text you when the crew is on the way.",
+    "h1": 1,
+    "words": 419,
+    "schema": [],
+    "faq": 0,
+    "issues": []
+   },
+   {
+    "path": "/services",
+    "title": "Services | Post One Lawn Co.",
+    "description": "Lawn mowing, trash bin cleaning, gutter cleaning and holiday lighting around Spring, TX. Flat prices shown before you book.",
+    "h1": 1,
+    "words": 182,
+    "schema": [
+     "BreadcrumbList",
+     "CollectionPage",
+     "ListItem"
+    ],
+    "faq": 0,
+    "issues": []
+   },
+   {
+    "path": "/services/lawn-mowing",
+    "title": "Lawn mowing in Spring, TX | Post One Lawn Co.",
+    "description": "Lawn mowing around Spring, Klein, New Caney and Cleveland, TX. From $75 a visit. Veteran-owned. Book online.",
+    "h1": 1,
+    "words": 526,
+    "schema": [
+     "AdministrativeArea",
+     "AggregateOffer",
+     "BreadcrumbList",
+     "City",
+     "HomeAndConstructionBusiness",
+     "ListItem",
+     "OpeningHoursSpecification",
+     "PostalAddress",
+     "Service"
+    ],
+    "faq": 0,
+    "issues": []
+   },
+   {
+    "path": "/services/bin-cleaning",
+    "title": "Trash bin cleaning in Spring, TX | Post One Lawn Co.",
+    "description": "Trash bin cleaning around Spring, Klein, New Caney and Cleveland, TX. +$15 per visit. Veteran-owned. Book online.",
+    "h1": 1,
+    "words": 362,
+    "schema": [
+     "AdministrativeArea",
+     "BreadcrumbList",
+     "City",
+     "HomeAndConstructionBusiness",
+     "ListItem",
+     "Offer",
+     "OpeningHoursSpecification",
+     "PostalAddress",
+     "Service"
+    ],
+    "faq": 0,
+    "issues": []
+   },
+   {
+    "path": "/services/gutter-cleaning",
+    "title": "Gutter cleaning in Spring, TX | Post One Lawn Co.",
+    "description": "Gutter cleaning around Spring, Klein, New Caney and Cleveland, TX. +$15 per visit. Veteran-owned. Book online.",
+    "h1": 1,
+    "words": 350,
+    "schema": [
+     "AdministrativeArea",
+     "BreadcrumbList",
+     "City",
+     "HomeAndConstructionBusiness",
+     "ListItem",
+     "Offer",
+     "OpeningHoursSpecification",
+     "PostalAddress",
+     "Service"
+    ],
+    "faq": 0,
+    "issues": []
+   },
+   {
+    "path": "/services/holiday-lighting",
+    "title": "Holiday lighting in Spring, TX | Post One Lawn Co.",
+    "description": "Holiday lighting around Spring, Klein, New Caney and Cleveland, TX. Free quote. Veteran-owned. Book online.",
+    "h1": 1,
+    "words": 353,
+    "schema": [
+     "AdministrativeArea",
+     "BreadcrumbList",
+     "City",
+     "HomeAndConstructionBusiness",
+     "ListItem",
+     "OpeningHoursSpecification",
+     "PostalAddress",
+     "Service"
+    ],
+    "faq": 0,
+    "issues": []
+   },
+   {
+    "path": "/team",
+    "title": "Meet the Crew | Post One Lawn Co.",
+    "description": "Meet the people who take care of your yard: who they are, what they do, and their recent work.",
+    "h1": 1,
+    "words": 95,
+    "schema": [
+     "AboutPage",
+     "BreadcrumbList",
+     "ListItem"
+    ],
+    "faq": 0,
+    "issues": []
+   },
+   {
+    "path": "/local",
+    "title": "Areas We Serve | Post One Lawn Co.",
+    "description": "Lawn mowing in Spring, Klein, New Caney, Cleveland and Colony Ridge, TX: the neighborhoods we cover and flat per-visit prices for each area.",
+    "h1": 1,
+    "words": 279,
+    "schema": [
+     "BreadcrumbList",
+     "CollectionPage",
+     "ListItem"
+    ],
+    "faq": 0,
+    "issues": []
+   },
+   {
+    "path": "/local/spring",
+    "title": "Lawn Mowing in Spring, TX | Post One Lawn Co.",
+    "description": "Lawn mowing in Spring, TX: Woodson's Reserve, SH-99 and Rayford Rd. Flat prices from $75 a visit before tax. Veteran-owned. Book online.",
+    "h1": 1,
+    "words": 827,
+    "schema": [
+     "AdministrativeArea",
+     "Answer",
+     "BreadcrumbList",
+     "City",
+     "FAQPage",
+     "HomeAndConstructionBusiness",
+     "ListItem",
+     "Offer",
+     "OfferCatalog",
+     "OpeningHoursSpecification",
+     "PostalAddress",
+     "Question",
+     "Service"
+    ],
+    "faq": 4,
+    "issues": []
+   },
+   {
+    "path": "/local/klein",
+    "title": "Lawn Mowing in Klein, TX | Post One Lawn Co.",
+    "description": "Lawn mowing in Klein, TX: FM 1960 and Champion Forest. Flat prices from $75 a visit before tax. Veteran-owned. Book online.",
+    "h1": 1,
+    "words": 829,
+    "schema": [
+     "AdministrativeArea",
+     "Answer",
+     "BreadcrumbList",
+     "City",
+     "FAQPage",
+     "HomeAndConstructionBusiness",
+     "ListItem",
+     "Offer",
+     "OfferCatalog",
+     "OpeningHoursSpecification",
+     "PostalAddress",
+     "Question",
+     "Service"
+    ],
+    "faq": 4,
+    "issues": []
+   },
+   {
+    "path": "/local/new-caney",
+    "title": "Lawn Mowing in New Caney, TX | Post One Lawn Co.",
+    "description": "Lawn mowing in New Caney, TX: The Canopies, Gemini and Porters Mill. Flat prices from $75 a visit before tax. Veteran-owned. Book online.",
+    "h1": 1,
+    "words": 841,
+    "schema": [
+     "AdministrativeArea",
+     "Answer",
+     "BreadcrumbList",
+     "City",
+     "FAQPage",
+     "HomeAndConstructionBusiness",
+     "ListItem",
+     "Offer",
+     "OfferCatalog",
+     "OpeningHoursSpecification",
+     "PostalAddress",
+     "Question",
+     "Service"
+    ],
+    "faq": 4,
+    "issues": []
+   },
+   {
+    "path": "/local/cleveland",
+    "title": "Lawn Mowing in Cleveland, TX | Post One Lawn Co.",
+    "description": "Lawn mowing in Cleveland, TX: Grand Oaks Reserve, Plum Grove and FM 1010. Flat prices from $75 a visit before tax. Veteran-owned. Book online.",
+    "h1": 1,
+    "words": 835,
+    "schema": [
+     "AdministrativeArea",
+     "Answer",
+     "BreadcrumbList",
+     "City",
+     "FAQPage",
+     "HomeAndConstructionBusiness",
+     "ListItem",
+     "Offer",
+     "OfferCatalog",
+     "OpeningHoursSpecification",
+     "PostalAddress",
+     "Question",
+     "Service"
+    ],
+    "faq": 4,
+    "issues": []
+   },
+   {
+    "path": "/local/colony-ridge",
+    "title": "Lawn Mowing in Colony Ridge, TX | Post One Lawn Co.",
+    "description": "Lawn mowing in Colony Ridge, TX: Santa Fe, Grand San Jacinto and Montebello. Flat prices from $75 a visit before tax. Veteran-owned. Book online.",
+    "h1": 1,
+    "words": 858,
+    "schema": [
+     "AdministrativeArea",
+     "Answer",
+     "BreadcrumbList",
+     "City",
+     "FAQPage",
+     "HomeAndConstructionBusiness",
+     "ListItem",
+     "Offer",
+     "OfferCatalog",
+     "OpeningHoursSpecification",
+     "PostalAddress",
+     "Question",
+     "Service"
+    ],
+    "faq": 4,
+    "issues": []
+   },
+   {
+    "path": "/local/spring/woodsons-reserve",
+    "title": "Lawn Mowing in Woodson's Reserve | Post One Lawn Co.",
+    "description": "Lawn mowing in Woodson's Reserve, Spring, TX, every Monday. Flat prices from $75 a visit before tax. Veteran-owned. Book online.",
+    "h1": 1,
+    "words": 360,
+    "schema": [
+     "AdministrativeArea",
+     "AggregateOffer",
+     "BreadcrumbList",
+     "City",
+     "HomeAndConstructionBusiness",
+     "ListItem",
+     "OpeningHoursSpecification",
+     "Place",
+     "PostalAddress",
+     "Service"
+    ],
+    "faq": 0,
+    "issues": []
+   },
+   {
+    "path": "/local/new-caney/the-canopies",
+    "title": "Lawn Mowing in The Canopies | Post One Lawn Co.",
+    "description": "Lawn mowing in The Canopies, New Caney, TX, every Wednesday. Flat prices from $75 a visit before tax. Veteran-owned. Book online.",
+    "h1": 1,
+    "words": 366,
+    "schema": [
+     "AdministrativeArea",
+     "AggregateOffer",
+     "BreadcrumbList",
+     "City",
+     "HomeAndConstructionBusiness",
+     "ListItem",
+     "OpeningHoursSpecification",
+     "Place",
+     "PostalAddress",
+     "Service"
+    ],
+    "faq": 0,
+    "issues": []
+   },
+   {
+    "path": "/local/new-caney/porters-mill",
+    "title": "Lawn Mowing in Porters Mill | Post One Lawn Co.",
+    "description": "Lawn mowing in Porters Mill, New Caney, TX, every Wednesday. Flat prices from $75 a visit before tax. Veteran-owned. Book online.",
+    "h1": 1,
+    "words": 369,
+    "schema": [
+     "AdministrativeArea",
+     "AggregateOffer",
+     "BreadcrumbList",
+     "City",
+     "HomeAndConstructionBusiness",
+     "ListItem",
+     "OpeningHoursSpecification",
+     "Place",
+     "PostalAddress",
+     "Service"
+    ],
+    "faq": 0,
+    "issues": []
+   },
+   {
+    "path": "/local/cleveland/grand-oaks-reserve",
+    "title": "Lawn Mowing in Grand Oaks Reserve | Post One Lawn Co.",
+    "description": "Lawn mowing in Grand Oaks Reserve, Cleveland, TX, every Friday. Flat prices from $75 a visit before tax. Veteran-owned. Book online.",
+    "h1": 1,
+    "words": 362,
+    "schema": [
+     "AdministrativeArea",
+     "AggregateOffer",
+     "BreadcrumbList",
+     "City",
+     "HomeAndConstructionBusiness",
+     "ListItem",
+     "OpeningHoursSpecification",
+     "Place",
+     "PostalAddress",
+     "Service"
+    ],
+    "faq": 0,
+    "issues": []
+   },
+   {
+    "path": "/local/colony-ridge/santa-fe",
+    "title": "Lawn Mowing in Santa Fe, Colony Ridge TX | Post One Lawn Co.",
+    "description": "Lawn mowing in Santa Fe, Colony Ridge, TX, every Thursday. Flat prices from $75 a visit before tax. Veteran-owned. Book online.",
+    "h1": 1,
+    "words": 395,
+    "schema": [
+     "AdministrativeArea",
+     "AggregateOffer",
+     "BreadcrumbList",
+     "City",
+     "HomeAndConstructionBusiness",
+     "ListItem",
+     "OpeningHoursSpecification",
+     "Place",
+     "PostalAddress",
+     "Service"
+    ],
+    "faq": 0,
+    "issues": []
+   },
+   {
+    "path": "/local/colony-ridge/grand-san-jacinto",
+    "title": "Lawn Mowing in Grand San Jacinto | Post One Lawn Co.",
+    "description": "Lawn mowing in Grand San Jacinto, Colony Ridge, TX, every Thursday. Flat prices from $75 a visit before tax. Veteran-owned. Book online.",
+    "h1": 1,
+    "words": 395,
+    "schema": [
+     "AdministrativeArea",
+     "AggregateOffer",
+     "BreadcrumbList",
+     "City",
+     "HomeAndConstructionBusiness",
+     "ListItem",
+     "OpeningHoursSpecification",
+     "Place",
+     "PostalAddress",
+     "Service"
+    ],
+    "faq": 0,
+    "issues": []
+   },
+   {
+    "path": "/local/colony-ridge/montebello",
+    "title": "Lawn Mowing in Montebello | Post One Lawn Co.",
+    "description": "Lawn mowing in Montebello, Colony Ridge, TX, every Thursday. Flat prices from $75 a visit before tax. Veteran-owned. Book online.",
+    "h1": 1,
+    "words": 383,
+    "schema": [
+     "AdministrativeArea",
+     "AggregateOffer",
+     "BreadcrumbList",
+     "City",
+     "HomeAndConstructionBusiness",
+     "ListItem",
+     "OpeningHoursSpecification",
+     "Place",
+     "PostalAddress",
+     "Service"
+    ],
+    "faq": 0,
+    "issues": []
+   },
+   {
+    "path": "/local/colony-ridge/camino-real",
+    "title": "Lawn Mowing in Camino Real | Post One Lawn Co.",
+    "description": "Lawn mowing in Camino Real, Colony Ridge, TX, every Thursday. Flat prices from $75 a visit before tax. Veteran-owned. Book online.",
+    "h1": 1,
+    "words": 388,
+    "schema": [
+     "AdministrativeArea",
+     "AggregateOffer",
+     "BreadcrumbList",
+     "City",
+     "HomeAndConstructionBusiness",
+     "ListItem",
+     "OpeningHoursSpecification",
+     "Place",
+     "PostalAddress",
+     "Service"
+    ],
+    "faq": 0,
+    "issues": []
+   },
+   {
+    "path": "/local/colony-ridge/bella-vista",
+    "title": "Lawn Mowing in Bella Vista | Post One Lawn Co.",
+    "description": "Lawn mowing in Bella Vista, Colony Ridge, TX, every Thursday. Flat prices from $75 a visit before tax. Veteran-owned. Book online.",
+    "h1": 1,
+    "words": 397,
+    "schema": [
+     "AdministrativeArea",
+     "AggregateOffer",
+     "BreadcrumbList",
+     "City",
+     "HomeAndConstructionBusiness",
+     "ListItem",
+     "OpeningHoursSpecification",
+     "Place",
+     "PostalAddress",
+     "Service"
+    ],
+    "faq": 0,
+    "issues": []
+   },
+   {
+    "path": "/about",
+    "title": "About | Post One Lawn Co.",
+    "description": "Veteran-owned lawn care around Spring, TX, run with operational discipline: self-serve booking, planned routes, and a local cause on every order.",
+    "h1": 1,
+    "words": 426,
+    "schema": [
+     "AboutPage",
+     "BreadcrumbList",
+     "ListItem"
+    ],
+    "faq": 0,
+    "issues": []
+   },
+   {
+    "path": "/community",
+    "title": "Community: Mow It Forward | Post One Lawn Co.",
+    "description": "Every paid mow gives to a local cause, customers can round up, and sponsors pay for mows for neighbors in need. Real totals, from our books.",
+    "h1": 1,
+    "words": 409,
+    "schema": [
+     "BreadcrumbList",
+     "ListItem",
+     "WebPage"
+    ],
+    "faq": 0,
+    "issues": []
+   },
+   {
+    "path": "/privacy",
+    "title": "Privacy Policy | Post One Lawn Co.",
+    "description": "What we collect when you book a lawn visit, who sees it, and how to delete it.",
+    "h1": 1,
+    "words": 710,
+    "schema": [],
+    "faq": 0,
+    "issues": []
+   },
+   {
+    "path": "/terms",
+    "title": "Terms of Service | Post One Lawn Co.",
+    "description": "The agreement for lawn visits booked online: scope, prices, payment, weather and our damage policy.",
+    "h1": 1,
+    "words": 1081,
+    "schema": [],
+    "faq": 0,
+    "issues": []
+   },
+   {
+    "path": "/refunds",
+    "title": "Refund & Cancellation Policy | Post One Lawn Co.",
+    "description": "Cancel free until we text that the crew is on the way. Weather days move to a make-up day or are refunded in full.",
+    "h1": 1,
+    "words": 545,
+    "schema": [],
+    "faq": 0,
+    "issues": []
+   }
+  ],
+  "broken_links": [],
+  "llms_txt": true,
+  "issues": 0
+ },
+ "robots_blocked": [
+  "/crew"
+ ]
+}

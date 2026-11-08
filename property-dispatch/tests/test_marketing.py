@@ -115,7 +115,8 @@ def test_prompt_pack_carries_live_facts_and_only_true_claims(client, settings):
     from app.local_pages import dollars, price_range
     from app.marketing import prompt_pack
     pack = client.get("/api/owner/marketing", headers=CREW).json()["prompts"]
-    assert [p["key"] for p in pack] == ["review", "customer", "partner", "video", "spanish", "week"]
+    # "search" leads when tools/seo_research.py has found searches our site doesn't answer yet.
+    assert [p["key"] for p in pack] == ["search", "review", "customer", "partner", "video", "spanish", "week"]
     text = pack[0]["prompt"]
     for day in ("Monday: Spring", "Tuesday: Klein", "Wednesday: New Caney & Splendora", "Thursday: Colony Ridge",
                 "Friday: Cleveland & Plum Grove"):

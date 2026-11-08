@@ -100,6 +100,14 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
   needs a key). `tools/make_target_map.py` writes `static/data/targets-<fingerprint>.json` (neighborhood totals only);
   re-run after an area/box/day change (`tests/test_target_map.py` fails until you do) or when a new ACS release is out
   (each December). Plan copy uses EDDM ~$0.65/home all-in and 0.5–1.5% response (2026 industry estimates).
+- SEO/GEO research `tools/seo_research.py` → `data/seo-research.json` (re-run monthly; `tests/test_seo_research.py`
+  fails when areas change): Google search-box suggestions (EN/ES) × our towns, Stack Exchange how-to titles, NOAA
+  1991–2020 normals per area (nearest of Houston IAH / Conroe / Cleveland stations), and a check of our sitemap pages.
+  Obeys robots.txt (DuckDuckGo's /ac and NOAA's /data files are disallowed, so they're not used); no competitor sites, no
+  results pages, no personal data. Feeds the area FAQ "When does grass grow fastest in X?", /llms.txt "Local climate",
+  the prompt pack's first prompt "Answer what people search" and the hub's "What people search". Biggest gap (Nov 2026):
+  St. Augustine and Bermuda mowing height and timing (24 searches); the crew's real cut heights are the owner's call
+  before anything is published.
 - Day-before reminder (`app/reminders.py`, from the route build in `run_nightly`): one text per booking ("we're coming
   tomorrow, likely between 9 and 11 AM; unlock the gate, pets inside; cancel free until the on-the-way text"), EN/ES,
   8 AM–9 PM only, never a pitch. Customer "Something not right?" on the visit page (`POST /api/visit/{code}/report`) lands
@@ -187,6 +195,9 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 - Run `supabase/migrations/20261028000000_issues_and_sources.sql` (problem reports + booking sources).
 - Run `supabase/migrations/20261029000000_community.sql` (sponsored mows + nominations).
 - Run `supabase/migrations/20261108000000_reminders_and_customer_reports.sql` (day-before texts + customer reports).
+- The live site is suspended in Render ("suspended by its owner", seen Nov 8 2026). While it is, Google, Bing and AI
+  assistants can't read any page. Resume it when ready (Render → the web service → Resume).
+- Decide the crew's mowing heights (St. Augustine, Bermuda) so the top search gap can be answered on the site.
 - Claim the same name, hours, site and service area on Bing Places, Apple Business Connect, Yelp and Nextdoor (AI
   assistants pull from these); set the *_URL profile settings in Render as each one goes live.
 

@@ -15,7 +15,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from .config import Settings, site_url
-from .local_pages import (AREAS, area_links, business_node, crumbs, cta_band, dollars, layout, percent, price_range,
+from .local_pages import (AREAS, area_links, business_node, crumbs, cta_band, dollars, layout, page_ld, percent, price_range,
                           price_table, script_json)
 from .pricing import ADD_ONS, MAX_SQFT, YARD_TYPES, density_pct, season_text
 from .zones import SERVICE_ZONES, WEEKDAY_NAMES, short_name
@@ -232,7 +232,8 @@ def services_index_html(settings: Settings, version: str, site: str) -> str:
     return layout(settings, version, title=f"Services | {settings.business_name}",
                   description="Lawn mowing, trash bin cleaning, gutter cleaning and holiday lighting around Spring, TX. "
                               "Flat prices shown before you book.",
-                  body=body, canonical=f"{site}/services", og_image=f"{site}/static/icons/post-one-share.jpg", page="index")
+                  body=body, canonical=f"{site}/services", og_image=f"{site}/static/icons/post-one-share.jpg", page="index",
+                  head_extra="\n  " + page_ld(site, "/services"))
 
 
 def register_service_pages(app: FastAPI, settings: Settings, version: str = "") -> None:
