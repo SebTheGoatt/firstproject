@@ -33,8 +33,39 @@ def caption(code: str) -> str:
     return html.unescape(max(found, key=len)) if found else ""
 
 
+NODE_FETCH = r"""
+const { chromium } = require('playwright');
+(async () => {
+  const b = await chromium.launch();
+  const pg = await b.newPage({ viewport: { width: 400, height: 800 } });
+  await pg.goto(`https://www.instagram.com/reel/${process.argv[1]}/embed/`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await pg.waitForTimeout(4000);
+  for (const sel of ['video', "[aria-label*='Play']", '.EmbedVideo']) {
+    try { await pg.locator(sel).first().click({ timeout: 3000 }); break; } catch {}
+  }
+  await pg.waitForTimeout(5000);
+  const srcs = await pg.evaluate(() => [...document.querySelectorAll('video')].map((v) => v.currentSrc || v.src).filter(Boolean));
+  await b.close();
+  console.log(srcs[0] || '');
+})().catch((e) => { console.error(e.message); process.exit(1); });
+"""
+
+
+def video_url_node(code: str) -> str:
+    """Same as video_url, with Node's Playwright (some machines only have that one)."""
+    roots = subprocess.run(["npm", "root", "-g"], capture_output=True, text=True).stdout.strip()
+    env = {**__import__("os").environ, "NODE_PATH": ":".join(p for p in ("/opt/node-tools/node_modules", roots) if p)}
+    run = subprocess.run(["node", "-e", NODE_FETCH, code], capture_output=True, text=True, timeout=120, env=env)
+    if run.returncode != 0:
+        raise RuntimeError(run.stderr.strip()[:200])
+    return run.stdout.strip()
+
+
 def video_url(code: str) -> str:
-    from playwright.sync_api import sync_playwright
+    try:
+        from playwright.sync_api import sync_playwright
+    except ModuleNotFoundError:
+        return video_url_node(code)
     with sync_playwright() as p:
         exe = CHROME if Path(CHROME).exists() else None
         b = p.chromium.launch(executable_path=exe) if exe else p.chromium.launch()
@@ -69,7 +100,20 @@ def main() -> None:
         src = video_url(code)
     except Exception as exc:                      # still useful: the caption alone
         print("video: embed page failed:", type(exc).__name__)
-    if src.startswith("http"):
+    if not src.startswith("http"):                # embed turned off by the creator: try yt-dlp if it's installed
+        for cmd in (["yt-dlp"], [sys.executable, "-m", "yt_dlp"]):
+            try:
+                run = subprocess.run([*cmd, "-q", "--no-warnings", "-o", str(out / "video.mp4"),
+                                      f"https://www.instagram.com/reel/{code}/"], capture_output=True, timeout=180)
+            except (OSError, subprocess.TimeoutExpired):
+                continue
+            if run.returncode == 0 and (out / "video.mp4").exists():
+                src = "yt-dlp"
+                break
+            print("video: yt-dlp failed:", (run.stderr or b"").decode(errors="replace").strip().splitlines()[-1:] or run.returncode)
+    if src == "yt-dlp":
+        print("video:", out / "video.mp4", "(via yt-dlp)")
+    elif src.startswith("http"):
         subprocess.run(["curl", "-sL", "--max-time", "120", "-o", str(out / "video.mp4"), src], check=False)
         print("video:", out / "video.mp4")
     else:
