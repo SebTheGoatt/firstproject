@@ -51,6 +51,9 @@ the audio.
   saves `caption.txt`, `video.mp4` and `meta.json`. It warns when the shortcode is already in the reel log, because the
   owner sometimes resends the same reel with a different `?igsh=` / `?mdxt=` tail. Then say so in one line and point
   to what was done; don't redo the work.
+  If it says "video: none", the creator may have turned off embedding: `pip install yt-dlp` (in a venv) and the script
+  uses it on the next run (Instagram blocks anonymous downloads after a few in a row; the script prints yt-dlp's
+  reason, so wait or ask for the upload). `transcribe.py` needs `faster-whisper`; install it in the same venv if it's missing.
 - **Uploaded video** (`/root/.claude/uploads/...mp4`): use it directly.
 - **Any video**: `scripts/frames.py <video> <outdir>` makes a 20-frame contact sheet (read it with the Read tool), and
   `scripts/transcribe.py <video> [...]` prints the speech. Use both: on-screen steps plus what's said.
@@ -123,6 +126,11 @@ Follow the code map in `CLAUDE.md`. The patterns that keep coming up:
 - Maps: MapLibre 4.7.1 + OpenFreeMap; 3D buildings from Overture PMTiles; respect `prefers-reduced-motion`.
 
 ### 6. Prove
+
+On a fresh cloud machine: if `pip install -r requirements.txt` fails building `http-ece`, use a venv
+(`python3 -m venv <scratch>/pd-venv`) and run pytest and the scripts with its python. `page_check.py` needs Python
+Playwright at the same version as the machine's Node one (`node -p "require('/opt/node-tools/node_modules/playwright/package.json').version"`)
+with `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`, so it uses the browser that's already installed.
 
 Nothing ships on "it should work".
 

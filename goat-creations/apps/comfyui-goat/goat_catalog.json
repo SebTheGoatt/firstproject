@@ -1,0 +1,619 @@
+{
+  "note": "Generated from packages/sebastina-core (npm run catalog). Do not edit by hand.",
+  "models": [
+    {
+      "id": "flux-dev-image",
+      "name": "FLUX.1 Dev",
+      "note": "Detailed, all-round",
+      "task": "t2i",
+      "size": "pixels"
+    },
+    {
+      "id": "flux-schnell-image",
+      "name": "FLUX.1 Schnell",
+      "note": "Fastest, lowest cost",
+      "task": "t2i",
+      "size": "pixels"
+    },
+    {
+      "id": "hidream_i1_fast_image",
+      "name": "HiDream I1 Fast",
+      "note": "Quick, strong styles",
+      "task": "t2i",
+      "size": "pixels"
+    },
+    {
+      "id": "nano-banana",
+      "name": "Nano Banana",
+      "note": "Google's image model",
+      "task": "t2i",
+      "size": "aspect",
+      "aspectRatios": [
+        "1:1",
+        "3:4",
+        "4:3",
+        "9:16",
+        "16:9",
+        "3:2",
+        "2:3",
+        "5:4",
+        "4:5",
+        "21:9"
+      ]
+    },
+    {
+      "id": "nano-banana-pro",
+      "name": "Nano Banana Pro",
+      "note": "Sharper, up to 4K",
+      "task": "t2i",
+      "size": "aspect",
+      "aspectRatios": [
+        "1:1",
+        "3:4",
+        "4:3",
+        "9:16",
+        "16:9",
+        "3:2",
+        "2:3",
+        "5:4",
+        "4:5",
+        "21:9"
+      ],
+      "resolutions": [
+        "1k",
+        "2k",
+        "4k"
+      ],
+      "defaultResolution": "1k"
+    },
+    {
+      "id": "flux-2-pro",
+      "name": "FLUX.2 Pro",
+      "note": "Clean design work, logos",
+      "task": "t2i",
+      "size": "aspect",
+      "aspectRatios": [
+        "16:9",
+        "9:16",
+        "1:1",
+        "4:3",
+        "3:4",
+        "2:3",
+        "3:2"
+      ],
+      "resolutions": [
+        "1k",
+        "2k"
+      ],
+      "defaultResolution": "1k"
+    },
+    {
+      "id": "gpt-image-1.5",
+      "name": "GPT Image 1.5",
+      "note": "Good with text in images",
+      "task": "t2i",
+      "size": "aspect",
+      "aspectRatios": [
+        "1:1",
+        "2:3",
+        "3:2"
+      ],
+      "quality": {
+        "values": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "default": "medium"
+      }
+    },
+    {
+      "id": "gpt-image-2-text-to-image",
+      "name": "GPT Image 2",
+      "note": "Best with headlines and text",
+      "task": "t2i",
+      "size": "aspect",
+      "aspectRatios": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "resolutions": [
+        "1K",
+        "2K",
+        "4K"
+      ],
+      "defaultResolution": "2K"
+    },
+    {
+      "id": "seedance-lite-t2v",
+      "name": "Seedance 1.0 Lite",
+      "note": "Fast, budget video",
+      "task": "t2v",
+      "size": "aspect",
+      "aspectRatios": [
+        "16:9",
+        "9:16",
+        "1:1",
+        "4:3",
+        "3:4",
+        "9:21"
+      ],
+      "duration": {
+        "min": 3,
+        "max": 12,
+        "default": 5
+      },
+      "resolutions": [
+        "480p",
+        "720p",
+        "1080p"
+      ]
+    },
+    {
+      "id": "seedance-v1.5-pro-t2v-fast",
+      "name": "Seedance 1.5 Pro Fast",
+      "note": "Sharper, 720p and up",
+      "task": "t2v",
+      "size": "aspect",
+      "aspectRatios": [
+        "16:9",
+        "9:16",
+        "1:1",
+        "3:4",
+        "4:3",
+        "21:9"
+      ],
+      "duration": {
+        "min": 4,
+        "max": 12,
+        "default": 5
+      },
+      "resolutions": [
+        "720p",
+        "1080p"
+      ]
+    },
+    {
+      "id": "kling-v2.1-master-t2v",
+      "name": "Kling 2.1 Master",
+      "note": "Cinematic motion",
+      "task": "t2v",
+      "size": "aspect",
+      "aspectRatios": [
+        "16:9",
+        "9:16",
+        "1:1"
+      ],
+      "duration": {
+        "min": 5,
+        "max": 10,
+        "default": 5
+      }
+    },
+    {
+      "id": "veo3-fast-text-to-video",
+      "name": "Veo 3 Fast",
+      "note": "Google's video, with sound",
+      "task": "t2v",
+      "size": "aspect",
+      "aspectRatios": [
+        "16:9",
+        "9:16"
+      ]
+    },
+    {
+      "id": "wan2.2-text-to-video",
+      "name": "Wan 2.2",
+      "note": "Open-weights model",
+      "task": "t2v",
+      "size": "aspect",
+      "aspectRatios": [
+        "16:9",
+        "9:16"
+      ],
+      "duration": {
+        "min": 5,
+        "max": 8,
+        "default": 5
+      },
+      "resolutions": [
+        "480p",
+        "720p"
+      ],
+      "quality": {
+        "values": [
+          "medium",
+          "high"
+        ],
+        "default": "medium"
+      }
+    },
+    {
+      "id": "nano-banana-edit",
+      "name": "Nano Banana Edit",
+      "note": "Edit a photo with words",
+      "task": "i2i",
+      "size": "aspect",
+      "imageField": "images_list",
+      "aspectRatios": [
+        "1:1",
+        "3:4",
+        "4:3",
+        "9:16",
+        "16:9",
+        "3:2",
+        "2:3",
+        "5:4",
+        "4:5"
+      ]
+    },
+    {
+      "id": "flux-2-pro-edit",
+      "name": "FLUX.2 Pro Edit",
+      "note": "Re-stage a product photo",
+      "task": "i2i",
+      "size": "aspect",
+      "imageField": "images_list",
+      "aspectRatios": [
+        "auto",
+        "16:9",
+        "9:16",
+        "1:1",
+        "4:3",
+        "3:4",
+        "2:3",
+        "3:2"
+      ],
+      "defaultAspect": "auto",
+      "resolutions": [
+        "1k",
+        "2k"
+      ],
+      "defaultResolution": "1k"
+    },
+    {
+      "id": "seedance-lite-i2v",
+      "name": "Seedance Lite I2V",
+      "note": "Bring a photo to life",
+      "task": "i2v",
+      "size": "none",
+      "imageField": "image_url",
+      "duration": {
+        "min": 3,
+        "max": 12,
+        "default": 5
+      },
+      "resolutions": [
+        "480p",
+        "720p",
+        "1080p"
+      ]
+    },
+    {
+      "id": "wan2.5-image-to-video",
+      "name": "Wan 2.5 I2V",
+      "note": "Smooth product motion",
+      "task": "i2v",
+      "size": "none",
+      "imageField": "image_url",
+      "duration": {
+        "min": 5,
+        "max": 10,
+        "default": 5
+      },
+      "resolutions": [
+        "480p",
+        "720p",
+        "1080p"
+      ]
+    },
+    {
+      "id": "ai-image-upscale",
+      "name": "AI Upscaler",
+      "note": "Bigger, sharper photo",
+      "task": "enhance",
+      "size": "none",
+      "imageField": "image_url",
+      "prompt": false
+    },
+    {
+      "id": "ai-background-remover",
+      "name": "Background Remover",
+      "note": "Cut out the subject",
+      "task": "enhance",
+      "size": "none",
+      "imageField": "image_url",
+      "prompt": false
+    }
+  ],
+  "skills": [
+    {
+      "id": "youtube-thumbnail",
+      "name": "YouTube Thumbnail",
+      "category": "create",
+      "needsPhoto": false,
+      "description": "Bold 16:9 thumbnail with your headline in big readable letters.",
+      "fields": [
+        {
+          "id": "subject",
+          "label": "What it shows",
+          "placeholder": "a goat on a mountain peak at sunrise",
+          "fallback": ""
+        },
+        {
+          "id": "headline",
+          "label": "Headline text",
+          "placeholder": "GREATEST OF ALL TIME",
+          "fallback": ""
+        }
+      ],
+      "steps": [
+        {
+          "model": "gpt-image-2-text-to-image",
+          "aspectRatio": "16:9",
+          "prompt": "YouTube thumbnail, 16:9. {subject}, expressive and eye-catching, placed on the left. Large readable headline on the right reading \"{headline}\" in thick bold sans-serif with a dark outline. High contrast, vivid colors, dark vignette, clean composition."
+        }
+      ]
+    },
+    {
+      "id": "instagram-post",
+      "name": "Instagram Post",
+      "category": "create",
+      "needsPhoto": false,
+      "description": "Square, scroll-stopping post with room for a caption.",
+      "fields": [
+        {
+          "id": "subject",
+          "label": "Scene",
+          "placeholder": "fresh coffee and a notebook on a linen table",
+          "fallback": ""
+        },
+        {
+          "id": "mood",
+          "label": "Mood",
+          "placeholder": "warm morning light",
+          "fallback": "soft natural light"
+        }
+      ],
+      "steps": [
+        {
+          "model": "nano-banana-pro",
+          "aspectRatio": "1:1",
+          "prompt": "Aesthetic Instagram post, square 1:1. {subject}. {mood}. Styled, uncluttered composition with breathing room for a caption, rich detail, magazine quality."
+        }
+      ]
+    },
+    {
+      "id": "ad-creative",
+      "name": "Ad Creative",
+      "category": "create",
+      "needsPhoto": false,
+      "description": "4:5 product ad with space reserved for your headline.",
+      "fields": [
+        {
+          "id": "product",
+          "label": "Product",
+          "placeholder": "a matte black water bottle",
+          "fallback": ""
+        },
+        {
+          "id": "headline",
+          "label": "Headline",
+          "placeholder": "STAY COLD 24H",
+          "fallback": ""
+        }
+      ],
+      "steps": [
+        {
+          "model": "nano-banana-pro",
+          "aspectRatio": "4:5",
+          "prompt": "High-converting ad creative, 4:5 portrait. Product hero shot of {product} on a premium surface, crisp studio lighting, subtle reflections, shallow depth of field. Clean headline area at the top reading \"{headline}\"."
+        }
+      ]
+    },
+    {
+      "id": "logo",
+      "name": "Logo",
+      "category": "create",
+      "needsPhoto": false,
+      "description": "Minimal, flat logo on white, centered and ready to use.",
+      "fields": [
+        {
+          "id": "name",
+          "label": "Brand name",
+          "placeholder": "GOAT CREATIONS",
+          "fallback": ""
+        },
+        {
+          "id": "idea",
+          "label": "Idea or style",
+          "placeholder": "a mountain goat horn, gold",
+          "fallback": "simple geometric mark"
+        }
+      ],
+      "steps": [
+        {
+          "model": "flux-2-pro",
+          "aspectRatio": "1:1",
+          "prompt": "Minimalist logo for a brand named '{name}'. {idea}. Flat vector style, one or two solid colors, clean geometry, perfectly centered on a plain white background, crisp edges, no mockup."
+        }
+      ]
+    },
+    {
+      "id": "blog-header",
+      "name": "Blog Header",
+      "category": "create",
+      "needsPhoto": false,
+      "description": "Wide editorial header image for an article or newsletter.",
+      "fields": [
+        {
+          "id": "topic",
+          "label": "Article topic",
+          "placeholder": "how to start a small business",
+          "fallback": ""
+        }
+      ],
+      "steps": [
+        {
+          "model": "nano-banana-pro",
+          "aspectRatio": "16:9",
+          "prompt": "Editorial blog header illustration, wide 16:9, about: {topic}. Modern, clean, conceptual, balanced negative space, cohesive color palette, no text."
+        }
+      ]
+    },
+    {
+      "id": "drone-video",
+      "name": "Drone Shot Video",
+      "category": "create",
+      "needsPhoto": false,
+      "description": "Sweeping 5-second aerial video of any place you describe.",
+      "fields": [
+        {
+          "id": "place",
+          "label": "Place",
+          "placeholder": "a misty mountain valley at dawn",
+          "fallback": ""
+        }
+      ],
+      "steps": [
+        {
+          "model": "seedance-lite-t2v",
+          "aspectRatio": "16:9",
+          "duration": 5,
+          "resolution": "480p",
+          "prompt": "Cinematic aerial drone shot slowly gliding forward over {place}, smooth stabilized motion, golden light, sweeping reveal, high detail."
+        }
+      ]
+    },
+    {
+      "id": "action-figure",
+      "name": "Action Figure",
+      "category": "create",
+      "needsPhoto": true,
+      "description": "Turn a person in your photo into a boxed collectible figure.",
+      "fields": [
+        {
+          "id": "title",
+          "label": "Name on the box",
+          "placeholder": "THE GOAT",
+          "fallback": "LIMITED EDITION"
+        }
+      ],
+      "steps": [
+        {
+          "model": "nano-banana-edit",
+          "from": "photo",
+          "prompt": "Turn the person in this photo into a 6-inch collectible action figure inside a blister-pack box with the title \"{title}\" printed on the card, small accessories beside the figure. Keep the face exactly recognizable. Studio product-shot lighting."
+        }
+      ]
+    },
+    {
+      "id": "product-ad-video",
+      "name": "Product Ad Video",
+      "category": "create",
+      "needsPhoto": true,
+      "description": "Photo of a product in, polished commercial clip out (2 steps).",
+      "fields": [
+        {
+          "id": "setting",
+          "label": "Setting",
+          "placeholder": "polished black stone with gold rim light",
+          "fallback": "polished dark surface with dramatic rim light"
+        }
+      ],
+      "steps": [
+        {
+          "model": "flux-2-pro-edit",
+          "from": "photo",
+          "prompt": "Re-stage this exact product on {setting}. Premium studio commercial look, keep the product shape, labels and colors unchanged."
+        },
+        {
+          "model": "wan2.5-image-to-video",
+          "from": "previous",
+          "duration": 5,
+          "resolution": "720p",
+          "prompt": "High-end product commercial: slow smooth camera arc around the product, soft particles drifting, premium lighting, no text."
+        }
+      ]
+    },
+    {
+      "id": "animate-photo",
+      "name": "Animate Photo",
+      "category": "photo",
+      "needsPhoto": true,
+      "description": "Bring a still photo to life as a 5-second video.",
+      "fields": [
+        {
+          "id": "motion",
+          "label": "What should move",
+          "placeholder": "hair blowing in the wind, slow zoom in",
+          "fallback": "gentle natural motion, slow cinematic push-in"
+        }
+      ],
+      "steps": [
+        {
+          "model": "seedance-lite-i2v",
+          "from": "photo",
+          "duration": 5,
+          "resolution": "480p",
+          "prompt": "{motion}"
+        }
+      ]
+    },
+    {
+      "id": "restyle-photo",
+      "name": "Edit with Words",
+      "category": "photo",
+      "needsPhoto": true,
+      "description": "Describe a change and the photo is edited to match.",
+      "fields": [
+        {
+          "id": "change",
+          "label": "Change",
+          "placeholder": "make it a snowy winter evening",
+          "fallback": ""
+        }
+      ],
+      "steps": [
+        {
+          "model": "nano-banana-edit",
+          "from": "photo",
+          "prompt": "{change}. Keep everything else in the photo the same."
+        }
+      ]
+    },
+    {
+      "id": "upscale-photo",
+      "name": "Upscale",
+      "category": "photo",
+      "needsPhoto": true,
+      "description": "Make a photo bigger and sharper.",
+      "fields": [],
+      "steps": [
+        {
+          "model": "ai-image-upscale",
+          "from": "photo",
+          "prompt": ""
+        }
+      ]
+    },
+    {
+      "id": "remove-background",
+      "name": "Remove Background",
+      "category": "photo",
+      "needsPhoto": true,
+      "description": "Cut out the subject on a transparent background.",
+      "fields": [],
+      "steps": [
+        {
+          "model": "ai-background-remover",
+          "from": "photo",
+          "prompt": ""
+        }
+      ]
+    }
+  ]
+}

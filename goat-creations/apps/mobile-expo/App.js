@@ -1,0 +1,1005 @@
+/**
+ * GOAT CREATIONS mobile studio (Expo).
+ *
+ * Ways to connect, all through `sebastina-core` (the same pipeline as desktop):
+ * - "GOAT Cloud": our SEBastina server + render node on a rented GPU, reached over
+ *   https, so the phone works on mobile data alone (apps/cloud-node/setup.sh).
+ * - "My computer": your own ComfyUI on the same Wi-Fi (or over Tailscale).
+ * - "Hugging Face" / "MuAPI": hosted models billed to your own account.
+ *   For your personal phone only: never ship a build with a key inside it.
+ * Keys and tokens live in the device's secure storage (Android Keystore / iOS Keychain).
+ */
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Animated,
+  PanResponder,
+  Image,
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider, useSafeAreaInsets, initialWindowMetrics } from 'react-native-safe-area-context';
+import * as SecureStore from 'expo-secure-store';
+import * as ImagePicker from 'expo-image-picker';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+import { useVideoPlayer, VideoView } from 'expo-video';
+import { File, Paths } from 'expo-file-system';
+import * as Network from 'expo-network';
+import {
+  GOAT_MODULES,
+  SEBastinaClient,
+  SEBastinaEngine,
+  IMAGE_MODELS,
+  VIDEO_MODELS,
+  DEFAULT_IMAGE_MODEL,
+  DEFAULT_VIDEO_MODEL,
+  SKILLS,
+  CHARACTER_SKILLS,
+  LOCAL_IMAGE_MODELS,
+  LOCAL_VIDEO_MODELS,
+  LOCAL_PROFILE_MODELS,
+  localSupports,
+  findModel,
+  hubSupports,
+  createGOATAIEngineHub,
+  contentIssue,
+  skillOutput,
+  checkAddress,
+} from 'sebastina-core';
+
+const C = {
+  canvas: '#0B0C0F',
+  inset: '#0F1114',
+  panel: '#15171C',
+  raised: '#1E2128',
+  border: '#2A2E36',
+  text: '#E7E9EC',
+  dim: '#8C949F',
+  gold: '#F2B82E',
+  goldSoft: '#3A3014',
+  danger: '#F06A5E',
+  ok: '#5ED08F',
+};
+
+const SERVER_KEY = 'goat_server_url';
+const TOKEN_KEY = 'goat_access_token';
+const MODE_KEY = 'goat_mode';
+const MUAPI_KEY = 'goat_muapi_key';
+const CHARACTER_KEY = 'goat_character';
+const COMFY_KEY = 'goat_comfy_url';
+const PROFILE_KEY = 'goat_local_profile';
+const HF_KEY = 'goat_hf_token';
+// Hugging Face mode: one hosted open model each (Inference Providers, billed to your HF account).
+const HF_IMAGE_MODELS = [{ id: 'hf-flux-schnell', name: 'FLUX.1 Schnell', note: 'On Hugging Face' }];
+const HF_VIDEO_MODELS = [{ id: 'hf-wan21', name: 'Wan 2.1', note: 'On Hugging Face · minutes per clip' }];
+// Our own first: your render node, or your GOAT server. Paid hosted services are optional.
+// `anywhere`: works on mobile data with no home computer on.
+const MODES = [
+  { id: 'server', label: 'GOAT Cloud', anywhere: true },
+  { id: 'local', label: 'My computer', anywhere: false },
+  { id: 'hf', label: 'Hugging Face (paid)', anywhere: true },
+  { id: 'direct', label: 'MuAPI (paid)', anywhere: true },
+];
+const PROFILES = [
+  { id: 'light', label: 'Light', note: 'SD 1.5, upscale, cut-out · 8 GB GPU' },
+  { id: 'full', label: 'Full', note: '+ FLUX, photo edits, SEBastina scenes, video · 24 GB GPU' },
+  { id: 'pro', label: 'Pro', note: 'Flagship open models: Z-Image, Qwen-Image, Qwen-Edit 2511, Wan 2.2 14B · 24 GB+ GPU' },
+];
+const TABS = [
+  ...GOAT_MODULES.map((m) => ({ id: m.id, label: m.name })),
+  { id: 'skills', label: 'Skills' },
+  { id: 'photo', label: 'Photo' },
+  { id: 'sebastina', label: 'SEBastina' },
+];
+// Photos are re-saved before upload: strips hidden metadata (GPS location) and caps size.
+const MAX_PHOTO_PX = 2048;
+// Filled in from what apps/cloud-node/setup.sh prints (an https:// address).
+const DEFAULT_SERVER = '';
+
+export default function App() {
+  return (
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <Studio />
+    </SafeAreaProvider>
+  );
+}
+
+function Studio() {
+  const insets = useSafeAreaInsets();
+  const [serverUrl, setServerUrl] = useState(DEFAULT_SERVER);
+  const [token, setToken] = useState('');
+  const [mode, setMode] = useState('server');
+  const [muapiKey, setMuapiKey] = useState('');
+  // "My computer": your own ComfyUI with the GOAT pack (open models, no API, no cost).
+  const [comfyUrl, setComfyUrl] = useState('http://192.168.1.20:8188');
+  const [localProfile, setLocalProfile] = useState('light');
+  const [hfToken, setHfToken] = useState('');
+  const [imageModel, setImageModel] = useState(DEFAULT_IMAGE_MODEL);
+  const [videoModel, setVideoModel] = useState(DEFAULT_VIDEO_MODEL);
+  // In server mode, only the models the server allows (null = not fetched yet).
+  const [serverModels, setServerModels] = useState(null);
+  const [serverSkills, setServerSkills] = useState(null);
+  // SEBastina's saved look: { url } of the reference portrait made by "Design SEBastina".
+  const [character, setCharacter] = useState(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
+  // Mobile data: say which connections work away from home, and don't auto-play videos.
+  const network = Network.useNetworkState();
+  const onCellular = network.type === Network.NetworkStateType.CELLULAR;
+  const [moduleId, setModuleId] = useState('image');
+  const [prompt, setPrompt] = useState('A majestic goat climbing a high-tech neon mountain, cinematic');
+  const [status, setStatus] = useState({ kind: 'idle', text: 'Ready.' });
+  const [result, setResultState] = useState(null);
+  // Shown image's real shape, so thumbnails (16:9) and portraits both fit.
+  const [resultRatio, setResultRatio] = useState(null);
+  const scrollRef = useRef(null);
+  const setResult = (value) => {
+    setResultRatio(null);
+    setResultState(value);
+    // Bring the finished piece into view (it sits below the form).
+    if (value) setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 250);
+  };
+
+  // `module` is ImageGOAT/MotionGOAT; undefined on the Skills and Photo tabs.
+  const module = GOAT_MODULES.find((m) => m.id === moduleId);
+  const tabLabel = TABS.find((t) => t.id === moduleId)?.label ?? '';
+  const client = useMemo(() => new SEBastinaClient({ serverUrl, token }), [serverUrl, token]);
+  const engine = useMemo(
+    () =>
+      mode === 'local'
+        ? new SEBastinaEngine({ backend: 'comfyui', comfyUrl: comfyUrl.trim(), localProfile })
+        : mode === 'hf'
+          ? new SEBastinaEngine({ backend: 'huggingface', hfToken: hfToken.trim() })
+          : new SEBastinaEngine({ apiKey: muapiKey.trim() }),
+    [mode, comfyUrl, localProfile, muapiKey, hfToken],
+  );
+  // GOATAIEngineHub with the token from Settings (never built into the app).
+  const hub = useMemo(() => createGOATAIEngineHub({ token: hfToken.trim() }), [hfToken]);
+  // On your computer, only offer what its models can do.
+  const runsHere = (skill) =>
+    mode === 'local'
+      ? skill.steps.every((step) => localSupports(localProfile, findModel(step.model)?.task ?? 't2i'))
+      : mode === 'hf'
+        ? skill.steps.every((step) => hubSupports(findModel(step.model)?.task))
+        : true;
+  const busy = status.kind === 'busy';
+  const catalog =
+    mode === 'hf'
+      ? module?.isMotion ? HF_VIDEO_MODELS : HF_IMAGE_MODELS
+      : mode === 'local'
+      ? (module?.isMotion ? LOCAL_VIDEO_MODELS : LOCAL_IMAGE_MODELS).filter((m) => LOCAL_PROFILE_MODELS[localProfile].includes(m.id))
+      : module?.isMotion ? VIDEO_MODELS : IMAGE_MODELS;
+  const models = mode === 'server' && serverModels?.length ? catalog.filter((m) => serverModels.includes(m.id)) : catalog;
+  const chosenModel = module?.isMotion ? videoModel : imageModel;
+  const setChosenModel = module?.isMotion ? setVideoModel : setImageModel;
+  const category = moduleId === 'photo' ? 'photo' : moduleId === 'sebastina' ? 'character' : 'create';
+  const catalogSkills = category === 'character' ? CHARACTER_SKILLS.filter((s) => (character ? s.needsCharacter : !s.needsCharacter)) : SKILLS;
+  const skills = catalogSkills.filter(
+    (s) => s.category === category && runsHere(s) && (mode !== 'server' || (serverSkills ?? []).includes(s.id)),
+  );
+  const model = models.find((m) => m.id === chosenModel) ?? models[0];
+
+  // Load saved connection settings once.
+  useEffect(() => {
+    (async () => {
+      try {
+        const [savedComfy, savedProfile, savedHf] = await Promise.all([
+          SecureStore.getItemAsync(COMFY_KEY),
+          SecureStore.getItemAsync(PROFILE_KEY),
+          SecureStore.getItemAsync(HF_KEY),
+        ]);
+        if (savedHf) setHfToken(savedHf);
+        if (savedComfy) setComfyUrl(savedComfy);
+        if (['light', 'full', 'pro'].includes(savedProfile)) setLocalProfile(savedProfile);
+        const [savedUrl, savedToken, savedMode, savedKey, savedCharacter] = await Promise.all([
+          SecureStore.getItemAsync(SERVER_KEY),
+          SecureStore.getItemAsync(TOKEN_KEY),
+          SecureStore.getItemAsync(MODE_KEY),
+          SecureStore.getItemAsync(MUAPI_KEY),
+          SecureStore.getItemAsync(CHARACTER_KEY),
+        ]);
+        if (savedCharacter) {
+          try {
+            setCharacter(JSON.parse(savedCharacter));
+          } catch {
+            /* ignore a damaged saved value */
+          }
+        }
+        if (savedUrl) setServerUrl(savedUrl);
+        if (savedToken) setToken(savedToken);
+        if (savedMode) setMode(savedMode);
+        if (savedKey) setMuapiKey(savedKey);
+        const m = savedMode || 'server';
+        const ready = m === 'direct' ? !!savedKey : m === 'local' ? !!savedComfy : m === 'hf' ? !!savedHf : !!savedToken;
+        if (!ready) {
+          setShowSettings(true);
+          setStatus({ kind: 'idle', text: 'Step 1: choose how to connect above, then tap Save.' });
+        }
+      } catch {
+        // Secure storage unavailable (e.g. web preview): start at Settings.
+        setShowSettings(true);
+        setStatus({ kind: 'idle', text: 'Step 1: choose how to connect above, then tap Save.' });
+      }
+    })();
+  }, []);
+
+  async function saveSettings() {
+    try {
+      await SecureStore.setItemAsync(MODE_KEY, mode);
+      await SecureStore.setItemAsync(SERVER_KEY, serverUrl.trim());
+      await SecureStore.setItemAsync(TOKEN_KEY, token.trim());
+      await SecureStore.setItemAsync(MUAPI_KEY, muapiKey.trim());
+      await SecureStore.setItemAsync(COMFY_KEY, comfyUrl.trim());
+      await SecureStore.setItemAsync(PROFILE_KEY, localProfile);
+      await SecureStore.setItemAsync(HF_KEY, hfToken.trim());
+    } catch {
+      /* not available on this platform: settings last until the app closes */
+    }
+    if (mode === 'hf') {
+      if (!hfToken.trim()) {
+        setStatus({ kind: 'error', text: 'Paste your Hugging Face token first (huggingface.co > Settings > Access Tokens).' });
+        return;
+      }
+      setStatus({ kind: 'busy', text: 'Checking your Hugging Face token…' });
+      const check = await engine.checkKey();
+      if (check.ok) {
+        setStatus({ kind: 'ok', text: `Connected: ${check.device}. FLUX images and Wan videos are billed to that account.` });
+        setShowSettings(false);
+      } else {
+        setStatus({ kind: 'error', text: check.error || 'Hugging Face did not accept that token.' });
+      }
+      return;
+    }
+    if (mode === 'local') {
+      const address = checkAddress(comfyUrl);
+      if (address.issue) {
+        setStatus({ kind: 'error', text: address.issue });
+        return;
+      }
+      if (onCellular && address.reach === 'wifi') {
+        setStatus({ kind: 'error', text: "You're on mobile data, and that's a home Wi-Fi address. Use GOAT Cloud, or put Tailscale on the phone and computer and use the computer's 100.x address." });
+        return;
+      }
+      setStatus({ kind: 'busy', text: 'Looking for ComfyUI on your computer…' });
+      const check = await engine.checkKey();
+      if (check.ok) {
+        setStatus({ kind: 'ok', text: `Connected to your computer (${check.device}). No API, no cost.` });
+        setShowSettings(false);
+      } else {
+        setStatus({ kind: 'error', text: address.reach === 'wifi' ? `${check.error} Same Wi-Fi? ComfyUI started with --listen?` : `${check.error} Is the computer on and Tailscale connected?` });
+      }
+      return;
+    }
+    if (mode === 'direct') {
+      if (!muapiKey.trim()) {
+        setStatus({ kind: 'error', text: 'Paste your MuAPI key first (muapi.ai > Dashboard > API keys).' });
+        return;
+      }
+      setStatus({ kind: 'busy', text: 'Checking your key with MuAPI…' });
+      const check = await engine.checkKey();
+      if (check.ok) {
+        const balance = check.balance !== undefined ? ` Balance: $${check.balance.toFixed(2)}.` : '';
+        setStatus({ kind: 'ok', text: `Key works.${balance} You're ready to create.` });
+        setShowSettings(false);
+      } else {
+        setStatus({ kind: 'error', text: check.error || 'MuAPI did not accept that key.' });
+      }
+      return;
+    }
+    const address = checkAddress(serverUrl);
+    if (address.issue) {
+      setStatus({ kind: 'error', text: address.issue });
+      return;
+    }
+    if (!token.trim()) {
+      setStatus({ kind: 'error', text: 'Enter the access token too (on the cloud server: cat ~/goat-cloud/owner-token.txt).' });
+      return;
+    }
+    setStatus({ kind: 'busy', text: 'Checking GOAT Cloud…' });
+    const ok = await client.health();
+    if (!ok) {
+      setStatus({ kind: 'error', text: `Can't reach ${serverUrl.trim()}. Is the cloud server running? (The free Cloudflare address changes each time start.sh runs.)` });
+      return;
+    }
+    const access = await client.access();
+    setServerModels(access.models);
+    setServerSkills(access.skills);
+    setIsOwner(access.owner);
+    const where = address.reach === 'wifi' ? ' (home Wi-Fi only)' : ' Works on Wi-Fi and mobile data.';
+    setStatus({ kind: 'ok', text: access.owner ? `Connected as owner: every model and Skill unlocked.${where}` : `Connected: ${access.models.length} models, ${access.skills.length} Skills.${where}` });
+    setShowSettings(false);
+  }
+
+  /** True when a key (or server token) is set; otherwise opens Settings and says what to do. */
+  function ready() {
+    const ok =
+      mode === 'direct' ? !!muapiKey.trim()
+      : mode === 'local' ? !!comfyUrl.trim()
+      : mode === 'hf' ? !!hfToken.trim()
+      : !!token.trim();
+    if (!ok) {
+      setShowSettings(true);
+      setStatus({
+        kind: 'error',
+        text:
+          mode === 'direct' ? 'First paste your MuAPI key in Settings (top of the screen) and tap Save.'
+          : mode === 'local' ? "First enter your computer's ComfyUI address in Settings and tap Save."
+          : mode === 'hf' ? 'First paste your Hugging Face token in Settings and tap Save.'
+          : 'First paste your access token in Settings and tap Save.',
+      });
+    }
+    return ok;
+  }
+
+  async function saveCharacter(url) {
+    const value = url ? { url, savedAt: new Date().toISOString() } : null;
+    setCharacter(value);
+    try {
+      if (value) await SecureStore.setItemAsync(CHARACTER_KEY, JSON.stringify(value));
+      else await SecureStore.deleteItemAsync(CHARACTER_KEY);
+    } catch {
+      /* not available on this platform: kept until the app closes */
+    }
+    setStatus(value ? { kind: 'ok', text: "SEBastina's look is saved. Every SEBastina Skill now uses it." } : { kind: 'idle', text: 'Design a new look for SEBastina.' });
+  }
+
+  /** Swipe-to-render: one video per swipe; ignored while one is rendering. */
+  async function swipeRender() {
+    if (busy || !prompt.trim() || !ready()) return;
+    if (mode !== 'hf') return generate();
+    setStatus({ kind: 'busy', text: 'Wan 2.1 is rendering on Hugging Face… this takes a few minutes.' });
+    try {
+      const video = await hub.textToVideo(prompt);
+      setResult({ url: await saveVideo(video.videoUrl), isMotion: true, label: 'Wan 2.1' });
+      setStatus({ kind: 'ok', text: 'Video ready (Wan 2.1 on Hugging Face).' });
+    } catch (error) {
+      setStatus({ kind: 'error', text: error?.message || 'Video render failed.' });
+    }
+  }
+
+  async function generate() {
+    if (!ready()) return;
+    setStatus({
+      kind: 'busy',
+      text: module.isMotion ? 'Rendering video… this can take a few minutes.' : 'Generating image…',
+    });
+    const request =
+      module.isMotion
+        ? { prompt, isMotion: true, model: model?.id, aspectRatio: '9:16', duration: 5 }
+        : { prompt, isMotion: false, model: model?.id, width: 768, height: 1344 };
+    if (!model) {
+      setStatus({ kind: 'error', text: 'Video on your computer needs the Full or Pro setup (Wan 2.2). Switch it in Settings.' });
+      return;
+    }
+    const outcome = mode !== 'server' ? await engine.generateAsset(request) : await client.generate(request);
+    if (outcome.success && outcome.data) {
+      const url = module.isMotion ? await saveVideo(outcome.data) : outcome.data;
+      setResult({ url, isMotion: module.isMotion, label: module.name });
+      setStatus({ kind: 'ok', text: `${module.name} finished with ${model?.name ?? 'the default model'}.` });
+    } else {
+      setStatus({ kind: 'error', text: outcome.error || 'Something went wrong.' });
+    }
+  }
+
+  /** Upload the photo if the Skill needs one, then run it (directly or through the server). */
+  async function runSkill(skill, inputs, photo) {
+    if (!ready()) return;
+    if (skill.category === 'character') {
+      const issue = Object.values(inputs).map((v) => contentIssue(String(v))).find(Boolean);
+      if (issue) {
+        setStatus({ kind: 'error', text: issue });
+        return;
+      }
+    }
+    let photoUrl;
+    try {
+      if (skill.needsPhoto) {
+        if (!photo) {
+          setStatus({ kind: 'error', text: `${skill.name} needs a photo.` });
+          return;
+        }
+        setStatus({ kind: 'busy', text: 'Uploading photo…' });
+        const file = { uri: photo.uri, name: 'photo.jpg', type: 'image/jpeg' };
+        photoUrl = mode !== 'server' ? await engine.uploadImage(file) : await client.uploadImage(file);
+      }
+    } catch (error) {
+      setStatus({ kind: 'error', text: error?.message || 'Upload failed.' });
+      return;
+    }
+    const isVideo = skillOutput(skill) === 'video';
+    const steps = skill.steps.length > 1 ? ` (${skill.steps.length} steps)` : '';
+    setStatus({ kind: 'busy', text: `Running ${skill.name}${steps}…${isVideo ? ' Videos can take a few minutes.' : ''}` });
+    const request = { skillId: skill.id, inputs, photoUrl, characterUrl: character?.url };
+    const outcome = mode !== 'server' ? await engine.runSkill(request) : await client.runSkill(request);
+    if (outcome.success && outcome.data) {
+      setResult({ url: outcome.data, isMotion: outcome.kind === 'video', label: skill.name, skillId: skill.id });
+      setStatus({ kind: 'ok', text: `${skill.name} finished.` });
+    } else {
+      setStatus({ kind: 'error', text: outcome.error || 'Something went wrong.' });
+    }
+  }
+
+  return (
+    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <StatusBar style="light" />
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <View style={styles.brand}>
+          <View style={styles.mark}><Text style={styles.markText}>G</Text></View>
+          <Text style={styles.wordmark}>GOAT CREATIONS</Text>
+        </View>
+        <Pressable
+          onPress={() => setShowSettings((s) => !s)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: showSettings }}
+          hitSlop={8}
+        >
+          <Text style={styles.link}>{showSettings ? 'Close' : 'Settings'}</Text>
+        </Pressable>
+      </View>
+
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+        {showSettings && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Connection</Text>
+            {onCellular && (
+              <Text style={styles.notice} accessibilityLiveRegion="polite">
+                You're on mobile data. GOAT Cloud, Hugging Face and MuAPI work anywhere. My computer needs the same Wi-Fi, or Tailscale.
+              </Text>
+            )}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={styles.tabs} accessibilityRole="radiogroup">
+              {MODES.map((m) => {
+                const active = m.id === mode;
+                return (
+                  <Pressable
+                    key={m.id}
+                    onPress={() => setMode(m.id)}
+                    style={[styles.tab, active && styles.tabActive]}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: active }}
+                  >
+                    <Text style={[styles.tabText, active && styles.tabTextActive]}>{m.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+            <Text style={styles.chipNote}>
+              {MODES.find((m) => m.id === mode)?.anywhere ? 'Works anywhere: Wi-Fi or mobile data.' : 'Works on your home Wi-Fi (or anywhere over Tailscale).'}
+            </Text>
+            {mode === 'local' ? (
+              <>
+                <Text style={styles.label}>Your computer's ComfyUI address</Text>
+                <TextInput
+                  style={styles.input}
+                  value={comfyUrl}
+                  onChangeText={setComfyUrl}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                  placeholder="http://192.168.1.20:8188"
+                  placeholderTextColor={C.dim}
+                />
+                <Text style={styles.label}>Models installed</Text>
+                <View style={styles.tabs} accessibilityRole="radiogroup">
+                  {PROFILES.map((p) => {
+                    const active = p.id === localProfile;
+                    return (
+                      <Pressable
+                        key={p.id}
+                        onPress={() => setLocalProfile(p.id)}
+                        style={[styles.tab, { flex: 1 }, active && styles.tabActive]}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: active }}
+                        accessibilityLabel={`${p.label}: ${p.note}`}
+                      >
+                        <Text style={[styles.tabText, active && styles.tabTextActive]}>{p.label}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <Text style={styles.dim}>
+                  {PROFILES.find((p) => p.id === localProfile).note}. Runs on your own GPU with open models: no key, no per-image cost. Set the computer up once with goat-creations/apps/render-node/setup.sh (Windows: setup.ps1). Away from home: Tailscale on both, then the computer's 100.x address.
+                </Text>
+              </>
+            ) : mode === 'hf' ? (
+              <>
+                <Text style={styles.label}>Hugging Face token</Text>
+                <TextInput
+                  style={styles.input}
+                  value={hfToken}
+                  onChangeText={setHfToken}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  secureTextEntry
+                  placeholder="hf_… (needs Inference Providers access)"
+                  placeholderTextColor={C.dim}
+                />
+                <Text style={styles.dim}>
+                  Runs FLUX.1 Schnell and Wan 2.1 on Hugging Face's partners. Billed to your Hugging Face account (free accounts get a small monthly credit). Kept in this phone's secure storage.
+                </Text>
+              </>
+            ) : mode === 'direct' ? (
+              <>
+                <Text style={styles.label}>MuAPI key</Text>
+                <TextInput
+                  style={styles.input}
+                  value={muapiKey}
+                  onChangeText={setMuapiKey}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  secureTextEntry
+                  placeholder="From muapi.ai > API keys"
+                  placeholderTextColor={C.dim}
+                />
+                <Text style={styles.dim}>Kept in this phone's secure storage. Each generation is billed to your MuAPI account.</Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.label}>GOAT Cloud address</Text>
+                <TextInput
+                  style={styles.input}
+                  value={serverUrl}
+                  onChangeText={setServerUrl}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                  placeholder="https://….trycloudflare.com"
+                  placeholderTextColor={C.dim}
+                />
+                <Text style={styles.label}>Access token</Text>
+                <TextInput
+                  style={styles.input}
+                  value={token}
+                  onChangeText={setToken}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  secureTextEntry
+                  placeholder="From the cloud setup (owner-token.txt)"
+                  placeholderTextColor={C.dim}
+                />
+                <Text style={styles.dim}>
+                  Our own server and open models on a rented GPU, so this phone works on mobile data alone. Set it up once with goat-creations/apps/cloud-node/setup.sh; it prints this address and token. Kept in this phone's secure storage.{isOwner ? ' Owner access: everything unlocked.' : ''}
+                </Text>
+              </>
+            )}
+            <Button label="Save and test" onPress={saveSettings} disabled={busy} variant="secondary" />
+          </View>
+        )}
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.tabsScroll}
+          contentContainerStyle={styles.tabs}
+          accessibilityRole="tablist"
+        >
+          {TABS.map((t) => {
+            const active = t.id === moduleId;
+            return (
+              <Pressable
+                key={t.id}
+                onPress={() => setModuleId(t.id)}
+                style={[styles.tab, active && styles.tabActive]}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: active }}
+              >
+                <Text style={[styles.tabText, styles.tabTextSmall, active && styles.tabTextActive]} numberOfLines={1}>
+                  {t.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+
+        {category === 'character' && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>SEBastina</Text>
+            <Text style={styles.dim}>
+              {character
+                ? 'Her saved look is used in every SEBastina Skill below, so she looks the same everywhere.'
+                : 'An original character for your brand. Describe her once, then save the portrait you like.'}
+            </Text>
+            {character && (
+              <View style={styles.photoRow}>
+                <Image source={{ uri: character.url }} style={styles.portrait} accessibilityLabel="SEBastina's saved look" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.chipNote}>Always an adult, always fully clothed and safe-for-work.</Text>
+                  <Button label="Design a new look" onPress={() => saveCharacter(null)} disabled={busy} variant="secondary" />
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+
+        {!module ? (
+          <SkillPanel
+            key={category}
+            skills={skills}
+            category={category}
+            busy={busy}
+            onRun={runSkill}
+            onError={(text) => setStatus({ kind: 'error', text })}
+            emptyText={
+              mode === 'server'
+                ? 'This server offers no Skills yet. The owner turns them on with SEBASTINA_SERVER_SKILLS.'
+                : 'No Skills here.'
+            }
+          />
+        ) : (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>{module.name}</Text>
+          <Text style={styles.dim}>{module.tagline}</Text>
+          <Text style={styles.label}>Model</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+            {models.map((m) => {
+              const active = m.id === model?.id;
+              return (
+                <Pressable
+                  key={m.id}
+                  onPress={() => setChosenModel(m.id)}
+                  style={[styles.chip, active && styles.chipActive]}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: active }}
+                  accessibilityLabel={`${m.name}, ${m.note}`}
+                >
+                  <Text style={[styles.chipName, active && styles.tabTextActive]}>{m.name}</Text>
+                  <Text style={styles.chipNote}>{m.note}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+          <Text style={styles.label}>Prompt</Text>
+          <TextInput
+            style={[styles.input, styles.prompt]}
+            value={prompt}
+            onChangeText={setPrompt}
+            multiline
+            maxLength={3000}
+            placeholderTextColor={C.dim}
+          />
+          {module.isMotion ? (
+            <SwipeToRender
+              label={busy ? 'Rendering…' : mode === 'hf' ? 'Swipe to render with Wan 2.1' : `Swipe to render with ${module.name}`}
+              disabled={busy || !prompt.trim()}
+              onComplete={swipeRender}
+            />
+          ) : (
+            <Button
+              label={busy ? 'Working…' : `Generate with ${module.name}`}
+              onPress={generate}
+              disabled={busy || !prompt.trim()}
+            />
+          )}
+        </View>
+        )}
+
+        <View style={styles.result}>
+          {busy ? (
+            <ActivityIndicator color={C.gold} size="large" accessibilityLabel="Working" />
+          ) : result ? (
+            result.isMotion ? (
+              <ResultVideo key={result.url} autoPlay={!onCellular} url={result.url} label={result.label} />
+            ) : (
+              <Image
+                source={{ uri: result.url }}
+                style={[styles.image, resultRatio ? { aspectRatio: resultRatio } : { height: 360 }]}
+                resizeMode="contain"
+                onLoad={(e) => {
+                  const { width, height } = e.nativeEvent.source ?? {};
+                  if (width && height) setResultRatio(width / height);
+                }}
+                accessibilityLabel={result.label ? `Result of ${result.label}` : `Generated: ${prompt}`}
+              />
+            )
+          ) : null}
+          {!busy && result && result.skillId === 'design-character' && !character && (
+            <View style={{ width: '100%', gap: 8 }}>
+              <Button label="Use this look for SEBastina" onPress={() => saveCharacter(result.url)} />
+              <Text style={[styles.chipNote, { textAlign: 'center' }]}>Not quite right? Change the words and run Design again.</Text>
+            </View>
+          )}
+          {!busy && !result && (
+            <View style={styles.empty}>
+              <Text style={styles.emptyTitle}>
+                <Text style={{ color: C.gold }}>GOAT</Text> CREATIONS
+              </Text>
+              <Text style={styles.dim}>The Greatest of All Time Open-Source Creative Suite</Text>
+            </View>
+          )}
+        </View>
+      </ScrollView>
+
+      <View style={[styles.status, { paddingBottom: insets.bottom + 10 }]} accessibilityLiveRegion="polite">
+        <Text style={styles.statusModule}>{tabLabel}</Text>
+        <Text
+          style={[styles.statusText, status.kind === 'ok' && { color: C.ok }, status.kind === 'error' && { color: C.danger }]}
+          numberOfLines={2}
+        >
+          {status.text}
+        </Text>
+      </View>
+    </KeyboardAvoidingView>
+  );
+}
+
+/** Data: URL videos (Hugging Face) are saved to a cache file so the player can stream them. */
+async function saveVideo(url) {
+  if (!url?.startsWith('data:') || Platform.OS === 'web') return url; // browsers play data: URLs directly
+  const base64 = url.slice(url.indexOf(',') + 1);
+  const ext = url.startsWith('data:video/webm') ? 'webm' : 'mp4';
+  const file = new File(Paths.cache, `goat-video-${Date.now()}.${ext}`);
+  await file.write(base64, { encoding: 'base64' });
+  return file.uri;
+}
+
+/** Inline, looping player for any result video (file, LAN ComfyUI, or CDN URL). */
+function ResultVideo({ url, label, autoPlay = true }) {
+  // On mobile data the clip waits for a tap on play (saves data on long loops).
+  const player = useVideoPlayer(url, (p) => {
+    p.loop = true;
+    if (autoPlay) p.play();
+  });
+  return (
+    <View style={{ width: '100%', gap: 8 }}>
+      <VideoView player={player} style={styles.video} nativeControls contentFit="contain" accessibilityLabel={label ? `${label} video` : 'Video result'} />
+      {/^https?:/.test(url) && (
+        <Button label="Open in browser" onPress={() => Linking.openURL(url)} variant="secondary" />
+      )}
+    </View>
+  );
+}
+
+/**
+ * Swipe the gold knob to the end to start a render: one render per swipe.
+ * Screen readers get an "activate" action instead of the swipe.
+ */
+function SwipeToRender({ label, disabled, onComplete }) {
+  const [trackWidth, setTrackWidth] = useState(0);
+  const x = useRef(new Animated.Value(0)).current;
+  const KNOB = 52;
+  const max = Math.max(0, trackWidth - KNOB - 8);
+  const reset = () => Animated.spring(x, { toValue: 0, useNativeDriver: false }).start();
+  const responder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => !disabled,
+        onMoveShouldSetPanResponder: (_, g) => !disabled && Math.abs(g.dx) > 4,
+        onPanResponderMove: (_, g) => x.setValue(Math.min(max, Math.max(0, g.dx))),
+        onPanResponderRelease: (_, g) => {
+          if (g.dx >= max * 0.8 && max > 0) {
+            Animated.timing(x, { toValue: max, duration: 120, useNativeDriver: false }).start(() => {
+              onComplete();
+              reset();
+            });
+          } else reset();
+        },
+        onPanResponderTerminate: reset,
+      }),
+    [disabled, max, onComplete],
+  );
+  return (
+    <View
+      style={[styles.swipeTrack, disabled && { opacity: 0.5 }]}
+      onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
+      accessible
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint="Swipe right to start, or double-tap with a screen reader"
+      accessibilityState={{ disabled: !!disabled }}
+      accessibilityActions={[{ name: 'activate' }]}
+      onAccessibilityAction={() => !disabled && onComplete()}
+    >
+      <Text style={styles.swipeLabel}>{label}</Text>
+      <Animated.View style={[styles.swipeKnob, { transform: [{ translateX: x }] }]} {...responder.panHandlers}>
+        <Text style={styles.swipeArrow}>›</Text>
+      </Animated.View>
+    </View>
+  );
+}
+
+/** Skills and photo tools: pick one, fill its fields, add a photo if needed, run. */
+function SkillPanel({ skills, category, busy, onRun, onError, emptyText }) {
+  const [selectedId, setSelectedId] = useState(skills[0]?.id);
+  const [inputs, setInputs] = useState({});
+  const [photo, setPhoto] = useState(null);
+  const skill = skills.find((s) => s.id === selectedId) ?? skills[0];
+
+  if (!skill) {
+    return (
+      <View style={styles.card}>
+        <Text style={styles.dim}>{emptyText}</Text>
+      </View>
+    );
+  }
+
+  async function pickPhoto() {
+    try {
+      const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1, exif: false });
+      if (picked.canceled || !picked.assets?.length) return;
+      const asset = picked.assets[0];
+      const context = ImageManipulator.manipulate(asset.uri);
+      if (asset.width > MAX_PHOTO_PX || asset.height > MAX_PHOTO_PX) {
+        context.resize(asset.width >= asset.height ? { width: MAX_PHOTO_PX } : { height: MAX_PHOTO_PX });
+      }
+      const rendered = await context.renderAsync();
+      const saved = await rendered.saveAsync({ compress: 0.85, format: SaveFormat.JPEG });
+      setPhoto(saved);
+    } catch (error) {
+      onError(`Couldn't open that photo: ${error?.message ?? error}`);
+    }
+  }
+
+  const missing = skill.fields.find((f) => !f.fallback && !(inputs[f.id] ?? '').trim());
+  const output = skillOutput(skill);
+
+  return (
+    <View style={styles.card}>
+      <Text style={styles.cardTitle}>{category === 'photo' ? 'Photo tools' : 'Skills'}</Text>
+      <Text style={styles.dim}>
+        {category === 'photo' ? 'Start from one of your photos.' : 'One-tap recipes: fill in a few words, get a finished piece.'}
+      </Text>
+      <View style={styles.skillList} accessibilityRole="radiogroup">
+        {skills.map((s) => {
+          const active = s.id === skill.id;
+          return (
+            <Pressable
+              key={s.id}
+              onPress={() => setSelectedId(s.id)}
+              style={[styles.skillRow, active && styles.chipActive]}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: active }}
+              accessibilityLabel={`${s.name}. ${s.description}`}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.chipName, active && styles.tabTextActive]}>{s.name}</Text>
+                <Text style={styles.chipNote}>{s.description}</Text>
+              </View>
+              <Text style={styles.badge}>{skillOutput(s) === 'video' ? 'VIDEO' : 'IMAGE'}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {skill.fields.map((f) => (
+        <View key={f.id}>
+          <Text style={styles.label}>
+            {f.label}
+            {f.fallback ? ' (optional)' : ''}
+          </Text>
+          <TextInput
+            style={styles.input}
+            value={inputs[f.id] ?? ''}
+            onChangeText={(text) => setInputs((prev) => ({ ...prev, [f.id]: text }))}
+            placeholder={f.placeholder}
+            placeholderTextColor={C.dim}
+            maxLength={600}
+            accessibilityLabel={f.label}
+          />
+        </View>
+      ))}
+
+      {skill.needsPhoto && (
+        <View style={styles.photoRow}>
+          {photo ? (
+            <Image source={{ uri: photo.uri }} style={styles.thumb} accessibilityLabel="Chosen photo" />
+          ) : (
+            <View style={[styles.thumb, styles.thumbEmpty]}>
+              <Text style={styles.chipNote}>No photo</Text>
+            </View>
+          )}
+          <View style={{ flex: 1 }}>
+            <Button label={photo ? 'Change photo' : 'Choose photo'} onPress={pickPhoto} disabled={busy} variant="secondary" />
+          </View>
+        </View>
+      )}
+
+      <Button
+        label={busy ? 'Working…' : `Run ${skill.name}`}
+        onPress={() => onRun(skill, inputs, photo)}
+        disabled={busy || !!missing || (skill.needsPhoto && !photo)}
+      />
+      <Text style={styles.chipNote}>
+        {skill.steps.length > 1 ? `${skill.steps.length} steps · ` : ''}
+        {output === 'video' ? 'Makes a video' : 'Makes an image'}
+        {missing ? ` · Fill in "${missing.label}"` : ''}
+      </Text>
+    </View>
+  );
+}
+
+function Button({ label, onPress, disabled, variant = 'primary' }) {
+  const primary = variant === 'primary';
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
+      style={({ pressed }) => [
+        styles.button,
+        primary ? styles.buttonPrimary : styles.buttonSecondary,
+        pressed && { opacity: 0.85 },
+        disabled && { opacity: 0.5 },
+      ]}
+    >
+      <Text style={primary ? styles.buttonPrimaryText : styles.buttonSecondaryText}>{label}</Text>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: C.canvas },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingTop: Platform.OS === 'android' ? 40 : 56, paddingBottom: 12, paddingHorizontal: 16,
+    backgroundColor: C.panel, borderBottomWidth: 1, borderBottomColor: C.border,
+  },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  mark: { width: 26, height: 26, borderRadius: 7, backgroundColor: C.gold, alignItems: 'center', justifyContent: 'center' },
+  markText: { color: C.canvas, fontWeight: '800', fontSize: 16 },
+  wordmark: { color: C.text, fontWeight: '700', letterSpacing: 1.2 },
+  link: { color: C.gold, fontWeight: '600', paddingVertical: 6 },
+  body: { padding: 16, gap: 14 },
+  card: { backgroundColor: C.raised, borderRadius: 12, padding: 14, gap: 8 },
+  cardTitle: { color: C.gold, fontWeight: '700', fontSize: 16 },
+  label: { color: C.dim, fontSize: 12, marginTop: 4 },
+  dim: { color: C.dim, fontSize: 12 },
+  notice: { color: C.gold, backgroundColor: C.goldSoft, borderRadius: 8, padding: 10, fontSize: 12 },
+  input: {
+    color: C.text, backgroundColor: C.inset, borderColor: C.border, borderWidth: 1,
+    borderRadius: 8, paddingHorizontal: 10, paddingVertical: 10, fontSize: 15,
+  },
+  prompt: { minHeight: 110, textAlignVertical: 'top' },
+  tabs: { flexDirection: 'row', backgroundColor: C.panel, borderRadius: 10, padding: 4, gap: 4 },
+  tabsScroll: { flexGrow: 0 },
+  portrait: { width: 84, height: 112, borderRadius: 10 },
+  tab: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 8, alignItems: 'center', minWidth: 76 },
+  chips: { gap: 8, paddingVertical: 2 },
+  chip: { borderWidth: 1, borderColor: C.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, minHeight: 44, justifyContent: 'center' },
+  chipActive: { borderColor: C.gold, backgroundColor: C.goldSoft },
+  chipName: { color: C.text, fontWeight: '600', fontSize: 14 },
+  chipNote: { color: C.dim, fontSize: 11, marginTop: 2 },
+  tabActive: { backgroundColor: C.goldSoft },
+  tabText: { color: C.dim, fontWeight: '600' },
+  tabTextActive: { color: C.gold },
+  tabTextSmall: { fontSize: 13 },
+  skillList: { gap: 8, marginTop: 4 },
+  skillRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: C.border,
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, minHeight: 56,
+  },
+  badge: { color: C.dim, fontSize: 10, fontWeight: '700', letterSpacing: 1 },
+  photoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 },
+  thumb: { width: 64, height: 64, borderRadius: 8 },
+  thumbEmpty: { borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' },
+  button: { borderRadius: 8, paddingVertical: 12, alignItems: 'center', marginTop: 8, minHeight: 44, justifyContent: 'center' },
+  buttonPrimary: { backgroundColor: C.gold },
+  buttonSecondary: { borderWidth: 1, borderColor: C.border },
+  buttonPrimaryText: { color: C.canvas, fontWeight: '700', fontSize: 15 },
+  buttonSecondaryText: { color: C.text, fontWeight: '600', fontSize: 15 },
+  result: { minHeight: 260, alignItems: 'center', justifyContent: 'center' },
+  video: { width: '100%', aspectRatio: 9 / 16, borderRadius: 10, backgroundColor: '#000' },
+  swipeTrack: {
+    marginTop: 8, height: 60, borderRadius: 30, backgroundColor: C.inset, borderWidth: 1, borderColor: C.gold,
+    justifyContent: 'center', paddingHorizontal: 4, overflow: 'hidden',
+  },
+  swipeLabel: { position: 'absolute', alignSelf: 'center', color: C.gold, fontWeight: '700', fontSize: 15 },
+  swipeKnob: { width: 52, height: 52, borderRadius: 26, backgroundColor: C.gold, alignItems: 'center', justifyContent: 'center' },
+  swipeArrow: { color: C.canvas, fontSize: 30, fontWeight: '800', marginTop: -3 },
+  image: { width: '100%', borderRadius: 10 },
+  empty: { alignItems: 'center', gap: 6 },
+  emptyTitle: { color: C.text, fontSize: 26, fontWeight: '300', letterSpacing: 3 },
+  status: {
+    flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 24,
+    backgroundColor: C.panel, borderTopWidth: 1, borderTopColor: C.border,
+  },
+  statusModule: { color: C.gold, fontWeight: '600', fontSize: 12 },
+  statusText: { color: C.dim, fontSize: 12, flex: 1 },
+});

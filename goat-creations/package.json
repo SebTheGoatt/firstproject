@@ -1,0 +1,27 @@
+{
+  "name": "goat-creations-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "npm@10.9.9",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "desktop:dev": "npm run dev --workspace=desktop-tauri",
+    "mobile:start": "npm run start --workspace=mobile-expo",
+    "core:build": "npm run build --workspace=sebastina-core",
+    "server:start": "npm run start --workspace=sebastina-server",
+    "cli:start": "npm run start --workspace=sebastina-cli"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.3.3"
+  },
+  "overrides": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  }
+}

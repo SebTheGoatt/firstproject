@@ -1,0 +1,11 @@
+[project]
+name = "comfyui-goat-creations"
+description = "GOAT CREATIONS for ComfyUI: one-tap Skills, photo tools and 19 MuAPI image/video models."
+version = "1.0.0"
+license = { text = "MIT OR Apache-2.0" }
+dependencies = ["requests>=2.28", "Pillow>=9.0", "numpy>=1.23"]
+
+[tool.comfy]
+PublisherId = ""
+DisplayName = "GOAT CREATIONS"
+Icon = ""

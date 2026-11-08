@@ -1,0 +1,49 @@
+[package]
+name = "goat-creations"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+description = "GOAT CREATIONS: The Greatest of All Time Open-Source Creative Suite"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+keywords = ["graphics", "editor", "egui", "creative", "vector"]
+categories = ["graphics", "gui", "multimedia"]
+
+[[bin]]
+name = "goat-creations"
+path = "src/main.rs"
+
+[dependencies]
+# eframe = egui + native window (winit) + a GPU renderer, cross-platform.
+# We pick the OpenGL renderer (`glow`) instead of the default wgpu one: it runs
+# on far more machines (older GPUs, VMs, remote desktops) with no extra setup.
+# To try wgpu (Vulkan / Metal / DX12), swap "glow" for "wgpu" below.
+eframe = { version = "0.37", default-features = false, features = [
+    "glow",
+    "accesskit",
+    "clipboard",
+    "default_fonts",
+    "links",
+    "system_fonts",
+    "wayland",
+    "x11",
+] }
+# Same winit eframe uses; listed only to keep its default features (runtime
+# loading of X11/Wayland libraries) that eframe's defaults would have enabled.
+winit = "0.30"
+# egui is re-exported by eframe; listed here only to switch on its `serde` feature
+# so engine types (Pos2, Rect, Color32) can be saved to project files.
+egui = { version = "0.37", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
+
+# Keep debug builds snappy: optimise dependencies (egui, winit, glow) even in dev,
+# so `cargo run` feels like the real app while our own code still compiles fast.
+[profile.dev.package."*"]
+opt-level = 2

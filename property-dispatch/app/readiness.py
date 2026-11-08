@@ -50,6 +50,8 @@ def checks(settings: Settings, repo, stripe_enabled: bool) -> list[dict]:
             "Supabase → SQL Editor: run supabase/migrations/20261028000000_issues_and_sources.sql")
         add("sql_community", "Database has sponsored mows and nominations", db(repo.sponsorships),
             "Supabase → SQL Editor: run supabase/migrations/20261029000000_community.sql")
+        add("sql_reminders", "Database has day-before reminders and customer reports", db(repo.check_reminders),
+            "Supabase → SQL Editor: run supabase/migrations/20261108000000_reminders_and_customer_reports.sql")
         mock = 0
         try:
             mock = repo.count_customers_named("MOCK ")
