@@ -204,6 +204,18 @@
     .qr-box { text-align: center; }
     .qr-box img { width: 220px; height: 220px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
     .row-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+    .rs-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0 16px; padding: 0 16px; }
+    .rs-h { margin: 16px 16px 6px; font-size: 14px; font-weight: 600; }
+    .rs-list { list-style: none; margin: 0 0 8px; padding: 0 16px; }
+    .rs-list li { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 14px; }
+    .rs-list .tag { flex: none; font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--ground); color: var(--muted); align-self: start; }
+    .rs-list .tag.gap { background: #FFF4E0; color: #7A4B00; }
+    .rs-table-wrap { overflow-x: auto; padding: 0 16px; }
+    .rs-table { border-collapse: collapse; width: 100%; font-size: 14px; }
+    .rs-table caption { text-align: left; color: var(--muted); font-size: 13px; padding-bottom: 6px; }
+    .rs-table th, .rs-table td { text-align: left; padding: 6px 8px 6px 0; border-top: 1px solid var(--line); white-space: nowrap; }
+    .note.warn { color: #7A4B00; }
+    .note.small { font-size: 13px; color: var(--muted); }
     .prompts { list-style: none; margin: 0; padding: 0; }
     .prompts li { padding: 12px 16px; border-top: 1px solid var(--line); display: grid; gap: 6px; }
     .prompts .post-h { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
@@ -255,6 +267,24 @@
               Start door hangers and mail at the top of each area's list.</p>
             <p class="note"><a class="btn primary" href="/owner/targets">Open the ranked map</a></p>
             <p class="note" id="preorders" hidden></p>
+          </section>
+
+          <section class="panel sec" aria-labelledby="h-search" id="research" hidden>
+            <header><h2 id="h-search">What people search</h2><small id="rs-when"></small></header>
+            <p class="note" id="rs-summary"></p>
+            <p class="note warn" id="rs-stale" hidden>Your areas changed since this was collected. Run <code>python3 tools/seo_research.py</code> again.</p>
+            <div class="rs-groups" id="rs-groups"></div>
+            <p class="note" id="rs-not-offered" hidden></p>
+            <h3 class="rs-h">Season facts by area</h3>
+            <div class="rs-table-wrap" tabindex="0" role="region" aria-labelledby="rs-season-cap">
+              <table class="rs-table"><caption id="rs-season-cap">NOAA 1991–2020 climate normals, nearest weather station</caption>
+                <thead><tr><th scope="col">Area</th><th scope="col">Highs 80°F+</th><th scope="col">Rainiest month</th><th scope="col">Freezes (median)</th></tr></thead>
+                <tbody id="rs-season"></tbody></table>
+            </div>
+            <h3 class="rs-h">Site check</h3>
+            <ul class="rs-list" id="rs-site"></ul>
+            <p class="note small">Refresh once a month: <code>python3 tools/seo_research.py</code>. It reads only public data, follows each
+              site's robots.txt and collects nothing about people.</p>
           </section>
 
           <section class="panel sec" aria-labelledby="h-posts">
@@ -408,6 +438,40 @@
         el("p", { class: "when" }, p.when),
         el("details", {}, el("summary", {}, "See the prompt"), el("pre", { tabindex: "0" }, p.prompt)))));
     }
+    function renderResearch() {
+      const r = data.research;
+      if (!r) return;
+      $("research").hidden = false;
+      const when = r.collected ? new Date(r.collected + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "";
+      $("rs-when").textContent = when ? `collected ${when}` : "";
+      $("rs-stale").hidden = !r.stale;
+      $("rs-summary").textContent = r.total
+        ? `${r.gaps} of ${r.total} real searches around our areas aren't answered on our site yet (marked "not yet"). `
+          + `The "Answer what people search" prompt below turns one into an FAQ answer and a post.`
+        : "No searches collected yet.";
+      $("rs-groups").replaceChildren(...r.groups.map((g) => el("div", {},
+        el("h3", { class: "rs-h", style: "margin-left:0" }, g.label),
+        el("ul", { class: "rs-list", style: "padding:0" }, ...g.questions.map((q) => el("li", {},
+          el("span", { lang: q.lang }, q.q),
+          el("span", { class: "tag" + (q.on_site ? "" : " gap") }, q.on_site ? "on our site" : "not yet")))))));
+      if (r.not_offered.length) {
+        $("rs-not-offered").textContent = "Also searched, but not a service we offer: "
+          + r.not_offered.map((x) => `${x.service} (${x.count})`).join(", ") + ". Adding one is your call.";
+        $("rs-not-offered").hidden = false;
+      }
+      const freeze = (s) => s.last_freeze && s.first_freeze ? `last ${s.last_freeze} · first ${s.first_freeze}` : "–";
+      $("rs-season").replaceChildren(...r.season.map((s) => el("tr", {},
+        el("th", { scope: "row" }, s.area),
+        el("td", {}, s.warm_from ? `${s.warm_from.slice(0, 3)}–${s.warm_to.slice(0, 3)}` : "–"),
+        el("td", {}, `${s.wettest} · ${s.wettest_in.toFixed(1)} in`),
+        el("td", {}, freeze(s)))));
+      const site = r.site;
+      const rows = !site ? [el("li", {}, "Not checked yet.")]
+        : [...site.issues.map((p) => el("li", {}, el("span", {}, el("b", {}, p.path), " ", p.issues.join("; ")))),
+           ...site.broken_links.map((b) => el("li", {}, el("span", {}, el("b", {}, b.path), ` is broken (${b.status})`)))];
+      if (site && !rows.length) rows.push(el("li", {}, `All ${site.pages} pages look right.`));
+      $("rs-site").replaceChildren(...rows);
+    }
     function renderMaps() {
       $("maps").replaceChildren(...(data.map_cards || []).map((m) => el("li", {},
         el("img", { src: m.square, alt: `Street map of ${m.area} with the area we mow outlined`, loading: "lazy", width: "180", height: "180" }),
@@ -445,7 +509,7 @@
       if (!res || !res.ok) { $("msg").hidden = false; $("msg").textContent = res && res.status === 403 ? "Only the owner can see this." : "Couldn't load. Sign in again in the crew app."; return; }
       data = await res.json();
       $("app").hidden = false;
-      renderPosts(); renderScore(); renderBuilder(); renderMaps(); renderPrompts();
+      renderPosts(); renderScore(); renderBuilder(); renderMaps(); renderPrompts(); renderResearch();
     })();
   </script>
 </body>
