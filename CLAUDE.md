@@ -112,6 +112,17 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
   the prompt pack's first prompt "Answer what people search" and the hub's "What people search". Biggest gap (Nov 2026):
   St. Augustine and Bermuda mowing height and timing (24 searches); the crew's real cut heights are the owner's call
   before anything is published.
+- Competitor scan `tools/competitor_scan.py` → `data/competitor-scan.json` (owner asked Nov 10 2026 to out-position
+  other mowing services): one public landing page per competing business (the SITES list), read like a customer, robots
+  obeyed. Saves totals only, never a claim about a named business (`--details` prints site rows for the owner). Feeds
+  the hub's "How we compare online" and the prompt pack. First scan (8 pages): none name a set day or giving, 1 mentions
+  texts, 1 offers Spanish; 6 ask for a quote first. "Combat" = clearer message; never reviews, attacks or naming a rival.
+  The scan also showed our home page served "$–" and no Spanish to crawlers: the price is now filled in on the server
+  (`home_page` in `app/main.py`) and the footer links `/?lang=es`. Spanish is still script-only: real Spanish pages
+  crawlers can read are the next step if the owner wants the Spanish lane.
+- Marketing agent `.claude/agents/post-one-marketer.md` (owner asked Nov 10 2026): drafts the weekly kit per outlet in
+  EN/ES from the live facts and research, with tagged links; the owner posts. It never posts itself (no accounts or
+  keys are connected, on purpose). Ask for it by name: "have the marketer write this week's kit".
 - Day-before reminder (`app/reminders.py`, from the route build in `run_nightly`): one text per booking ("we're coming
   tomorrow, likely between 9 and 11 AM; unlock the gate, pets inside; cancel free until the on-the-way text"), EN/ES,
   8 AM–9 PM only, never a pitch. Customer "Something not right?" on the visit page (`POST /api/visit/{code}/report`) lands

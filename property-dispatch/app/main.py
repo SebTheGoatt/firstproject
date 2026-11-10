@@ -303,6 +303,11 @@ def create_app(
         # Link previews (texts, Facebook, Google) need the share image as a full https address.
         site = site_url(settings, request)
         text = render("home.html")
+        # The starting price is in the page as served (not only filled in by script), so search engines and AI
+        # crawlers that don't run scripts read the same number customers see. Same source as /api/booking-info.
+        text = (text.replace('id="hero-price">$–<', f'id="hero-price">${YIELD_BASE:,.0f}<', 1)
+                .replace('id="hero-included">0,000 sq ft<', f'id="hero-included">{YIELD_INCLUDED_SQFT:,} sq ft<', 1)
+                .replace('id="hero-step">00%<', f'id="hero-step">{float(YIELD_STEP) * 100:g}%<', 1))
         text = text.replace("{{HOME_JSONLD}}", home_structured_data(settings, site) + home_faq_structured_data(text)).replace("{{SITE}}", site)
         return HTMLResponse(with_share_tags(text, site, "/"), headers={"Cache-Control": "no-cache"})
 
