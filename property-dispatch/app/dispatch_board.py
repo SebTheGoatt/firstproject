@@ -4,6 +4,10 @@ every visit that won't be on it (and why).
     GET /api/owner/dispatch/{day}     owner: the day's route, road path, schedule, money and unrouted visits
     GET /owner/dispatch               the page (static/dispatch.html)
 
+Each day also carries `insights` (app/route_insights.py): minutes and miles the planned order saves over the order
+bookings came in, the share of the day on lawns, each stop's detour, the day as timeline segments and, when the day
+runs past closing, which stops to move. The travel times behind them are fetched once per built route and kept.
+
 The page uses the existing owner actions for changes: build / rebuild the route, move a visit, rain day.
 The road path comes from OSRM (settings.osrm_url), drawn once per built route and kept in memory, so opening
 the board again costs nothing; if OSRM doesn't answer, the page draws straight legs instead.
@@ -18,6 +22,8 @@ from .booking import local_now
 from .config import Settings
 from .directions import DirectionsUnavailable, route_path
 from .models import order_label
+from .route_insights import insights
+from .routing import build_matrix
 from .zones import MAKEUP_WEEKDAY, short_name, zone_for_weekday
 
 log = logging.getLogger(__name__)
@@ -64,6 +70,29 @@ def register_dispatch_board(app: FastAPI, settings: Settings, owner, page, route
                 paths.pop(next(iter(paths)))
         return paths[key]
 
+    matrices: dict[tuple, object] = {}
+
+    def travel_matrix(route: dict):
+        """Travel times between base, the stops in route order and the end point. Kept per built route."""
+        key = (str(route["route_date"]), str(route.get("optimized_at")), tuple(s["stop_id"] for s in route["stops"]))
+        if key not in matrices:
+            points = [(route["start_lat"], route["start_lng"]), *((s["lat"], s["lng"]) for s in route["stops"]),
+                      (route["end_lat"], route["end_lng"])]
+            matrices[key] = build_matrix(points, settings.osrm_url)
+            while len(matrices) > PATHS_KEPT:
+                matrices.pop(next(iter(matrices)))
+        return matrices[key]
+
+    def route_insights(route: dict, view, jobs: list[dict], close) -> dict | None:
+        try:
+            booked = {j["job_id"]: j.get("created_at") or "" for j in jobs}
+            stops = [{"stop_id": s.stop_id, "booked_at": booked.get(s.job_id, ""), "eta": s.eta,
+                      "service_minutes": s.service_minutes, "done": s.completed_at is not None} for s in view.stops]
+            return insights(travel_matrix(route), stops, close)
+        except Exception:                       # the board still loads without its scorecard
+            log.exception("Route insights failed")
+            return None
+
     @app.get("/api/owner/dispatch/{day}", dependencies=[Depends(owner)])
     def dispatch_day(day: date):
         repo = app.state.repo
@@ -92,6 +121,7 @@ def register_dispatch_board(app: FastAPI, settings: Settings, owner, page, route
             "finish_at": finish.isoformat() if finish else None,
             "close_at": close.isoformat() if close else None,
             "minutes_to_spare": round((close - finish).total_seconds() / 60) if finish and close else None,
+            "insights": route_insights(route, view, jobs, close) if route and view and view.stops else None,
             "on_site_min": sum(s.service_minutes or 0 for s in view.stops) if view else 0,
             "money": {
                 "expected": round(sum(j["amount_due"] or 0 for j in jobs), 2),

@@ -2,7 +2,8 @@
 
 Up to EXACT_MAX_STOPS stops (a normal day) the route is solved exactly with Held-Karp dynamic programming:
 provably the shortest order, in milliseconds. Bigger days use Google OR-Tools guided local search, whose time
-budget scales with the number of stops (it always runs to its limit, so a flat 10s made every replan wait 10s).
+budget scales with the number of stops (it always runs to its limit, so a flat 10s made every replan wait 10s),
+followed by `polish()`: a local search that moves and reverses stretches of the route until nothing shortens it.
 
 Node layout passed to OR-Tools:
     0            → start (business base)
@@ -76,6 +77,54 @@ def held_karp(cost) -> list[int]:
     return order
 
 
+def path_cost(cost, order: list[int]) -> int:
+    """Cost of 0 -> order -> end for node indices as in the module docstring."""
+    if not order:
+        return 0
+    end = len(cost) - 1
+    return cost[0][order[0]] + sum(cost[a][b] for a, b in zip(order, order[1:])) + cost[order[-1]][end]
+
+
+def polish(cost, order: list[int]) -> list[int]:
+    """Local search on a finished order: move any run of 1-3 stops somewhere else (either direction), or reverse
+    any stretch, whenever that makes the day shorter. Repeats until nothing helps, so the result is never worse
+    than what it was given. Costs may differ by direction (one-way streets), so every candidate is re-priced whole;
+    at 25 stops that is still milliseconds."""
+    best, best_cost = list(order), path_cost(cost, order)
+    n = len(best)
+    improved = True
+    while improved and n > 2:
+        improved = False
+        for size in (1, 2, 3):                       # Or-opt: relocate a run of stops
+            for i in range(n - size + 1):
+                run, rest = best[i:i + size], best[:i] + best[i + size:]
+                for j in range(len(rest) + 1):
+                    for piece in (run, run[::-1]):
+                        cand = rest[:j] + piece + rest[j:]
+                        c = path_cost(cost, cand)
+                        if c < best_cost:
+                            best, best_cost, improved = cand, c, True
+                            break
+                    if improved:
+                        break
+                if improved:
+                    break
+            if improved:
+                break
+        if improved:
+            continue
+        for i in range(n - 1):                       # 2-opt: reverse a stretch
+            for j in range(i + 1, n):
+                cand = best[:i] + best[i:j + 1][::-1] + best[j + 1:]
+                c = path_cost(cost, cand)
+                if c < best_cost:
+                    best, best_cost, improved = cand, c, True
+                    break
+            if improved:
+                break
+    return best
+
+
 def solve_tsp(matrix: TravelMatrix, optimize_for: str = "duration", time_limit_s: int = 10) -> list[int]:
     """Return node indices in visit order, start and end excluded."""
     size = len(matrix.distances_m)
@@ -113,7 +162,7 @@ def solve_tsp(matrix: TravelMatrix, optimize_for: str = "duration", time_limit_s
         if node != 0:
             order.append(node)
         index = solution.Value(routing.NextVar(index))
-    return order
+    return polish(cost, order)       # a second pass: can only shorten the day
 
 
 def optimize_route(

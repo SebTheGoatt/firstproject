@@ -126,6 +126,33 @@
     .hud .l { font-size: 13px; color: #C9D3CD; max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .hud .bar2 { height: 4px; border-radius: 99px; background: rgba(255,255,255,0.18); overflow: hidden; margin-top: 6px; }
     .hud .bar2 span { display: block; height: 100%; width: 0; background: #9BD15A; }
+    /* The day at a glance: scorecard chips and a timeline of drives and lawns, first mow to closing. */
+    .deck { position: absolute; left: 12px; right: 12px; bottom: 28px; z-index: 2; display: grid; gap: 10px; padding: 12px 14px 8px; border-radius: 12px;
+      background: rgba(255,255,255,0.97); border: 1px solid var(--line); box-shadow: 0 1px 2px rgba(20,32,27,0.08); }
+    .score { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 8px; }
+    .score li, .score button { font: 600 13px/1.3 var(--font); padding: 5px 10px; border-radius: 999px; background: var(--green-soft); color: var(--green-ink); border: 0; }
+    .score li:has(button) { padding: 0; background: none; }
+    .score button { cursor: pointer; min-height: 30px; text-decoration: underline; text-underline-offset: 3px; background: var(--track); color: var(--ink); }
+    .score li.bad { background: var(--red-soft); color: var(--red); }
+    .score li.quiet { background: var(--track); color: var(--ink-2); font-weight: 500; }
+    .tl { position: relative; padding-top: 2px; }
+    .tl-track { list-style: none; margin: 0; padding: 0; position: relative; height: 34px; background: var(--track); border-radius: 8px; }
+    .tl-track li { position: absolute; top: 0; bottom: 0; }
+    .tl-track .drive, .tl-track .return { top: 14px; bottom: 14px; background: repeating-linear-gradient(90deg, var(--line-strong) 0 6px, transparent 6px 10px); }
+    .tl-track .stopb { padding: 0; }
+    .tl-track .stopb button { width: 100%; height: 100%; min-width: 0; padding: 0; border: 0; border-radius: 6px; background: var(--green); color: #fff; cursor: pointer;
+      font: 700 12px/1 var(--font); font-variant-numeric: tabular-nums; overflow: hidden; }
+    .tl-track .stopb.done button { background: var(--line-strong); color: var(--ink); }
+    .tl-track .stopb.costly button { box-shadow: inset 0 -4px 0 #C9A227; }
+    .tl-track .stopb.late button { background: var(--red); }
+    .tl-track .mark { top: -3px; bottom: -3px; width: 2px; background: var(--ink); }
+    .tl-track .mark.close { background: var(--red); }
+    .tl-track .mark span { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); font: 600 11px/1.2 var(--font); color: inherit; white-space: nowrap; }
+    .tl-axis { position: relative; height: 18px; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .tl-axis span { position: absolute; top: 3px; transform: translateX(-50%); white-space: nowrap; }
+    .deck[hidden], .hud[hidden] { display: none; }
+    .stage:has(.deck:not([hidden])) .legend { bottom: auto; top: 56px; }
+    .stage:has(.deck:not([hidden])) .hud { bottom: auto; top: 56px; }
     .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
     .base-pin { width: 30px; height: 33px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25)); }
     .maplibregl-ctrl-attrib { font-size: 11px; }
@@ -134,10 +161,13 @@
     @media (max-width: 900px) {
       .week { grid-template-columns: repeat(6, minmax(112px, 1fr)); overflow-x: auto; }
       .board { display: flex; flex-direction: column; height: auto; }
-      .stage { height: 58vh; min-height: 360px; order: -1; }
+      .stage { order: -1; display: flex; flex-direction: column; }
+      #map { position: relative; inset: auto; height: 58vh; min-height: 360px; }
+      .deck { position: static; margin: 10px 12px 0; }
+      .stage:has(.deck:not([hidden])) .hud { top: 60px; }
       .panel { border-right: 0; overflow: visible; }
       .legend { display: none; }
-      .hud { bottom: 64px; min-width: 160px; }
+      .hud { bottom: auto; top: calc(58vh - 96px); min-width: 160px; }
     }
     @media (prefers-reduced-motion: reduce) { .btn, .day { transition: none; } .btn:active { transform: none; } }
   </style>
@@ -192,6 +222,14 @@
         </div>
         <div class="hud" id="hud" aria-hidden="true" hidden><span class="t num" id="hud-t"></span><span class="l" id="hud-l"></span><span class="bar2"><span id="hud-p"></span></span></div>
         <p class="sr" id="play-say" aria-live="polite"></p>
+        <section class="deck" id="deck" aria-labelledby="h-deck" hidden>
+          <h2 class="sr" id="h-deck">The day at a glance</h2>
+          <ul class="score" id="score"></ul>
+          <div class="tl" id="tl">
+            <ol class="tl-track" id="tl-track" aria-label="The day in order: drives and lawns"></ol>
+            <div class="tl-axis" id="tl-axis" aria-hidden="true"></div>
+          </div>
+        </section>
         <div class="legend" aria-hidden="true"><span><i style="background:#2E7D4F"></i>Road path</span><span><i style="background:#9aa7a0"></i>Done</span><span><i style="background:#2E7D4F;height:2px;opacity:.8"></i>Area edge</span><span><i style="background:#C9A227"></i>Driven (Play the day)</span><span><i style="background:#2E7D4F;width:6px;height:12px"></i>Stop: taller = longer on site</span></div>
       </section>
     </div>
@@ -283,6 +321,7 @@
       $("manifest").hidden = !r;
       $("stops-note").textContent = r ? `${stops.length} stop${stops.length === 1 ? "" : "s"}` : "";
 
+      renderDeck();
       $("stops").replaceChildren(...(stops.length ? stops.map((s) => stopRow(s)) : [el("li", { class: "empty" },
         d.hours ? "No route yet. Bookings get routed at 5 PM the day before, or build it now." : "Sunday: no visits.")]));
       const off = d.unrouted || [];
@@ -294,6 +333,59 @@
         el("div", { class: "addr" }, j.address),
         el("div", {}, el("div", { class: "reason" }, j.reason), moveBox(j.job_id)))));
     }
+    // The day at a glance (data.insights from app/route_insights.py): what the plan saves, where the time goes.
+    function renderDeck() {
+      const d = data, ins = d.insights, deck = $("deck");
+      deck.hidden = !(ins && ins.timeline.length);
+      if (deck.hidden) return;
+      const stops = d.route.stops, list = (ns) => ns.length > 1 ? `${ns.slice(0, -1).join(", ")} and ${ns.at(-1)}` : String(ns[0]);
+      const chips = [];
+      if (ins.over) chips.push(el("li", { class: "bad" }, ins.over.fits
+        ? `Runs ${hm(ins.over.minutes)} past closing. Move stop${ins.over.move.length > 1 ? "s" : ""} ${list(ins.over.move)} and it fits.`
+        : `Runs ${hm(ins.over.minutes)} past closing, even with the costliest stops moved. Split the day.`));
+      chips.push(el("li", {}, ins.saved_min >= 1
+        ? `Planned order saves ${hm(ins.saved_min)} and ${miles(ins.saved_m)} of driving vs. the order bookings came in`
+        : "Bookings came in close to the best order already"));
+      if (ins.lawn_share != null) chips.push(el("li", {}, `${Math.round(ins.lawn_share * 100)}% of the working time is on lawns`));
+      const c = ins.costliest;
+      if (c && c.seconds >= 300) {
+        const b = el("button", { type: "button" }, `Stop ${c.n} adds ${hm(c.seconds / 60)} of driving: the one a neighbor's booking would pay for`);
+        b.addEventListener("click", () => focusStop(stops[c.n - 1]));
+        chips.push(el("li", {}, b));
+      }
+      if (ins.source !== "osrm") chips.push(el("li", { class: "quiet" }, "Times are straight-line estimates (road times unavailable right now)"));
+      $("score").replaceChildren(...chips);
+
+      // Timeline: from the earlier of opening and leaving base, to the later of closing and getting back.
+      const t = (iso) => new Date(iso).getTime();
+      const open = d.hours ? t(`${d.date}T${d.hours.start}:00${offset(ins.timeline[0].start)}`) : t(ins.timeline[0].start);
+      const close = d.close_at ? t(d.close_at) : null;
+      const from = Math.min(open, t(ins.timeline[0].start)), to = Math.max(close ?? 0, t(ins.timeline.at(-1).end));
+      const pos = (ms) => `${((ms - from) / (to - from) * 100).toFixed(3)}%`, wid = (a, b) => `${Math.max(0.4, (b - a) / (to - from) * 100).toFixed(3)}%`;
+      const rows = ins.timeline.map((g) => {
+        const a = t(g.start), b = t(g.end), style = `left:${pos(a)};width:${wid(a, b)}`;
+        if (g.kind !== "stop") return el("li", { class: g.kind, style, "aria-label": g.kind === "return"
+          ? `Drive back to base, ${hm((b - a) / 60000)}` : `Drive to stop ${g.n}, ${hm((b - a) / 60000)}` });
+        const s = stops[g.n - 1], late = close != null && b > close && !g.done;
+        const btn = el("button", { type: "button", "aria-label": `Stop ${g.n}, ${s.customer_name}: ${clock(g.start)} to ${clock(g.end)}${late ? ", ends after closing" : ""}${g.done ? ", done" : ""}`,
+          title: `${g.n}. ${s.customer_name} · ${clock(g.start)}–${clock(g.end)}` }, String(g.n));
+        btn.addEventListener("click", () => focusStop(s));
+        return el("li", { class: "stopb" + (g.done ? " done" : "") + (late ? " late" : "") + (c && c.seconds >= 300 && c.n === g.n ? " costly" : ""), style }, btn);
+      });
+      if (close != null) rows.push(el("li", { class: "mark close", style: `left:${pos(close)}`, "aria-label": `Closing time ${clock(d.close_at)}` }));
+      const now = Date.now();
+      if (d.date === d.today && now > from && now < to) rows.push(el("li", { class: "mark", style: `left:${pos(now)}`, "aria-label": "Now" }, el("span", {}, "Now")));
+      $("tl-track").replaceChildren(...rows);
+      const ticks = [];
+      const first = new Date(from); first.setMinutes(0, 0, 0);
+      const stepH = (to - from) > 7 * 3600e3 && window.innerWidth < 700 ? 2 : 1;
+      for (let h = first.getTime() + 3600e3; h < to - 600e3; h += stepH * 3600e3) ticks.push(el("span", { style: `left:${pos(h)}` },
+        new Date(h).toLocaleTimeString("en-US", { hour: "numeric", timeZone: tz })));
+      $("tl-axis").replaceChildren(...ticks);
+    }
+    const offset = (iso) => (iso.match(/([+-]\d\d:\d\d|Z)$/) || ["Z"])[0];    // the route's own UTC offset, for the opening time
+
+    const costly = (s) => { const c = data.insights?.costliest; return c && c.seconds >= 300 && c.stop_id === s.stop_id ? c : null; };
     function stopRow(s) {
       const paid = s.payment_status === "paid";
       const chip = paid ? el("span", { class: "chip paid" }, "Paid")
@@ -306,7 +398,8 @@
         el("div", { class: "who" }, el("b", {}, s.customer_name), el("span", { class: "eta num" }, clock(s.eta))),
         el("div", { class: "addr" }, s.address),
         el("div", { class: "meta" }, el("span", {}, s.service_label), el("span", {}, `· ${s.service_minutes || 0} min on site`),
-          s.leg_duration_s ? el("span", {}, `· ${Math.max(1, Math.round(s.leg_duration_s / 60))} min drive`) : null, chip, state,
+          s.leg_duration_s ? el("span", {}, `· ${Math.max(1, Math.round(s.leg_duration_s / 60))} min drive`) : null,
+          costly(s) ? el("span", { class: "chip owed" }, `Adds ${hm(costly(s).seconds / 60)} of driving`) : null, chip, state,
           s.completed_at ? null : moveBox(s.job_id)));
       li.querySelector(".seq").addEventListener("click", () => focusStop(s));
       return li;
@@ -425,7 +518,9 @@
       if (!pts.length && boxes.length) boxes.forEach((b) => pts.push([b[0], b[1]], [b[2], b[3]]));
       if (!pts.length) return;
       const bounds = pts.reduce((b, p) => b.extend(p), new maplibregl.LngLatBounds(pts[0], pts[0]));
-      map.fitBounds(bounds, { padding: 70, maxZoom: 15, pitch: tilted ? 50 : 0, bearing: tilted ? -15 : 0, duration: animate && !reduced ? 700 : 0 });
+      // Keep the route clear of the day strip when it floats over the bottom of the map (wide screens).
+      const deck = $("deck"), under = !deck.hidden && getComputedStyle(deck).position === "absolute" ? deck.offsetHeight + 40 : 0;
+      map.fitBounds(bounds, { padding: { top: under ? 120 : 70, left: 70, right: 70, bottom: 70 + under }, maxZoom: 15, pitch: tilted ? 50 : 0, bearing: tilted ? -15 : 0, duration: animate && !reduced ? 700 : 0 });
     }
     function focusStop(s) {
       if (play) play.follow = false;

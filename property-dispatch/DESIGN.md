@@ -151,6 +151,10 @@ text. On Post Green use `#F5F6F1` and `#C9D3CD`.
   after tiles. The tiles are drawn stripes, never a photo passed off as a job, and the caption says "example".
 - **The usual way / The Post One way (home page, `#why`):** a comparison card whose right column is Post Green.
   Six rows, each a policy the site keeps. On phones each row stacks with its two labels. Never name a competitor.
+- **The day at a glance (dispatch board):** a white strip under the map: plain-sentence chips (what the plan saves,
+  share of time on lawns, the costliest stop) and a timeline from first mow to closing. Lawns are Field Green
+  numbered blocks, drives are dashed grey, a red line marks closing, a brass underline marks the costliest stop.
+  Every block is a button that flies the map to its stop.
 - **Price shown before booking:** every price on the site is read from `app/pricing.py`, never typed into a page.
 
 ## Do's and don'ts
