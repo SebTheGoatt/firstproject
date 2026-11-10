@@ -1831,3 +1831,59 @@ button.area { width: 100%; font: inherit; color: inherit; text-align: left; alig
   .site-nav::-webkit-scrollbar { display: none; }
   .site-nav a { padding: 10px 8px; font-size: 0.95rem; }
 }
+
+
+/* ===== How it works + Why Post One (Post One) ===== */
+.page-home .po-journey { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); gap: clamp(32px, 6vw, 88px); align-items: center; }
+.page-home .po-journey-copy h2 { margin-top: 10px; }
+.page-home .po-journey-steps { list-style: none; margin: var(--space-4) 0 var(--space-5); padding: 0; display: grid; }
+.page-home .po-journey-steps li { display: grid; grid-template-columns: 64px 1fr; gap: 8px; padding: 18px 0; border-top: 1px solid var(--border); }
+.page-home .po-journey-steps li:last-child { border-bottom: 1px solid var(--border); }
+.page-home .po-journey-steps .step-num { margin: 0; font-size: 2.4rem; }
+.page-home .po-journey-steps h3 { margin: 0 0 4px; font: 700 1.19rem/1.3 var(--font-body); letter-spacing: 0; text-transform: none; }
+.page-home .po-journey-steps p { margin: 0; color: var(--muted); line-height: 1.55; }
+
+.po-phone { margin: 0 auto; width: min(100%, 360px); }
+.po-phone-screen { display: grid; gap: 12px; padding: 22px 18px 24px; background: var(--brand-deep); border: 1px solid var(--dark-line);
+  border-top: 4px solid var(--brass); border-radius: 32px; box-shadow: 0 24px 48px rgb(15 43 34 / 0.22); }
+.po-phone-from { margin: 0 0 4px; text-align: center; font: 700 0.875rem/1.3 var(--font-body); color: var(--on-dark-muted); }
+.po-msg, .po-visit-card { background: var(--dark-raised); border: 1px solid var(--dark-line); border-radius: 16px 16px 16px 4px; padding: 12px 14px; color: var(--on-dark); }
+.po-msg p, .po-visit-card p { margin: 0; font-size: 0.94rem; line-height: 1.45; }
+.po-msg-when { display: block; margin-bottom: 4px; font: 700 0.75rem/1.3 var(--font-body); letter-spacing: 0.1em; text-transform: uppercase; color: var(--fresh); }
+.po-visit-card { background: var(--surface); border-color: var(--surface); border-radius: 16px; color: var(--text); display: grid; gap: 8px; }
+.po-visit-card .po-msg-when { margin: 0; color: var(--brand-strong); }
+.po-visit-card strong { font: 800 1.5rem/1 var(--font-display); text-transform: uppercase; letter-spacing: 0.01em; }
+.po-visit-card p { color: var(--muted); }
+.po-ba { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.po-ba span { display: flex; align-items: flex-end; height: 84px; padding: 8px 10px; border-radius: 10px; font: 700 0.75rem/1 var(--font-body);
+  letter-spacing: 0.08em; text-transform: uppercase; color: #fff; }
+.po-ba-before { background: repeating-linear-gradient(100deg, #5d6b3c 0 7px, #6f7a45 7px 11px, #55633a 11px 19px); }
+.po-ba-after { background: repeating-linear-gradient(90deg, #2E7D4F 0 22px, #25683f 22px 44px); }
+.po-phone figcaption { margin-top: 12px; text-align: center; font-size: 0.875rem; color: var(--muted); }
+
+.po-compare { border: 1px solid var(--border); border-radius: 18px; background: var(--surface); overflow: hidden; }
+.po-compare-head, .po-compare-row { display: grid; grid-template-columns: 0.7fr 1fr 1.25fr; }
+.po-compare-head span { padding: 14px 20px; font: 700 0.8125rem/1.3 var(--font-body); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.po-compare-head span:last-child, .po-compare-row p:last-child { background: var(--brand-deep); color: var(--on-dark); }
+.po-compare-head span:last-child { color: var(--fresh); border-top: 4px solid var(--brass); padding-top: 10px; }
+.po-compare-row { border-top: 1px solid var(--border); }
+.po-compare-row h3, .po-compare-row p { margin: 0; padding: 18px 20px; }
+.page-home .po-compare-row h3 { font: 700 1.06rem/1.4 var(--font-body); letter-spacing: 0; text-transform: none; }
+.po-compare-row p { line-height: 1.5; color: var(--muted); }
+.po-compare-row p:last-child { font-weight: 600; border-top: 1px solid var(--dark-line); margin-top: -1px; }
+/* The column headers name each side on wide screens; these labels do it for screen readers and phones. */
+.po-compare-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (max-width: 860px) {
+  .page-home .po-journey { grid-template-columns: 1fr; }
+}
+@media (max-width: 680px) {
+  .po-compare-head { display: none; }
+  .po-compare-row { grid-template-columns: 1fr; padding: 16px 16px 0; }
+  .po-compare-row h3 { padding: 0 0 6px; }
+  .po-compare-row p { padding: 0 0 12px; }
+  .po-compare-label { position: static; width: auto; height: auto; margin: 0 0 2px; clip: auto; clip-path: none; overflow: visible; white-space: normal; display: block;
+    font: 700 0.75rem/1.3 var(--font-body); letter-spacing: 0.1em; text-transform: uppercase; }
+  .po-compare-row p:last-child { margin: 0 -16px; padding: 14px 16px 16px; border-top: 0; }
+  .po-compare-row p:last-child .po-compare-label { color: var(--fresh); }
+  .page-home .po-journey-steps li { grid-template-columns: 52px 1fr; }
+}

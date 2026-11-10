@@ -36,6 +36,10 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 - Owner screen: `/owner/command` (`app/command.py` + `static/command.html`). Crew route screen: `/crew/dashboard`.
 - Design system: `property-dispatch/DESIGN.md`. Public site = Post Green bands, Big Shoulders uppercase headlines.
   Work app (crew/owner) = bright daylight theme, flat, sentence case. The owner disliked the dark "matrix" look.
+- Home page signature sections (Nov 2026 revamp; owner asked to stand out): `#how` = four steps beside a phone card
+  quoting the real texts and the visit page (drawn example tiles, captioned "example"); `#why` = "The usual way /
+  The Post One way" comparison, six rows, each a policy we keep, no competitor named. Keep both in sync with the
+  texts (`app/notify.py`, `app/reminders.py`) and policies; `tests/test_home_page.py` checks the wording.
 - Brand kit (private Claude design system built from the above): https://claude.ai/artifact/WNvx4f5pDcb9LnA5NMCUuc
   Build slides, social posts, ads and print from it. If styles.css or the logos change, re-sync it.
 
