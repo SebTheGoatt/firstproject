@@ -65,6 +65,12 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
   3D layer: the route as a raised ribbon (up close; the flat line hands over at zoom 14.5), stop pillars (taller = more
   minutes on site) and "Play the day": a truck drives the real path on a sped-up clock (~45 s per day), camera riding
   along at street level, stops lighting up as reached. Reduced motion keeps the camera still.
+- Dispatch "day at a glance" (owner asked Nov 10 2026 for a better route and board): `app/route_insights.py` gives the
+  board minutes and miles saved vs. booking order, share of working time on lawns, each stop's detour (the costliest
+  is flagged: a neighbor's booking would pay for it), the day as a timeline to closing, and which stops to move when
+  the day runs over. Travel times are fetched once per built route. Solver: 13+ stop days get a second pass
+  (`polish()`: move/reverse stretches); benchmarks showed OR-Tools was already at an order it couldn't beat, so it's a
+  10 ms safety net, not a speed-up. The order math is near its limit: further gains come from denser bookings.
 - Rain radar on the route map ("Rain radar" toggle, remembered per phone; `/crew/dashboard?radar=1` from the owner's
   "Check the radar" link next to Rain day): NOAA nowCOAST WMS, keyless and CORS-open — MRMS base reflectivity
   (~4 min) + NLDN lightning density (~10 min), refreshed every 5 min, credited in the map attribution. Idea taken
