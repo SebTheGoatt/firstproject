@@ -275,6 +275,17 @@
             <p class="note warn" id="rs-stale" hidden>Your areas changed since this was collected. Run <code>python3 tools/seo_research.py</code> again.</p>
             <div class="rs-groups" id="rs-groups"></div>
             <p class="note" id="rs-not-offered" hidden></p>
+            <div id="rs-comp" hidden>
+              <h3 class="rs-h">How we compare online</h3>
+              <p class="note" id="rs-comp-note"></p>
+              <div class="rs-table-wrap" tabindex="0" role="region" aria-labelledby="rs-comp-cap">
+                <table class="rs-table"><caption id="rs-comp-cap">What each landing page tells a customer</caption>
+                  <thead><tr><th scope="col">On the page</th><th scope="col">Other sites</th><th scope="col">Us</th></tr></thead>
+                  <tbody id="rs-comp-rows"></tbody></table>
+              </div>
+              <p class="note small">Refresh with <code>python3 tools/competitor_scan.py</code> (add <code>--details</code> for the site-by-site table).
+                Public business pages only. Use this to sharpen our own message; never post about a competitor.</p>
+            </div>
             <h3 class="rs-h">Season facts by area</h3>
             <div class="rs-table-wrap" tabindex="0" role="region" aria-labelledby="rs-season-cap">
               <table class="rs-table"><caption id="rs-season-cap">NOAA 1991–2020 climate normals, nearest weather station</caption>
@@ -458,6 +469,17 @@
         $("rs-not-offered").textContent = "Also searched, but not a service we offer: "
           + r.not_offered.map((x) => `${x.service} (${x.count})`).join(", ") + ". Adding one is your call.";
         $("rs-not-offered").hidden = false;
+      }
+      const c = r.competitors;
+      if (c) {
+        $("rs-comp").hidden = false;
+        const lead = c.lead.map((f) => f.label.toLowerCase()).join(", ");
+        $("rs-comp-note").textContent = `We read ${c.checked} competing landing pages (${c.companies} local companies, ${c.marketplaces} marketplaces). `
+          + (lead ? `Few or none of them offer what we do here: ${lead}. Lead with these in every post. ` : "")
+          + (c.gap.length ? `Where we trail: ${c.gap.map((f) => f.label.toLowerCase()).join(", ")}. ` : "")
+          + (c.quote_first != null ? `${c.quote_first} of ${c.checked} ask customers to request a quote first.` : "");
+        $("rs-comp-rows").replaceChildren(...c.features.map((f) => el("tr", {},
+          el("th", { scope: "row" }, f.label), el("td", {}, `${f.others} of ${f.of}`), el("td", {}, f.we ? "Yes" : "Not yet"))));
       }
       const freeze = (s) => s.last_freeze && s.first_freeze ? `last ${s.last_freeze} · first ${s.first_freeze}` : "–";
       $("rs-season").replaceChildren(...r.season.map((s) => el("tr", {},

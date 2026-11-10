@@ -5,6 +5,7 @@
     llms_climate(areas)       the "Local climate" lines in /llms.txt
     prompt_facts()            what the AI prompt pack may say about the season and what people search
     hub_research()            the marketing hub's "What people search" panel
+    competitors()             how competing sites present themselves next to ours (tools/competitor_scan.py), totals only
 
 Everything here degrades to nothing when the file is missing or stale: pages never break over research data.
 Numbers are quoted as NOAA states them (1991-2020 normals, nearest station named), never rounded into claims.
@@ -35,6 +36,29 @@ def areas_fingerprint() -> str:
 @lru_cache(maxsize=1)
 def _load(path: str, mtime: float) -> dict:
     return json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
+
+
+SKIP_IN_POSITIONING = {"quote_first"}          # their friction, not a feature to match
+
+
+def competitors() -> dict | None:
+    """Where we lead and where we trail, from totals. `lead`: we do it and at most a third of them say so.
+    `gap`: at least a third of them do it and our page doesn't. None until the scan has been run."""
+    path = DATA.with_name("competitor-scan.json")     # beside the search research, looked up at call time
+    try:
+        d = _load(str(path), path.stat().st_mtime)
+    except (OSError, ValueError):
+        return None
+    n = d.get("checked") or 0
+    if not n:
+        return None
+    rows = [f for f in d["features"] if f["key"] not in SKIP_IN_POSITIONING]
+    quote = next((f for f in d["features"] if f["key"] == "quote_first"), None)
+    return {"collected": d.get("collected"), "checked": n, "companies": d.get("companies"),
+            "marketplaces": d.get("marketplaces"), "method": d.get("method"), "features": rows,
+            "lead": [f for f in rows if f["we"] and f["others"] * 3 <= n],
+            "gap": [f for f in rows if not f["we"] and f["others"] * 3 >= n],
+            "quote_first": quote["others"] if quote else None}
 
 
 def research(path: pathlib.Path | None = None) -> dict:
@@ -118,6 +142,11 @@ def prompt_facts() -> list[str]:
             by_station.setdefault(f["station"], (f, []))[1].append(a.city)
     for station, (f, cities) in by_station.items():
         out.append(f"- Season ({', '.join(cities)}; NOAA 1991-2020 normals, {station}): {_sentence(f)}.")
+    c = competitors()
+    if c and c["lead"]:
+        lead = "; ".join(f"{f['label'].lower()} ({f['others']} of {c['checked']} competing sites do)" for f in c["lead"])
+        out.append(f"- What sets us apart online (our check of {c['checked']} competing sites, {c['collected']}): {lead}. "
+                   "Lead with these. Never name, criticize or compare against a specific competitor.")
     return out
 
 
@@ -154,4 +183,5 @@ def hub_research() -> dict | None:
         "site": {"checked": site.get("site"), "pages": len(site.get("pages") or []), "issues": issues[:15],
                  "broken_links": site.get("broken_links") or [], "llms_txt": site.get("llms_txt")} if site else None,
         "sources": r.get("sources") or {},
+        "competitors": competitors(),
     }

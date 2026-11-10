@@ -188,3 +188,46 @@ def test_a_local_check_keeps_no_local_addresses():
 def test_the_deploy_ships_the_research_file():
     docker = (ROOT / "Dockerfile").read_text(encoding="utf-8")
     assert "COPY data ./data" in docker          # app/seo_research.py reads data/seo-research.json at run time
+
+
+# ---------- competitor scan ----------
+def test_competitor_scan_reads_pages_like_a_customer_and_saves_totals_only():
+    import competitor_scan as scan
+    page = ('<html><head><link rel="alternate" hreflang="es" href="/es"></head><body><h1>Lawn mowing</h1>'
+            '<p>From $45 per cut. Book online in 60 seconds. No contracts. We text you when we arrive.</p>'
+            '<script>var guarantee = "$99";</script></body></html>')
+    f = scan.features_of(scan.page_text(page))
+    assert f["price"] and f["book_online"] and f["no_contract"] and f["texts"] and f["spanish"]
+    assert not f["guarantee"] and not f["veteran"] and not f["set_day"]         # script text isn't read
+    rows = [{"site": "a.example", "kind": "company", **f}]
+    summary = scan.summarize(rows, {k: True for k, _, _ in scan.FEATURES})
+    assert {s["key"] for s in summary} == {k for k, _, _ in scan.FEATURES} and all(s["of"] == 1 for s in summary)
+    saved = json.loads((ROOT / "data" / "competitor-scan.json").read_text(encoding="utf-8"))
+    names = [re for _, url in scan.SITES for re in [url.split("/")[2].removeprefix("www.")]]
+    assert saved["checked"] > 0 and not any(n in json.dumps(saved) for n in names)   # no business is named in the file
+
+
+def test_our_home_page_serves_its_price_and_spanish_link_without_scripts(client):
+    import competitor_scan as scan
+    page = client.get("/").text
+    assert 'id="hero-price">$75<' in page and 'id="hero-included">5,000 sq ft<' in page and 'id="hero-step">8%<' in page
+    assert 'href="/?lang=es"' in page and "Ver en español" in page
+    mine = scan.features_of(scan.page_text(page))
+    assert mine["price"] and mine["spanish"] and mine["set_day"] and mine["texts"] and mine["gives_back"]
+
+
+def test_positioning_reaches_the_hub_and_prompts_without_naming_anyone(client):
+    c = seo_research.competitors()
+    assert c and c["lead"] and all(f["we"] for f in c["lead"])
+    hub = client.get("/api/owner/marketing", headers=CREW).json()
+    assert hub["research"]["competitors"]["checked"] == c["checked"]
+    prompt = hub["prompts"][0]["prompt"]
+    assert "What sets us apart online" in prompt and "Never name, criticize or compare against a specific competitor" in prompt
+
+
+def test_the_marketing_agent_carries_the_rules():
+    agent = (ROOT.parent / ".claude" / "agents" / "post-one-marketer.md").read_text(encoding="utf-8")
+    assert agent.startswith("---\nname: post-one-marketer\n")
+    for rule in ("You never post", "No invented reviews", "Never name, criticize or compare against a specific competitor",
+                 "booking updates only", "No customer names"):
+        assert rule in agent

@@ -1,0 +1,109 @@
+{
+ "collected": "2026-11-10",
+ "checked": 8,
+ "companies": 5,
+ "marketplaces": 3,
+ "skipped": 3,
+ "method": "One public landing page per business, read like a customer would; robots.txt obeyed. A page check can miss things, so treat counts as a guide.",
+ "features": [
+  {
+   "key": "price",
+   "label": "Shows a price",
+   "others": 4,
+   "of": 8,
+   "companies": 2,
+   "marketplaces": 2,
+   "we": true
+  },
+  {
+   "key": "book_online",
+   "label": "Lets you book online",
+   "others": 5,
+   "of": 8,
+   "companies": 2,
+   "marketplaces": 3,
+   "we": true
+  },
+  {
+   "key": "spanish",
+   "label": "Offers Spanish",
+   "others": 1,
+   "of": 8,
+   "companies": 1,
+   "marketplaces": 0,
+   "we": true
+  },
+  {
+   "key": "texts",
+   "label": "Mentions text updates",
+   "others": 1,
+   "of": 8,
+   "companies": 1,
+   "marketplaces": 0,
+   "we": true
+  },
+  {
+   "key": "photos",
+   "label": "Mentions photos of the work",
+   "others": 3,
+   "of": 8,
+   "companies": 2,
+   "marketplaces": 1,
+   "we": true
+  },
+  {
+   "key": "set_day",
+   "label": "Names a set service day",
+   "others": 0,
+   "of": 8,
+   "companies": 0,
+   "marketplaces": 0,
+   "we": true
+  },
+  {
+   "key": "no_contract",
+   "label": "Says no contract",
+   "others": 2,
+   "of": 8,
+   "companies": 1,
+   "marketplaces": 1,
+   "we": true
+  },
+  {
+   "key": "guarantee",
+   "label": "States a guarantee",
+   "others": 4,
+   "of": 8,
+   "companies": 2,
+   "marketplaces": 2,
+   "we": true
+  },
+  {
+   "key": "veteran",
+   "label": "Says veteran-owned",
+   "others": 2,
+   "of": 8,
+   "companies": 1,
+   "marketplaces": 1,
+   "we": true
+  },
+  {
+   "key": "gives_back",
+   "label": "Mentions giving to a cause",
+   "others": 0,
+   "of": 8,
+   "companies": 0,
+   "marketplaces": 0,
+   "we": true
+  },
+  {
+   "key": "quote_first",
+   "label": "Asks you to request a quote",
+   "others": 6,
+   "of": 8,
+   "companies": 4,
+   "marketplaces": 2,
+   "we": true
+  }
+ ]
+}
