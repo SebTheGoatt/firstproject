@@ -58,3 +58,21 @@ def test_scroll_story_reads_prices_and_days_from_the_data(client):
     assert not any(day in story for day in ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday"))
     assert 'srcset="/static/img/lawn-stripes-tall.webp"' in story and 'loading="lazy"' in story
     assert client.get("/static/img/lawn-stripes-wide.webp").status_code == 200
+
+
+def test_home_shows_the_visit_experience_and_how_we_differ(client):
+    """The phone example quotes the real texts, and every "Post One way" line is a policy the site keeps."""
+    import re
+    from app.reminders import reminder_message
+    page = client.get("/").text
+    assert 'id="how"' in page and 'id="why"' in page and 'href="#why"' in page
+    assert "We just finished the previous job and are heading your way" in page
+    real = reminder_message("A", "Post One Lawn Co.", "mowing", "tomorrow", "between 9 and 11 AM", "")
+    assert "We're coming tomorrow" in real and "unlock the gate" in real      # the example matches the real reminder
+    assert "We're coming tomorrow, likely between 9 and 11 AM. Please unlock the gate and bring pets inside." in page
+    assert "An example of the texts and visit page you get." in page          # labeled as an example, not a real job
+    rows = re.findall(r'<div class="po-compare-row">(.*?)</div>', page, re.S)
+    assert len(rows) == 6 and all(r.count("po-compare-label") == 2 for r in rows)
+    spanish = client.get("/static/i18n.js").text
+    for line in re.findall(r'<span class="po-compare-label">.*?</span> (.*?)</p>', page):
+        assert f'"{line}":' in spanish, line

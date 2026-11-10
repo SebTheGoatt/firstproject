@@ -146,6 +146,11 @@ text. On Post Green use `#F5F6F1` and `#C9D3CD`.
 - **One area a day:** the week shown as one column per day, each day naming its area.
 - **Scroll story (home page):** a sticky flight over the striped-lawn photo; the photo pushes in with scroll and
   four chapters swap in place with a blurred rise. Stacks as plain content without JS or with reduced motion.
+- **The visit in your pocket (home page, `#how`):** four numbered steps beside a Post Green phone card with a brass
+  top edge, showing the real texts (booked, the evening before, on the way) and the visit page with before and
+  after tiles. The tiles are drawn stripes, never a photo passed off as a job, and the caption says "example".
+- **The usual way / The Post One way (home page, `#why`):** a comparison card whose right column is Post Green.
+  Six rows, each a policy the site keeps. On phones each row stacks with its two labels. Never name a competitor.
 - **Price shown before booking:** every price on the site is read from `app/pricing.py`, never typed into a page.
 
 ## Do's and don'ts

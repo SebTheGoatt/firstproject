@@ -36,7 +36,7 @@
       <nav class="site-nav" aria-label="Main">
         <a href="#pricing">Pricing</a>
         <a href="#areas">Areas</a>
-        <a href="#story">Why us</a>
+        <a href="#why">Why us</a>
         <a href="/community">Community</a>
         <a href="/visit">My visit</a>
       </nav>
@@ -46,7 +46,7 @@
       <a href="#pricing">Pricing</a>
       <a href="#areas">Areas</a>
       <a href="#how">How it works</a>
-      <a href="#story">Why us</a>
+      <a href="#why">Why us</a>
       <a href="/visit">My visit</a>
     </nav>
   </header>
@@ -156,26 +156,98 @@
       </div>
     </section>
 
+    <!-- How it works: the four steps beside an example of what the customer's phone shows. The wording in the
+         phone matches the real texts (app/notify.py, app/reminders.py); the photos are a drawn example, not a job. -->
     <section id="how" class="section po-section" aria-labelledby="how-title">
+      <div class="site-wrap po-journey">
+        <div class="po-journey-copy">
+          <p class="po-kicker">How it works</p>
+          <h2 id="how-title">You always know where your mow stands.</h2>
+          <ol class="po-journey-steps">
+            <li>
+              <span class="step-num" aria-hidden="true">01</span>
+              <div><h3>Get your price</h3>
+                <p>Enter your address and yard type. Your total, tax included, shows before you book.</p></div>
+            </li>
+            <li>
+              <span class="step-num" aria-hidden="true">02</span>
+              <div><h3>Pick your day</h3>
+                <p>We mow each neighborhood on set route days, so the crew's time goes into lawns, not the road.</p></div>
+            </li>
+            <li>
+              <span class="step-num" aria-hidden="true">03</span>
+              <div><h3>We keep you posted</h3>
+                <p>A text the evening before, and another when the crew is heading your way.</p></div>
+            </li>
+            <li>
+              <span class="step-num" aria-hidden="true">04</span>
+              <div><h3>See the work</h3>
+                <p>Before and after photos and your receipt on your visit page. Something not right? Tell the owner right there.</p></div>
+            </li>
+          </ol>
+          <a class="btn btn-primary btn-lg" href="/book">Get my price</a>
+        </div>
+        <figure class="po-phone">
+          <div class="po-phone-screen">
+            <p class="po-phone-from">Post One Lawn Co.</p>
+            <div class="po-msg"><span class="po-msg-when">Booked</span>
+              <p>You're booked for mowing on Tuesday. Track your visit and see your before &amp; after photos.</p></div>
+            <div class="po-msg"><span class="po-msg-when">The evening before</span>
+              <p>We're coming tomorrow, likely between 9 and 11 AM. Please unlock the gate and bring pets inside.</p></div>
+            <div class="po-msg"><span class="po-msg-when">On the way</span>
+              <p>We just finished the previous job and are heading your way, about 12 minutes out.</p></div>
+            <div class="po-visit-card">
+              <span class="po-msg-when">Your visit page</span>
+              <strong>Done. Thank you!</strong>
+              <div class="po-ba" aria-hidden="true"><span class="po-ba-before">Before</span><span class="po-ba-after">After</span></div>
+              <p>Before &amp; after photos and your receipt.</p>
+            </div>
+          </div>
+          <figcaption>An example of the texts and visit page you get.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- Why Post One: what's different, row by row. Every right-hand line is a policy the site already keeps. -->
+    <section id="why" class="section po-section" aria-labelledby="why-title">
       <div class="site-wrap">
-        <h2 id="how-title">How it works</h2>
-        <ol class="steps po-steps">
-          <li class="card">
-            <span class="step-num" aria-hidden="true">01</span>
-            <h3>Get your price</h3>
-            <p>Enter your address and yard type. Your total, tax included, shows before you book.</p>
-          </li>
-          <li class="card">
-            <span class="step-num" aria-hidden="true">02</span>
-            <h3>Pick your day</h3>
-            <p>We mow each neighborhood on set route days, so the crew's time goes into lawns, not the road.</p>
-          </li>
-          <li class="card">
-            <span class="step-num" aria-hidden="true">03</span>
-            <h3>We stand our post</h3>
-            <p>You get a text when we're on the way, a live page for your visit, and a receipt when we're done.</p>
-          </li>
-        </ol>
+        <div class="section-head">
+          <h2 id="why-title">Lawn care without the guesswork.</h2>
+          <p class="section-lede">Most lawn service runs on phone tag and "sometime this week." Here's what we do instead.</p>
+        </div>
+        <div class="po-compare">
+          <div class="po-compare-head" aria-hidden="true"><span></span><span>The usual way</span><span>The Post One way</span></div>
+          <div class="po-compare-row">
+            <h3>Price</h3>
+            <p><span class="po-compare-label">The usual way</span> A quote after someone comes to look.</p>
+            <p><span class="po-compare-label">The Post One way</span> Your price, tax included, before you book. It's locked.</p>
+          </div>
+          <div class="po-compare-row">
+            <h3>Day</h3>
+            <p><span class="po-compare-label">The usual way</span> Sometime this week.</p>
+            <p><span class="po-compare-label">The Post One way</span> Your area has a set day. You pick the date.</p>
+          </div>
+          <div class="po-compare-row">
+            <h3>Updates</h3>
+            <p><span class="po-compare-label">The usual way</span> You call to ask.</p>
+            <p><span class="po-compare-label">The Post One way</span> A text the evening before and when we're on the way.</p>
+          </div>
+          <div class="po-compare-row">
+            <h3>Proof</h3>
+            <p><span class="po-compare-label">The usual way</span> You find out when you get home.</p>
+            <p><span class="po-compare-label">The Post One way</span> Before and after photos and a receipt, every visit.</p>
+          </div>
+          <div class="po-compare-row">
+            <h3>Plans change</h3>
+            <p><span class="po-compare-label">The usual way</span> Hard to reach anyone.</p>
+            <p><span class="po-compare-label">The Post One way</span> Cancel free online until we're on the way. Storm days are moved or refunded.</p>
+          </div>
+          <div class="po-compare-row">
+            <h3>Your community</h3>
+            <p><span class="po-compare-label">The usual way</span> Not part of the deal.</p>
+            <p><span class="po-compare-label">The Post One way</span> Part of every mow goes to a local cause you pick.</p>
+          </div>
+        </div>
       </div>
     </section>
 
