@@ -93,6 +93,22 @@ text. On Post Green use `#F5F6F1` and `#C9D3CD`.
 - One filled button per view. Everything else is outline or quiet.
 - Red (`#B42318`) means something is wrong (a booking on the wrong area day, a missing photo), never decoration.
 
+### Status colors in the work app (dispatch board first)
+People read color before words, so each color means one thing everywhere in the app:
+
+| Color | Hex (fill / soft / text) | Means | Used for |
+|---|---|---|---|
+| Green | `#2E7D4F` / `#E6F1EA` / `#1F5A3C` | earning, on track, done | lawns on the timeline, money booked and paid, "to spare" |
+| Blue | `#2F6FA3` / `#E7F0F8` / `#1D4E7A` | travel and plain information | driving on the timeline, drive tiles and chips, notes |
+| Amber | `#C9A227` / `#FFF4D6` / `#7A5300` | worth a look, not broken | not paid yet, the costliest stop, a tight day, a fair lawn share |
+| Red | `#B42318` / `#FBE9E7` / `#B42318` | a real problem | past closing, wrong-day bookings, a low lawn share |
+
+- Color is never the only signal: the words say the state ("strong", "tight", "not yet"), shapes differ (solid
+  lawns, dashed drives), and the timeline has a key.
+- Soft fill with dark text for chips and tiles; solid fill only for the thing to act on next.
+- Thresholds are starting points in `static/dispatch.html` (lawn share: 75% strong, 60% fair; under 30 minutes
+  to spare is "tight"). Adjust them as real days come in.
+
 ## Typography
 
 - **Big Shoulders Display 800, uppercase** for h1–h3 on the public site. It is condensed, so set it larger

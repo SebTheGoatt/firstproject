@@ -20,6 +20,9 @@
       --ground: #F6F7F3; --sheet: #FFFFFF; --line: #E3E6DF; --line-strong: #CFD4CB; --track: #EDEFEA;
       --ink: #14201B; --ink-2: #3D4A44; --muted: #5F6B65;
       --green: #2E7D4F; --green-soft: #E6F1EA; --green-ink: #1F5A3C; --brass: #8A6210; --red: #B42318; --red-soft: #FBE9E7;
+      /* Status colors, one meaning each: green = earning or done, blue = travel and plain information,
+         amber = worth a look, red = a real problem. Never the only signal: the words say it too. */
+      --blue: #2F6FA3; --blue-soft: #E7F0F8; --blue-ink: #1D4E7A; --amber: #C9A227; --amber-soft: #FFF4D6; --amber-ink: #7A5300;
       --radius: 10px; --font: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
     }
     * { box-sizing: border-box; }
@@ -72,6 +75,14 @@
     .stat { background: var(--sheet); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; min-width: 0; }
     .stat .v { font-size: 18px; font-weight: 700; line-height: 1.2; }
     .stat .k { color: var(--muted); font-size: 12px; }
+    .stat { border-left: 3px solid var(--line-strong); }
+    .stat.go { border-left-color: var(--green); }
+    .stat.go .v { color: var(--green-ink); }
+    .stat.travel { border-left-color: var(--blue); }
+    .stat.travel .v { color: var(--blue-ink); }
+    .stat.watch { border-left-color: var(--amber); background: var(--amber-soft); }
+    .stat.watch .v, .stat.watch .k { color: var(--amber-ink); }
+    .verdict.tight { background: var(--amber-soft); color: var(--amber-ink); }
 
     .actions { display: flex; flex-wrap: wrap; gap: 8px; }
     .btn { font: 600 14px/1 var(--font); min-height: 40px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--line-strong);
@@ -104,7 +115,8 @@
     .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); }
     .chip { display: inline-flex; padding: 2px 8px; border-radius: 999px; font-weight: 600; font-size: 12px; background: var(--track); color: var(--ink-2); }
     .chip.paid { background: var(--green-soft); color: var(--green-ink); }
-    .chip.owed { background: #FFF4D6; color: #7A5300; }
+    .chip.owed { background: var(--amber-soft); color: var(--amber-ink); }
+    .chip.travel { background: var(--blue-soft); color: var(--blue-ink); }
     .chip.bad { background: var(--red-soft); color: var(--red); }
     .move { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
     .move input { font: inherit; min-height: 34px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--sheet); color: var(--ink); }
@@ -132,18 +144,25 @@
     .score { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 8px; }
     .score li, .score button { font: 600 13px/1.3 var(--font); padding: 5px 10px; border-radius: 999px; background: var(--green-soft); color: var(--green-ink); border: 0; }
     .score li:has(button) { padding: 0; background: none; }
-    .score button { cursor: pointer; min-height: 30px; text-decoration: underline; text-underline-offset: 3px; background: var(--track); color: var(--ink); }
+    .score button { cursor: pointer; min-height: 30px; text-decoration: underline; text-underline-offset: 3px; background: var(--amber-soft); color: var(--amber-ink); }
+    .score li.watch { background: var(--amber-soft); color: var(--amber-ink); }
+    .score li.info { background: var(--blue-soft); color: var(--blue-ink); font-weight: 500; }
+    .score .meter { display: inline-block; vertical-align: middle; width: 54px; height: 6px; margin-right: 8px; border-radius: 99px; background: rgba(20,32,27,0.14); overflow: hidden; }
+    .score .meter i { display: block; height: 100%; background: currentColor; }
     .score li.bad { background: var(--red-soft); color: var(--red); }
     .score li.quiet { background: var(--track); color: var(--ink-2); font-weight: 500; }
     .tl { position: relative; padding-top: 2px; }
     .tl-track { list-style: none; margin: 0; padding: 0; position: relative; height: 34px; background: var(--track); border-radius: 8px; }
     .tl-track li { position: absolute; top: 0; bottom: 0; }
-    .tl-track .drive, .tl-track .return { top: 14px; bottom: 14px; background: repeating-linear-gradient(90deg, var(--line-strong) 0 6px, transparent 6px 10px); }
+    .tl-track .drive, .tl-track .return { top: 13px; bottom: 13px; background: repeating-linear-gradient(90deg, var(--blue) 0 6px, transparent 6px 10px); }
     .tl-track .stopb { padding: 0; }
     .tl-track .stopb button { width: 100%; height: 100%; min-width: 0; padding: 0; border: 0; border-radius: 6px; background: var(--green); color: #fff; cursor: pointer;
       font: 700 12px/1 var(--font); font-variant-numeric: tabular-nums; overflow: hidden; }
-    .tl-track .stopb.done button { background: var(--line-strong); color: var(--ink); }
-    .tl-track .stopb.costly button { box-shadow: inset 0 -4px 0 #C9A227; }
+    .tl-track .stopb.done button { background: var(--green-soft); color: var(--green-ink); box-shadow: inset 0 0 0 1px #B9D6C4; }
+    .tl-track .stopb.next button { box-shadow: 0 0 0 3px var(--sheet), 0 0 0 5px var(--green); }
+    .tl-track .stopb.costly button { box-shadow: inset 0 -4px 0 var(--amber); }
+    .tl-key { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; font-size: 11px; color: var(--muted); }
+    .tl-key i { display: inline-block; width: 14px; height: 8px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
     .tl-track .stopb.late button { background: var(--red); }
     .tl-track .mark { top: -3px; bottom: -3px; width: 2px; background: var(--ink); }
     .tl-track .mark.close { background: var(--red); }
@@ -229,6 +248,7 @@
             <ol class="tl-track" id="tl-track" aria-label="The day in order: drives and lawns"></ol>
             <div class="tl-axis" id="tl-axis" aria-hidden="true"></div>
           </div>
+          <p class="tl-key" aria-hidden="true"><span><i style="background:#2E7D4F"></i>Lawn to mow</span><span><i style="background:#E6F1EA;box-shadow:inset 0 0 0 1px #B9D6C4"></i>Done</span><span><i style="height:3px;background:repeating-linear-gradient(90deg,#2F6FA3 0 4px,transparent 4px 7px)"></i>Driving</span><span><i style="height:3px;background:#C9A227"></i>Costliest stop</span><span><i style="width:2px;height:10px;background:#B42318"></i>Closing</span></p>
         </section>
         <div class="legend" aria-hidden="true"><span><i style="background:#2E7D4F"></i>Road path</span><span><i style="background:#9aa7a0"></i>Done</span><span><i style="background:#2E7D4F;height:2px;opacity:.8"></i>Area edge</span><span><i style="background:#C9A227"></i>Driven (Play the day)</span><span><i style="background:#2E7D4F;width:6px;height:12px"></i>Stop: taller = longer on site</span></div>
       </section>
@@ -302,19 +322,22 @@
       if (!r) { v.className = "verdict none"; v.textContent = "Route not built yet"; }
       else if (d.minutes_to_spare != null && d.minutes_to_spare < 0) {
         v.className = "verdict late"; v.textContent = `Runs ${hm(-d.minutes_to_spare)} past ${d.hours.end}`;
+      } else if (d.minutes_to_spare != null && d.minutes_to_spare < 30) {
+        v.className = "verdict tight"; v.textContent = `Done by ${clock(d.finish_at)} · tight: only ${hm(d.minutes_to_spare)} to spare`;
       } else if (d.minutes_to_spare != null) { v.className = "verdict"; v.textContent = `Done by ${clock(d.finish_at)} · ${hm(d.minutes_to_spare)} to spare`; }
       else { v.className = "verdict none"; v.textContent = "Route built"; }
 
       const stops = r ? r.stops : [];
       const done = stops.filter((s) => s.completed_at).length;
-      const stat = (v, k) => el("div", { class: "stat" }, el("div", { class: "v num" }, v), el("div", { class: "k" }, k));
+      // Tile edges follow the status colors: green = earning or done, blue = travel, amber = worth a look.
+      const stat = (v, k, tone = "") => el("div", { class: "stat" + (tone ? " " + tone : "") }, el("div", { class: "v num" }, v), el("div", { class: "k" }, k));
       $("stats").replaceChildren(
-        stat(r ? `${done}/${stops.length}` : "0", "Stops done"),
-        stat(r ? miles(d.path ? d.path.distance_m : r.total_distance_m) : "–", "Driving"),
-        stat(r ? hm((d.path ? d.path.duration_s : r.total_duration_s) / 60) : "–", "Drive time"),
-        stat(r ? hm(d.on_site_min) : "–", "On lawns"),
-        stat(money(d.money.expected), "Booked"),
-        stat(money(d.money.collected), d.money.unpaid ? `Paid · ${d.money.unpaid} not yet` : "Paid"));
+        stat(r ? `${done}/${stops.length}` : "0", "Stops done", r && stops.length && done === stops.length ? "go" : ""),
+        stat(r ? miles(d.path ? d.path.distance_m : r.total_distance_m) : "–", "Driving", r ? "travel" : ""),
+        stat(r ? hm((d.path ? d.path.duration_s : r.total_duration_s) / 60) : "–", "Drive time", r ? "travel" : ""),
+        stat(r ? hm(d.on_site_min) : "–", "On lawns", r ? "go" : ""),
+        stat(money(d.money.expected), "Booked", d.money.expected ? "go" : ""),
+        stat(money(d.money.collected), d.money.unpaid ? `Paid · ${d.money.unpaid} not yet` : "Paid", d.money.unpaid ? "watch" : d.money.collected ? "go" : ""));
       $("build").textContent = r ? "Rebuild route" : "Build route";
       $("build").hidden = d.date < d.today;
       $("rain").hidden = !r || d.date < d.today;
@@ -346,14 +369,18 @@
       chips.push(el("li", {}, ins.saved_min >= 1
         ? `Planned order saves ${hm(ins.saved_min)} and ${miles(ins.saved_m)} of driving vs. the order bookings came in`
         : "Bookings came in close to the best order already"));
-      if (ins.lawn_share != null) chips.push(el("li", {}, `${Math.round(ins.lawn_share * 100)}% of the working time is on lawns`));
+      if (ins.lawn_share != null) {
+        const pct = Math.round(ins.lawn_share * 100), level = pct >= LAWN_STRONG ? ["", "strong"] : pct >= LAWN_FAIR ? ["watch", "fair"] : ["bad", "low: too much driving"];
+        chips.push(el("li", { class: level[0] }, el("span", { class: "meter", "aria-hidden": "true" }, el("i", { style: `width:${pct}%` })),
+          `${pct}% of the working time is on lawns · ${level[1]}`));
+      }
       const c = ins.costliest;
       if (c && c.seconds >= 300) {
         const b = el("button", { type: "button" }, `Stop ${c.n} adds ${hm(c.seconds / 60)} of driving: the one a neighbor's booking would pay for`);
         b.addEventListener("click", () => focusStop(stops[c.n - 1]));
         chips.push(el("li", {}, b));
       }
-      if (ins.source !== "osrm") chips.push(el("li", { class: "quiet" }, "Times are straight-line estimates (road times unavailable right now)"));
+      if (ins.source !== "osrm") chips.push(el("li", { class: "info" }, "Times are straight-line estimates (road times unavailable right now)"));
       $("score").replaceChildren(...chips);
 
       // Timeline: from the earlier of opening and leaving base, to the later of closing and getting back.
@@ -362,15 +389,17 @@
       const close = d.close_at ? t(d.close_at) : null;
       const from = Math.min(open, t(ins.timeline[0].start)), to = Math.max(close ?? 0, t(ins.timeline.at(-1).end));
       const pos = (ms) => `${((ms - from) / (to - from) * 100).toFixed(3)}%`, wid = (a, b) => `${Math.max(0.4, (b - a) / (to - from) * 100).toFixed(3)}%`;
+      const nextN = (stops.find((x) => !x.completed_at) || {}).sequence;
       const rows = ins.timeline.map((g) => {
         const a = t(g.start), b = t(g.end), style = `left:${pos(a)};width:${wid(a, b)}`;
         if (g.kind !== "stop") return el("li", { class: g.kind, style, "aria-label": g.kind === "return"
           ? `Drive back to base, ${hm((b - a) / 60000)}` : `Drive to stop ${g.n}, ${hm((b - a) / 60000)}` });
         const s = stops[g.n - 1], late = close != null && b > close && !g.done;
-        const btn = el("button", { type: "button", "aria-label": `Stop ${g.n}, ${s.customer_name}: ${clock(g.start)} to ${clock(g.end)}${late ? ", ends after closing" : ""}${g.done ? ", done" : ""}`,
+        const next = !g.done && d.date === d.today && g.n === nextN;
+        const btn = el("button", { type: "button", "aria-label": `Stop ${g.n}, ${s.customer_name}: ${clock(g.start)} to ${clock(g.end)}${late ? ", ends after closing" : ""}${g.done ? ", done" : ""}${next ? ", next up" : ""}`,
           title: `${g.n}. ${s.customer_name} · ${clock(g.start)}–${clock(g.end)}` }, String(g.n));
         btn.addEventListener("click", () => focusStop(s));
-        return el("li", { class: "stopb" + (g.done ? " done" : "") + (late ? " late" : "") + (c && c.seconds >= 300 && c.n === g.n ? " costly" : ""), style }, btn);
+        return el("li", { class: "stopb" + (g.done ? " done" : "") + (next ? " next" : "") + (late ? " late" : "") + (c && c.seconds >= 300 && c.n === g.n ? " costly" : ""), style }, btn);
       });
       if (close != null) rows.push(el("li", { class: "mark close", style: `left:${pos(close)}`, "aria-label": `Closing time ${clock(d.close_at)}` }));
       const now = Date.now();
@@ -383,6 +412,7 @@
         new Date(h).toLocaleTimeString("en-US", { hour: "numeric", timeZone: tz })));
       $("tl-axis").replaceChildren(...ticks);
     }
+    const LAWN_STRONG = 75, LAWN_FAIR = 60;      // % of working time on lawns: green, amber, red below (starting points)
     const offset = (iso) => (iso.match(/([+-]\d\d:\d\d|Z)$/) || ["Z"])[0];    // the route's own UTC offset, for the opening time
 
     const costly = (s) => { const c = data.insights?.costliest; return c && c.seconds >= 300 && c.stop_id === s.stop_id ? c : null; };
@@ -398,7 +428,7 @@
         el("div", { class: "who" }, el("b", {}, s.customer_name), el("span", { class: "eta num" }, clock(s.eta))),
         el("div", { class: "addr" }, s.address),
         el("div", { class: "meta" }, el("span", {}, s.service_label), el("span", {}, `· ${s.service_minutes || 0} min on site`),
-          s.leg_duration_s ? el("span", {}, `· ${Math.max(1, Math.round(s.leg_duration_s / 60))} min drive`) : null,
+          s.leg_duration_s ? el("span", { class: "chip travel" }, `${Math.max(1, Math.round(s.leg_duration_s / 60))} min drive`) : null,
           costly(s) ? el("span", { class: "chip owed" }, `Adds ${hm(costly(s).seconds / 60)} of driving`) : null, chip, state,
           s.completed_at ? null : moveBox(s.job_id)));
       li.querySelector(".seq").addEventListener("click", () => focusStop(s));

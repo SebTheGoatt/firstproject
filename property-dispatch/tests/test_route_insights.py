@@ -96,3 +96,12 @@ def test_the_dispatch_board_carries_the_scorecard(client, repo, settings):
     assert "customer_name" not in str(ins)                         # numbers only
     page = client.get("/owner/dispatch").text
     assert 'id="deck"' in page and 'id="tl-track"' in page and ".hud[hidden]" in page
+
+
+def test_the_board_uses_status_colors_with_words_never_color_alone(client):
+    page = client.get("/owner/dispatch").text
+    for token in ("--blue:", "--blue-soft:", "--amber-soft:", "--amber-ink:"):
+        assert token in page
+    # each level of the lawn-share chip says its level in words, and the timeline has a key
+    assert '"strong"' in page and '"fair"' in page and "low: too much driving" in page
+    assert "Lawn to mow" in page and "Driving" in page and "tight: only" in page
