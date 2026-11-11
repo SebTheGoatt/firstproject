@@ -71,6 +71,9 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
   the day runs over. Travel times are fetched once per built route. Solver: 13+ stop days get a second pass
   (`polish()`: move/reverse stretches); benchmarks showed OR-Tools was already at an order it couldn't beat, so it's a
   10 ms safety net, not a speed-up. The order math is near its limit: further gains come from denser bookings.
+- Work-app status colors (owner asked Nov 11 2026 for colors that read at a glance): green = earning/done, blue =
+  travel/information, amber = worth a look, red = a real problem; always with words, never color alone. On the
+  dispatch board now; table in `DESIGN.md`. Use the same meanings on any other crew or owner screen.
 - Rain radar on the route map ("Rain radar" toggle, remembered per phone; `/crew/dashboard?radar=1` from the owner's
   "Check the radar" link next to Rain day): NOAA nowCOAST WMS, keyless and CORS-open — MRMS base reflectivity
   (~4 min) + NLDN lightning density (~10 min), refreshed every 5 min, credited in the map attribution. Idea taken
