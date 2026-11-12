@@ -28,9 +28,11 @@ if sum(CHARITY_SPLIT.values()) != 1:
 
 # The customer picks ONE cause at booking; their order's giving (and any extra they give the crew)
 # goes 100% to it. Orders without a pick (older bookings, API callers) keep the 33/33/34 split above.
-CHOICES = ("toys_for_tots", "vfw", "nicu")
+# Kids and their future first (owner, Nov 12 2026): holiday gifts, then education, then veterans and NICU families.
+CHOICES = ("toys_for_tots", "education", "vfw", "nicu")
 CAUSE_BLURBS = {
     "toys_for_tots": "Helps buy holiday toys for kids in our service area.",
+    "education": "Helps pay for online college courses for local students, such as Sophia Learning.",
     "vfw": "Helps local veterans and their families through a VFW post in our area.",
     "nicu": "Helps families whose newborns are in neonatal intensive care.",
 }
@@ -38,7 +40,8 @@ CAUSE_BLURBS = {
 
 def charity_names(settings: Settings) -> dict[str, str]:
     return {"vfw": settings.charity_vfw_name, "nicu": settings.charity_nicu_name,
-            "at_risk_youth": settings.charity_youth_name, "toys_for_tots": settings.charity_toys_name}
+            "at_risk_youth": settings.charity_youth_name, "toys_for_tots": settings.charity_toys_name,
+            "education": settings.charity_education_name}
 
 
 def causes(settings: Settings) -> list[dict]:

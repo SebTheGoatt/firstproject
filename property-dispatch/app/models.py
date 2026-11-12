@@ -74,7 +74,7 @@ class JobRequest(BaseModel):
     source: str | None = Field(default=None, max_length=48, pattern=r"^[a-z0-9-]{1,48}$")
     add_ons: list[AddOn] = Field(default_factory=list, max_length=4)
     # The one cause this order's giving goes to (app/charity.py CHOICES); none = the standard split.
-    charity_choice: Literal["toys_for_tots", "vfw", "nicu"] | None = None
+    charity_choice: Literal["toys_for_tots", "education", "vfw", "nicu"] | None = None
     # The booking form's "I agree to texts about this booking" box (it must be ticked to book there).
     sms_consent: bool | None = None
 

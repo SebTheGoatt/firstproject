@@ -14,6 +14,13 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
   charities for the community. Build toward that mission: steady, fair work; the giving stays in every price. Don't
   claim the hiring on the site until people are actually hired, and how to present second-chance hiring to customers is
   the owner's call.
+- **Mission, in the owner's words (Nov 12 2026):** an organization that mows lawns and gives back to the kids and the
+  future of the community: raising funds for Christmas gifts and for education, like paying for their Sophia Learning
+  courses. Giving causes customers pick, kids first: holiday toy drive, education fund, VFW, NICU families
+  (`app/charity.py` CHOICES; names in Render `CHARITY_*_NAME`). Still open and the owner's call, with advice: who
+  holds and pays out the funds, how kids and students are chosen, and the legal form (the LLC is not a charity, so
+  never say "tax-deductible" or "donate to us"; a 501(c)(3) partner or fiscal sponsor would allow that). Sophia
+  Learning is named only as an example of the courses paid for: no partnership is claimed.
 - Live site: https://property-dispatch.onrender.com (Render). The domain postonelawn.com is not bought yet.
 
 ## Other projects in this repo
@@ -74,6 +81,9 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 - Work-app status colors (owner asked Nov 11 2026 for colors that read at a glance): green = earning/done, blue =
   travel/information, amber = worth a look, red = a real problem; always with words, never color alone. On the
   dispatch board now; table in `DESIGN.md`. Use the same meanings on any other crew or owner screen.
+- Crew route screen uses the same status colors (Nov 12 2026): blue dashed line = still to drive, soft green pins =
+  done, solid green pin with a dark ring = the stop you're on, white pins = to do; chips: green paid, amber cash to
+  collect, blue ETA and travel. The big step button keeps its sun-readable colors.
 - Rain radar on the route map ("Rain radar" toggle, remembered per phone; `/crew/dashboard?radar=1` from the owner's
   "Check the radar" link next to Rain day): NOAA nowCOAST WMS, keyless and CORS-open — MRMS base reflectivity
   (~4 min) + NLDN lightning density (~10 min), refreshed every 5 min, credited in the map attribution. Idea taken
@@ -222,6 +232,9 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 - The live site is suspended in Render ("suspended by its owner", seen Nov 8 2026). While it is, Google, Bing and AI
   assistants can't read any page. Resume it when ready (Render → the web service → Resume).
 - Decide the crew's mowing heights (St. Augustine, Bermuda) so the top search gap can be answered on the site.
+- Giving, before any money is raised in its name: decide who holds and pays out the toy and education funds and how
+  recipients are chosen; ask an accountant or attorney about a 501(c)(3) partner or fiscal sponsor. Optional Render
+  settings to name specific programs: `CHARITY_TOYS_NAME`, `CHARITY_EDUCATION_NAME`.
 - Claim the same name, hours, site and service area on Bing Places, Apple Business Connect, Yelp and Nextdoor (AI
   assistants pull from these); set the *_URL profile settings in Render as each one goes live.
 

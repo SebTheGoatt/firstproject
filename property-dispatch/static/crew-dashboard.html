@@ -139,11 +139,16 @@
     .stop-addr { margin: 2px 0 8px; font-size: 1rem; overflow-wrap: anywhere; }
     .travel { display: block; margin: 0 0 10px; padding: 8px 10px; border-left: 4px solid var(--glow-blue); border-radius: 8px;
       background: #eef4fe; color: var(--text); font-weight: 700; font-size: 1rem; line-height: 1.35; font-variant-numeric: tabular-nums; }
-    .travel[data-src="planned"] { border-left-color: #8a948f; background: #f2f4f3; }
+    /* Status colors, the same meanings as the dispatch board (DESIGN.md): green = earning or done, blue = travel and
+       plain information, amber = worth a look, red = a real problem. The words always say it too. */
+    .travel[data-src="planned"] { border-left-color: #2F6FA3; background: #E7F0F8; }
     .travel[data-src="onsite"] { border-left-color: #b45309; background: #fff4d6; }
     .stop-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
     .chip-d { font-size: 1rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--brand-soft); color: var(--text); }
     .chip-d.warn { background: var(--warn-soft); color: var(--warn); }
+    .chip-d.plain { background: #EDEFEA; }
+    .chip-d.go { background: #E6F1EA; color: #1F5A3C; }
+    .chip-d.info { background: #E7F0F8; color: #1D4E7A; }
     .stop-actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap-s); }
     .stop-actions .btn { min-height: var(--tap); font-size: 1rem; border-color: var(--border-strong); }
     .stop-actions .btn-nav { grid-column: 1 / -1; min-height: 56px; font-size: 1.1rem; font-weight: 800; }
@@ -544,8 +549,8 @@
         return;
       }
       const n = route.stops.indexOf(cur) + 1;
-      const pay = cur.payment_status === "paid" ? el("span", { class: "chip-d" }, "Paid ✓")
-        : cur.payment_method === "card" ? el("span", { class: "chip-d" }, "Card: pay link sent after the job")
+      const pay = cur.payment_status === "paid" ? el("span", { class: "chip-d go" }, "Paid ✓")
+        : cur.payment_method === "card" ? el("span", { class: "chip-d info" }, "Card: pay link sent after the job")
         : el("span", { class: "chip-d warn" }, cur.amount_due != null ? `Collect cash ${money(cur.amount_due)}` : "Cash: price on site");
       const noteBox = el("div", { class: "note-box", hidden: true },
         el("textarea", { id: "note-text", maxlength: "500", placeholder: "Gate code, dog in yard, anything the next crew should know" }),
@@ -557,8 +562,8 @@
         el("p", { class: "stop-addr" }, cur.address),
         el("p", { class: "travel", id: "peek-end" }),
         el("div", { class: "stop-meta" },
-          el("span", { class: "chip-d" }, cur.service_label),
-          cur.eta ? el("span", { class: "chip-d" }, `ETA ${fmtTime(cur.eta)}`) : null,
+          el("span", { class: "chip-d plain" }, cur.service_label),
+          cur.eta ? el("span", { class: "chip-d info" }, `ETA ${fmtTime(cur.eta)}`) : null,
           pay),
         el("div", { class: "stop-actions" },
           // In-app turn-by-turn is the main way to drive; the native Maps app is the backup.
@@ -823,16 +828,18 @@
         map.addSource("line", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
         map.addSource("preview", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
         map.addSource("stops", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-        map.addLayer({ id: "line", type: "line", source: "line", paint: { "line-color": "#0F2B22", "line-width": 3, "line-opacity": 0.5, "line-dasharray": [2, 2] } });
+        map.addLayer({ id: "line", type: "line", source: "line", paint: { "line-color": "#2F6FA3", "line-width": 3.5, "line-opacity": 0.85, "line-dasharray": [2, 2] } });   // blue = still to drive
         map.addLayer({ id: "preview-casing", type: "line", source: "preview", paint: { "line-color": "#0F2B22", "line-width": 8 } });
         map.addLayer({ id: "preview", type: "line", source: "preview", paint: { "line-color": "#1a73e8", "line-width": 5 } });
         map.addLayer({ id: "stops", type: "circle", source: "stops", paint: {
           "circle-radius": ["match", ["get", "state"], "now", 14, 11],
-          "circle-color": ["match", ["get", "state"], "done", "#9aa7a0", "now", "#C9A227", "#2E7D4F"],
-          "circle-stroke-color": "#ffffff", "circle-stroke-width": 2 } });
+          // done = soft green (behind you), now = solid green with a dark ring, to do = white with a green edge
+          "circle-color": ["match", ["get", "state"], "done", "#CFE5D7", "now", "#2E7D4F", "#ffffff"],
+          "circle-stroke-color": ["match", ["get", "state"], "now", "#0F2B22", "#2E7D4F"],
+          "circle-stroke-width": ["match", ["get", "state"], "now", 3, 2] } });
         map.addLayer({ id: "stop-n", type: "symbol", source: "stops",
           layout: { "text-field": ["get", "n"], "text-size": 11, "text-font": ["Noto Sans Bold"], "text-allow-overlap": true },
-          paint: { "text-color": ["match", ["get", "state"], "todo", "#ffffff", "#14201B"] } });
+          paint: { "text-color": ["match", ["get", "state"], "now", "#ffffff", "#14201B"] } });
         // Start with the credits folded behind the (i) button so they don't sit on top of the pins.
         map.getContainer().querySelector(".maplibregl-ctrl-attrib")?.classList.remove("maplibregl-compact-show");
         setMapData();

@@ -121,9 +121,9 @@ def test_booking_with_a_pick_routes_its_giving_and_cash_donation_there(client, r
     assert done["payment"]["donation_split"] == {"toys_for_tots": round(130 - stop["amount_due"], 2)}
 
 
-def test_the_booking_page_gets_the_three_causes(client):
+def test_the_booking_page_gets_the_causes_kids_first(client):
     info = client.get("/api/booking-info").json()
-    assert [c["key"] for c in info["causes"]] == ["toys_for_tots", "vfw", "nicu"]
+    assert [c["key"] for c in info["causes"]] == ["toys_for_tots", "education", "vfw", "nicu"]   # kids and their future first
     assert all(c["name"] and c["blurb"] for c in info["causes"])
 
 
@@ -132,3 +132,17 @@ def test_an_unknown_pick_is_refused(client):
                                        "lawn_sqft": 5000, "package": "standard", "scheduled_date": TOMORROW.isoformat(),
                                        "charity_choice": "my_pocket"})
     assert r.status_code == 422
+
+
+def test_a_customer_can_send_their_giving_to_the_education_fund(client):
+    from unittest.mock import patch
+    from .test_api_flow import NOW, TOMORROW
+    with patch("app.main.local_now", return_value=NOW):
+        r = client.post("/api/jobs", json={"name": "Customer A", "phone": "(281) 555-0100", "address": "100 A Example Rd",
+                                           "service": "mowing", "lawn_sqft": 5000, "package": "standard",
+                                           "scheduled_date": TOMORROW.isoformat(), "charity_choice": "education"})
+    assert r.status_code == 201, r.text
+    info = client.get("/api/booking-info").json()
+    edu = next(c for c in info["causes"] if c["key"] == "education")
+    assert edu["name"] == "Education fund for local students" and "college courses" in edu["blurb"]
+    assert "Sophia Learning" in client.get("/book").text and "college courses for local students" in client.get("/").text
