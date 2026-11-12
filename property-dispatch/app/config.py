@@ -122,6 +122,7 @@ class Settings(BaseSettings):
     charity_youth_name: str = "At-risk youth programs"
     # Set the official name only once the local program has said yes (e.g. "Marine Toys for Tots, Liberty County").
     charity_toys_name: str = "Holiday toy drive for local kids"
+    charity_education_name: str = "Education fund for local students"   # e.g. paying for Sophia Learning courses
     # Google review link (Google Business Profile → "Ask for reviews"). Blank = no review requests are sent.
     google_review_url: str = ""
     # Public profiles (https links). Listed as "sameAs" so Google and AI assistants tie them to this business.

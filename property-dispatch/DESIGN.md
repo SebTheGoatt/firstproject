@@ -106,6 +106,8 @@ People read color before words, so each color means one thing everywhere in the 
 - Color is never the only signal: the words say the state ("strong", "tight", "not yet"), shapes differ (solid
   lawns, dashed drives), and the timeline has a key.
 - Soft fill with dark text for chips and tiles; solid fill only for the thing to act on next.
+- Crew route screen: blue dashed line for the road still to drive, soft green pins for finished stops, a solid
+  green pin with a dark ring for the stop you're on, white pins with a green edge for what's left.
 - Thresholds are starting points in `static/dispatch.html` (lawn share: 75% strong, 60% fair; under 30 minutes
   to spare is "tight"). Adjust them as real days come in.
 
