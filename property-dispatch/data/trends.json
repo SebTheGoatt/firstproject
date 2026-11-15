@@ -1,0 +1,106 @@
+{
+ "collected": "2026-11-15",
+ "series": {
+  "permits_total": {
+   "id": "HOUS448BPPRIVSA",
+   "label": "New homes permitted, Houston metro",
+   "unit": "homes / 12 months",
+   "source": "https://fred.stlouisfed.org/series/HOUS448BPPRIVSA",
+   "as_of": "2026-09-01",
+   "value": 58057,
+   "change_1y": -13.3,
+   "change_5y": -15.7
+  },
+  "permits_single": {
+   "id": "HOUS448BP1FHSA",
+   "label": "New single-family homes permitted, Houston metro",
+   "unit": "homes / 12 months",
+   "source": "https://fred.stlouisfed.org/series/HOUS448BP1FHSA",
+   "as_of": "2026-09-01",
+   "value": 43553,
+   "change_1y": -12.7,
+   "change_5y": -17.9
+  },
+  "pop_metro": {
+   "id": "HTNPOP",
+   "label": "Population, Houston metro",
+   "unit": "thousand people",
+   "source": "https://fred.stlouisfed.org/series/HTNPOP",
+   "as_of": "2025-01-01",
+   "value": 7904.63,
+   "change_1y": 1.6,
+   "change_5y": 10.3
+  },
+  "pop_harris": {
+   "id": "TXHARR1POP",
+   "label": "Population, Harris County (Spring, Klein)",
+   "unit": "thousand people",
+   "source": "https://fred.stlouisfed.org/series/TXHARR1POP",
+   "as_of": "2025-01-01",
+   "value": 5045.03,
+   "change_1y": 1.0,
+   "change_5y": 6.6
+  },
+  "pop_montgomery": {
+   "id": "TXMONT0POP",
+   "label": "Population, Montgomery County (Spring, New Caney, Splendora)",
+   "unit": "thousand people",
+   "source": "https://fred.stlouisfed.org/series/TXMONT0POP",
+   "as_of": "2025-01-01",
+   "value": 781.19,
+   "change_1y": 4.0,
+   "change_5y": 24.9
+  },
+  "pop_liberty": {
+   "id": "TXLIBE1POP",
+   "label": "Population, Liberty County (Cleveland, Plum Grove, Colony Ridge)",
+   "unit": "thousand people",
+   "source": "https://fred.stlouisfed.org/series/TXLIBE1POP",
+   "as_of": "2025-01-01",
+   "value": 121.36,
+   "change_1y": 4.4,
+   "change_5y": 31.2
+  },
+  "jobs_metro": {
+   "id": "HOUS448NA",
+   "label": "Jobs, Houston metro",
+   "unit": "thousand jobs",
+   "source": "https://fred.stlouisfed.org/series/HOUS448NA",
+   "as_of": "2026-09-01",
+   "value": 3494.1,
+   "change_1y": 0.7,
+   "change_5y": 12.4
+  },
+  "jobs_industry": {
+   "id": "CES6056170001",
+   "label": "U.S. jobs in services to buildings and dwellings (incl. landscaping)",
+   "unit": "thousand jobs",
+   "source": "https://fred.stlouisfed.org/series/CES6056170001",
+   "as_of": "2026-10-01",
+   "value": 2312.9,
+   "change_1y": 1.1,
+   "change_5y": 6.7
+  },
+  "cpi_houston": {
+   "id": "CUURA318SA0",
+   "label": "Consumer prices, Houston metro (all items)",
+   "unit": "index",
+   "source": "https://fred.stlouisfed.org/series/CUURA318SA0",
+   "as_of": "2026-10-01",
+   "value": 285.9,
+   "change_1y": 3.7,
+   "change_5y": 32.0
+  }
+ },
+ "signals": [
+  "About 43,553 new single-family homes were permitted in the Houston metro in the 12 months to 2026-09 (-18% vs. five years earlier): new lawns every day.",
+  "Montgomery County grew +24.9% in five years to 781 thousand people (2025).",
+  "Liberty County grew +31.2% in five years to 121 thousand people (2025).",
+  "Harris County grew +6.6% in five years to 5,045 thousand people (2025).",
+  "The building-and-grounds services trade (which includes landscaping) employs 2,313 thousand people nationally, +6.7% in five years: steady growth, and steady competition for good crew.",
+  "The Houston metro has 3,494 thousand jobs, +12.4% in five years: more working households with less time for yard work.",
+  "Houston consumer prices rose +3.7% in the year to 2026-10; a price that stays flat is a real cut each year."
+ ],
+ "missing": [],
+ "method": "U.S. government data via FRED (Federal Reserve Bank of St. Louis); robots.txt obeyed."
+}

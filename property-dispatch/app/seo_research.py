@@ -61,6 +61,19 @@ def competitors() -> dict | None:
             "quote_first": quote["others"] if quote else None}
 
 
+def trends() -> dict | None:
+    """Market outlook from official data (tools/trend_scan.py): plain sentences plus the series behind them."""
+    path = DATA.with_name("trends.json")
+    try:
+        d = _load(str(path), path.stat().st_mtime)
+    except (OSError, ValueError):
+        return None
+    return {"collected": d.get("collected"), "signals": d.get("signals") or [], "method": d.get("method"),
+            "series": [{"label": v["label"], "value": v["value"], "unit": v["unit"], "as_of": v["as_of"],
+                        "change_1y": v.get("change_1y"), "change_5y": v.get("change_5y"), "source": v["source"]}
+                       for v in (d.get("series") or {}).values()]}
+
+
 def research(path: pathlib.Path | None = None) -> dict:
     path = path or DATA          # looked up at call time, so tests (and a re-run) can point it elsewhere
     try:
@@ -184,4 +197,5 @@ def hub_research() -> dict | None:
                  "broken_links": site.get("broken_links") or [], "llms_txt": site.get("llms_txt")} if site else None,
         "sources": r.get("sources") or {},
         "competitors": competitors(),
+        "trends": trends(),
     }

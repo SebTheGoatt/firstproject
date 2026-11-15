@@ -231,3 +231,27 @@ def test_the_marketing_agent_carries_the_rules():
     for rule in ("You never post", "No invented reviews", "Never name, criticize or compare against a specific competitor",
                  "booking updates only", "No customer names"):
         assert rule in agent
+
+
+# ---------- market trends (tools/trend_scan.py) ----------
+def test_trend_math_and_sentences():
+    import trend_scan as ts
+    monthly = "observation_date,X\n" + "\n".join(f"{2019 + i // 12}-{i % 12 + 1:02d}-01,{100 + i}" for i in range(84))
+    rows = ts.parse(monthly + "\n2026-01-01,.\n")                  # a "." month is skipped, not a zero
+    assert len(rows) == 84
+    flow = ts.summarize(rows, "flow")
+    assert flow["value"] == sum(100 + i for i in range(72, 84))       # trailing 12 months
+    assert flow["change_1y"] == round((sum(range(172, 184)) / sum(range(160, 172)) - 1) * 100, 1)
+    yearly = ts.parse("observation_date,P\n" + "\n".join(f"{2019 + i}-01-01,{100 * 1.05 ** i:.3f}" for i in range(7)))
+    lvl = ts.summarize(yearly, "level")
+    assert lvl["change_1y"] == 5.0 and lvl["as_of"] == "2025-01-01"
+    assert ts.summarize([], "level") is None and ts.signals({}) == []
+
+
+def test_the_saved_trends_cite_their_source_and_reach_the_hub(client):
+    d = json.loads((ROOT / "data" / "trends.json").read_text(encoding="utf-8"))
+    assert d["series"] and d["signals"]
+    for v in d["series"].values():
+        assert v["source"].startswith("https://fred.stlouisfed.org/series/") and v["as_of"][:2] == "20"
+    hub = client.get("/api/owner/marketing", headers=CREW).json()["research"]["trends"]
+    assert hub["signals"] == d["signals"] and "FRED" in hub["method"]

@@ -286,6 +286,11 @@
               <p class="note small">Refresh with <code>python3 tools/competitor_scan.py</code> (add <code>--details</code> for the site-by-site table).
                 Public business pages only. Use this to sharpen our own message; never post about a competitor.</p>
             </div>
+            <div id="rs-trends" hidden>
+              <h3 class="rs-h">Market outlook</h3>
+              <ul class="rs-list" id="rs-trend-list"></ul>
+              <p class="note small" id="rs-trend-src"></p>
+            </div>
             <h3 class="rs-h">Season facts by area</h3>
             <div class="rs-table-wrap" tabindex="0" role="region" aria-labelledby="rs-season-cap">
               <table class="rs-table"><caption id="rs-season-cap">NOAA 1991–2020 climate normals, nearest weather station</caption>
@@ -480,6 +485,12 @@
           + (c.quote_first != null ? `${c.quote_first} of ${c.checked} ask customers to request a quote first.` : "");
         $("rs-comp-rows").replaceChildren(...c.features.map((f) => el("tr", {},
           el("th", { scope: "row" }, f.label), el("td", {}, `${f.others} of ${f.of}`), el("td", {}, f.we ? "Yes" : "Not yet"))));
+      }
+      const tr = r.trends;
+      if (tr && tr.signals.length) {
+        $("rs-trends").hidden = false;
+        $("rs-trend-list").replaceChildren(...tr.signals.map((x) => el("li", {}, el("span", {}, x))));
+        $("rs-trend-src").textContent = `U.S. government data via FRED, collected ${tr.collected}. Refresh each quarter: python3 tools/trend_scan.py`;
       }
       const freeze = (s) => s.last_freeze && s.first_freeze ? `last ${s.last_freeze} · first ${s.first_freeze}` : "–";
       $("rs-season").replaceChildren(...r.season.map((s) => el("tr", {},
