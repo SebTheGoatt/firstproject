@@ -147,6 +147,14 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
   list, area pages, weekly posts); `area_outlook()` gives each area page its next open day, the booking deadline,
   the next area day after it (what waiting costs: a week) and homes booked in the next two weeks (from 5,
   `NEIGHBORS_SHOW`). No fake timers, invented "spots left", "was" prices or "selling fast": FTC rules and trust.
+- Market trends `tools/trend_scan.py` → `data/trends.json` (owner asked Nov 15 2026; re-run each quarter): Houston-metro
+  housing permits, population (metro, Harris, Montgomery, Liberty), metro jobs, U.S. building-services jobs and Houston
+  prices, all U.S. government data via FRED (robots allow it; BLS's own and Census Reporter's robots.txt now block
+  automated visitors). Plain-sentence signals show on the hub's "Market outlook". First read: Liberty +31% and
+  Montgomery +25% population in five years; 43.5k single-family permits a year (−13% y/y).
+- Business plan (owner asked Nov 15 2026, to showcase): private page https://claude.ai/artifact/JK8LDTw3QhcJFnKFXTgMFo,
+  built from the trend scan, the competitor scan, live prices and the Numbers page's default assumptions (all money
+  figures labeled planning figures). Not committed: the repo is public. Update it when prices, areas or results change.
 - Day-before reminder (`app/reminders.py`, from the route build in `run_nightly`): one text per booking ("we're coming
   tomorrow, likely between 9 and 11 AM; unlock the gate, pets inside; cancel free until the on-the-way text"), EN/ES,
   8 AM–9 PM only, never a pitch. Customer "Something not right?" on the visit page (`POST /api/visit/{code}/report`) lands
@@ -228,7 +236,8 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 - No launch date yet (Oct 29 2026): leave `LAUNCH_DATE` blank until there is one. When there is, set it in Render with
   Stripe live first, so pre-orders are paid; Houston mowing restarts mid-to-late March.
 - Before hiring: look into the Work Opportunity Tax Credit (veterans and people with a felony record; certify each hire
-  with the Texas Workforce Commission within 28 days of the start date) and the free Federal Bonding Program for
+  with the Texas Workforce Commission within 28 days of the start date). The IRS lists it for hires who began work by
+  Dec 31, 2025 (checked Nov 15 2026): confirm Congress extended it before counting on it and the free Federal Bonding Program for
   second-chance hires. Crew pay and classification (W-2 vs contractor) is the owner's call; get advice first.
 - Delete the mock bookings from testing.
 - Run `supabase/migrations/20261028000000_issues_and_sources.sql` (problem reports + booking sources).
