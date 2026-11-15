@@ -86,7 +86,7 @@ def test_next_day_follows_the_5pm_cutoff(client):
     with patch("app.local_pages.local_now", return_value=NOW.replace(hour=18)):
         t = client.get("/local/klein").text
     # Klein is Tuesdays: the 5 PM cutoff only shuts tomorrow (Thursday), so the next Klein day is still the 20th.
-    assert "Tuesday, October 20" in t and "We mow Klein every Tuesday" in t and "5 PM the day before" in t
+    assert "Tuesday, October 20" in t and "We mow Klein on Tuesdays" in t and "5 PM the day before" in t
 
 
 def test_price_table_lists_every_yard_type_and_size(client):

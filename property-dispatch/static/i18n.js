@@ -748,6 +748,13 @@
     [/^Our week: (.+)\. Bookings close at (.+) the day before\.$/,
       (m) => `Nuestra semana: ${m[1].replace(/\b(Mon|Tue|Wed|Thu|Fri)\b/g, (d) => ({ Mon: "lun", Tue: "mar", Wed: "mié", Thu: "jue", Fri: "vie" })[d])}. Las reservas cierran a las ${m[2]} del día anterior.`],
     [/^(.+) \(full\)$/, (m) => `${esDate(m[1])} (lleno)`],
+    [/^(.+) · (\d+) openings? left$/, (m) => `${esDate(m[1])} · ${m[2] === "1" ? "queda 1 lugar" : `quedan ${m[2]} lugares`}`],
+    [/^Only (\d+) openings? left on (\w+)'s (.+) route\.$/,
+      (m) => m[1] === "1" ? `Solo queda 1 lugar en la ruta de ${m[3]} del ${DAYS[m[2]] || m[2]}.` : `Solo quedan ${m[1]} lugares en la ruta de ${m[3]} del ${DAYS[m[2]] || m[2]}.`],
+    [/^Booking for this day closes (\w+) at (.+)\.$/, (m) => `Las reservas para este día cierran el ${DAYS[m[1]] || m[1]} a las ${m[2]}.`],
+    [/^After that, the next (.+) day is (\w+), (\w+) (\d+)\.$/,
+      (m) => `Después, el siguiente día de ${m[1]} es el ${DAYS[m[2]] || m[2]}, ${m[4]} de ${MONTHS[m[3]] || m[3]}.`],
+    [/^(\d+) (.+) homes are booked over the next two weeks\.$/, (m) => `${m[1]} casas en ${m[2]} tienen reserva en las próximas dos semanas.`],
     // Page titles end with the business name, whatever it is.
     [/^(Book a [Ss]ervice|Pay|Your Visit) \| (.+)$/, (m) => `${{ "Book a Service": "Reservar un servicio", "Book a service": "Reservar un servicio", Pay: "Pagar", "Your Visit": "Tu visita" }[m[1]]} | ${m[2]}`],
     [/^(.+) \| Mowing, Bin Cleaning & Gutters in Spring, TX$/, (m) => `${m[1]} | Corte de césped, limpieza de botes y canaletas en Spring, TX`],

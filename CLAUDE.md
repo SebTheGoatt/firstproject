@@ -142,6 +142,11 @@ has to be re-explained. Keep it current: when the owner makes a new standing dec
 - Marketing agent `.claude/agents/post-one-marketer.md` (owner asked Nov 10 2026): drafts the weekly kit per outlet in
   EN/ES from the live facts and research, with tagged links; the owner posts. It never posts itself (no accounts or
   keys are connected, on purpose). Ask for it by name: "have the marketer write this week's kit".
+- Scarcity and framing, honest only (owner asked Nov 15 2026 to "master framing and showing scarcity"): every count is
+  live. `SCARCITY_SHOW` = 8 in `app/booking.py` is the one line for naming openings left (home page, booking form day
+  list, area pages, weekly posts); `area_outlook()` gives each area page its next open day, the booking deadline,
+  the next area day after it (what waiting costs: a week) and homes booked in the next two weeks (from 5,
+  `NEIGHBORS_SHOW`). No fake timers, invented "spots left", "was" prices or "selling fast": FTC rules and trust.
 - Day-before reminder (`app/reminders.py`, from the route build in `run_nightly`): one text per booking ("we're coming
   tomorrow, likely between 9 and 11 AM; unlock the gate, pets inside; cancel free until the on-the-way text"), EN/ES,
   8 AM–9 PM only, never a pitch. Customer "Something not right?" on the visit page (`POST /api/visit/{code}/report`) lands

@@ -1540,6 +1540,11 @@ body.page-team { min-height: 100vh; min-height: 100dvh; display: flex; flex-dire
 .page-server-pages .sp-card { display: grid; gap: 6px; }
 .page-server-pages .sp-card .next-day { font-size: 2.3rem; }
 .page-server-pages .sp-card .hint { margin: 0 0 var(--space-3); font-size: 0.9rem; color: var(--muted); }
+/* Live, honest scarcity and social proof on the next-day card (app/local_pages.py outlook_html). */
+.page-server-pages .sp-card .sp-scarce { margin: 2px 0 4px; padding: 8px 12px; border-radius: 10px; background: var(--warn-soft);
+  color: var(--warn); font-size: 0.95rem; border-left: 4px solid var(--brass); }
+.page-server-pages .sp-card .sp-proof { margin: -4px 0 var(--space-3); font-size: 0.9rem; font-weight: 600; color: var(--brand-strong); }
+.page-server-pages .sp-card .hint strong { color: var(--text); }
 .page-server-pages .sp-card .btn { min-height: 52px; border-radius: 12px; font-weight: 700; }
 .page-server-pages trust-badges { display: block; min-width: 0; }
 .page-server-pages .trust-badges { gap: 20px; }

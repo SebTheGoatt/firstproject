@@ -9,6 +9,7 @@
 import html
 import time
 from datetime import date, datetime, timedelta
+from datetime import time as clock_time
 
 from .config import Settings
 from .zones import WEEKDAY_NAMES, ServiceZone, service_days, short_name
@@ -103,6 +104,33 @@ def preorders_open(now: datetime, settings: Settings) -> bool:
 
 PREORDER_TTL_S = 60.0
 PREORDER_SHOW_MIN = 5   # the public count appears from 5 pre-orders (a real number either way; small ones read as empty)
+
+# Scarcity and social proof, honestly (owner asked Nov 15 2026 for framing and scarcity like a marketer). Every number
+# is a live count of real bookings; nothing is shown when it isn't true. No timers that reset, no invented "spots".
+SCARCITY_SHOW = 8       # name the openings left only when a route is genuinely nearly full
+NEIGHBORS_SHOW = 5      # "12 Klein homes are booked" only from 5 real bookings
+NEIGHBORS_WINDOW = 14   # days ahead counted for that line
+
+
+def area_outlook(zone: ServiceZone, now: datetime, settings: Settings, count_active) -> dict:
+    """What an area page can truthfully say about its next days: the next open day and its real openings, when
+    booking for it closes, the area day after it (the cost of waiting), and how many homes are booked soon."""
+    days = [d for d in open_area_days(zone, now, settings, count_active) if d["spots_left"] is not None]
+    open_days = [d for d in days if d["spots_left"] > 0]
+    if not open_days:
+        return {"next": None}
+    nxt = open_days[0]
+    nxt_day = date.fromisoformat(nxt["date"])
+    then = next((date.fromisoformat(d["date"]) for d in open_days[1:]), None)
+    soon = [d for d in days if date.fromisoformat(d["date"]) <= now.date() + timedelta(days=NEIGHBORS_WINDOW)]
+    booked = sum(settings.daily_job_quota - d["spots_left"] for d in soon)
+    return {
+        "next": nxt_day,
+        "spots_left": nxt["spots_left"] if nxt["spots_left"] <= SCARCITY_SHOW else None,
+        "closes": datetime.combine(nxt_day - timedelta(days=1), clock_time(settings.freeze_hour), tzinfo=now.tzinfo),
+        "then": then,
+        "booked": booked if booked >= NEIGHBORS_SHOW else None,
+    }
 
 
 def preorder_count(repo, now: datetime, settings: Settings) -> int:
