@@ -21,7 +21,8 @@ import segno
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, Response
 
-from .booking import cached_count, earliest_bookable_day, local_now, preorder_count, preorders_open, service_floor
+from .booking import (SCARCITY_SHOW, cached_count, earliest_bookable_day, local_now, preorder_count, preorders_open,
+                      service_floor)
 from .config import Settings, site_url
 from .local_pages import AREA_BY_SLUG, AREAS, HOODS, area_card_path, dollars, layout, percent, price_range
 from .pricing import density_pct
@@ -235,7 +236,7 @@ def week_posts(settings: Settings, repo, site: str, today: date) -> list[dict]:
             spots = None
         name, wd = short_name(zone), WEEKDAY_NAMES[day.weekday()]
         when = f"{wd}, {day:%b} {day.day}"
-        few = spots is not None and 0 < spots <= 8          # only mention the count when it's genuinely short
+        few = spots is not None and 0 < spots <= SCARCITY_SHOW          # only mention the count when it's genuinely short
         open_en = (f"only {spots} openings left" if few else
                    "pre-orders open for our first week (cancel free until we're on the way)" if preorder else "booking now")
         open_es = (f"solo quedan {spots} lugares" if few else

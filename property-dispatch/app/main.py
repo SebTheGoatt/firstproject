@@ -39,7 +39,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import deeplinks, push, reviews
-from .booking import (PREORDER_SHOW_MIN, BookingRejected, cached_count, check_area_day, forget_counts, earliest_bookable_day,
+from .booking import (PREORDER_SHOW_MIN, SCARCITY_SHOW, BookingRejected, cached_count, check_area_day, forget_counts, earliest_bookable_day,
                       closed_through, latest_bookable_day, local_now, next_service_day, open_area_days, preorder_count,
                       preorders_open, service_floor, storm_banner, validate_booking)
 from .config import Settings, get_settings, site_url, verification_meta
@@ -426,6 +426,7 @@ def create_app(
         return {
             "earliest_date": earliest,
             "spots_left": spots_left,
+            "scarcity_show": SCARCITY_SHOW,     # pages name the openings left only at or under this (real counts)
             "latest_date": latest_bookable_day(now, settings),
             # Pre-orders (LAUNCH_DATE): the opening day, and the real count shown once it's worth showing.
             "closed": {"until": closed, "note": settings.closed_note.strip() or None} if closed else None,

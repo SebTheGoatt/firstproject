@@ -698,7 +698,7 @@
       }
       // Real openings only: daily limit minus jobs already booked. Shown when the route is nearly full.
       const spots = document.getElementById("spots-left");
-      if (info.spots_left != null && info.spots_left <= 3) {
+      if (info.spots_left != null && info.spots_left <= (info.scarcity_show ?? 8)) {
         const wd = new Date(info.earliest_date + "T12:00:00").toLocaleDateString(undefined, { weekday: "long" });
         spots.textContent = info.spots_left === 0 ? `${wd}'s route is full. Pick another day when you book.`
           : `Only ${info.spots_left} ${info.spots_left === 1 ? "spot" : "spots"} left on ${wd}'s route.`;

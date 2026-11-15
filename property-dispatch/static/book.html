@@ -526,7 +526,9 @@
         const o = document.createElement("option");
         o.value = d.date;
         o.disabled = d.spots_left === 0;
-        o.textContent = fmtDay(d.date) + (d.spots_left === 0 ? " (full)" : "");
+        // Real openings, named only when the route is nearly full (the same rule as every page and post).
+        o.textContent = fmtDay(d.date) + (d.spots_left === 0 ? " (full)"
+          : d.spots_left != null && d.spots_left <= (window.SCARCITY_SHOW ?? 8) ? ` · ${d.spots_left} ${d.spots_left === 1 ? "opening" : "openings"} left` : "");
         dateInput.append(o);
       }
       const open = body.service_days.filter((d) => d.spots_left !== 0).map((d) => d.date);
@@ -621,6 +623,7 @@
     }
 
     fetch("/api/booking-info").then(r => r.json()).then(info => {
+      if (info.scarcity_show != null) window.SCARCITY_SHOW = info.scarcity_show;
       if (info.preorder && info.preorder.open) {
         const d = new Date(info.preorder.launch_date + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
         $("preorder-day").textContent = `We start mowing ${d}.`;

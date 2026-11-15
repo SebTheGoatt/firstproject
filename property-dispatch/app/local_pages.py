@@ -32,7 +32,8 @@ from xml.sax.saxutils import escape as xml_escape
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
-from .booking import cached_count, earliest_bookable_day, latest_bookable_day, local_now, service_floor, storm_banner
+from .booking import (area_outlook, cached_count, earliest_bookable_day, latest_bookable_day, local_now, service_floor,
+                      storm_banner)
 from .charity import causes
 from .config import Settings, site_url, verification_meta
 from .pricing import (ADD_ONS, MAX_SQFT, YARD_TYPES, YIELD_GIVING_RATE, YIELD_INCLUDED_SQFT, bracket_profile,
@@ -573,7 +574,30 @@ def trust_items(settings: Settings) -> list[tuple[str, str, str]]:
 
 
 # ---------- Pages ------------------------------------------------------
-def area_html(settings: Settings, version: str, area: Area, site: str, day: date) -> str:
+def outlook_html(settings: Settings, city: str, wd: str, day: date, outlook: dict | None) -> str:
+    """The next-day card's lines, from live bookings only (app/booking.py area_outlook):
+    real openings when the route is nearly full, the booking deadline, what waiting costs, homes already booked."""
+    o = outlook or {}
+    if o.get("next") != day:                   # no live counts: the plain line we always had
+        return (f'<p class="hint">We mow {city} every {wd}, so the crew stays in your area all day. Booking closes at '
+                f'{hour_words(settings.freeze_hour)} the day before.</p>')
+    # One sentence per element, so the Spanish switch (static/i18n.js PATTERNS) can translate each one whole.
+    lines = []
+    if o.get("spots_left") is not None:
+        n = o["spots_left"]
+        lines.append(f'<p class="sp-scarce"><strong>Only {n} {"opening" if n == 1 else "openings"} left on '
+                     f'{day:%A}\'s {city} route.</strong></p>')
+    closes = o["closes"]
+    after = (f' <span>After that, the next {city} day is {o["then"]:%A, %B} {o["then"].day}.</span>' if o.get("then")
+             else "")
+    lines.append(f'<p class="hint"><strong>Booking for this day closes {closes:%A} at {hour_words(closes.hour)}.</strong>'
+                 f'{after} <span>We mow {city} on {wd}s, so the crew stays in your area all day.</span></p>')
+    if o.get("booked"):
+        lines.append(f'<p class="sp-proof">{o["booked"]} {city} homes are booked over the next two weeks.</p>')
+    return "\n          ".join(lines)
+
+
+def area_html(settings: Settings, version: str, area: Area, site: str, day: date, outlook: dict | None = None) -> str:
     zone = zone_by_key(area.zone_key)
     city = esc(area.city)
     page_url = f"{site}/local/{area.slug}"
@@ -614,8 +638,7 @@ def area_html(settings: Settings, version: str, area: Area, site: str, day: date
         <div class="sp-card next-open" role="group" aria-label="Next service day you can book">
           <p class="sp-kicker">Next day you can book</p>
           <p class="next-day">{day:%A, %B} {day.day}</p>
-          <p class="hint">We mow {city} every {WEEKDAY_NAMES[zone.service_weekday]}, so the crew stays in your area all day.
-            Booking closes at {hour_words(settings.freeze_hour)} the day before.</p>
+          {outlook_html(settings, city, WEEKDAY_NAMES[zone.service_weekday], day, outlook)}
           <a class="btn btn-primary btn-block" href="/book">Book this day</a>
         </div>
       </div>
@@ -891,9 +914,13 @@ def register_local_pages(app: FastAPI, settings: Settings, version: str = "") ->
             return html_page(not_found_html(settings, version), 404)
         if target != slug:
             return RedirectResponse(f"/local/{target}", status_code=301)
+        repo, zone = request.app.state.repo, zone_by_key(AREA_BY_SLUG[target].zone_key)
+        try:
+            outlook = area_outlook(zone, local_now(settings), settings, lambda d: cached_count(repo, d))
+        except Exception:                       # never fail the page over live counts
+            outlook = None
         return html_page(area_html(settings, version, AREA_BY_SLUG[target], site_url(settings, request),
-                                   next_open_day(settings, request.app.state.repo,
-                                                 zone_by_key(AREA_BY_SLUG[target].zone_key))))
+                                   next_open_day(settings, repo, zone), outlook))
 
     @app.get("/local/{slug}/{rest:path}", include_in_schema=False)
     def street_page(slug: str, rest: str, request: Request):
